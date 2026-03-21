@@ -15,6 +15,9 @@ import {
   Wifi,
   WifiOff,
   ChevronRight,
+  Lightbulb,
+  ClipboardList,
+  Settings,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -25,6 +28,11 @@ import Activities        from './pages/Activities';
 import Financials        from './pages/Financials';
 import Events            from './pages/Events';
 import Community         from './pages/Community';
+
+// Additional pages
+import Learning          from './pages/Learning';
+import Reports           from './pages/Reports';
+import Admin             from './pages/Admin';
 
 // Components
 import UploadPortal      from './components/UploadPortal/UploadPortal';
@@ -39,9 +47,12 @@ const NAV_ITEMS = [
   { to: '/financials',        labelKey: 'nav.financials',       icon: DollarSign },
   { to: '/events',            labelKey: 'nav.events',           icon: AlertTriangle },
   { to: '/community',         labelKey: 'nav.community',        icon: Users },
+  { to: '/learning',          labelKey: 'nav.learning',         icon: Lightbulb },
+  { to: '/reports',           labelKey: 'nav.reports',          icon: ClipboardList },
   { to: '/upload',            labelKey: 'nav.upload',           icon: Upload },
   { to: '/map',               labelKey: 'nav.mapView',          icon: Map },
   { to: '/community-report',  labelKey: 'nav.communityReport',  icon: FileText },
+  { to: '/admin',             labelKey: 'nav.admin',            icon: Settings },
 ];
 
 // ── Connectivity badge ────────────────────────────────────────────────────────
@@ -113,9 +124,12 @@ function Breadcrumb() {
         financials:        'nav.financials',
         events:            'nav.events',
         community:         'nav.community',
+        learning:          'nav.learning',
+        reports:           'nav.reports',
         upload:            'nav.upload',
         map:               'nav.mapView',
         'community-report':'nav.communityReport',
+        admin:             'nav.admin',
       };
       return { label: t(labelMap[segment] || segment), path };
     });
@@ -248,9 +262,12 @@ export default function App() {
             <Route path="/financials"       element={<Financials />} />
             <Route path="/events"           element={<Events />} />
             <Route path="/community"        element={<Community />} />
+            <Route path="/learning"        element={<Learning />} />
+            <Route path="/reports"         element={<Reports />} />
             <Route path="/upload"           element={<UploadPortal />} />
             <Route path="/map"              element={<VanuatuMap />} />
             <Route path="/community-report" element={<CommunityReporter />} />
+            <Route path="/admin"           element={<Admin />} />
             {/* 404 fallback */}
             <Route path="*" element={
               <div className="flex items-center justify-center h-full p-8">
