@@ -111,7 +111,7 @@ services:
   # ---------------------------------------------------------------------------
   backend:
     build: ./backend
-    image: ghcr.io/welinrj/vcap2-online-geodatabase/merl-backend:latest
+    image: ghcr.io/welinrj/merl-dashboard/merl-backend:latest
     container_name: merl-backend
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -157,7 +157,7 @@ services:
   # ---------------------------------------------------------------------------
   frontend:
     build: ./frontend
-    image: ghcr.io/welinrj/vcap2-online-geodatabase/merl-frontend:latest
+    image: ghcr.io/welinrj/merl-dashboard/merl-frontend:latest
     container_name: merl-frontend
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost/api}
@@ -178,7 +178,7 @@ services:
   # ---------------------------------------------------------------------------
   airflow:
     build: ./airflow
-    image: ghcr.io/welinrj/vcap2-online-geodatabase/merl-airflow:latest
+    image: ghcr.io/welinrj/merl-dashboard/merl-airflow:latest
     container_name: merl-airflow
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}

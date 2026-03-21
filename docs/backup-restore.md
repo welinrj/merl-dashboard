@@ -80,7 +80,7 @@ docker compose exec airflow airflow dags show-run dag_daily_backup
 The custom format (`-Fc`) is preferred because it supports parallel restore with `pg_restore`.
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -143,7 +143,7 @@ echo "Table backup: backups/merl_table_${TABLE_NAME}_${TIMESTAMP}.sql.gz"
 ### 4.1 Export All Tables
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -196,7 +196,7 @@ echo "Table backup: backups/merl_ch_${TABLE_NAME}_${TIMESTAMP}.native.gz"
 ## 5. Manual Uploads Backup
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 docker run --rm \
@@ -291,7 +291,7 @@ aws s3api put-bucket-lifecycle-configuration \
 > **Warning:** This procedure drops all existing data in the database and replaces it with the backup contents. Only proceed during a maintenance window.
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 
 # Identify the backup to restore
@@ -346,7 +346,7 @@ echo "Table restore exit code: $?"
 ### 7.3 ClickHouse Restore — All Tables
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 
 BACKUP_ARCHIVE="backups/merl_clickhouse_YYYYMMDD_HHMMSS.tar.gz"  # update this
@@ -382,7 +382,7 @@ echo "ClickHouse restore complete"
 ### 7.4 Uploads Volume Restore
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 BACKUP_ARCHIVE="backups/merl_uploads_YYYYMMDD_HHMMSS.tar.gz"  # update this
 
 docker run --rm \

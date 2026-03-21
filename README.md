@@ -78,8 +78,8 @@ Follow these five steps to bring the full stack up from scratch.
 ### Step 1 — Clone the repository
 
 ```bash
-git clone https://github.com/welinrj/vcap2-online-geodatabase.git
-cd vcap2-online-geodatabase/merl-dashboard
+git clone https://github.com/welinrj/merl-dashboard.git
+cd merl-dashboard
 ```
 
 ### Step 2 — Create the environment file

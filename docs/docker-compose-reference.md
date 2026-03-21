@@ -247,7 +247,7 @@ docker compose logs peerdb | grep "lag"
 **Build:** `./backend`
 The `Dockerfile` in `./backend` builds a production image using a multi-stage build: a builder stage installs Python dependencies, and a final stage copies only the installed packages and application code into a slim Python base image.
 
-**Image:** `ghcr.io/welinrj/vcap2-online-geodatabase/merl-backend:latest`
+**Image:** `ghcr.io/welinrj/merl-dashboard/merl-backend:latest`
 Pre-built production image. In development, rebuilt locally via the `build:` directive.
 
 ### Key Configuration
