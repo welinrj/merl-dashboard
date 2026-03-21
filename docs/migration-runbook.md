@@ -232,9 +232,9 @@ sudo mkdir -p /opt/merl-dashboard
 sudo chown $USER:$USER /opt/merl-dashboard
 
 # Clone the repository
-git clone https://github.com/welinrj/vcap2-online-geodatabase.git /opt/vcap2-online-geodatabase
+git clone https://github.com/welinrj/merl-dashboard.git /opt/merl-dashboard
 
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 ls -la
 ```
 
@@ -246,7 +246,7 @@ If the destination server does not have internet access:
 # On the SOURCE server — create archive
 cd /path/to
 tar -czf /tmp/merl-dashboard-app.tar.gz \
-  vcap2-online-geodatabase/merl-dashboard \
+  merl-dashboard \
   --exclude='*/node_modules' \
   --exclude='*/__pycache__' \
   --exclude='*/.git'
@@ -258,8 +258,8 @@ scp /tmp/merl-dashboard-app.tar.gz user@<DESTINATION_SERVER_IP>:/tmp/
 sudo mkdir -p /opt
 cd /opt
 sudo tar -xzf /tmp/merl-dashboard-app.tar.gz
-sudo chown -R $USER:$USER vcap2-online-geodatabase
-cd vcap2-online-geodatabase/merl-dashboard
+sudo chown -R $USER:$USER merl-dashboard
+cd merl-dashboard
 ls -la
 ```
 
@@ -267,16 +267,16 @@ ls -la
 
 ```bash
 # Transfer backup files from source to destination
-scp /tmp/merl_postgres_FINAL_*.sql.gz user@<DESTINATION_SERVER_IP>:/opt/vcap2-online-geodatabase/merl-dashboard/
-scp /tmp/merl_clickhouse_*.tar.gz user@<DESTINATION_SERVER_IP>:/opt/vcap2-online-geodatabase/merl-dashboard/
-scp /tmp/merl_uploads_*.tar.gz user@<DESTINATION_SERVER_IP>:/opt/vcap2-online-geodatabase/merl-dashboard/
+scp /tmp/merl_postgres_FINAL_*.sql.gz user@<DESTINATION_SERVER_IP>:/opt/merl-dashboard/
+scp /tmp/merl_clickhouse_*.tar.gz user@<DESTINATION_SERVER_IP>:/opt/merl-dashboard/
+scp /tmp/merl_uploads_*.tar.gz user@<DESTINATION_SERVER_IP>:/opt/merl-dashboard/
 ```
 
 ---
 
 ## 4. Environment Configuration
 
-On the **destination server**, inside `/opt/vcap2-online-geodatabase/merl-dashboard`:
+On the **destination server**, inside `/opt/merl-dashboard`:
 
 ### 4.1 Create Environment File
 
@@ -335,7 +335,7 @@ grep -E "^[A-Z_]+=\s*$" .env
 ### 5.1 Start Database Services First
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 
 # Start only the databases initially
 docker compose up -d postgres redis
@@ -394,7 +394,7 @@ merl-redis         running         0.0.0.0:6379->6379/tcp
 ### 6.1 Restore PostgreSQL
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 
 # Identify the final backup file
@@ -575,7 +575,7 @@ sudo certbot renew --dry-run
 
 # Add cron job for renewal (runs twice daily, standard for Let's Encrypt)
 sudo crontab -e
-# Add: 0 0,12 * * * certbot renew --quiet --post-hook "cp /etc/letsencrypt/live/merl.climate.gov.vu/*.pem /opt/vcap2-online-geodatabase/merl-dashboard/nginx/ssl/ && docker compose -f /opt/vcap2-online-geodatabase/merl-dashboard/docker-compose.yml restart nginx"
+# Add: 0 0,12 * * * certbot renew --quiet --post-hook "cp /etc/letsencrypt/live/merl.climate.gov.vu/*.pem /opt/merl-dashboard/nginx/ssl/ && docker compose -f /opt/merl-dashboard/docker-compose.yml restart nginx"
 ```
 
 ---

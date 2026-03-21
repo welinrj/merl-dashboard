@@ -222,7 +222,7 @@ export default function App() {
             {i18n.language === 'en' ? '🇻🇺 Switch to Bislama' : '🇬🇧 Switch to English'}
           </button>
           <p className="text-xs text-blue-400">
-            &copy; {new Date().getFullYear()} VCAP2 Project
+            &copy; {new Date().getFullYear()} MERL Dashboard
           </p>
         </div>
       </aside>

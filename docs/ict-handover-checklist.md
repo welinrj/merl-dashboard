@@ -29,7 +29,7 @@ This checklist must be completed by the ICT team receiving the MERL Dashboard sy
 Run the following command and confirm all 10 services show `running` or `running (healthy)` in the STATUS column:
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 docker compose ps
 ```
 
@@ -71,7 +71,7 @@ Docker Compose: _______________________
 ### 2.1 PostgreSQL Accepting Connections
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 docker compose exec postgres pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
 ```
@@ -304,7 +304,7 @@ Open Airflow UI → DAGs → `dag_daily_backup` → last run → all tasks shoul
 - [ ] Backup files created in `backups/` directory:
 
 ```bash
-ls -lht /opt/vcap2-online-geodatabase/merl-dashboard/backups/ | head -10
+ls -lht /opt/merl-dashboard/backups/ | head -10
 ```
 
 - [ ] Backup files exist and are non-zero size

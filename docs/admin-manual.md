@@ -31,7 +31,7 @@ The MERL Dashboard runs on a GoV server. To perform administrative tasks, you ne
 
 ```bash
 ssh your-username@<server-ip>
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 ```
 
 ### Loading Environment Variables
@@ -39,7 +39,7 @@ cd /opt/vcap2-online-geodatabase/merl-dashboard
 Many administration commands reference environment variables. Load them into your shell session with:
 
 ```bash
-export $(grep -v '^#' /opt/vcap2-online-geodatabase/merl-dashboard/.env | xargs)
+export $(grep -v '^#' /opt/merl-dashboard/.env | xargs)
 ```
 
 ### Quick Health Check
@@ -47,7 +47,7 @@ export $(grep -v '^#' /opt/vcap2-online-geodatabase/merl-dashboard/.env | xargs)
 Run this at the start of any admin session to confirm all services are running:
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 docker compose ps
 ```
 
@@ -135,7 +135,7 @@ After making significant changes to the realm (new roles, clients, SMTP settings
 ### Connecting to PostgreSQL
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 
 # Interactive psql session
@@ -226,7 +226,7 @@ Access the Airflow web UI at **https://\<domain\>/airflow** (admin credentials f
 ### Checking DAG Status from the CLI
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 
 # List all DAGs
 docker compose exec airflow airflow dags list
@@ -269,7 +269,7 @@ For full backup procedures, see [backup-restore.md](backup-restore.md).
 ### Verifying Latest Backup
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 # Check local backup files
 ls -lht backups/ | head -10
 
@@ -281,7 +281,7 @@ aws s3 ls s3://${BACKUP_S3_BUCKET}/postgres/ | tail -5
 ### Manual Backup
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -301,7 +301,7 @@ df -h /var/lib/docker
 docker system df
 
 # Remove old backup files (older than 35 days)
-find /opt/vcap2-online-geodatabase/merl-dashboard/backups -name "*.gz" -mtime +35 -delete
+find /opt/merl-dashboard/backups -name "*.gz" -mtime +35 -delete
 ```
 
 ---
@@ -313,7 +313,7 @@ find /opt/vcap2-online-geodatabase/merl-dashboard/backups -name "*.gz" -mtime +3
 Superset dashboards are defined in JSON export files stored in `superset/exports/`.
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 
 # Import a dashboard from a JSON export file
 docker compose exec superset \
@@ -375,7 +375,7 @@ When new indicators are added to the project results framework, they must be add
 ### Step 1 — Add the Indicator Record to PostgreSQL
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 export $(grep -v '^#' .env | xargs)
 
 docker compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
@@ -444,7 +444,7 @@ echo | openssl s_client -connect <domain>:443 -servername <domain> 2>/dev/null \
 
 ```bash
 # Stop NGINX to free port 80 for standalone Certbot
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 docker compose stop nginx
 
 # Renew certificates
@@ -475,7 +475,7 @@ sudo crontab -e
 Add this line (replace `<domain>` and paths as appropriate):
 
 ```cron
-0 3 * * * certbot renew --quiet --deploy-hook "cp /etc/letsencrypt/live/<domain>/*.pem /opt/vcap2-online-geodatabase/merl-dashboard/nginx/ssl/ && docker compose -f /opt/vcap2-online-geodatabase/merl-dashboard/docker-compose.yml restart nginx" >> /var/log/certbot-renew.log 2>&1
+0 3 * * * certbot renew --quiet --deploy-hook "cp /etc/letsencrypt/live/<domain>/*.pem /opt/merl-dashboard/nginx/ssl/ && docker compose -f /opt/merl-dashboard/docker-compose.yml restart nginx" >> /var/log/certbot-renew.log 2>&1
 ```
 
 ---
@@ -498,7 +498,7 @@ df -h
 ### Checking Logs
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 
 # Follow all service logs
 docker compose logs -f
@@ -523,7 +523,7 @@ sudo nano /etc/logrotate.d/merl-nginx
 ```
 
 ```logrotate
-/opt/vcap2-online-geodatabase/merl-dashboard/nginx/logs/*.log {
+/opt/merl-dashboard/nginx/logs/*.log {
     daily
     rotate 14
     compress
@@ -532,7 +532,7 @@ sudo nano /etc/logrotate.d/merl-nginx
     notifempty
     sharedscripts
     postrotate
-        docker compose -f /opt/vcap2-online-geodatabase/merl-dashboard/docker-compose.yml exec nginx nginx -s reopen
+        docker compose -f /opt/merl-dashboard/docker-compose.yml exec nginx nginx -s reopen
     endscript
 }
 ```
@@ -676,7 +676,7 @@ docker system prune -f
 docker image prune -a --filter "until=720h"
 
 # Remove old backup files
-find /opt/vcap2-online-geodatabase/merl-dashboard/backups -name "*.gz" -mtime +30 -delete
+find /opt/merl-dashboard/backups -name "*.gz" -mtime +30 -delete
 ```
 
 ### Applying a System Update
@@ -684,7 +684,7 @@ find /opt/vcap2-online-geodatabase/merl-dashboard/backups -name "*.gz" -mtime +3
 When a new version of the application is released:
 
 ```bash
-cd /opt/vcap2-online-geodatabase/merl-dashboard
+cd /opt/merl-dashboard
 
 # 1. Pull the latest code
 git pull origin main
