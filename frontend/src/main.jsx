@@ -11,20 +11,6 @@ import './apiClient';
 import App from './App';
 import './index.css';
 
-// Register service worker for offline support
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/serviceWorker.js')
-      .then((reg) => {
-        console.log('[SW] Registered, scope:', reg.scope);
-      })
-      .catch((err) => {
-        console.warn('[SW] Registration failed:', err);
-      });
-  });
-}
-
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
   defaultOptions: {

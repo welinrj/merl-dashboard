@@ -1,361 +1,155 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import {
-  BarChart2, AlertTriangle, Users, Upload, Map,
-  TrendingUp, TrendingDown, Minus, ArrowRight,
-  CheckCircle2, Clock, XCircle, AlertCircle,
-} from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { format, parseISO } from 'date-fns';
-import axios from 'axios';
+import { PROJECTS, ALL_INDICATORS, DASHBOARD_SUMMARY } from '../mockData';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (n) => new Intl.NumberFormat().format(n ?? 0);
-const fmtVUV = (n) => `VUV ${new Intl.NumberFormat().format(n ?? 0)}`;
+const fmtVUV = n => `VUV ${new Intl.NumberFormat().format(n ?? 0)}`;
+const pct    = (a, b) => b ? Math.round((a / b) * 100) : 0;
 
-const EVENT_COLOURS = {
-  cyclone:   '#ef4444',
-  flood:     '#3b82f6',
-  drought:   '#f97316',
-  sea_level: '#8b5cf6',
-  other:     '#6b7280',
+const TRAFFIC = {
+  green: { bg: 'bg-green-100', text: 'text-green-700', dot: '#22c55e', label: '≥80% On Track' },
+  amber: { bg: 'bg-amber-100', text: 'text-amber-700', dot: '#f59e0b', label: '50–79% At Risk' },
+  red:   { bg: 'bg-red-100',   text: 'text-red-700',   dot: '#ef4444', label: '<50% Off Track' },
 };
 
-const STATUS_CONFIG = {
-  completed:   { label: 'Completed',   cls: 'badge-green',  icon: CheckCircle2 },
-  in_progress: { label: 'In Progress', cls: 'badge-blue',   icon: Clock },
-  delayed:     { label: 'Delayed',     cls: 'badge-yellow', icon: AlertCircle },
-  not_started: { label: 'Not Started', cls: 'badge-gray',   icon: Minus },
-  cancelled:   { label: 'Cancelled',   cls: 'badge-red',    icon: XCircle },
-};
-
-// ── KPI Card ──────────────────────────────────────────────────────────────────
-function KpiCard({ title, value, subtitle, trend, colour = 'blue' }) {
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const trendColour = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-400';
-
-  const colourMap = {
-    blue:   'bg-blue-50 text-blue-700',
-    green:  'bg-green-50 text-green-700',
-    orange: 'bg-orange-50 text-orange-700',
-    purple: 'bg-purple-50 text-purple-700',
-  };
-
+function KpiCard({ label, value, sub, color = 'green' }) {
+  const colors = { green:'from-green-600 to-emerald-500', blue:'from-blue-600 to-blue-400', amber:'from-amber-500 to-amber-400', violet:'from-violet-600 to-violet-400' };
   return (
-    <div className="card flex flex-col gap-2">
-      <p className="text-sm font-medium text-gray-500">{title}</p>
-      <div className="flex items-end justify-between">
-        <span className={`text-2xl font-bold ${colourMap[colour]?.split(' ')[1] ?? 'text-gray-900'}`}>
-          {value}
-        </span>
-        {trend && (
-          <TrendIcon size={18} className={trendColour} />
-        )}
-      </div>
-      {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
+    <div className="bg-white rounded-xl shadow-sm border border-green-100 p-5 flex flex-col gap-2">
+      <div className={`text-xs font-semibold uppercase tracking-wider bg-gradient-to-r ${colors[color]} bg-clip-text text-transparent`}>{label}</div>
+      <div className="text-3xl font-bold text-gray-800">{value}</div>
+      {sub && <div className="text-xs text-gray-400">{sub}</div>}
     </div>
   );
 }
 
-// ── Progress Bar ──────────────────────────────────────────────────────────────
-function ProgressBar({ label, value, total, colour = 'bg-blue-600' }) {
-  const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-sm">
-        <span className="font-medium text-gray-700">{label}</span>
-        <span className="text-gray-500">{value} / {total} ({pct}%)</span>
-      </div>
-      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${colour}`}
-          style={{ width: `${pct}%` }}
-          role="progressbar"
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        />
-      </div>
-    </div>
-  );
+function TrafficDot({ status }) {
+  const t = TRAFFIC[status] || TRAFFIC.amber;
+  return <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${t.bg} ${t.text}`}>
+    <span className="w-2 h-2 rounded-full inline-block" style={{ background: t.dot }} />
+    {status === 'green' ? 'On Track' : status === 'amber' ? 'At Risk' : 'Off Track'}
+  </span>;
 }
 
-// ── Quick action button ───────────────────────────────────────────────────────
-function QuickAction({ to, icon: Icon, label, colour }) {
-  const colourMap = {
-    blue:   'bg-blue-50 text-blue-700 hover:bg-blue-100',
-    green:  'bg-green-50 text-green-700 hover:bg-green-100',
-    orange: 'bg-orange-50 text-orange-700 hover:bg-orange-100',
-    purple: 'bg-purple-50 text-purple-700 hover:bg-purple-100',
-  };
-  return (
-    <Link
-      to={to}
-      className={`flex items-center gap-3 rounded-xl px-4 py-3 font-medium text-sm transition-colors ${colourMap[colour] ?? colourMap.blue}`}
-    >
-      <Icon size={20} />
-      {label}
-      <ArrowRight size={14} className="ml-auto opacity-50" />
-    </Link>
-  );
-}
+export default function Dashboard({ user }) {
+  const S = DASHBOARD_SUMMARY;
+  const spentPct = pct(S.total_spent_vuv, S.total_budget_vuv);
 
-// ── Skeleton loader ───────────────────────────────────────────────────────────
-function Skeleton({ className = '' }) {
-  return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
-}
+  const budgetData = PROJECTS.map(p => ({
+    name: p.code.split('-')[1],
+    Budget: Math.round(p.budget_vuv / 1e6),
+    Spent:  Math.round(p.spent_vuv  / 1e6),
+  }));
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-export default function Dashboard() {
-  const { t } = useTranslation();
-
-  const { data: summary, isLoading: loadingSummary, error: errorSummary } = useQuery({
-    queryKey: ['dashboard-summary'],
-    queryFn: () => axios.get('/api/indicators/dashboard').then((r) => r.data),
-  });
-
-  const { data: eventsData, isLoading: loadingEvents } = useQuery({
-    queryKey: ['recent-events'],
-    queryFn: () => axios.get('/api/events?limit=5&sort=start_date:desc').then((r) => r.data),
-  });
-
-  const { data: activitiesData, isLoading: loadingActivities } = useQuery({
-    queryKey: ['activity-summary'],
-    queryFn: () => axios.get('/api/activities?limit=100').then((r) => r.data),
-  });
-
-  // Derive activity status breakdown for progress bars
-  const activityStats = React.useMemo(() => {
-    const items = activitiesData?.items ?? activitiesData ?? [];
-    const total = items.length;
-    const completed  = items.filter((a) => a.status === 'completed').length;
-    const inProgress = items.filter((a) => a.status === 'in_progress').length;
-    const delayed    = items.filter((a) => a.status === 'delayed').length;
-    return { total, completed, inProgress, delayed };
-  }, [activitiesData]);
-
-  // Derive financial pie data from summary
-  const financePieData = React.useMemo(() => {
-    const fin = summary?.financials;
-    if (!fin) return [];
-    return [
-      { name: 'Expended',   value: fin.total_expended_vuv  ?? 0, colour: '#ef4444' },
-      { name: 'Remaining',  value: fin.remaining_vuv       ?? 0, colour: '#22c55e' },
-      { name: 'Uncommitted',value: fin.uncommitted_vuv     ?? 0, colour: '#94a3b8' },
-    ].filter((d) => d.value > 0);
-  }, [summary]);
-
-  const events = eventsData?.items ?? eventsData ?? [];
-  const kpi = summary?.indicators ?? {};
-  const engagement = summary?.engagement ?? {};
-  const finance = summary?.financials ?? {};
+  const pieSrc = [
+    { name: 'On Track', value: S.indicators_green, color: '#22c55e' },
+    { name: 'At Risk',  value: S.indicators_amber, color: '#f59e0b' },
+    { name: 'Off Track',value: S.indicators_red,   color: '#ef4444' },
+  ];
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">{t('dashboard.title')}</h2>
-        <p className="text-sm text-gray-500 mt-0.5">{t('dashboard.subtitle')}</p>
+        <h1 className="text-2xl font-bold text-gray-900">L&amp;D Fund MERL Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Vanuatu Loss and Damage Fund Development Project · DoCC / MoCC · Funded by MFAT New Zealand</p>
       </div>
 
-      {/* Error banner */}
-      {errorSummary && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          {t('common.error')}: {errorSummary.message}
-        </div>
-      )}
+      {/* KPI row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label="Active Projects" value={S.active_projects} sub={`of ${S.total_projects} total`} color="green" />
+        <KpiCard label="Total Indicators" value={S.total_indicators} sub={`${S.indicators_green} on track`} color="blue" />
+        <KpiCard label="Budget (VUV M)" value={(S.total_budget_vuv/1e6).toFixed(0)+'M'} sub={`${spentPct}% spent`} color="amber" />
+        <KpiCard label="Datasets Uploaded" value={S.total_datasets} sub="processed records" color="violet" />
+      </div>
 
-      {/* ── KPI Cards ── */}
-      <section>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-3">
-          {t('dashboard.kpi')}
-        </h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {loadingSummary ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="card space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-8 w-1/2" />
-                <Skeleton className="h-3 w-full" />
+      {/* Middle row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Budget bar chart */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-green-100 p-5">
+          <h2 className="font-semibold text-gray-800 mb-4">Budget vs Spent by Project (VUV M)</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={budgetData} barGap={4}>
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={v => `VUV ${v}M`} />
+              <Bar dataKey="Budget" fill="#d1fae5" radius={[4,4,0,0]} />
+              <Bar dataKey="Spent"  fill="#10b981" radius={[4,4,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Indicator traffic lights donut */}
+        <div className="bg-white rounded-xl shadow-sm border border-green-100 p-5">
+          <h2 className="font-semibold text-gray-800 mb-2">Indicator Status</h2>
+          <ResponsiveContainer width="100%" height={180}>
+            <PieChart>
+              <Pie data={pieSrc} cx="50%" cy="50%" innerRadius={50} outerRadius={75} dataKey="value" paddingAngle={3}>
+                {pieSrc.map(e => <Cell key={e.name} fill={e.color} />)}
+              </Pie>
+              <Tooltip />
+              <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="space-y-1 mt-2">
+            {pieSrc.map(e => (
+              <div key={e.name} className="flex justify-between text-xs text-gray-600">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: e.color }} />{e.name}</span>
+                <span className="font-semibold">{e.value}</span>
               </div>
-            ))
-          ) : (
-            <>
-              <KpiCard
-                title="Indicators On Track"
-                value={`${kpi.on_track ?? 0} / ${kpi.total ?? 0}`}
-                subtitle={`${kpi.achieved_pct ?? 0}% of targets met`}
-                trend="up"
-                colour="green"
-              />
-              <KpiCard
-                title="Activities Completed"
-                value={`${activityStats.completed} / ${activityStats.total}`}
-                subtitle={`${activityStats.inProgress} in progress`}
-                trend={activityStats.delayed > 0 ? 'down' : 'up'}
-                colour="blue"
-              />
-              <KpiCard
-                title="Community Engagements"
-                value={fmt(engagement.total_engagements)}
-                subtitle={`${fmt(engagement.total_participants)} participants`}
-                colour="purple"
-              />
-              <KpiCard
-                title="Total Disbursed"
-                value={fmtVUV(finance.total_disbursed_vuv)}
-                subtitle={`${finance.burn_rate_pct ?? 0}% utilisation`}
-                colour="orange"
-              />
-            </>
-          )}
+            ))}
+          </div>
         </div>
-      </section>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Activity Progress ── */}
-        <section className="lg:col-span-2 card space-y-4">
-          <h3 className="font-semibold text-gray-900">{t('dashboard.activityProgress')}</h3>
-          {loadingActivities ? (
-            <div className="space-y-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="space-y-1">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-2 w-full" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <ProgressBar
-                label="Overall Completion"
-                value={activityStats.completed}
-                total={activityStats.total}
-                colour="bg-green-500"
-              />
-              <ProgressBar
-                label="In Progress"
-                value={activityStats.inProgress}
-                total={activityStats.total}
-                colour="bg-blue-500"
-              />
-              {activityStats.delayed > 0 && (
-                <ProgressBar
-                  label="Delayed"
-                  value={activityStats.delayed}
-                  total={activityStats.total}
-                  colour="bg-yellow-400"
-                />
-              )}
-            </div>
-          )}
-          <Link
-            to="/activities"
-            className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline mt-2"
-          >
-            View all activities <ArrowRight size={14} />
-          </Link>
-        </section>
-
-        {/* ── Financial Donut ── */}
-        <section className="card space-y-3">
-          <h3 className="font-semibold text-gray-900">{t('dashboard.financialSummary')}</h3>
-          {loadingSummary ? (
-            <Skeleton className="h-40 w-full" />
-          ) : financePieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={financePieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  dataKey="value"
-                  paddingAngle={2}
-                >
-                  {financePieData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.colour} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(v) => fmtVUV(v)}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: 12 }}
-                />
-                <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-sm text-gray-400 py-8 text-center">{t('common.noData')}</p>
-          )}
-          <Link to="/financials" className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline">
-            View financials <ArrowRight size={14} />
-          </Link>
-        </section>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Recent Events ── */}
-        <section className="lg:col-span-2 card space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">{t('dashboard.recentEvents')}</h3>
-            <Link to="/events" className="text-sm text-blue-700 hover:underline">{t('common.all')}</Link>
-          </div>
-          {loadingEvents ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex gap-3 items-center">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <div className="flex-1 space-y-1">
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-3 w-1/3" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : events.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4">{t('common.noData')}</p>
-          ) : (
-            <ul className="divide-y divide-gray-50">
-              {events.map((ev) => (
-                <li key={ev.id} className="flex items-start gap-3 py-2.5">
-                  <span
-                    className="mt-0.5 h-3 w-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: EVENT_COLOURS[ev.event_type] ?? EVENT_COLOURS.other }}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{ev.name}</p>
-                    <p className="text-xs text-gray-400">
-                      {ev.event_type?.replace('_', ' ')} &middot;{' '}
-                      {ev.start_date ? format(parseISO(ev.start_date), 'd MMM yyyy') : '—'}
-                    </p>
-                  </div>
-                  {ev.economic_loss_vuv > 0 && (
-                    <span className="ml-auto text-xs text-red-600 font-medium whitespace-nowrap">
-                      {fmtVUV(ev.economic_loss_vuv)}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* ── Quick Actions ── */}
-        <section className="card space-y-3">
-          <h3 className="font-semibold text-gray-900">{t('dashboard.quickLinks')}</h3>
-          <div className="space-y-2">
-            <QuickAction to="/events"            icon={AlertTriangle} label={t('dashboard.reportEvent')}  colour="orange" />
-            <QuickAction to="/community"         icon={Users}         label={t('dashboard.addEngagement')} colour="green"  />
-            <QuickAction to="/upload"            icon={Upload}        label={t('dashboard.uploadData')}    colour="blue"   />
-            <QuickAction to="/map"               icon={Map}           label={t('dashboard.viewMap')}       colour="purple" />
-            <QuickAction to="/community-report"  icon={BarChart2}     label={t('nav.communityReport')}     colour="blue"   />
-          </div>
-        </section>
+      {/* Indicator table */}
+      <div className="bg-white rounded-xl shadow-sm border border-green-100 p-5">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-semibold text-gray-800">All Indicators — Latest Status</h2>
+          <NavLink to="/projects" className="text-sm text-emerald-600 hover:underline">View Projects →</NavLink>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left">
+                <th className="pb-2 text-xs text-gray-400 font-semibold pr-4">Code</th>
+                <th className="pb-2 text-xs text-gray-400 font-semibold pr-4">Indicator</th>
+                <th className="pb-2 text-xs text-gray-400 font-semibold pr-4">Project</th>
+                <th className="pb-2 text-xs text-gray-400 font-semibold pr-4 text-right">Progress</th>
+                <th className="pb-2 text-xs text-gray-400 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {ALL_INDICATORS.map(ind => {
+                const progress = pct(ind.current, ind.target);
+                return (
+                  <tr key={ind.id} className="hover:bg-green-50/50">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-gray-400">{ind.code}</td>
+                    <td className="py-2.5 pr-4 font-medium text-gray-700 max-w-xs truncate">{ind.name}</td>
+                    <td className="py-2.5 pr-4">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold text-white" style={{ background: ind.category_color }}>
+                        {ind.category}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className="text-xs text-gray-500">{ind.current}/{ind.target}</span>
+                        <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${progress}%`, background: TRAFFIC[ind.traffic]?.dot }} />
+                        </div>
+                        <span className="text-xs text-gray-500 w-8">{progress}%</span>
+                      </div>
+                    </td>
+                    <td className="py-2.5"><TrafficDot status={ind.traffic} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -1,298 +1,246 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import {
-  FileText, Download, Calendar, Filter, FileSpreadsheet,
-  BarChart2, Users, AlertTriangle, DollarSign, CheckSquare, Lightbulb,
-} from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { format } from 'date-fns';
-import axios from 'axios';
-import toast from 'react-hot-toast';
-
-const PROVINCES = ['All', 'Malampa', 'Penama', 'Sanma', 'Shefa', 'Tafea', 'Torba'];
+import { useState } from 'react';
+import { PROJECTS, ALL_INDICATORS } from '../mockData';
 
 const REPORT_TYPES = [
   {
-    id: 'indicator_progress',
-    label: 'Indicator Progress Summary',
-    description: 'Actual vs target values for all indicators by reporting period',
-    icon: BarChart2,
-    colour: 'blue',
-    endpoint: '/api/reports/indicators',
+    id: 'quarterly',
+    icon: '📅',
+    name: 'Quarterly Progress Report',
+    description: 'Summarises outputs, activities, and indicator updates for the quarter against workplan targets.',
+    sections: ['Executive Summary','Indicator Status','Activity Progress','Budget Utilisation','Key Issues & Risks','Next Quarter Priorities'],
   },
   {
-    id: 'activity_log',
-    label: 'Activity Log',
-    description: 'All activities filtered by period with status and milestones',
-    icon: CheckSquare,
-    colour: 'green',
-    endpoint: '/api/reports/activities',
+    id: 'annual',
+    icon: '📆',
+    name: 'Annual Results Report',
+    description: 'Comprehensive year-end review of outcomes, outputs, and contribution to Goals against the RBM framework.',
+    sections: ['Year Highlights','Outcomes Assessment','Output Delivery','Indicator Dashboard','Financial Summary','Lessons Learned','Year Ahead'],
   },
   {
-    id: 'ld_events',
-    label: 'Loss & Damage Event Register',
-    description: 'Complete record of L&D events with economic loss, affected populations',
-    icon: AlertTriangle,
-    colour: 'orange',
-    endpoint: '/api/reports/events',
+    id: 'midterm',
+    icon: '🔍',
+    name: 'Mid-Term Review',
+    description: 'Independent assessment of project relevance, effectiveness, efficiency, and likelihood of impact at the midpoint.',
+    sections: ['Scope & Methodology','Relevance','Effectiveness','Efficiency','Sustainability Outlook','GEDSI Analysis','Recommendations'],
   },
   {
-    id: 'community_engagement',
-    label: 'Community Engagement Summary',
-    description: 'Aggregated engagement statistics with GEDSI breakdowns',
-    icon: Users,
-    colour: 'purple',
-    endpoint: '/api/reports/community',
+    id: 'endline',
+    icon: '✅',
+    name: 'End-of-Project Evaluation',
+    description: 'Final summative evaluation covering all OECD-DAC criteria, documenting results, lessons, and sustainability prospects.',
+    sections: ['Introduction','Findings by DAC Criteria','Results Against Theory of Change','Beneficiary Perspectives','Value for Money','Final Recommendations'],
   },
   {
-    id: 'participation_disaggregated',
-    label: 'Disaggregated Participation',
-    description: 'Gender, youth, elderly and disability breakdown across all engagements',
-    icon: Users,
-    colour: 'pink',
-    endpoint: '/api/reports/participation',
-  },
-  {
-    id: 'provincial_comparison',
-    label: 'Provincial Comparison',
-    description: 'Side-by-side comparison of indicators and activities by province',
-    icon: Filter,
-    colour: 'teal',
-    endpoint: '/api/reports/provinces',
-  },
-  {
-    id: 'financial_summary',
-    label: 'Financial Summary Report',
-    description: 'Disbursements, expenditures, and budget utilisation summary',
-    icon: DollarSign,
-    colour: 'red',
-    endpoint: '/api/reports/financials',
-  },
-  {
-    id: 'learning_summary',
-    label: 'Learning & Knowledge Summary',
-    description: 'Lessons learned, best practices, challenges, and recommendations',
-    icon: Lightbulb,
-    colour: 'amber',
-    endpoint: '/api/reports/learning',
+    id: 'adhoc',
+    icon: '📊',
+    name: 'Ad-Hoc Indicator Status',
+    description: 'On-demand snapshot of one or more indicators with traffic light ratings, data sources, and notes.',
+    sections: ['Selected Indicators','Traffic Light Status','Data Quality Notes','Contextual Analysis'],
   },
 ];
 
-const COLOUR_MAP = {
-  blue:   'bg-blue-50 text-blue-700 border-blue-200',
-  green:  'bg-green-50 text-green-700 border-green-200',
-  orange: 'bg-orange-50 text-orange-700 border-orange-200',
-  purple: 'bg-purple-50 text-purple-700 border-purple-200',
-  pink:   'bg-pink-50 text-pink-700 border-pink-200',
-  teal:   'bg-teal-50 text-teal-700 border-teal-200',
-  red:    'bg-red-50 text-red-700 border-red-200',
-  amber:  'bg-amber-50 text-amber-700 border-amber-200',
-};
+const fmtVUV = n => `VUV ${new Intl.NumberFormat().format(n ?? 0)}`;
+const pct    = (a, b) => b ? Math.round((a / b) * 100) : 0;
 
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+const TRAFFIC_DOT = { green: '#22c55e', amber: '#f59e0b', red: '#ef4444' };
+const TRAFFIC_LABEL = { green: 'On Track', amber: 'At Risk', red: 'Off Track' };
 
-function convertToCSV(data) {
-  if (!data || data.length === 0) return '';
-  const headers = Object.keys(data[0]);
-  const rows = data.map((row) =>
-    headers.map((h) => {
-      const val = row[h] ?? '';
-      const str = String(val);
-      return str.includes(',') || str.includes('"') || str.includes('\n')
-        ? `"${str.replace(/"/g, '""')}"`
-        : str;
-    }).join(',')
-  );
-  return [headers.join(','), ...rows].join('\n');
-}
-
-export default function Reports() {
-  const { t } = useTranslation();
-
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [province, setProvince] = useState('All');
-  const [generating, setGenerating] = useState(null);
-
-  const handleExport = async (report, exportFormat) => {
-    setGenerating(`${report.id}-${exportFormat}`);
-    try {
-      const params = {};
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
-      if (province !== 'All') params.province = province;
-      params.format = exportFormat;
-
-      const response = await axios.get(report.endpoint, {
-        params,
-        responseType: exportFormat === 'csv' ? 'text' : 'blob',
-      });
-
-      const now = format(new Date(), 'yyyy-MM-dd');
-
-      if (exportFormat === 'csv') {
-        const csvData = typeof response.data === 'string'
-          ? response.data
-          : convertToCSV(response.data?.items ?? response.data ?? []);
-        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-        downloadBlob(blob, `${report.id}_${now}.csv`);
-      } else {
-        const blob = response.data instanceof Blob
-          ? response.data
-          : new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
-        downloadBlob(blob, `${report.id}_${now}.pdf`);
-      }
-
-      toast.success(`${report.label} exported as ${exportFormat.toUpperCase()}`);
-    } catch (err) {
-      // Fallback: try to generate CSV from existing data endpoints
-      try {
-        const fallbackEndpoints = {
-          indicator_progress: '/api/indicators',
-          activity_log: '/api/activities',
-          ld_events: '/api/events',
-          community_engagement: '/api/community/engagements',
-          financial_summary: '/api/financials/transactions',
-          learning_summary: '/api/learning',
-        };
-
-        const fallbackUrl = fallbackEndpoints[report.id];
-        if (fallbackUrl && exportFormat === 'csv') {
-          const params = {};
-          if (dateFrom) params.date_from = dateFrom;
-          if (dateTo) params.date_to = dateTo;
-          if (province !== 'All') params.province = province;
-
-          const res = await axios.get(fallbackUrl, { params });
-          const items = res.data?.items ?? res.data ?? [];
-          if (items.length > 0) {
-            const csv = convertToCSV(items);
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const now = format(new Date(), 'yyyy-MM-dd');
-            downloadBlob(blob, `${report.id}_${now}.csv`);
-            toast.success(`${report.label} exported as CSV`);
-          } else {
-            toast.error('No data available for the selected filters');
-          }
-        } else {
-          toast.error(err.response?.data?.detail ?? `Export failed: ${err.message}`);
-        }
-      } catch {
-        toast.error(err.response?.data?.detail ?? `Export failed: ${err.message}`);
-      }
-    } finally {
-      setGenerating(null);
-    }
-  };
+function ReportPreview({ type, project }) {
+  const proj = project ? PROJECTS.find(p => p.id === project) : null;
+  const indicators = proj ? proj.indicators : ALL_INDICATORS.slice(0, 6);
+  const now = new Date().toLocaleDateString('en-VU', { year:'numeric', month:'long', day:'numeric' });
 
   return (
-    <div className="p-4 lg:p-6 space-y-5 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">{t('reports.title')}</h2>
-        <p className="text-sm text-gray-500">{t('reports.subtitle')}</p>
+    <div style={{ fontFamily: 'serif', maxHeight: 420, overflowY: 'auto', padding: 24, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+      {/* Cover */}
+      <div style={{ textAlign: 'center', paddingBottom: 24, borderBottom: '2px solid #065f46', marginBottom: 24 }}>
+        <div style={{ fontSize: 10, letterSpacing: 2, color: '#6b7280', textTransform: 'uppercase', marginBottom: 8 }}>
+          Department of Climate Change · Vanuatu
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#064e3b', marginBottom: 4 }}>
+          DoCC M&amp;E Monitoring Platform
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#065f46' }}>{type.name}</div>
+        {proj && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{proj.name}</div>}
+        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>Generated: {now} · DRAFT</div>
       </div>
 
-      {/* Global filters */}
-      <div className="card">
-        <h3 className="font-semibold text-gray-800 text-sm mb-3">Report Filters</h3>
-        <div className="flex flex-wrap gap-3">
-          <div>
-            <label className="field-label text-xs">Date From</label>
-            <div className="relative">
-              <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="field-input pl-9 w-44"
-              />
-            </div>
+      {/* Sections */}
+      {type.sections.map((sec, i) => (
+        <div key={i} style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#065f46', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+            {i + 1}. {sec}
           </div>
-          <div>
-            <label className="field-label text-xs">Date To</label>
-            <div className="relative">
-              <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="field-input pl-9 w-44"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="field-label text-xs">Province</label>
-            <select
-              value={province}
-              onChange={(e) => setProvince(e.target.value)}
-              className="field-input w-auto"
-            >
-              {PROVINCES.map((p) => <option key={p}>{p}</option>)}
-            </select>
-          </div>
-          {(dateFrom || dateTo || province !== 'All') && (
-            <div className="flex items-end">
-              <button
-                onClick={() => { setDateFrom(''); setDateTo(''); setProvince('All'); }}
-                className="btn-secondary text-xs"
-              >
-                Clear Filters
-              </button>
+          {sec.toLowerCase().includes('indicator') && (
+            <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f0fdf4' }}>
+                  <th style={{ textAlign: 'left', padding: '4px 8px', color: '#6b7280' }}>Indicator</th>
+                  <th style={{ textAlign: 'center', padding: '4px 8px', color: '#6b7280' }}>Baseline</th>
+                  <th style={{ textAlign: 'center', padding: '4px 8px', color: '#6b7280' }}>Current</th>
+                  <th style={{ textAlign: 'center', padding: '4px 8px', color: '#6b7280' }}>Target</th>
+                  <th style={{ textAlign: 'center', padding: '4px 8px', color: '#6b7280' }}>%</th>
+                  <th style={{ textAlign: 'center', padding: '4px 8px', color: '#6b7280' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {indicators.map(ind => (
+                  <tr key={ind.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '4px 8px', color: '#374151' }}>{ind.name}</td>
+                    <td style={{ textAlign: 'center', padding: '4px 8px', color: '#6b7280' }}>{ind.baseline}</td>
+                    <td style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 700 }}>{ind.current}</td>
+                    <td style={{ textAlign: 'center', padding: '4px 8px', color: '#6b7280' }}>{ind.target}</td>
+                    <td style={{ textAlign: 'center', padding: '4px 8px' }}>{pct(ind.current, ind.target)}%</td>
+                    <td style={{ textAlign: 'center', padding: '4px 8px' }}>
+                      <span style={{ background: TRAFFIC_DOT[ind.traffic], color: '#fff', borderRadius: 9999, fontSize: 10, padding: '1px 6px' }}>
+                        {TRAFFIC_LABEL[ind.traffic]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {sec.toLowerCase().includes('budget') || sec.toLowerCase().includes('financial') ? (
+            <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f0fdf4' }}>
+                  <th style={{ textAlign: 'left', padding: '4px 8px', color: '#6b7280' }}>Project</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#6b7280' }}>Budget</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#6b7280' }}>Spent</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#6b7280' }}>%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PROJECTS.map(p => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '4px 8px', color: '#374151' }}>{p.category}</td>
+                    <td style={{ textAlign: 'right', padding: '4px 8px', color: '#6b7280' }}>VUV {(p.budget_vuv/1e6).toFixed(0)}M</td>
+                    <td style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 700 }}>VUV {(p.spent_vuv/1e6).toFixed(0)}M</td>
+                    <td style={{ textAlign: 'right', padding: '4px 8px' }}>{pct(p.spent_vuv, p.budget_vuv)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : !sec.toLowerCase().includes('indicator') && (
+            <div style={{ color: '#6b7280', fontSize: 11, fontStyle: 'italic', paddingLeft: 8 }}>
+              [Content for this section will be populated from the M&amp;E database upon report generation.]
             </div>
           )}
         </div>
+      ))}
+
+      <div style={{ marginTop: 24, paddingTop: 12, borderTop: '1px solid #e5e7eb', fontSize: 10, color: '#9ca3af', textAlign: 'center' }}>
+        DoCC M&amp;E Monitoring Platform · Confidential · For official use only
+      </div>
+    </div>
+  );
+}
+
+export default function Reports({ user }) {
+  const [selected, setSelected] = useState(REPORT_TYPES[0]);
+  const [project, setProject]   = useState('');
+  const [period, setPeriod]     = useState('Q1 2026');
+  const [preview, setPreview]   = useState(false);
+  const [generated, setGenerated] = useState(false);
+
+  const handleGenerate = () => {
+    setGenerated(false);
+    setPreview(true);
+    setTimeout(() => setGenerated(true), 800);
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Generate, preview, and export DoCC M&amp;E reports</p>
       </div>
 
-      {/* Report cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {REPORT_TYPES.map((report) => {
-          const Icon = report.icon;
-          const colours = COLOUR_MAP[report.colour] ?? COLOUR_MAP.blue;
-          const isGeneratingCSV = generating === `${report.id}-csv`;
-          const isGeneratingPDF = generating === `${report.id}-pdf`;
-
-          return (
-            <div key={report.id} className={`card border ${colours.split(' ')[2]} hover:shadow-md transition-shadow`}>
-              <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-lg ${colours.split(' ').slice(0, 2).join(' ')}`}>
-                  <Icon size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 text-sm">{report.label}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">{report.description}</p>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Report type selector */}
+        <div className="space-y-3">
+          <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Report Type</h2>
+          {REPORT_TYPES.map(rt => (
+            <button key={rt.id} onClick={() => { setSelected(rt); setPreview(false); setGenerated(false); }}
+              className={`w-full text-left rounded-xl p-4 border transition ${selected.id === rt.id ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-gray-200 bg-white hover:border-emerald-300'}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">{rt.icon}</span>
+                <span className="font-semibold text-gray-800 text-sm">{rt.name}</span>
               </div>
-              <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-                <button
-                  onClick={() => handleExport(report, 'csv')}
-                  disabled={!!generating}
-                  className="btn-secondary text-xs flex items-center gap-1.5"
-                >
-                  <FileSpreadsheet size={14} />
-                  {isGeneratingCSV ? 'Generating...' : 'Export CSV'}
-                </button>
-                <button
-                  onClick={() => handleExport(report, 'pdf')}
-                  disabled={!!generating}
-                  className="btn-secondary text-xs flex items-center gap-1.5"
-                >
-                  <Download size={14} />
-                  {isGeneratingPDF ? 'Generating...' : 'Export PDF'}
-                </button>
+              <p className="text-xs text-gray-500 leading-relaxed">{rt.description}</p>
+            </button>
+          ))}
+        </div>
+
+        {/* Configuration + preview */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Config */}
+          <div className="bg-white rounded-xl shadow-sm border border-green-100 p-5">
+            <h2 className="font-semibold text-gray-800 mb-4">Configure Report</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Project (optional)</label>
+                <select value={project} onChange={e => setProject(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                  <option value="">All Projects</option>
+                  {PROJECTS.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Reporting Period</label>
+                <select value={period} onChange={e => setPeriod(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                  {['Q1 2026','Q4 2025','Q3 2025','Q2 2025','2025 Annual','2024 Annual'].map(p => <option key={p}>{p}</option>)}
+                </select>
               </div>
             </div>
-          );
-        })}
+
+            <div className="mt-4">
+              <div className="text-xs font-semibold text-gray-500 mb-2">Sections included</div>
+              <div className="flex flex-wrap gap-2">
+                {selected.sections.map(s => (
+                  <span key={s} className="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5">{s}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={handleGenerate}
+                className="flex-1 bg-gradient-to-r from-green-700 to-emerald-500 text-white rounded-lg py-2 text-sm font-semibold hover:opacity-90 transition">
+                {preview && !generated ? '⏳ Generating…' : '📄 Generate Preview'}
+              </button>
+              {generated && (
+                <button
+                  onClick={() => alert('Export to PDF/DOCX — coming soon in full deployment.')}
+                  className="px-4 py-2 border border-emerald-400 text-emerald-700 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition">
+                  ⬇ Export
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Preview */}
+          {preview && (
+            <div className="bg-white rounded-xl shadow-sm border border-green-100 p-5">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="font-semibold text-gray-800">Report Preview</h2>
+                {generated && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-full px-3 py-1">✅ Ready</span>}
+              </div>
+              {!generated ? (
+                <div className="py-16 text-center">
+                  <div className="text-3xl animate-bounce mb-3">⚙️</div>
+                  <p className="text-sm text-gray-400">Compiling data…</p>
+                </div>
+              ) : (
+                <ReportPreview
+                  type={selected}
+                  project={project ? parseInt(project) : null}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

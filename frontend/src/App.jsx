@@ -1,286 +1,182 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  BarChart2,
-  CheckSquare,
-  DollarSign,
-  AlertTriangle,
-  Users,
-  Upload,
-  Map,
-  FileText,
-  Menu,
-  X,
-  Wifi,
-  WifiOff,
-  ChevronRight,
-  Lightbulb,
-  ClipboardList,
-  Settings,
-} from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
+import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 
-// Pages
-import Dashboard         from './pages/Dashboard';
-import Indicators        from './pages/Indicators';
-import Activities        from './pages/Activities';
-import Financials        from './pages/Financials';
-import Events            from './pages/Events';
-import Community         from './pages/Community';
+// DoCC DMP Pages
+import Dashboard   from './pages/Dashboard';
+import Projects    from './pages/Projects';
+import Datasets    from './pages/Datasets';
+import Analysis    from './pages/Analysis';
+import Reports     from './pages/Reports';
+import AdminPanel  from './pages/AdminPanel';
 
-// Additional pages
-import Learning          from './pages/Learning';
-import Reports           from './pages/Reports';
-import Admin             from './pages/Admin';
+// ── RBAC ──────────────────────────────────────────────────────────────────────
+const ROLES = {
+  ROLE_ADMIN:        'Administrator',
+  ROLE_DOCC_SENIOR:  'DoCC Senior Officer',
+  ROLE_DOCC_MEO:     'DoCC M&E Officer',
+  ROLE_PROJ_MANAGER: 'Project Manager',
+  ROLE_PROJ_STAFF:   'Project Staff',
+};
 
-// Components
-import UploadPortal      from './components/UploadPortal/UploadPortal';
-import VanuatuMap        from './components/MapView/VanuatuMap';
-import CommunityReporter from './components/CommunityReport/CommunityReporter';
-
-// ── Navigation config ─────────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { to: '/',                  labelKey: 'nav.dashboard',        icon: LayoutDashboard },
-  { to: '/indicators',        labelKey: 'nav.indicators',       icon: BarChart2 },
-  { to: '/activities',        labelKey: 'nav.activities',       icon: CheckSquare },
-  { to: '/financials',        labelKey: 'nav.financials',       icon: DollarSign },
-  { to: '/events',            labelKey: 'nav.events',           icon: AlertTriangle },
-  { to: '/community',         labelKey: 'nav.community',        icon: Users },
-  { to: '/learning',          labelKey: 'nav.learning',         icon: Lightbulb },
-  { to: '/reports',           labelKey: 'nav.reports',          icon: ClipboardList },
-  { to: '/upload',            labelKey: 'nav.upload',           icon: Upload },
-  { to: '/map',               labelKey: 'nav.mapView',          icon: Map },
-  { to: '/community-report',  labelKey: 'nav.communityReport',  icon: FileText },
-  { to: '/admin',             labelKey: 'nav.admin',            icon: Settings },
+const DEMO_USERS = [
+  { id:1, username:'admin',   password:'admin123',  role:'ROLE_ADMIN',        name:'Alice Admin',   email:'admin@docc.gov.vu' },
+  { id:2, username:'senior',  password:'senior123', role:'ROLE_DOCC_SENIOR',  name:'Bob Senior',    email:'senior@docc.gov.vu' },
+  { id:3, username:'meo',     password:'meo123',    role:'ROLE_DOCC_MEO',     name:'Carol MEO',     email:'meo@docc.gov.vu' },
+  { id:4, username:'manager', password:'mgr123',    role:'ROLE_PROJ_MANAGER', name:'David Manager', email:'manager@project.vu' },
+  { id:5, username:'staff',   password:'staff123',  role:'ROLE_PROJ_STAFF',   name:'Eve Staff',     email:'staff@project.vu' },
 ];
 
-// ── Connectivity badge ────────────────────────────────────────────────────────
-function ConnectivityBadge() {
-  const { t } = useTranslation();
-  const [online, setOnline] = useState(navigator.onLine);
+const TAB_ACCESS = {
+  ROLE_ADMIN:        ['dashboard','projects','datasets','analysis','reports','admin'],
+  ROLE_DOCC_SENIOR:  ['dashboard','projects','datasets','analysis','reports'],
+  ROLE_DOCC_MEO:     ['dashboard','projects','datasets','analysis','reports'],
+  ROLE_PROJ_MANAGER: ['dashboard','projects','datasets','analysis','reports'],
+  ROLE_PROJ_STAFF:   ['datasets','analysis'],
+};
 
-  useEffect(() => {
-    const setOn  = () => setOnline(true);
-    const setOff = () => setOnline(false);
-    window.addEventListener('online',  setOn);
-    window.addEventListener('offline', setOff);
-    return () => {
-      window.removeEventListener('online',  setOn);
-      window.removeEventListener('offline', setOff);
-    };
-  }, []);
+const NAV_ITEMS = [
+  { key:'dashboard', path:'/dashboard', label:'Dashboard',    icon:'📊' },
+  { key:'projects',  path:'/projects',  label:'L&D Components', icon:'📁' },
+  { key:'datasets',  path:'/datasets',  label:'Datasets',     icon:'🗄️' },
+  { key:'analysis',  path:'/analysis',  label:'Analysis & GIS', icon:'🗺️' },
+  { key:'reports',   path:'/reports',   label:'Reports',      icon:'📄' },
+  { key:'admin',     path:'/admin',     label:'Admin',        icon:'⚙️' },
+];
 
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-        online
-          ? 'bg-green-100 text-green-800'
-          : 'bg-red-100 text-red-800 animate-pulse'
-      }`}
-      title={online ? t('common.online') : t('common.offline')}
-    >
-      {online ? <Wifi size={12} /> : <WifiOff size={12} />}
-      {online ? t('common.online') : t('common.offline')}
-    </span>
-  );
-}
+// ── Login ─────────────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin }) {
+  const [u, setU]         = useState('');
+  const [p, setP]         = useState('');
+  const [err, setErr]     = useState('');
+  const [hints, setHints] = useState(false);
 
-// ── Sidebar nav link ──────────────────────────────────────────────────────────
-function SideNavLink({ to, icon: Icon, label, onClick }) {
-  return (
-    <NavLink
-      to={to}
-      end={to === '/'}
-      onClick={onClick}
-      className={({ isActive }) =>
-        `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-          isActive
-            ? 'bg-blue-700 text-white shadow-sm'
-            : 'text-blue-100 hover:bg-blue-700/60 hover:text-white'
-        }`
-      }
-    >
-      <Icon size={18} className="shrink-0" />
-      <span>{label}</span>
-    </NavLink>
-  );
-}
-
-// ── Breadcrumb ────────────────────────────────────────────────────────────────
-function Breadcrumb() {
-  const location = useLocation();
-  const { t } = useTranslation();
-
-  const crumbs = location.pathname
-    .split('/')
-    .filter(Boolean)
-    .map((segment, i, arr) => {
-      const path = '/' + arr.slice(0, i + 1).join('/');
-      // Map path segments to nav label keys
-      const labelMap = {
-        indicators:        'nav.indicators',
-        activities:        'nav.activities',
-        financials:        'nav.financials',
-        events:            'nav.events',
-        community:         'nav.community',
-        learning:          'nav.learning',
-        reports:           'nav.reports',
-        upload:            'nav.upload',
-        map:               'nav.mapView',
-        'community-report':'nav.communityReport',
-        admin:             'nav.admin',
-      };
-      return { label: t(labelMap[segment] || segment), path };
-    });
+  const submit = (e) => {
+    e.preventDefault();
+    const user = DEMO_USERS.find(x => x.username === u && x.password === p);
+    if (user) onLogin(user);
+    else setErr('Invalid credentials — check demo hints below.');
+  };
 
   return (
-    <nav aria-label="breadcrumb" className="flex items-center gap-1 text-sm text-gray-500">
-      <NavLink to="/" className="hover:text-blue-700 transition-colors">
-        {t('nav.dashboard')}
-      </NavLink>
-      {crumbs.map((crumb) => (
-        <React.Fragment key={crumb.path}>
-          <ChevronRight size={14} className="text-gray-400" />
-          <span className="text-gray-900 font-medium">{crumb.label}</span>
-        </React.Fragment>
-      ))}
-    </nav>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-emerald-700">
+      <div className="bg-white rounded-2xl shadow-2xl p-12 w-96">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-700 to-emerald-500 flex items-center justify-center text-3xl mx-auto mb-4">🌿</div>
+          <h1 className="text-xl font-bold text-green-900">L&amp;D Fund MERL Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">Vanuatu Loss &amp; Damage Fund Development Project</p>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Username</label>
+            <input value={u} onChange={e=>setU(e.target.value)}
+              className="w-full border border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              placeholder="Enter username" required />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+            <input type="password" value={p} onChange={e=>setP(e.target.value)}
+              className="w-full border border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              placeholder="Enter password" required />
+          </div>
+          {err && <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
+          <button type="submit"
+            className="w-full bg-gradient-to-r from-green-700 to-emerald-500 text-white rounded-lg py-2.5 text-sm font-semibold hover:opacity-90 transition">
+            Sign In
+          </button>
+        </form>
+        <div className="mt-4 text-center">
+          <button onClick={()=>setHints(!hints)}
+            className="text-xs text-emerald-600 underline cursor-pointer">
+            {hints ? 'Hide' : 'Show'} demo credentials
+          </button>
+          {hints && (
+            <div className="mt-3 bg-green-50 rounded-lg p-3 text-left space-y-1">
+              {DEMO_USERS.map(u => (
+                <div key={u.id} className="text-xs text-gray-700">
+                  <span className="font-semibold">{u.username}</span> / {u.password}
+                  <span className="text-gray-400 ml-2">({ROLES[u.role]})</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
-  const { t, i18n } = useTranslation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const toggleLang = () => {
-    i18n.changeLanguage(i18n.language === 'en' ? 'bi' : 'en');
-  };
+  if (!user) return <LoginScreen onLogin={setUser} />;
 
-  // Close mobile sidebar on route change
-  const handleNavClick = () => setSidebarOpen(false);
+  const allowed     = TAB_ACCESS[user.role] || [];
+  const visibleNav  = NAV_ITEMS.filter(n => allowed.includes(n.key));
+  const defaultPath = visibleNav[0]?.path || '/datasets';
+  const initials    = user.name.split(' ').map(n=>n[0]).join('').slice(0,2);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* ── Mobile sidebar overlay ── */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
+    <div className="flex h-screen overflow-hidden bg-green-50">
       {/* ── Sidebar ── */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 flex-shrink-0 flex flex-col bg-blue-900 text-white
-          transform transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:relative lg:translate-x-0`}
-      >
-        {/* Logo / title */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-blue-800">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
-              Vanuatu L&amp;D Fund
-            </p>
-            <h1 className="text-base font-bold text-white leading-tight">
-              MERL Dashboard
-            </h1>
+      <aside className="w-56 flex-shrink-0 flex flex-col bg-gradient-to-b from-green-900 to-green-800 shadow-xl">
+        {/* Brand */}
+        <div className="px-4 py-5 border-b border-green-700">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-lg flex-shrink-0">🌿</div>
+            <div>
+              <div className="text-white text-xs font-bold leading-tight">L&amp;D MERL</div>
+              <div className="text-emerald-300 text-xs">Loss &amp; Damage Fund</div>
+            </div>
           </div>
-          <button
-            className="lg:hidden p-1 rounded text-blue-300 hover:text-white"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close sidebar"
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-thin">
-          {NAV_ITEMS.map(({ to, labelKey, icon }) => (
-            <SideNavLink
-              key={to}
-              to={to}
-              icon={icon}
-              label={t(labelKey)}
-              onClick={handleNavClick}
-            />
+        {/* Nav */}
+        <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+          {visibleNav.map(item => (
+            <NavLink key={item.key} to={item.path}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all border-l-2 ${
+                  isActive
+                    ? 'bg-white/15 text-white border-emerald-400'
+                    : 'text-emerald-200 border-transparent hover:bg-white/10 hover:text-white'
+                }`
+              }>
+              <span className="text-base">{item.icon}</span>
+              {item.label}
+            </NavLink>
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-blue-800 space-y-2">
-          <ConnectivityBadge />
-          <button
-            onClick={toggleLang}
-            className="w-full text-left text-xs text-blue-300 hover:text-white transition-colors"
-            aria-label="Toggle language"
-          >
-            {i18n.language === 'en' ? '🇻🇺 Switch to Bislama' : '🇬🇧 Switch to English'}
+        {/* User */}
+        <div className="px-3 py-4 border-t border-green-700">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{initials}</div>
+            <div className="overflow-hidden">
+              <div className="text-white text-xs font-semibold truncate">{user.name}</div>
+              <div className="text-emerald-300 text-xs truncate">{ROLES[user.role]}</div>
+            </div>
+          </div>
+          <button onClick={()=>setUser(null)}
+            className="w-full text-xs text-emerald-300 border border-green-700 rounded-md py-1 hover:bg-white/10 hover:text-white transition">
+            Sign Out
           </button>
-          <p className="text-xs text-blue-400">
-            &copy; {new Date().getFullYear()} MERL Dashboard
-          </p>
         </div>
       </aside>
 
-      {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="flex items-center justify-between gap-4 bg-white border-b border-gray-200 px-4 py-3 lg:px-6">
-          <div className="flex items-center gap-3">
-            {/* Hamburger (mobile) */}
-            <button
-              className="lg:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open sidebar"
-            >
-              <Menu size={20} />
-            </button>
-            <Breadcrumb />
-          </div>
-          <div className="hidden sm:flex items-center gap-3">
-            <ConnectivityBadge />
-            <button
-              onClick={toggleLang}
-              className="text-xs text-gray-500 hover:text-blue-700 transition-colors"
-            >
-              {i18n.language === 'en' ? 'Bislama' : 'English'}
-            </button>
-          </div>
-        </header>
-
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto scrollbar-thin">
-          <Routes>
-            <Route path="/"                 element={<Dashboard />} />
-            <Route path="/indicators"       element={<Indicators />} />
-            <Route path="/activities"       element={<Activities />} />
-            <Route path="/financials"       element={<Financials />} />
-            <Route path="/events"           element={<Events />} />
-            <Route path="/community"        element={<Community />} />
-            <Route path="/learning"        element={<Learning />} />
-            <Route path="/reports"         element={<Reports />} />
-            <Route path="/upload"           element={<UploadPortal />} />
-            <Route path="/map"              element={<VanuatuMap />} />
-            <Route path="/community-report" element={<CommunityReporter />} />
-            <Route path="/admin"           element={<Admin />} />
-            {/* 404 fallback */}
-            <Route path="*" element={
-              <div className="flex items-center justify-center h-full p-8">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">404 — Page Not Found</h2>
-                  <p className="text-gray-500 mb-4">The page you are looking for does not exist.</p>
-                  <NavLink to="/" className="btn-primary">Back to Dashboard</NavLink>
-                </div>
-              </div>
-            } />
-          </Routes>
-        </main>
-      </div>
+      {/* ── Content ── */}
+      <main className="flex-1 overflow-y-auto">
+        <Routes>
+          <Route path="/" element={<Navigate to={defaultPath} replace />} />
+          <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard user={user}/> : <Navigate to={defaultPath} replace />} />
+          <Route path="/projects"  element={allowed.includes('projects')  ? <Projects  user={user}/> : <Navigate to={defaultPath} replace />} />
+          <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user}/> : <Navigate to={defaultPath} replace />} />
+          <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis  user={user}/> : <Navigate to={defaultPath} replace />} />
+          <Route path="/reports"   element={allowed.includes('reports')   ? <Reports   user={user}/> : <Navigate to={defaultPath} replace />} />
+          <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user}/> : <Navigate to={defaultPath} replace />} />
+          <Route path="*"          element={<Navigate to={defaultPath} replace />} />
+        </Routes>
+      </main>
     </div>
   );
 }
