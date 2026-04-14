@@ -36,7 +36,7 @@ const TAB_ACCESS = {
 
 const NAV_ITEMS = [
   { key:'dashboard', path:'/dashboard', label:'Dashboard',    icon:'📊' },
-  { key:'projects',  path:'/projects',  label:'Projects',     icon:'📁' },
+  { key:'projects',  path:'/projects',  label:'L&D Components', icon:'📁' },
   { key:'datasets',  path:'/datasets',  label:'Datasets',     icon:'🗄️' },
   { key:'analysis',  path:'/analysis',  label:'Analysis & GIS', icon:'🗺️' },
   { key:'reports',   path:'/reports',   label:'Reports',      icon:'📄' },
@@ -62,8 +62,8 @@ function LoginScreen({ onLogin }) {
       <div className="bg-white rounded-2xl shadow-2xl p-12 w-96">
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-700 to-emerald-500 flex items-center justify-center text-3xl mx-auto mb-4">🌿</div>
-          <h1 className="text-xl font-bold text-green-900">DoCC M&amp;E Monitoring Platform</h1>
-          <p className="text-sm text-gray-500 mt-1">Department of Climate Change · Vanuatu</p>
+          <h1 className="text-xl font-bold text-green-900">L&amp;D Fund MERL Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">Vanuatu Loss &amp; Damage Fund Development Project</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
           <div>
@@ -125,8 +125,8 @@ export default function App() {
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-lg flex-shrink-0">🌿</div>
             <div>
-              <div className="text-white text-xs font-bold leading-tight">DoCC DMP</div>
-              <div className="text-emerald-300 text-xs">M&amp;E Platform</div>
+              <div className="text-white text-xs font-bold leading-tight">L&amp;D MERL</div>
+              <div className="text-emerald-300 text-xs">Loss &amp; Damage Fund</div>
             </div>
           </div>
         </div>

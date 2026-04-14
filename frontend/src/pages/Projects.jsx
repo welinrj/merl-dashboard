@@ -185,8 +185,8 @@ export default function Projects({ user }) {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-        <p className="text-sm text-gray-500 mt-0.5">DoCC climate change project portfolio — all 6 categories</p>
+        <h1 className="text-2xl font-bold text-gray-900">L&amp;D Fund Programme Components</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Vanuatu Loss &amp; Damage Fund — 6 programme components monitored under this MERL system</p>
       </div>
 
       {/* Filter chips */}

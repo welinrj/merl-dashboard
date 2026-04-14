@@ -54,8 +54,8 @@ export default function Dashboard({ user }) {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">DoCC M&amp;E Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Department of Climate Change · Vanuatu · April 2026</p>
+        <h1 className="text-2xl font-bold text-gray-900">L&amp;D Fund MERL Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Vanuatu Loss and Damage Fund Development Project · DoCC / MoCC · Funded by MFAT New Zealand</p>
       </div>
 
       {/* KPI row */}

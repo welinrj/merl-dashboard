@@ -1,12 +1,15 @@
-// ── DoCC DMP Mock Data ────────────────────────────────────────────────────────
-// Demo data aligned with DoCC M&E Platform Architecture v1.0
-// 6 project categories: CC-ADAPT, CC-MITIG, CC-RESIL, CC-POLICY, CC-CAPBLD, CC-CROSS
+// ── Vanuatu Loss & Damage Fund MERL Dashboard — Demo Data ────────────────────
+// Project: Vanuatu Loss and Damage Fund Development Project
+// Funder: MFAT, Government of New Zealand (NZD 4 million)
+// Reporting to: Project Manager, DoCC, MoCC, Government of Vanuatu
+// Framework: Paris Agreement · UNFCCC FRLD · Vanuatu NAP
+// 6 L&D Fund Programme Components (aligned with TOR Activity 0.2)
 
-// ── Projects (one per category) ───────────────────────────────────────────────
+// ── L&D Fund Programme Components ────────────────────────────────────────────
 export const PROJECTS = [
   {
-    id: 1, code: 'CC-ADAPT-001', category: 'CC-ADAPT', category_color: '#3b82f6',
-    name: 'Community Climate Adaptation Programme',
+    id: 1, code: 'LD-ADAPT-001', category: 'LD-ADAPT', category_color: '#3b82f6',
+    name: 'Community L&D Adaptation & Resilience',
     description: 'Support 30 communities across all provinces to develop and implement community-led climate adaptation plans, focusing on coastal resilience and food security.',
     status: 'active', start_date: '2024-01-15', end_date: '2026-12-31',
     budget_vuv: 85000000, spent_vuv: 47000000,
@@ -40,9 +43,9 @@ export const PROJECTS = [
     ],
   },
   {
-    id: 2, code: 'CC-MITIG-001', category: 'CC-MITIG', category_color: '#10b981',
-    name: 'Renewable Energy & Emissions Reduction',
-    description: 'Install solar micro-grids and energy-efficient systems in 15 government facilities, reducing fossil fuel dependency and greenhouse gas emissions.',
+    id: 2, code: 'LD-EVENTS-001', category: 'LD-EVENTS', category_color: '#10b981',
+    name: 'L&D Events Documentation & Response',
+    description: 'Systematic documentation of loss and damage events (cyclones, floods, droughts, sea level rise) across all provinces with economic and non-economic loss assessment.',
     status: 'active', start_date: '2024-03-01', end_date: '2026-09-30',
     budget_vuv: 120000000, spent_vuv: 52000000,
     lead_agency: 'DoCC / DEPT ENERGY', provinces: ['Shefa','Sanma','Tafea'],
@@ -72,9 +75,9 @@ export const PROJECTS = [
     ],
   },
   {
-    id: 3, code: 'CC-RESIL-001', category: 'CC-RESIL', category_color: '#f59e0b',
-    name: 'Coastal & Disaster Resilience Infrastructure',
-    description: 'Construct and rehabilitate climate-resilient infrastructure including sea walls, evacuation routes, and early warning systems in high-risk coastal areas.',
+    id: 3, code: 'LD-FINANCE-001', category: 'LD-FINANCE', category_color: '#f59e0b',
+    name: 'L&D Fund Finance Mechanism',
+    description: 'Establish and operationalise the national L&D Finance Mechanism — governance framework, fund disbursement modalities, financial management systems, and community access pathways.',
     status: 'active', start_date: '2023-07-01', end_date: '2026-06-30',
     budget_vuv: 200000000, spent_vuv: 148000000,
     lead_agency: 'MPWI / DoCC', provinces: ['Penama','Malampa','Torba'],
@@ -107,9 +110,9 @@ export const PROJECTS = [
     ],
   },
   {
-    id: 4, code: 'CC-POLICY-001', category: 'CC-POLICY', category_color: '#8b5cf6',
-    name: 'Climate Policy & Governance Strengthening',
-    description: 'Support Vanuatu to update its NDC, strengthen climate legislation, and mainstream climate change into national and sectoral planning frameworks.',
+    id: 4, code: 'LD-POLICY-001', category: 'LD-POLICY', category_color: '#8b5cf6',
+    name: 'L&D Policy, Governance & UNFCCC Alignment',
+    description: 'Strengthen Vanuatu\'s L&D policy environment — align with UNFCCC Fund for Responding to Loss and Damage (FRLD), Paris Agreement Article 8, and national governance frameworks.',
     status: 'active', start_date: '2024-06-01', end_date: '2027-05-31',
     budget_vuv: 45000000, spent_vuv: 12000000,
     lead_agency: 'DoCC', provinces: ['Shefa'],
@@ -142,9 +145,9 @@ export const PROJECTS = [
     ],
   },
   {
-    id: 5, code: 'CC-CAPBLD-001', category: 'CC-CAPBLD', category_color: '#ec4899',
-    name: 'DoCC Institutional Capacity Building',
-    description: 'Strengthen DoCC organisational capacity, including staff training in M&E, climate finance, and data management, to deliver its mandate effectively.',
+    id: 5, code: 'LD-CAPBLD-001', category: 'LD-CAPBLD', category_color: '#ec4899',
+    name: 'Capacity Building — DoCC & LDWG',
+    description: 'Build capacity of DoCC, the Loss and Damage Working Group (LDWG), and provincial partners in MERL, climate finance, L&D data collection, and fund management.',
     status: 'active', start_date: '2024-01-01', end_date: '2026-12-31',
     budget_vuv: 35000000, spent_vuv: 18000000,
     lead_agency: 'DoCC', provinces: ['Shefa','Sanma'],
@@ -177,9 +180,9 @@ export const PROJECTS = [
     ],
   },
   {
-    id: 6, code: 'CC-CROSS-001', category: 'CC-CROSS', category_color: '#6366f1',
-    name: 'GEDSI & Cross-Cutting Climate Integration',
-    description: 'Mainstream gender equality, disability, social inclusion and climate change across all DoCC programmes and ensure vulnerable groups are not left behind.',
+    id: 6, code: 'LD-GEDSI-001', category: 'LD-GEDSI', category_color: '#6366f1',
+    name: 'GEDSI & Non-Economic Loss & Damage',
+    description: 'Mainstream gender equality, disability and social inclusion across L&D Fund activities; document non-economic losses including culture, language, identity, health and ecosystems.',
     status: 'active', start_date: '2024-02-01', end_date: '2027-01-31',
     budget_vuv: 28000000, spent_vuv: 8500000,
     lead_agency: 'DoCC / MWCW', provinces: ['Shefa','Tafea','Penama'],
