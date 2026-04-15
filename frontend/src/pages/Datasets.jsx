@@ -3,6 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import {
   Upload, FileText, Table, Map, Search,
   CheckCircle, AlertCircle, Clock, RefreshCw, Download,
+  ThumbsUp, ThumbsDown, X, MessageSquare,
 } from 'lucide-react';
 import { PROJECTS } from '../mockData';
 import { supabase } from '../supabaseClient';
@@ -15,7 +16,37 @@ const STATUS_CFG = {
   partial:   { icon: AlertCircle, color: '#c97b00', bg: '#fef3c7', label: 'Partial'   },
   pending:   { icon: Clock,       color: '#6b7280', bg: '#f3f4f6', label: 'Pending'   },
   error:     { icon: AlertCircle, color: '#c0392b', bg: '#fee2e2', label: 'Error'     },
+  approved:  { icon: CheckCircle, color: '#1a8c4e', bg: '#d1fae5', label: 'Approved'  },
+  rejected:  { icon: AlertCircle, color: '#c0392b', bg: '#fee2e2', label: 'Rejected'  },
 };
+
+/* ── review modal ──────────────────────────────────────────────────────── */
+function ReviewModal({ dataset, onConfirm, onCancel }) {
+  const [note, setNote] = useState('');
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
+      <div style={{ background:'#fff', borderRadius:12, padding:'1.75rem', width:420, maxWidth:'90vw', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+        <div style={{ fontWeight:700, fontSize:'1rem', color:'var(--text-1)', marginBottom:'0.375rem' }}>Reject Dataset</div>
+        <div style={{ fontSize:'0.8125rem', color:'var(--text-3)', marginBottom:'1.25rem' }}>
+          Rejecting: <strong>{dataset.name}</strong>
+        </div>
+        <label style={{ fontSize:'0.75rem', fontWeight:600, color:'var(--text-3)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.375rem' }}>
+          Reason (optional)
+        </label>
+        <textarea
+          value={note} onChange={e => setNote(e.target.value)}
+          placeholder="Describe why this dataset is being rejected…"
+          rows={3}
+          style={{ width:'100%', borderRadius:8, border:'1px solid var(--border)', padding:'0.625rem 0.875rem', fontSize:'0.8125rem', color:'var(--text-1)', resize:'vertical', fontFamily:'var(--font-ui)', boxSizing:'border-box' }}
+        />
+        <div style={{ display:'flex', gap:'0.75rem', marginTop:'1.25rem', justifyContent:'flex-end' }}>
+          <button onClick={onCancel} style={{ padding:'0.5rem 1rem', borderRadius:8, border:'1px solid var(--border)', background:'none', cursor:'pointer', fontSize:'0.8125rem', color:'var(--text-2)' }}>Cancel</button>
+          <button onClick={() => onConfirm(note)} style={{ padding:'0.5rem 1.25rem', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'0.8125rem' }}>Reject Dataset</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ── upload zone ────────────────────────────────────────────────────────── */
 function UploadZone({ onUpload, uploading }) {
@@ -185,7 +216,11 @@ export default function Datasets({ user }) {
   const [search, setSearch] = useState('');
   const [projF, setProjF]   = useState('All');
   const [typeF, setTypeF]   = useState('All');
+  const [reviewing, setReviewing] = useState(null); // dataset being rejected
+  const [actionLoading, setActionLoading] = useState(null); // id of row being actioned
   const pollRef             = useRef(null);
+
+  const canReview = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_DOCC_SENIOR';
 
   // ── fetch datasets from Supabase ──────────────────────────────────────
   const fetchDatasets = useCallback(async () => {
@@ -229,16 +264,66 @@ export default function Datasets({ user }) {
     return matchSearch && matchProj && matchType;
   });
 
+  // ── approval handlers ─────────────────────────────────────────────────
+  const handleApprove = async (dataset) => {
+    setActionLoading(dataset.id);
+    try {
+      await supabase.from('datasets').update({
+        status: 'approved',
+        reviewed_by: user.name,
+        reviewed_at: new Date().toISOString(),
+        review_note: null,
+      }).eq('id', dataset.id);
+    } catch (err) {
+      console.error('Approval failed:', err.message);
+    }
+    setActionLoading(null);
+  };
+
+  const handleReject = async (dataset, note) => {
+    setReviewing(null);
+    setActionLoading(dataset.id);
+    try {
+      await supabase.from('datasets').update({
+        status: 'rejected',
+        reviewed_by: user.name,
+        reviewed_at: new Date().toISOString(),
+        review_note: note || null,
+      }).eq('id', dataset.id);
+    } catch (err) {
+      console.error('Rejection failed:', err.message);
+    }
+    setActionLoading(null);
+  };
+
   return (
     <div style={{ padding: '2rem 2.5rem', maxWidth: 1400 }} className="animate-fade-up">
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
+      {/* Review modal */}
+      {reviewing && (
+        <ReviewModal
+          dataset={reviewing}
+          onConfirm={note => handleReject(reviewing, note)}
+          onCancel={() => setReviewing(null)}
+        />
+      )}
+
       {/* Page header */}
       <div style={{ marginBottom: '1.75rem' }}>
-        <div className="section-label" style={{ marginBottom: '0.375rem' }}>Data Management</div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.875rem', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.025em', margin: 0 }}>
-          Datasets
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div>
+            <div className="section-label" style={{ marginBottom: '0.375rem' }}>Data Management</div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.875rem', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.025em', margin: 0 }}>
+              Datasets
+            </h1>
+          </div>
+          {canReview && rows.filter(r => r.status === 'pending').length > 0 && (
+            <span style={{ background:'#fef3c7', color:'#92400e', border:'1px solid #fde68a', borderRadius:9999, padding:'0.2rem 0.75rem', fontSize:'0.75rem', fontWeight:700, marginLeft:'0.75rem', whiteSpace: 'nowrap' }}>
+              {rows.filter(r => r.status === 'pending').length} pending review
+            </span>
+          )}
+        </div>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>
           Upload, manage and explore project data files. All uploads are stored in Supabase and visible to all users in real time.
         </p>
@@ -300,20 +385,21 @@ export default function Datasets({ user }) {
               <th style={{ textAlign: 'right' }}>Size</th>
               <th>Uploaded by</th>
               <th>Status</th>
+              {canReview && <th>Reviewed by</th>}
               <th></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)' }}>
+                <td colSpan={canReview ? 10 : 8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)' }}>
                   <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite', display: 'inline-block', marginRight: '0.5rem' }} />
                   Loading from Supabase…
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)' }}>
+                <td colSpan={canReview ? 10 : 8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)' }}>
                   No datasets found. Upload a file to get started.
                 </td>
               </tr>
@@ -368,8 +454,51 @@ export default function Datasets({ user }) {
                       <SI size={11} /> {S.label}
                     </span>
                   </td>
+                  {canReview && (
+                    <td>
+                      {d.reviewed_by ? (
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-2)' }}>
+                          {d.reviewed_by}
+                          <div style={{ fontSize: '0.6875rem', color: 'var(--text-3)', marginTop: '0.125rem' }}>
+                            {new Date(d.reviewed_at).toLocaleDateString()}
+                          </div>
+                          {d.review_note && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.25rem', padding: '0.25rem', background: 'var(--cream)', borderRadius: 4, display: 'flex', alignItems: 'flex-start', gap: '0.25rem' }}>
+                              <MessageSquare size={11} style={{ flexShrink: 0, marginTop: '0.125rem' }} />
+                              <span>{d.review_note}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-3)' }}>—</span>
+                      )}
+                    </td>
+                  )}
                   <td>
-                    {d.storage_path && (
+                    {canReview && d.status === 'pending' ? (
+                      <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                        <button
+                          onClick={() => handleApprove(d)}
+                          disabled={actionLoading === d.id}
+                          title="Approve"
+                          style={{
+                            background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.5rem', cursor: 'pointer', color: actionLoading === d.id ? 'var(--text-3)' : '#1a8c4e', display: 'flex', alignItems: 'center', opacity: actionLoading === d.id ? 0.5 : 1, pointerEvents: actionLoading === d.id ? 'none' : 'auto',
+                          }}
+                        >
+                          {actionLoading === d.id ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <ThumbsUp size={13} />}
+                        </button>
+                        <button
+                          onClick={() => setReviewing(d)}
+                          disabled={actionLoading === d.id}
+                          title="Reject"
+                          style={{
+                            background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.5rem', cursor: 'pointer', color: actionLoading === d.id ? 'var(--text-3)' : '#c0392b', display: 'flex', alignItems: 'center', opacity: actionLoading === d.id ? 0.5 : 1, pointerEvents: actionLoading === d.id ? 'none' : 'auto',
+                          }}
+                        >
+                          {actionLoading === d.id ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <ThumbsDown size={13} />}
+                        </button>
+                      </div>
+                    ) : d.storage_path ? (
                       <button
                         onClick={() => downloadFile(d.storage_path, d.name)}
                         title="Download"
@@ -377,7 +506,7 @@ export default function Datasets({ user }) {
                       >
                         <Download size={13} />
                       </button>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               );

@@ -341,6 +341,199 @@ export default function App() {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
+  /* ── Dataset approval/rejection notifications ──────────────────────────── */
+  useEffect(() => {
+    if (!user) return;   // only subscribe when someone is logged in
+
+    const channel = supabase
+      .channel('global-approval-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'datasets' },
+        payload => {
+          const row = payload.new;
+          const isPersonal = row.uploaded_by === user.name;
+
+          if (row.status === 'approved') {
+            if (isPersonal) {
+              // Personal approval notification for the uploader
+              toast.custom(
+                t => (
+                  <div
+                    onClick={() => toast.dismiss(t.id)}
+                    style={{
+                      display:       'flex',
+                      alignItems:    'flex-start',
+                      gap:           '0.75rem',
+                      background:    '#1e293b',
+                      border:        '1px solid rgba(22,163,74,0.35)',
+                      borderLeft:    '3px solid #16a34a',
+                      borderRadius:  10,
+                      padding:       '0.875rem 1.125rem',
+                      boxShadow:     '0 8px 24px rgba(0,0,0,0.25)',
+                      cursor:        'pointer',
+                      maxWidth:      340,
+                      animation:     t.visible ? 'slideIn 0.25s ease' : 'slideOut 0.2s ease',
+                    }}
+                  >
+                    {/* icon */}
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                      background: 'rgba(22,163,74,0.15)',
+                      border: '1px solid rgba(22,163,74,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.875rem',
+                    }}>
+                      ✅
+                    </div>
+                    {/* text */}
+                    <div>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.2rem' }}>
+                        Your upload was approved
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#f1f5f9', lineHeight: 1.4, marginBottom: '0.2rem' }}>
+                        {row.name}
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.45)' }}>
+                        by {row.reviewed_by || 'Admin'}
+                      </div>
+                    </div>
+                  </div>
+                ),
+                {
+                  duration: 6000,
+                  position: 'top-right',
+                }
+              );
+            } else {
+              // General notification for other users
+              toast.custom(
+                t => (
+                  <div
+                    onClick={() => toast.dismiss(t.id)}
+                    style={{
+                      display:       'flex',
+                      alignItems:    'center',
+                      gap:           '0.5rem',
+                      background:    '#1e293b',
+                      border:        '1px solid rgba(74,171,130,0.2)',
+                      borderRadius:  8,
+                      padding:       '0.625rem 0.875rem',
+                      boxShadow:     '0 4px 12px rgba(0,0,0,0.15)',
+                      cursor:        'pointer',
+                      maxWidth:      320,
+                      animation:     t.visible ? 'slideIn 0.25s ease' : 'slideOut 0.2s ease',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>
+                      <span style={{ color: '#4aab82', fontWeight: 600 }}>{row.uploaded_by}</span>
+                      {'\'s '}
+                      <span style={{ color: '#f1f5f9', fontWeight: 500 }}>{row.name}</span>
+                      {' was approved'}
+                    </span>
+                  </div>
+                ),
+                {
+                  duration: 4000,
+                  position: 'top-right',
+                }
+              );
+            }
+          } else if (row.status === 'rejected') {
+            if (isPersonal) {
+              // Personal rejection notification for the uploader
+              toast.custom(
+                t => (
+                  <div
+                    onClick={() => toast.dismiss(t.id)}
+                    style={{
+                      display:       'flex',
+                      alignItems:    'flex-start',
+                      gap:           '0.75rem',
+                      background:    '#1e293b',
+                      border:        '1px solid rgba(220,38,38,0.35)',
+                      borderLeft:    '3px solid #dc2626',
+                      borderRadius:  10,
+                      padding:       '0.875rem 1.125rem',
+                      boxShadow:     '0 8px 24px rgba(0,0,0,0.25)',
+                      cursor:        'pointer',
+                      maxWidth:      340,
+                      animation:     t.visible ? 'slideIn 0.25s ease' : 'slideOut 0.2s ease',
+                    }}
+                  >
+                    {/* icon */}
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                      background: 'rgba(220,38,38,0.15)',
+                      border: '1px solid rgba(220,38,38,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.875rem',
+                    }}>
+                      ❌
+                    </div>
+                    {/* text */}
+                    <div>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.2rem' }}>
+                        Upload rejected
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#f1f5f9', lineHeight: 1.4, marginBottom: '0.2rem' }}>
+                        {row.name}
+                      </div>
+                      {row.review_note && (
+                        <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.45)' }}>
+                          {row.review_note}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ),
+                {
+                  duration: 6000,
+                  position: 'top-right',
+                }
+              );
+            } else {
+              // General notification for other users
+              toast.custom(
+                t => (
+                  <div
+                    onClick={() => toast.dismiss(t.id)}
+                    style={{
+                      display:       'flex',
+                      alignItems:    'center',
+                      gap:           '0.5rem',
+                      background:    '#1e293b',
+                      border:        '1px solid rgba(220,38,38,0.2)',
+                      borderRadius:  8,
+                      padding:       '0.625rem 0.875rem',
+                      boxShadow:     '0 4px 12px rgba(0,0,0,0.15)',
+                      cursor:        'pointer',
+                      maxWidth:      320,
+                      animation:     t.visible ? 'slideIn 0.25s ease' : 'slideOut 0.2s ease',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>
+                      <span style={{ color: '#f1f5f9', fontWeight: 500 }}>{row.uploaded_by}</span>
+                      {'\'s '}
+                      <span style={{ color: '#f1f5f9', fontWeight: 500 }}>{row.name}</span>
+                      {' was rejected'}
+                    </span>
+                  </div>
+                ),
+                {
+                  duration: 4000,
+                  position: 'top-right',
+                }
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const allowed    = TAB_ACCESS[user.role] || [];
