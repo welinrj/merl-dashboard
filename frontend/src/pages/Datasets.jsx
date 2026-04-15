@@ -1,175 +1,185 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { Upload, FileText, Table, Map, Search, Filter, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { DATASETS, PROJECTS } from '../mockData';
 
-const TYPE_ICON = { csv: '📊', xlsx: '📗', geojson: '🗺️', json: '📋' };
-const STATUS_CHIP = {
-  processed: 'bg-green-100 text-green-700',
-  partial:   'bg-amber-100 text-amber-700',
-  pending:   'bg-gray-100 text-gray-500',
-  error:     'bg-red-100 text-red-700',
+const TYPE_ICON = { csv: Table, xlsx: Table, geojson: Map, json: FileText };
+const STATUS = {
+  processed: { icon: CheckCircle, color:'#1a8c4e', bg:'#d1fae5', label:'Processed' },
+  partial:   { icon: AlertCircle, color:'#c97b00', bg:'#fef3c7', label:'Partial' },
+  pending:   { icon: Clock,       color:'#6b7280', bg:'#f3f4f6', label:'Pending' },
+  error:     { icon: AlertCircle, color:'#c0392b', bg:'#fee2e2', label:'Error' },
 };
 
 function UploadZone({ onUpload }) {
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage]     = useState('');
+  const [message, setMessage] = useState('');
 
-  const onDrop = useCallback((accepted) => {
+  const onDrop = useCallback(accepted => {
     if (!accepted.length) return;
-    setUploading(true);
-    setMessage('');
-    // Simulate upload
+    setUploading(true); setMessage('');
     setTimeout(() => {
       setUploading(false);
-      setMessage(`✅ ${accepted.map(f=>f.name).join(', ')} uploaded successfully (demo mode — data not persisted).`);
+      setMessage(`${accepted.length} file${accepted.length>1?'s':''} uploaded successfully.`);
       if (onUpload) onUpload(accepted);
-    }, 1500);
+    }, 1400);
   }, [onUpload]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { 'text/csv': ['.csv'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'application/json': ['.json','.geojson'] },
-    multiple: true,
+    onDrop, multiple: true,
+    accept: { 'text/csv':['.csv'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx'], 'application/json':['.json','.geojson'] }
   });
 
   return (
     <div>
-      <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-emerald-500 bg-emerald-50' : 'border-green-200 bg-white hover:border-emerald-400 hover:bg-green-50'}`}>
+      <div {...getRootProps()} style={{
+        border: `2px dashed ${isDragActive ? 'var(--green-600)' : 'var(--border)'}`,
+        background: isDragActive ? 'var(--green-50)' : 'var(--white)',
+        borderRadius: 10, padding:'2.5rem 2rem',
+        textAlign:'center', cursor:'pointer', transition:'all 0.15s',
+      }}>
         <input {...getInputProps()} />
-        <div className="text-4xl mb-3">{uploading ? '⏳' : isDragActive ? '📂' : '📤'}</div>
+        <div style={{ width:44, height:44, background:'var(--green-50)', border:'1px solid var(--green-100)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}>
+          <Upload size={20} style={{ color:'var(--green-600)' }}/>
+        </div>
         {uploading ? (
-          <p className="text-sm text-gray-500 animate-pulse">Uploading…</p>
+          <p style={{ color:'var(--text-3)', fontSize:'0.875rem' }}>Uploading<span style={{ animation:'dots 1.2s infinite' }}>…</span></p>
         ) : isDragActive ? (
-          <p className="text-sm text-emerald-600 font-semibold">Drop files here…</p>
+          <p style={{ color:'var(--green-700)', fontWeight:600, fontSize:'0.875rem' }}>Drop files here</p>
         ) : (
           <>
-            <p className="text-sm font-semibold text-gray-700">Drag &amp; drop files here, or click to browse</p>
-            <p className="text-xs text-gray-400 mt-1">Supports CSV, XLSX, GeoJSON · Max 50MB per file</p>
+            <p style={{ fontWeight:600, color:'var(--text-1)', fontSize:'0.875rem', margin:'0 0 0.25rem' }}>
+              Drag &amp; drop files, or <span style={{ color:'var(--green-700)', textDecoration:'underline' }}>browse</span>
+            </p>
+            <p style={{ color:'var(--text-3)', fontSize:'0.75rem' }}>CSV, XLSX, GeoJSON · Max 50MB per file</p>
           </>
         )}
       </div>
-      {message && <div className="mt-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">{message}</div>}
+      {message && (
+        <div style={{ marginTop:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem', background:'#d1fae5', border:'1px solid #6ee7b7', borderRadius:8, padding:'0.625rem 0.875rem', color:'#065f46', fontSize:'0.8125rem', fontWeight:500 }}>
+          <CheckCircle size={14}/>
+          {message}
+        </div>
+      )}
     </div>
   );
 }
 
 export default function Datasets({ user }) {
   const [search, setSearch]   = useState('');
-  const [projFilter, setProj] = useState('All');
-  const [typeFilter, setType] = useState('All');
+  const [projF, setProjF]     = useState('All');
+  const [typeF, setTypeF]     = useState('All');
   const [localData, setLocalData] = useState(DATASETS);
 
-  const projects = ['All', ...PROJECTS.map(p => p.code)];
-  const types    = ['All', 'csv', 'xlsx', 'geojson'];
-
   const filtered = localData.filter(d => {
-    const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) ||
-                        d.tags.some(t => t.includes(search.toLowerCase()));
-    const matchProj   = projFilter === 'All' || d.project_code === projFilter;
-    const matchType   = typeFilter === 'All' || d.type === typeFilter;
+    const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) || d.tags.some(t=>t.includes(search.toLowerCase()));
+    const matchProj = projF==='All' || d.project_code===projF;
+    const matchType = typeF==='All' || d.type===typeF;
     return matchSearch && matchProj && matchType;
   });
 
-  const handleUpload = (files) => {
-    const newRows = files.map((f, i) => ({
-      id: localData.length + i + 1,
-      name: f.name,
-      project_code: 'CC-ADAPT-001',
-      type: f.name.split('.').pop(),
-      rows: 0,
-      size_kb: Math.round(f.size / 1024),
-      uploaded_by: user?.name || 'Current User',
+  const handleUpload = files => {
+    const newRows = files.map((f,i) => ({
+      id: localData.length+i+1, name: f.name,
+      project_code:'LD-ADAPT-001', type: f.name.split('.').pop(),
+      rows:0, size_kb: Math.round(f.size/1024),
+      uploaded_by: user?.name||'Current User',
       uploaded_at: new Date().toISOString(),
-      status: 'pending',
-      tags: [],
+      status:'pending', tags:[],
     }));
     setLocalData(prev => [...newRows, ...prev]);
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Datasets</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Upload, manage and explore project datasets</p>
+    <div style={{ padding:'2rem 2.5rem', maxWidth:1400 }} className="animate-fade-up">
+      <div style={{ marginBottom:'1.75rem' }}>
+        <div className="section-label" style={{ marginBottom:'0.375rem' }}>Data Management</div>
+        <h1 style={{ fontFamily:'var(--font-display)', fontSize:'1.875rem', fontWeight:600, color:'var(--text-1)', letterSpacing:'-0.025em', margin:0 }}>
+          Datasets
+        </h1>
+        <p style={{ fontSize:'0.875rem', color:'var(--text-3)', marginTop:'0.25rem' }}>
+          Upload, manage and explore project data files.
+        </p>
       </div>
 
       {/* Upload zone */}
-      <div className="bg-white rounded-xl shadow-sm border border-green-100 p-6">
-        <h2 className="font-semibold text-gray-800 mb-4">Upload New Dataset</h2>
+      <div className="card" style={{ marginBottom:'1.5rem' }}>
+        <div style={{ fontFamily:'var(--font-ui)', fontSize:'0.875rem', fontWeight:700, color:'var(--text-1)', marginBottom:'1rem' }}>
+          Upload New Dataset
+        </div>
         <UploadZone onUpload={handleUpload} />
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-green-100 p-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search datasets or tags…"
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 flex-1 min-w-48"
-          />
-          <select value={projFilter} onChange={e => setProj(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
-            {projects.map(p => <option key={p}>{p}</option>)}
+      <div className="card" style={{ marginBottom:'1rem', padding:'0.875rem 1.25rem' }}>
+        <div style={{ display:'flex', gap:'0.75rem', alignItems:'center', flexWrap:'wrap' }}>
+          <div style={{ position:'relative', flex:1, minWidth:200 }}>
+            <Search size={14} style={{ position:'absolute', left:'0.75rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-3)' }}/>
+            <input value={search} onChange={e=>setSearch(e.target.value)}
+              placeholder="Search datasets or tags…"
+              style={{ paddingLeft:'2.25rem', width:'100%' }}
+              className="field-input" />
+          </div>
+          <select value={projF} onChange={e=>setProjF(e.target.value)} className="field-input" style={{ width:'auto' }}>
+            <option value="All">All Components</option>
+            {PROJECTS.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}
           </select>
-          <select value={typeFilter} onChange={e => setType(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
-            {types.map(t => <option key={t}>{t}</option>)}
+          <select value={typeF} onChange={e=>setTypeF(e.target.value)} className="field-input" style={{ width:'auto' }}>
+            {['All','csv','xlsx','geojson'].map(t => <option key={t}>{t}</option>)}
           </select>
-          <span className="text-xs text-gray-400">{filtered.length} records</span>
+          <span style={{ fontSize:'0.75rem', color:'var(--text-3)', whiteSpace:'nowrap' }}>
+            {filtered.length} record{filtered.length!==1?'s':''}
+          </span>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-green-100 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-green-50">
-            <tr className="text-left">
-              <th className="px-5 py-3 text-xs font-bold uppercase text-gray-400">Name</th>
-              <th className="px-5 py-3 text-xs font-bold uppercase text-gray-400">Project</th>
-              <th className="px-5 py-3 text-xs font-bold uppercase text-gray-400">Type</th>
-              <th className="px-5 py-3 text-xs font-bold uppercase text-gray-400 text-right">Rows</th>
-              <th className="px-5 py-3 text-xs font-bold uppercase text-gray-400 text-right">Size</th>
-              <th className="px-5 py-3 text-xs font-bold uppercase text-gray-400">Uploaded</th>
-              <th className="px-5 py-3 text-xs font-bold uppercase text-gray-400">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-10 text-gray-400">No datasets found</td></tr>
+      <div className="card" style={{ padding:0, overflow:'hidden' }}>
+        <table className="data-table">
+          <thead><tr>
+            <th>Dataset</th><th>Component</th><th>Type</th>
+            <th style={{ textAlign:'right' }}>Rows</th>
+            <th style={{ textAlign:'right' }}>Size</th>
+            <th>Uploaded by</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+            {filtered.length===0 ? (
+              <tr><td colSpan={7} style={{ textAlign:'center', padding:'3rem', color:'var(--text-3)' }}>No datasets found</td></tr>
             ) : filtered.map(d => {
-              const proj = PROJECTS.find(p => p.code === d.project_code);
+              const proj = PROJECTS.find(p=>p.code===d.project_code);
+              const Icon = TYPE_ICON[d.type] || FileText;
+              const S = STATUS[d.status] || STATUS.pending;
+              const SI = S.icon;
               return (
-                <tr key={d.id} className="hover:bg-green-50/50">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{TYPE_ICON[d.type] || '📄'}</span>
+                <tr key={d.id}>
+                  <td>
+                    <div style={{ display:'flex', alignItems:'flex-start', gap:'0.625rem' }}>
+                      <div style={{ width:30, height:30, borderRadius:6, background:'var(--green-50)', border:'1px solid var(--green-100)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>
+                        <Icon size={14} style={{ color:'var(--green-600)' }}/>
+                      </div>
                       <div>
-                        <div className="font-medium text-gray-800">{d.name}</div>
-                        <div className="flex gap-1 mt-0.5">
-                          {d.tags.map(t => (
-                            <span key={t} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{t}</span>
+                        <div style={{ fontWeight:600, color:'var(--text-1)', fontSize:'0.8125rem' }}>{d.name}</div>
+                        <div style={{ display:'flex', gap:'0.25rem', marginTop:'0.25rem', flexWrap:'wrap' }}>
+                          {d.tags.slice(0,3).map(t => (
+                            <span key={t} style={{ background:'var(--cream)', color:'var(--text-3)', border:'1px solid var(--border)', borderRadius:4, padding:'0.05rem 0.4rem', fontSize:'0.625rem', fontWeight:600 }}>{t}</span>
                           ))}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3">
-                    {proj && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white" style={{ background: proj.category_color }}>
-                        {proj.category}
-                      </span>
-                    )}
+                  <td>
+                    {proj && <span style={{ background:proj.category_color+'18', color:proj.category_color, border:`1px solid ${proj.category_color}33`, borderRadius:4, padding:'0.1rem 0.5rem', fontSize:'0.625rem', fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>{proj.category}</span>}
                   </td>
-                  <td className="px-5 py-3 uppercase text-xs font-mono text-gray-500">{d.type}</td>
-                  <td className="px-5 py-3 text-right text-gray-600">{d.rows > 0 ? d.rows.toLocaleString() : '—'}</td>
-                  <td className="px-5 py-3 text-right text-gray-500">{d.size_kb}KB</td>
-                  <td className="px-5 py-3 text-xs text-gray-400">
-                    <div>{d.uploaded_by}</div>
-                    <div>{new Date(d.uploaded_at).toLocaleDateString()}</div>
+                  <td><span style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', color:'var(--text-3)', textTransform:'uppercase', letterSpacing:'0.04em' }}>{d.type}</span></td>
+                  <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', color:'var(--text-2)', fontSize:'0.8125rem' }}>{d.rows>0?d.rows.toLocaleString():'—'}</td>
+                  <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', color:'var(--text-3)', fontSize:'0.75rem' }}>{d.size_kb}KB</td>
+                  <td>
+                    <div style={{ fontSize:'0.8125rem', color:'var(--text-2)' }}>{d.uploaded_by}</div>
+                    <div style={{ fontSize:'0.6875rem', color:'var(--text-3)' }}>{new Date(d.uploaded_at).toLocaleDateString()}</div>
                   </td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${STATUS_CHIP[d.status] || 'bg-gray-100 text-gray-500'}`}>
-                      {d.status}
+                  <td>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', background:S.bg, color:S.color, borderRadius:9999, padding:'0.15rem 0.6rem', fontSize:'0.6875rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                      <SI size={11}/> {S.label}
                     </span>
                   </td>
                 </tr>

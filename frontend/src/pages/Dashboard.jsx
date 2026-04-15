@@ -1,104 +1,148 @@
-import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid,
 } from 'recharts';
 import { PROJECTS, ALL_INDICATORS, DASHBOARD_SUMMARY } from '../mockData';
+import { TrendingUp, AlertTriangle, ArrowRight } from 'lucide-react';
 
-const fmtVUV = n => `VUV ${new Intl.NumberFormat().format(n ?? 0)}`;
-const pct    = (a, b) => b ? Math.round((a / b) * 100) : 0;
+const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
+const fmtM = n => (n / 1e6).toFixed(1) + 'M';
+const TRAFFIC = { green:'#1a8c4e', amber:'#c97b00', red:'#c0392b' };
+const TRAFFIC_BG = { green:'#d1fae5', amber:'#fef3c7', red:'#fee2e2' };
+const TRAFFIC_TXT = { green:'#065f46', amber:'#92400e', red:'#991b1b' };
+const TRAFFIC_LABEL = { green:'On Track', amber:'At Risk', red:'Off Track' };
 
-const TRAFFIC = {
-  green: { bg: 'bg-green-100', text: 'text-green-700', dot: '#22c55e', label: '≥80% On Track' },
-  amber: { bg: 'bg-amber-100', text: 'text-amber-700', dot: '#f59e0b', label: '50–79% At Risk' },
-  red:   { bg: 'bg-red-100',   text: 'text-red-700',   dot: '#ef4444', label: '<50% Off Track' },
-};
-
-function KpiCard({ label, value, sub, color = 'green' }) {
-  const colors = { green:'from-green-600 to-emerald-500', blue:'from-blue-600 to-blue-400', amber:'from-amber-500 to-amber-400', violet:'from-violet-600 to-violet-400' };
+function KpiCard({ label, value, sub, color = 'green', icon: Icon }) {
+  const accent = color === 'gold' ? 'var(--gold-500)' : color === 'red' ? '#c0392b' : color === 'amber' ? '#c97b00' : 'var(--green-500)';
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-green-100 p-5 flex flex-col gap-2">
-      <div className={`text-xs font-semibold uppercase tracking-wider bg-gradient-to-r ${colors[color]} bg-clip-text text-transparent`}>{label}</div>
-      <div className="text-3xl font-bold text-gray-800">{value}</div>
-      {sub && <div className="text-xs text-gray-400">{sub}</div>}
+    <div className="card" style={{ borderLeft: `3px solid ${accent}` }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.5rem' }}>
+        <div className="section-label">{label}</div>
+        {Icon && <Icon size={16} style={{ color: accent, opacity: 0.7 }} />}
+      </div>
+      <div style={{ fontFamily:'var(--font-display)', fontSize:'2rem', fontWeight:600, color:'var(--text-1)', lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize:'0.75rem', color:'var(--text-3)', marginTop:'0.375rem' }}>{sub}</div>}
     </div>
   );
 }
 
-function TrafficDot({ status }) {
-  const t = TRAFFIC[status] || TRAFFIC.amber;
-  return <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${t.bg} ${t.text}`}>
-    <span className="w-2 h-2 rounded-full inline-block" style={{ background: t.dot }} />
-    {status === 'green' ? 'On Track' : status === 'amber' ? 'At Risk' : 'Off Track'}
-  </span>;
+function TrafficBadge({ status }) {
+  return (
+    <span style={{
+      display:'inline-flex', alignItems:'center', gap:'0.3rem',
+      background: TRAFFIC_BG[status], color: TRAFFIC_TXT[status],
+      borderRadius: 9999, padding: '0.15rem 0.6rem',
+      fontSize:'0.6875rem', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase',
+    }}>
+      <span style={{ width:5, height:5, borderRadius:'50%', background: TRAFFIC[status], display:'inline-block' }}/>
+      {TRAFFIC_LABEL[status]}
+    </span>
+  );
 }
+
+const CustomTooltip = ({ active, payload, label, prefix = '' }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, padding:'0.625rem 0.875rem', boxShadow:'var(--shadow-md)', fontSize:'0.8125rem' }}>
+      <div style={{ fontWeight:700, color:'var(--text-2)', marginBottom:'0.25rem' }}>{label}</div>
+      {payload.map((p,i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:'0.5rem', color:'var(--text-3)' }}>
+          <span style={{ width:8, height:8, borderRadius:'50%', background:p.fill||p.color }} />
+          {p.name}: <span style={{ fontWeight:600, color:'var(--text-1)' }}>{prefix}{p.value}M VUV</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export default function Dashboard({ user }) {
   const S = DASHBOARD_SUMMARY;
   const spentPct = pct(S.total_spent_vuv, S.total_budget_vuv);
 
   const budgetData = PROJECTS.map(p => ({
-    name: p.code.split('-')[1],
-    Budget: Math.round(p.budget_vuv / 1e6),
-    Spent:  Math.round(p.spent_vuv  / 1e6),
+    name: p.category.replace('LD-',''),
+    Budget: Math.round(p.budget_vuv/1e6),
+    Spent: Math.round(p.spent_vuv/1e6),
   }));
 
   const pieSrc = [
-    { name: 'On Track', value: S.indicators_green, color: '#22c55e' },
-    { name: 'At Risk',  value: S.indicators_amber, color: '#f59e0b' },
-    { name: 'Off Track',value: S.indicators_red,   color: '#ef4444' },
-  ];
+    { name:'On Track', value:S.indicators_green, color:'#1a8c4e' },
+    { name:'At Risk',  value:S.indicators_amber, color:'#c97b00' },
+    { name:'Off Track',value:S.indicators_red,   color:'#c0392b' },
+  ].filter(d => d.value > 0);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">L&amp;D Fund MERL Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Vanuatu Loss and Damage Fund Development Project · DoCC / MoCC · Funded by MFAT New Zealand</p>
+    <div style={{ padding:'2rem 2.5rem', maxWidth:1400 }} className="animate-fade-up">
+
+      {/* Page header */}
+      <div style={{ marginBottom:'1.75rem' }}>
+        <div className="section-label" style={{ marginBottom:'0.375rem' }}>
+          Vanuatu Loss &amp; Damage Fund Development Project
+        </div>
+        <h1 style={{ fontFamily:'var(--font-display)', fontSize:'1.875rem', fontWeight:600, color:'var(--text-1)', letterSpacing:'-0.025em', margin:0 }}>
+          MERL Dashboard
+        </h1>
+        <div style={{ fontSize:'0.8125rem', color:'var(--text-3)', marginTop:'0.25rem' }}>
+          Overview · April 2026 · Funded by MFAT New Zealand
+        </div>
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Active Projects" value={S.active_projects} sub={`of ${S.total_projects} total`} color="green" />
-        <KpiCard label="Total Indicators" value={S.total_indicators} sub={`${S.indicators_green} on track`} color="blue" />
-        <KpiCard label="Budget (VUV M)" value={(S.total_budget_vuv/1e6).toFixed(0)+'M'} sub={`${spentPct}% spent`} color="amber" />
-        <KpiCard label="Datasets Uploaded" value={S.total_datasets} sub="processed records" color="violet" />
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
+        <KpiCard label="Active Components" value={S.active_projects} sub={`of ${S.total_projects} total components`} color="green" icon={TrendingUp} />
+        <KpiCard label="Total Indicators" value={S.total_indicators} sub={`${S.indicators_green} on track`} color="green" />
+        <KpiCard label="Budget (VUV)" value={fmtM(S.total_budget_vuv)} sub={`${spentPct}% utilised · ${fmtM(S.total_spent_vuv)} spent`} color="gold" />
+        <KpiCard label="At Risk / Off Track" value={S.indicators_amber + S.indicators_red} sub={`${S.indicators_amber} at risk · ${S.indicators_red} off track`} color={S.indicators_red > 0 ? 'red' : 'amber'} icon={AlertTriangle} />
       </div>
 
-      {/* Middle row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Charts row */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:'1rem', marginBottom:'1.5rem' }}>
+
         {/* Budget bar chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-green-100 p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">Budget vs Spent by Project (VUV M)</h2>
+        <div className="card">
+          <div className="section-label" style={{ marginBottom:'1rem' }}>Budget vs Expenditure by Component (VUV M)</div>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={budgetData} barGap={4}>
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={v => `VUV ${v}M`} />
-              <Bar dataKey="Budget" fill="#d1fae5" radius={[4,4,0,0]} />
-              <Bar dataKey="Spent"  fill="#10b981" radius={[4,4,0,0]} />
+            <BarChart data={budgetData} barGap={3} barSize={14}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--green-50)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize:11, fill:'var(--text-3)', fontFamily:'var(--font-ui)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize:10, fill:'var(--text-3)', fontFamily:'var(--font-ui)' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="Budget" fill="var(--green-100)" radius={[3,3,0,0]} name="Budget" />
+              <Bar dataKey="Spent"  fill="var(--green-600)" radius={[3,3,0,0]} name="Spent" />
             </BarChart>
           </ResponsiveContainer>
+          <div style={{ display:'flex', gap:'1rem', marginTop:'0.5rem' }}>
+            {[['var(--green-100)','Budget'],['var(--green-600)','Spent']].map(([c,l]) => (
+              <div key={l} style={{ display:'flex', alignItems:'center', gap:'0.375rem', fontSize:'0.75rem', color:'var(--text-3)' }}>
+                <span style={{ width:10, height:10, borderRadius:2, background:c }}/>
+                {l}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Indicator traffic lights donut */}
-        <div className="bg-white rounded-xl shadow-sm border border-green-100 p-5">
-          <h2 className="font-semibold text-gray-800 mb-2">Indicator Status</h2>
-          <ResponsiveContainer width="100%" height={180}>
+        {/* Indicator donut */}
+        <div className="card" style={{ display:'flex', flexDirection:'column' }}>
+          <div className="section-label" style={{ marginBottom:'0.75rem' }}>Indicator Status</div>
+          <ResponsiveContainer width="100%" height={160}>
             <PieChart>
-              <Pie data={pieSrc} cx="50%" cy="50%" innerRadius={50} outerRadius={75} dataKey="value" paddingAngle={3}>
+              <Pie data={pieSrc} cx="50%" cy="50%" innerRadius={48} outerRadius={72} dataKey="value" paddingAngle={3} stroke="none">
                 {pieSrc.map(e => <Cell key={e.name} fill={e.color} />)}
               </Pie>
-              <Tooltip />
-              <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+              <Tooltip formatter={(v, n) => [v, n]} />
             </PieChart>
           </ResponsiveContainer>
-          <div className="space-y-1 mt-2">
+          <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', marginTop:'0.5rem' }}>
             {pieSrc.map(e => (
-              <div key={e.name} className="flex justify-between text-xs text-gray-600">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: e.color }} />{e.name}</span>
-                <span className="font-semibold">{e.value}</span>
+              <div key={e.name} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.8125rem' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', color:'var(--text-2)' }}>
+                  <span style={{ width:8, height:8, borderRadius:'50%', background:e.color }}/>
+                  {e.name}
+                </div>
+                <span style={{ fontFamily:'var(--font-mono)', fontWeight:600, color:'var(--text-1)', fontSize:'0.875rem' }}>{e.value}</span>
               </div>
             ))}
           </div>
@@ -106,50 +150,70 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* Indicator table */}
-      <div className="bg-white rounded-xl shadow-sm border border-green-100 p-5">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-semibold text-gray-800">All Indicators — Latest Status</h2>
-          <NavLink to="/projects" className="text-sm text-emerald-600 hover:underline">View Projects →</NavLink>
+      <div className="card" style={{ padding:0, overflow:'hidden' }}>
+        <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:'1rem', fontWeight:600, color:'var(--text-1)' }}>
+              All Indicators — Current Status
+            </div>
+            <div style={{ fontSize:'0.75rem', color:'var(--text-3)', marginTop:2 }}>
+              {ALL_INDICATORS.length} indicators across {PROJECTS.length} programme components
+            </div>
+          </div>
+          <NavLink to="/analysis" style={{ display:'flex', alignItems:'center', gap:'0.375rem', fontSize:'0.8125rem', fontWeight:600, color:'var(--green-700)', textDecoration:'none' }}>
+            View Analysis <ArrowRight size={14}/>
+          </NavLink>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left">
-                <th className="pb-2 text-xs text-gray-400 font-semibold pr-4">Code</th>
-                <th className="pb-2 text-xs text-gray-400 font-semibold pr-4">Indicator</th>
-                <th className="pb-2 text-xs text-gray-400 font-semibold pr-4">Project</th>
-                <th className="pb-2 text-xs text-gray-400 font-semibold pr-4 text-right">Progress</th>
-                <th className="pb-2 text-xs text-gray-400 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {ALL_INDICATORS.map(ind => {
-                const progress = pct(ind.current, ind.target);
-                return (
-                  <tr key={ind.id} className="hover:bg-green-50/50">
-                    <td className="py-2.5 pr-4 font-mono text-xs text-gray-400">{ind.code}</td>
-                    <td className="py-2.5 pr-4 font-medium text-gray-700 max-w-xs truncate">{ind.name}</td>
-                    <td className="py-2.5 pr-4">
-                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold text-white" style={{ background: ind.category_color }}>
-                        {ind.category}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-4">
-                      <div className="flex items-center gap-2 justify-end">
-                        <span className="text-xs text-gray-500">{ind.current}/{ind.target}</span>
-                        <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${progress}%`, background: TRAFFIC[ind.traffic]?.dot }} />
-                        </div>
-                        <span className="text-xs text-gray-500 w-8">{progress}%</span>
+
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Indicator</th>
+              <th>Component</th>
+              <th style={{ textAlign:'right' }}>Baseline</th>
+              <th style={{ textAlign:'right' }}>Current</th>
+              <th style={{ textAlign:'right' }}>Target</th>
+              <th style={{ textAlign:'right' }}>Progress</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ALL_INDICATORS.map(ind => {
+              const p = pct(ind.current, ind.target);
+              return (
+                <tr key={ind.id}>
+                  <td>
+                    <div style={{ fontWeight:500, color:'var(--text-1)', fontSize:'0.8125rem' }}>{ind.name}</div>
+                    <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--text-3)' }}>{ind.code}</div>
+                  </td>
+                  <td>
+                    <span style={{
+                      background: PROJECTS.find(p=>p.code===ind.project_code)?.category_color+'22',
+                      color: PROJECTS.find(p=>p.code===ind.project_code)?.category_color,
+                      border: `1px solid ${PROJECTS.find(p=>p.code===ind.project_code)?.category_color}44`,
+                      borderRadius:9999, padding:'0.125rem 0.5rem',
+                      fontSize:'0.6875rem', fontWeight:700, letterSpacing:'0.04em',
+                    }}>
+                      {ind.category}
+                    </span>
+                  </td>
+                  <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', color:'var(--text-3)', fontSize:'0.8125rem' }}>{ind.baseline}</td>
+                  <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', fontWeight:700, color:'var(--text-1)', fontSize:'0.9375rem' }}>{ind.current}</td>
+                  <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', color:'var(--text-3)', fontSize:'0.8125rem' }}>{ind.target}</td>
+                  <td style={{ textAlign:'right' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', justifyContent:'flex-end' }}>
+                      <div style={{ width:64, height:5, background:'var(--green-100)', borderRadius:9999, overflow:'hidden' }}>
+                        <div style={{ width:`${p}%`, height:'100%', background:TRAFFIC[ind.traffic], borderRadius:9999 }}/>
                       </div>
-                    </td>
-                    <td className="py-2.5"><TrafficDot status={ind.traffic} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', color:'var(--text-3)', minWidth:32, textAlign:'right' }}>{p}%</span>
+                    </div>
+                  </td>
+                  <td><TrafficBadge status={ind.traffic}/></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
