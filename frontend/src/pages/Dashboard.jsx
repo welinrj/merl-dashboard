@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid,
@@ -90,7 +91,7 @@ export default function Dashboard({ user }) {
         </div>
       </div>
 
-      {/* KPI row */}
+      {/* KPI row — stagger animation */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
         <KpiCard label="Active Components" value={S.active_projects} sub={`of ${S.total_projects} total components`} color="green" icon={TrendingUp} />
         <KpiCard label="Total Indicators" value={S.total_indicators} sub={`${S.indicators_green} on track`} color="green" />

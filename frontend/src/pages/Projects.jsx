@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { ChevronDown, ChevronRight, MapPin, Calendar, Users } from 'lucide-react';
 import { PROJECTS } from '../mockData';
 
