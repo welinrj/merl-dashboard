@@ -1,46 +1,50 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, MapPin, Calendar, Users } from 'lucide-react';
-import { PROJECTS } from '../mockData';
+// NOTE: `projects` is now passed as a prop from App.jsx (shared state).
+// Remove the old `import { PROJECTS } from '../mockData';` line.
 
-const pct = (a,b) => b ? Math.min(100, Math.round((a/b)*100)) : 0;
-const TRAFFIC = { green:'#1a8c4e', amber:'#c97b00', red:'#c0392b' };
-const TRAFFIC_BG  = { green:'#d1fae5', amber:'#fef3c7', red:'#fee2e2' };
-const TRAFFIC_TXT = { green:'#065f46', amber:'#92400e', red:'#991b1b' };
+const pct = (a, b) => b ? Math.min(100, Math.round((a / b) * 100)) : 0;
 
-function ActivityDot({ status }) {
-  const c = status==='completed' ? '#1a8c4e' : status==='in_progress' ? '#c97b00' : '#d1d5db';
-  return <span style={{ width:7, height:7, borderRadius:'50%', background:c, display:'inline-block', flexShrink:0 }}/>;
+const STATUS_CHIP = {
+  active:    'bg-green-100 text-green-700',
+  completed: 'bg-blue-100 text-blue-700',
+  suspended: 'bg-red-100 text-red-700',
+};
+
+const TRAFFIC_COLOR = { green: '#22c55e', amber: '#f59e0b', red: '#ef4444' };
+
+function ProgressBar({ value, total, color }) {
+  const p = pct(value, total);
+  return (
+    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+      <div className="h-full rounded-full transition-all" style={{ width: `${p}%`, background: color || '#10b981' }} />
+    </div>
+  );
 }
 
 function RBMSection({ rbm }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginTop:'1rem', paddingTop:'1rem', borderTop:'1px solid var(--border)' }}>
-      <button onClick={() => setOpen(!open)} style={{
-        display:'flex', alignItems:'center', gap:'0.5rem',
-        background:'none', border:'none', cursor:'pointer',
-        color:'var(--green-700)', fontSize:'0.8125rem', fontWeight:600, padding:0,
-      }}>
-        {open ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
-        Results Chain (RBM Framework)
+    <div className="mt-4 border-t border-gray-100 pt-4">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-900">
+        <span>{open ? '▾' : '▸'}</span> Results Chain (RBM)
       </button>
       {open && (
-        <div style={{ marginTop:'0.875rem', paddingLeft:'1rem', borderLeft:'2px solid var(--green-100)' }}>
-          <div style={{ fontSize:'0.625rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.25rem' }}>Goal</div>
-          <div style={{ fontSize:'0.8125rem', color:'var(--text-2)', fontStyle:'italic', marginBottom:'1rem' }}>{rbm.goal}</div>
+        <div className="mt-3 space-y-3 pl-3 border-l-2 border-emerald-200">
+          <div className="text-xs text-gray-500 uppercase font-bold tracking-wider">Goal</div>
+          <div className="text-sm text-gray-700 mb-2">{rbm.goal}</div>
           {rbm.outcomes.map(out => (
-            <div key={out.id} style={{ marginBottom:'0.875rem' }}>
-              <div style={{ fontSize:'0.625rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.25rem' }}>Outcome</div>
-              <div style={{ fontSize:'0.8125rem', fontWeight:600, color:'var(--text-1)', marginBottom:'0.625rem' }}>{out.text}</div>
+            <div key={out.id} className="space-y-2">
+              <div className="text-xs text-gray-500 uppercase font-bold tracking-wider">Outcome</div>
+              <div className="text-sm font-medium text-gray-700">{out.text}</div>
               {out.outputs.map(op => (
-                <div key={op.id} style={{ marginLeft:'1rem', marginBottom:'0.625rem' }}>
-                  <div style={{ fontSize:'0.625rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.2rem' }}>Output</div>
-                  <div style={{ fontSize:'0.8125rem', color:'var(--text-2)', marginBottom:'0.375rem' }}>{op.text}</div>
+                <div key={op.id} className="pl-3 border-l border-gray-200 space-y-1.5">
+                  <div className="text-xs text-gray-400 uppercase font-bold">Output</div>
+                  <div className="text-sm text-gray-600">{op.text}</div>
                   {op.activities.map(act => (
-                    <div key={act.id} style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginLeft:'0.875rem', padding:'0.25rem 0', borderBottom:'1px solid var(--border)' }}>
-                      <ActivityDot status={act.status}/>
-                      <span style={{ fontSize:'0.75rem', color:'var(--text-2)', flex:1 }}>{act.text}</span>
-                      <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--text-3)', fontWeight:600 }}>{act.pct}%</span>
+                    <div key={act.id} className="pl-3 flex items-center gap-3">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${act.status === 'completed' ? 'bg-green-500' : act.status === 'in_progress' ? 'bg-amber-400' : 'bg-gray-300'}`} />
+                      <span className="text-xs text-gray-600 flex-1">{act.text}</span>
+                      <span className="text-xs font-semibold text-gray-500">{act.pct}%</span>
                     </div>
                   ))}
                 </div>
@@ -53,71 +57,63 @@ function RBMSection({ rbm }) {
   );
 }
 
-function ProjectCard({ project: p }) {
+function ProjectCard({ project }) {
   const [expanded, setExpanded] = useState(false);
-  const budgetPct = pct(p.spent_vuv, p.budget_vuv);
+  const budgetPct = pct(project.spent_vuv, project.budget_vuv);
 
   return (
-    <div className="card" style={{ padding:0, overflow:'hidden' }}>
-      {/* Colour bar */}
-      <div style={{ height:3, background:p.category_color }}/>
+    <div className="bg-white rounded-xl shadow-sm border border-green-100 overflow-hidden">
+      {/* Color bar */}
+      <div className="h-1.5" style={{ background: project.category_color }} />
 
-      <div style={{ padding:'1.25rem' }}>
+      <div className="p-5">
         {/* Header */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.875rem' }}>
+        <div className="flex justify-between items-start gap-3 mb-3">
           <div>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.375rem' }}>
-              <span style={{
-                background: p.category_color+'1a', color: p.category_color,
-                border: `1px solid ${p.category_color}44`,
-                borderRadius:4, padding:'0.1rem 0.5rem',
-                fontSize:'0.625rem', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase',
-              }}>{p.category}</span>
-              <span style={{ background:'var(--green-50)', color:'var(--green-700)', border:'1px solid var(--green-100)', borderRadius:4, padding:'0.1rem 0.5rem', fontSize:'0.625rem', fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>
-                Active
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: project.category_color }}>
+                {project.category}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${STATUS_CHIP[project.status] || 'bg-gray-100 text-gray-600'}`}>
+                {project.status}
               </span>
             </div>
-            <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.0625rem', fontWeight:600, color:'var(--text-1)', letterSpacing:'-0.015em', margin:0, lineHeight:1.3 }}>
-              {p.name}
-            </h3>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--text-3)', marginTop:'0.2rem' }}>{p.code}</div>
+            <h3 className="font-bold text-gray-800 text-base leading-tight">{project.name}</h3>
+            <p className="text-xs text-gray-400 mt-0.5 font-mono">{project.code}</p>
           </div>
-          <button onClick={() => setExpanded(!expanded)} className="btn-secondary" style={{ fontSize:'0.75rem', padding:'0.375rem 0.75rem', flexShrink:0 }}>
-            {expanded ? 'Collapse' : 'Details'}
+          <button onClick={() => setExpanded(!expanded)}
+            className="flex-shrink-0 text-xs text-emerald-600 border border-emerald-200 rounded-lg px-3 py-1 hover:bg-emerald-50 transition">
+            {expanded ? 'Less' : 'Details'}
           </button>
         </div>
 
-        <p style={{ fontSize:'0.8125rem', color:'var(--text-3)', lineHeight:1.6, marginBottom:'1rem', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
-          {p.description}
-        </p>
+        <p className="text-sm text-gray-500 line-clamp-2 mb-4">{project.description}</p>
 
-        {/* Budget bar */}
-        <div style={{ marginBottom:'1rem' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.75rem', color:'var(--text-3)', marginBottom:'0.375rem' }}>
+        {/* Budget */}
+        <div className="space-y-1 mb-4">
+          <div className="flex justify-between text-xs text-gray-500">
             <span>Budget utilisation</span>
-            <span style={{ fontFamily:'var(--font-mono)', fontWeight:700, color:'var(--text-1)' }}>{budgetPct}%</span>
+            <span className="font-semibold text-gray-700">{budgetPct}%</span>
           </div>
-          <div style={{ height:6, background:'var(--green-50)', borderRadius:9999, overflow:'hidden', border:'1px solid var(--green-100)' }}>
-            <div style={{ width:`${budgetPct}%`, height:'100%', background:p.category_color, borderRadius:9999, transition:'width 0.4s ease' }}/>
-          </div>
-          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.6875rem', color:'var(--text-3)', marginTop:'0.25rem' }}>
-            <span>VUV {(p.spent_vuv/1e6).toFixed(1)}M spent</span>
-            <span>VUV {(p.budget_vuv/1e6).toFixed(1)}M total</span>
+          <ProgressBar value={project.spent_vuv} total={project.budget_vuv} color={project.category_color} />
+          <div className="flex justify-between text-xs text-gray-400">
+            <span>VUV {(project.spent_vuv / 1e6).toFixed(1)}M spent</span>
+            <span>VUV {(project.budget_vuv / 1e6).toFixed(1)}M total</span>
           </div>
         </div>
 
-        {/* Indicator mini grid */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.5rem' }}>
-          {p.indicators.map(ind => {
-            const pr = pct(ind.current, ind.target);
+        {/* Indicators */}
+        <div className="grid grid-cols-3 gap-2">
+          {project.indicators.map(ind => {
+            const p = pct(ind.current, ind.target);
             return (
-              <div key={ind.id} style={{ background:'var(--cream)', borderRadius:7, padding:'0.5rem 0.625rem', border:'1px solid var(--border)' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.25rem' }}>
-                  <div style={{ fontSize:'0.625rem', color:'var(--text-3)', fontFamily:'var(--font-mono)' }}>{ind.code.split('-').slice(-1)}</div>
-                  <span style={{ width:6, height:6, borderRadius:'50%', background:TRAFFIC[ind.traffic] }}/>
+              <div key={ind.id} className="bg-gray-50 rounded-lg p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-gray-400 truncate">{ind.code.split('-').slice(-1)[0]}</span>
+                  <span className="w-2 h-2 rounded-full" style={{ background: TRAFFIC_COLOR[ind.traffic] }} />
                 </div>
-                <div style={{ fontFamily:'var(--font-mono)', fontSize:'1rem', fontWeight:700, color:'var(--text-1)' }}>{pr}%</div>
-                <div style={{ fontSize:'0.625rem', color:'var(--text-3)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{ind.name}</div>
+                <div className="text-sm font-bold text-gray-700">{p}%</div>
+                <div className="text-xs text-gray-400 truncate">{ind.name}</div>
               </div>
             );
           })}
@@ -125,43 +121,48 @@ function ProjectCard({ project: p }) {
 
         {/* Expanded details */}
         {expanded && (
-          <div style={{ marginTop:'1.25rem' }} className="animate-fade">
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.625rem', marginBottom:'1rem' }}>
-              {[
-                ['Lead Agency', p.lead_agency],
-                ['Provinces', p.provinces.join(', ')],
-                ['Start Date', p.start_date],
-                ['End Date', p.end_date],
-              ].map(([k,v]) => (
-                <div key={k} style={{ background:'var(--cream)', borderRadius:7, padding:'0.625rem', border:'1px solid var(--border)' }}>
-                  <div style={{ fontSize:'0.625rem', fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.2rem' }}>{k}</div>
-                  <div style={{ fontSize:'0.8125rem', fontWeight:600, color:'var(--text-1)' }}>{v}</div>
-                </div>
-              ))}
+          <div className="mt-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-xs text-gray-400 block">Lead Agency</span>
+                <span className="font-medium text-gray-700">{project.lead_agency}</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 block">Provinces</span>
+                <span className="font-medium text-gray-700">{project.provinces.join(', ')}</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 block">Start Date</span>
+                <span className="font-medium text-gray-700">{project.start_date}</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 block">End Date</span>
+                <span className="font-medium text-gray-700">{project.end_date}</span>
+              </div>
             </div>
 
-            {/* Full indicator table */}
-            <div style={{ border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
-              <table className="data-table">
-                <thead><tr>
-                  <th>Indicator</th>
-                  <th style={{ textAlign:'right' }}>Base</th>
-                  <th style={{ textAlign:'right' }}>Current</th>
-                  <th style={{ textAlign:'right' }}>Target</th>
-                  <th>Status</th>
-                </tr></thead>
-                <tbody>
-                  {p.indicators.map(ind => (
+            {/* Full indicators table */}
+            <div>
+              <h4 className="text-xs font-bold uppercase text-gray-400 mb-2">Indicators Detail</h4>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left">
+                    <th className="pb-1 text-gray-400 font-semibold pr-3">Indicator</th>
+                    <th className="pb-1 text-gray-400 font-semibold pr-3 text-right">Baseline</th>
+                    <th className="pb-1 text-gray-400 font-semibold pr-3 text-right">Current</th>
+                    <th className="pb-1 text-gray-400 font-semibold pr-3 text-right">Target</th>
+                    <th className="pb-1 text-gray-400 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {project.indicators.map(ind => (
                     <tr key={ind.id}>
-                      <td style={{ fontSize:'0.8125rem' }}>{ind.name}</td>
-                      <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', fontSize:'0.8125rem', color:'var(--text-3)' }}>{ind.baseline}</td>
-                      <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', fontWeight:700, fontSize:'0.875rem' }}>{ind.current}</td>
-                      <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', fontSize:'0.8125rem', color:'var(--text-3)' }}>{ind.target}</td>
-                      <td>
-                        <span style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', background:TRAFFIC_BG[ind.traffic], color:TRAFFIC_TXT[ind.traffic], borderRadius:9999, padding:'0.1rem 0.5rem', fontSize:'0.625rem', fontWeight:700, textTransform:'uppercase' }}>
-                          <span style={{ width:4, height:4, borderRadius:'50%', background:TRAFFIC[ind.traffic] }}/>
-                          {ind.traffic === 'green' ? 'On Track' : ind.traffic === 'amber' ? 'At Risk' : 'Off Track'}
-                        </span>
+                      <td className="py-1.5 pr-3 font-medium text-gray-700">{ind.name}</td>
+                      <td className="py-1.5 pr-3 text-right text-gray-500">{ind.baseline}</td>
+                      <td className="py-1.5 pr-3 text-right font-bold text-gray-700">{ind.current}</td>
+                      <td className="py-1.5 pr-3 text-right text-gray-500">{ind.target}</td>
+                      <td className="py-1.5">
+                        <span className="w-2 h-2 rounded-full inline-block" style={{ background: TRAFFIC_COLOR[ind.traffic] }} />
                       </td>
                     </tr>
                   ))}
@@ -169,7 +170,7 @@ function ProjectCard({ project: p }) {
               </table>
             </div>
 
-            <RBMSection rbm={p.rbm} />
+            <RBMSection rbm={project.rbm} />
           </div>
         )}
       </div>
@@ -177,56 +178,56 @@ function ProjectCard({ project: p }) {
   );
 }
 
-export default function Projects({ user }) {
+// ── Main Page ─────────────────────────────────────────────────────────────────
+// `projects` and `setProjects` are passed down from App.jsx via shared state.
+export default function Projects({ user, projects }) {
   const [filter, setFilter] = useState('All');
-  const categories = ['All', ...new Set(PROJECTS.map(p => p.category))];
-  const visible = filter === 'All' ? PROJECTS : PROJECTS.filter(p => p.category === filter);
+  const categories = ['All', ...new Set(projects.map(p => p.category))];
+  const visible = filter === 'All' ? projects : projects.filter(p => p.category === filter);
 
   return (
-    <div style={{ padding:'2rem 2.5rem', maxWidth:1400 }} className="animate-fade-up">
-      <div style={{ marginBottom:'1.75rem' }}>
-        <div className="section-label" style={{ marginBottom:'0.375rem' }}>Programme Portfolio</div>
-        <h1 style={{ fontFamily:'var(--font-display)', fontSize:'1.875rem', fontWeight:600, color:'var(--text-1)', letterSpacing:'-0.025em', margin:0 }}>
-          L&amp;D Fund Components
-        </h1>
-        <p style={{ fontSize:'0.875rem', color:'var(--text-3)', marginTop:'0.25rem' }}>
-          Six programme components of the Vanuatu Loss and Damage Fund Development Project.
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">L&amp;D Fund Programme Components</h1>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Vanuatu Loss &amp; Damage Fund — {projects.length} programme component{projects.length !== 1 ? 's' : ''} monitored under this MERL system
         </p>
       </div>
 
-      {/* Summary row */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
-        {[
-          ['Components', visible.length + ' of ' + PROJECTS.length],
-          ['Total Budget', 'VUV ' + (visible.reduce((s,p)=>s+p.budget_vuv,0)/1e6).toFixed(0) + 'M'],
-          ['Total Spent', 'VUV ' + (visible.reduce((s,p)=>s+p.spent_vuv,0)/1e6).toFixed(0) + 'M'],
-        ].map(([k,v]) => (
-          <div key={k} className="card" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div className="section-label">{k}</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:'1.375rem', fontWeight:600, color:'var(--text-1)' }}>{v}</div>
-          </div>
-        ))}
-      </div>
-
       {/* Filter chips */}
-      <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem', marginBottom:'1.5rem' }}>
+      <div className="flex flex-wrap gap-2">
         {categories.map(cat => (
-          <button key={cat} onClick={() => setFilter(cat)} style={{
-            padding:'0.375rem 0.875rem', borderRadius:7, border:'1.5px solid',
-            fontSize:'0.75rem', fontWeight:700, cursor:'pointer', letterSpacing:'0.03em',
-            transition:'all 0.15s',
-            background: filter===cat ? 'var(--green-800)' : 'var(--white)',
-            color: filter===cat ? '#fff' : 'var(--text-2)',
-            borderColor: filter===cat ? 'var(--green-800)' : 'var(--border)',
-          }}>
-            {cat === 'All' ? 'All Components' : cat}
+          <button key={cat} onClick={() => setFilter(cat)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition ${filter === cat ? 'bg-green-700 text-white border-green-700' : 'bg-white text-gray-600 border-gray-200 hover:border-green-400'}`}>
+            {cat}
           </button>
         ))}
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'1.25rem' }}>
+      {/* Summary row */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Projects shown', value: visible.length },
+          { label: 'Total budget', value: 'VUV ' + Math.round(visible.reduce((s, p) => s + p.budget_vuv, 0) / 1e6) + 'M' },
+          { label: 'Total spent',   value: 'VUV ' + Math.round(visible.reduce((s, p) => s + p.spent_vuv,  0) / 1e6) + 'M' },
+        ].map(k => (
+          <div key={k.label} className="bg-white rounded-xl border border-green-100 px-4 py-3">
+            <div className="text-xs text-gray-400">{k.label}</div>
+            <div className="text-xl font-bold text-gray-800">{k.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Cards grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {visible.map(p => <ProjectCard key={p.id} project={p} />)}
       </div>
+
+      {visible.length === 0 && (
+        <div className="text-center py-12 text-gray-400 text-sm">
+          No projects match the selected filter.
+        </div>
+      )}
     </div>
   );
 }
