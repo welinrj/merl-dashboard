@@ -22,7 +22,8 @@
     "react-i18next": "^14.0.8",
     "i18next": "^23.10.0",
     "react-hot-toast": "^2.4.1",
-    "lucide-react": "^0.344.0"
+    "lucide-react": "^0.344.0",
+    "cobe": "^0.6.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
