@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Database,
   Map, FileBarChart, Settings, LogOut,
   ChevronRight, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import Dashboard  from './pages/Dashboard';
 import Projects   from './pages/Projects';
@@ -13,6 +14,7 @@ import Analysis   from './pages/Analysis';
 import Reports    from './pages/Reports';
 import AdminPanel from './pages/AdminPanel';
 import { PROJECTS } from './mockData';
+import { supabase } from './supabaseClient';
 
 /* ── RBAC ─────────────────────────────────────────────────────────────── */
 const ROLES = {
@@ -262,6 +264,82 @@ function LoginScreen({ onLogin }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [projects, setProjects] = useState(PROJECTS);
+
+  /* ── Global upload notification ─────────────────────────────────────── */
+  useEffect(() => {
+    if (!user) return;   // only subscribe when someone is logged in
+
+    const channel = supabase
+      .channel('global-dataset-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'datasets' },
+        payload => {
+          const row = payload.new;
+          // Don't notify the user who uploaded the file
+          if (row.uploaded_by === user.name) return;
+
+          const ext  = row.type?.toUpperCase() || 'FILE';
+          const size = row.size_kb >= 1024
+            ? `${(row.size_kb / 1024).toFixed(1)} MB`
+            : `${row.size_kb} KB`;
+
+          toast.custom(
+            t => (
+              <div
+                onClick={() => toast.dismiss(t.id)}
+                style={{
+                  display:       'flex',
+                  alignItems:    'flex-start',
+                  gap:           '0.75rem',
+                  background:    '#1e293b',
+                  border:        '1px solid rgba(74,171,130,0.35)',
+                  borderLeft:    '3px solid #4aab82',
+                  borderRadius:  10,
+                  padding:       '0.875rem 1.125rem',
+                  boxShadow:     '0 8px 24px rgba(0,0,0,0.25)',
+                  cursor:        'pointer',
+                  maxWidth:      340,
+                  animation:     t.visible ? 'slideIn 0.25s ease' : 'slideOut 0.2s ease',
+                }}
+              >
+                {/* icon */}
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  background: 'rgba(74,171,130,0.15)',
+                  border: '1px solid rgba(74,171,130,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.875rem',
+                }}>
+                  📎
+                </div>
+                {/* text */}
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.2rem' }}>
+                    New upload
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.4 }}>
+                    <span style={{ color: '#4aab82', fontWeight: 600 }}>{row.uploaded_by}</span>
+                    {' '}uploaded{' '}
+                    <span style={{ color: '#f1f5f9', fontWeight: 600 }}>{row.name}</span>
+                  </div>
+                  <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.35)', marginTop: '0.2rem' }}>
+                    {ext} · {size} · {row.project_code}
+                  </div>
+                </div>
+              </div>
+            ),
+            {
+              duration: 6000,
+              position: 'top-right',
+            }
+          );
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   if (!user) return <LoginScreen onLogin={setUser} />;
 
