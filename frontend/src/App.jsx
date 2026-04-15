@@ -12,6 +12,7 @@ import Datasets   from './pages/Datasets';
 import Analysis   from './pages/Analysis';
 import Reports    from './pages/Reports';
 import AdminPanel from './pages/AdminPanel';
+import { PROJECTS } from './mockData';
 
 /* ── RBAC ─────────────────────────────────────────────────────────────── */
 const ROLES = {
@@ -260,6 +261,7 @@ function LoginScreen({ onLogin }) {
 /* ── App Shell ─────────────────────────────────────────────────────────── */
 export default function App() {
   const [user, setUser] = useState(null);
+  const [projects, setProjects] = useState(PROJECTS);
 
   if (!user) return <LoginScreen onLogin={setUser} />;
 
@@ -407,11 +409,11 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to={defaultPath} replace />} />
             <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard user={user}/> : <Navigate to={defaultPath} replace />} />
-            <Route path="/projects"  element={allowed.includes('projects')  ? <Projects  user={user}/> : <Navigate to={defaultPath} replace />} />
+            <Route path="/projects"  element={allowed.includes('projects')  ? <Projects  user={user} projects={projects} setProjects={setProjects}/> : <Navigate to={defaultPath} replace />} />
             <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user}/> : <Navigate to={defaultPath} replace />} />
             <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis  user={user}/> : <Navigate to={defaultPath} replace />} />
             <Route path="/reports"   element={allowed.includes('reports')   ? <Reports   user={user}/> : <Navigate to={defaultPath} replace />} />
-            <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user}/> : <Navigate to={defaultPath} replace />} />
+            <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} projects={projects} setProjects={setProjects}/> : <Navigate to={defaultPath} replace />} />
             <Route path="*"          element={<Navigate to={defaultPath} replace />} />
           </Routes>
         </main>
