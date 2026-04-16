@@ -90,14 +90,26 @@ function LoginScreen({ onLogin }) {
 
         {/* Top — gov branding */}
         <div style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '2.5rem' }}>
+          {/* Coat of arms — centrepiece */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
             <div style={{
-              width: 44, height: 44, borderRadius: 10,
-              background: 'rgba(212,168,67,0.2)',
-              border: '1.5px solid rgba(212,168,67,0.5)',
+              width: 120, height: 120,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.08)',
+              border: '1.5px solid rgba(212,168,67,0.35)',
+              boxShadow: '0 0 32px rgba(212,168,67,0.15), 0 8px 24px rgba(0,0,0,0.3)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1.25rem',
-            }}>🌿</div>
+              padding: 12,
+            }}>
+              <img
+                src="/vanuatu-coat-of-arms.svg"
+                alt="Vanuatu Coat of Arms"
+                style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '2.5rem' }}>
             <div>
               <div style={{ color: 'var(--gold-400)', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 Republic of Vanuatu
@@ -559,11 +571,15 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{
               width: 36, height: 36, borderRadius: 8,
-              background: 'rgba(212,168,67,0.18)',
-              border: '1.5px solid rgba(212,168,67,0.4)',
+              background: 'rgba(212,168,67,0.12)',
+              border: '1.5px solid rgba(212,168,67,0.35)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1rem', flexShrink: 0,
-            }}>🌿</div>
+              flexShrink: 0, padding: 4,
+            }}>
+              <img src="/vanuatu-coat-of-arms.svg" alt="Vanuatu Coat of Arms"
+                style={{ width: '100%', height: '100%', objectFit: 'contain',
+                  filter: 'brightness(1.8) drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+            </div>
             <div>
               <div style={{
                 fontFamily: 'var(--font-display)',
