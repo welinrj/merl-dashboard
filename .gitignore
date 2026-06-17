@@ -213,3 +213,4 @@ logs/
 *.tfstate.backup
 *.tfvars
 !*.tfvars.example
+.env.local

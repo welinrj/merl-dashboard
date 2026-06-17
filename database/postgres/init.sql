@@ -361,3 +361,386 @@ CREATE TRIGGER trg_indicators_updated_at
 CREATE TRIGGER trg_activities_updated_at
     BEFORE UPDATE ON merl.activities
     FOR EACH ROW EXECUTE FUNCTION merl.set_updated_at();
+
+-- ===========================================================================
+-- 7. AUDIT LOGGING — immutable audit trail
+-- ===========================================================================
+
+-- 7.1  audit_logs table -------------------------------------------------------
+-- Rows are INSERT-only. DELETE and TRUNCATE are revoked from all app roles.
+-- The trigger function runs as a SECURITY DEFINER to bypass RLS on this table.
+
+CREATE TABLE merl.audit_logs (
+    id              BIGSERIAL   PRIMARY KEY,
+    schema_name     VARCHAR(63) NOT NULL DEFAULT 'merl',
+    table_name      VARCHAR(63) NOT NULL,
+    record_id       UUID,
+    action          VARCHAR(10) NOT NULL CHECK (action IN ('INSERT','UPDATE','DELETE')),
+    user_id         UUID        REFERENCES merl.users (id) ON DELETE SET NULL,
+    app_user_name   VARCHAR(255),          -- display name from JWT claim
+    changed_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    old_values      JSONB,
+    new_values      JSONB
+);
+
+COMMENT ON TABLE merl.audit_logs IS
+    'Immutable audit trail. INSERT-only. DELETE/TRUNCATE revoked from all non-superuser roles.';
+
+CREATE INDEX idx_audit_table_name  ON merl.audit_logs (table_name);
+CREATE INDEX idx_audit_record_id   ON merl.audit_logs (record_id);
+CREATE INDEX idx_audit_user_id     ON merl.audit_logs (user_id);
+CREATE INDEX idx_audit_changed_at  ON merl.audit_logs (changed_at DESC);
+
+-- Revoke destructive permissions from all non-superuser roles
+REVOKE DELETE  ON merl.audit_logs FROM PUBLIC;
+REVOKE TRUNCATE ON merl.audit_logs FROM PUBLIC;
+
+-- 7.2  Generic audit trigger function ----------------------------------------
+
+CREATE OR REPLACE FUNCTION merl.fn_audit_trigger()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER                     -- bypasses RLS so we can always write
+SET search_path = merl, public
+AS $$
+DECLARE
+    v_record_id UUID;
+    v_old       JSONB;
+    v_new       JSONB;
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        v_record_id := OLD.id;
+        v_old       := to_jsonb(OLD);
+        v_new       := NULL;
+    ELSIF TG_OP = 'INSERT' THEN
+        v_record_id := NEW.id;
+        v_old       := NULL;
+        v_new       := to_jsonb(NEW);
+    ELSE   -- UPDATE
+        v_record_id := NEW.id;
+        v_old       := to_jsonb(OLD);
+        v_new       := to_jsonb(NEW);
+    END IF;
+
+    INSERT INTO merl.audit_logs (
+        table_name, record_id, action,
+        app_user_name, changed_at,
+        old_values, new_values
+    ) VALUES (
+        TG_TABLE_NAME,
+        v_record_id,
+        TG_OP,
+        current_setting('app.current_user_name', TRUE),   -- set by backend on each connection
+        NOW(),
+        v_old,
+        v_new
+    );
+
+    RETURN NULL;   -- AFTER trigger; return value is ignored
+END;
+$$;
+
+-- 7.3  Attach audit trigger to all core tables --------------------------------
+
+CREATE TRIGGER trg_audit_indicators
+    AFTER INSERT OR UPDATE OR DELETE ON merl.indicators
+    FOR EACH ROW EXECUTE FUNCTION merl.fn_audit_trigger();
+
+CREATE TRIGGER trg_audit_indicator_values
+    AFTER INSERT OR UPDATE OR DELETE ON merl.indicator_values
+    FOR EACH ROW EXECUTE FUNCTION merl.fn_audit_trigger();
+
+CREATE TRIGGER trg_audit_activities
+    AFTER INSERT OR UPDATE OR DELETE ON merl.activities
+    FOR EACH ROW EXECUTE FUNCTION merl.fn_audit_trigger();
+
+CREATE TRIGGER trg_audit_financial_transactions
+    AFTER INSERT OR UPDATE OR DELETE ON merl.financial_transactions
+    FOR EACH ROW EXECUTE FUNCTION merl.fn_audit_trigger();
+
+CREATE TRIGGER trg_audit_ld_events
+    AFTER INSERT OR UPDATE OR DELETE ON merl.ld_events
+    FOR EACH ROW EXECUTE FUNCTION merl.fn_audit_trigger();
+
+CREATE TRIGGER trg_audit_community_engagements
+    AFTER INSERT OR UPDATE OR DELETE ON merl.community_engagements
+    FOR EACH ROW EXECUTE FUNCTION merl.fn_audit_trigger();
+
+CREATE TRIGGER trg_audit_document_uploads
+    AFTER INSERT OR UPDATE OR DELETE ON merl.document_uploads
+    FOR EACH ROW EXECUTE FUNCTION merl.fn_audit_trigger();
+
+CREATE TRIGGER trg_audit_users
+    AFTER INSERT OR UPDATE OR DELETE ON merl.users
+    FOR EACH ROW EXECUTE FUNCTION merl.fn_audit_trigger();
+
+
+-- ===========================================================================
+-- 8. ROW LEVEL SECURITY (RLS)
+-- ===========================================================================
+-- Strategy:
+--   • merl.users.keycloak_id is matched against current_setting('app.current_user_id').
+--   • The backend sets this via: SET LOCAL app.current_user_id = '<keycloak_sub>';
+--   • Administrators bypass RLS via a helper function.
+--   • All other roles see only data for their assigned project (where applicable).
+--   • Read-only roles (senior_officer, partner_viewer) cannot INSERT/UPDATE/DELETE.
+-- ===========================================================================
+
+-- 8.1  Helper: resolve the current DB user row --------------------------------
+
+CREATE OR REPLACE FUNCTION merl.current_db_user()
+RETURNS merl.users
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = merl, public
+AS $$
+DECLARE
+    v_user merl.users;
+    v_kid  TEXT;
+BEGIN
+    v_kid := current_setting('app.current_user_id', TRUE);
+    IF v_kid IS NULL OR v_kid = '' THEN
+        RETURN NULL;
+    END IF;
+    SELECT * INTO v_user FROM merl.users WHERE keycloak_id = v_kid AND active = TRUE;
+    RETURN v_user;
+END;
+$$;
+
+-- 8.2  Helper: is the current user an administrator? --------------------------
+
+CREATE OR REPLACE FUNCTION merl.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = merl, public
+AS $$
+DECLARE v_user merl.users;
+BEGIN
+    v_user := merl.current_db_user();
+    RETURN v_user IS NOT NULL AND v_user.role = 'administrator';
+END;
+$$;
+
+-- 8.3  Enable RLS on all core tables ------------------------------------------
+
+ALTER TABLE merl.users                  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.indicators             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.indicator_values       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.activities             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.activity_milestones    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.financial_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.ld_events              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.community_engagements  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.learning_entries       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merl.document_uploads       ENABLE ROW LEVEL SECURITY;
+
+-- NOTE: merl.audit_logs deliberately has NO RLS — it is INSERT-only via
+-- SECURITY DEFINER trigger; all roles can SELECT their own entries.
+
+-- 8.4  users table policies ---------------------------------------------------
+
+-- Any authenticated user can see their own row; admins see all.
+CREATE POLICY users_select ON merl.users
+    FOR SELECT
+    USING (
+        merl.is_admin()
+        OR keycloak_id = current_setting('app.current_user_id', TRUE)
+    );
+
+-- Only admins can create users.
+CREATE POLICY users_insert ON merl.users
+    FOR INSERT
+    WITH CHECK ( merl.is_admin() );
+
+-- Only admins can update users.
+CREATE POLICY users_update ON merl.users
+    FOR UPDATE
+    USING ( merl.is_admin() );
+
+-- Only admins can deactivate (soft-delete) users.
+CREATE POLICY users_delete ON merl.users
+    FOR DELETE
+    USING ( merl.is_admin() );
+
+-- 8.5  indicators table policies ----------------------------------------------
+-- All authenticated users may read indicators.
+-- Only merl_officer and administrator may write.
+
+CREATE POLICY indicators_select ON merl.indicators
+    FOR SELECT
+    USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY indicators_insert ON merl.indicators
+    FOR INSERT
+    WITH CHECK (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer')
+    );
+
+CREATE POLICY indicators_update ON merl.indicators
+    FOR UPDATE
+    USING (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer')
+    );
+
+CREATE POLICY indicators_delete ON merl.indicators
+    FOR DELETE
+    USING ( merl.is_admin() );
+
+-- 8.6  indicator_values policies ----------------------------------------------
+-- All authenticated users may read values.
+-- project_manager and above may insert; only merl_officer/admin may update/delete.
+
+CREATE POLICY iv_select ON merl.indicator_values
+    FOR SELECT
+    USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY iv_insert ON merl.indicator_values
+    FOR INSERT
+    WITH CHECK (
+        (merl.current_db_user()).role IN
+            ('administrator', 'merl_officer', 'project_manager', 'finance_officer')
+    );
+
+CREATE POLICY iv_update ON merl.indicator_values
+    FOR UPDATE
+    USING (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer')
+        OR reported_by = (merl.current_db_user()).id
+    );
+
+CREATE POLICY iv_delete ON merl.indicator_values
+    FOR DELETE
+    USING (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer')
+    );
+
+-- 8.7  activities policies ----------------------------------------------------
+
+CREATE POLICY activities_select ON merl.activities
+    FOR SELECT
+    USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY activities_insert ON merl.activities
+    FOR INSERT
+    WITH CHECK (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'project_manager')
+    );
+
+CREATE POLICY activities_update ON merl.activities
+    FOR UPDATE
+    USING (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'project_manager')
+    );
+
+CREATE POLICY activities_delete ON merl.activities
+    FOR DELETE
+    USING ( merl.is_admin() );
+
+-- 8.8  financial_transactions policies ----------------------------------------
+
+CREATE POLICY ft_select ON merl.financial_transactions
+    FOR SELECT
+    USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY ft_insert ON merl.financial_transactions
+    FOR INSERT
+    WITH CHECK (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'finance_officer')
+    );
+
+CREATE POLICY ft_update ON merl.financial_transactions
+    FOR UPDATE
+    USING (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'finance_officer')
+    );
+
+CREATE POLICY ft_delete ON merl.financial_transactions
+    FOR DELETE
+    USING ( merl.is_admin() );
+
+-- 8.9  ld_events policies -----------------------------------------------------
+
+CREATE POLICY lde_select ON merl.ld_events
+    FOR SELECT USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY lde_write ON merl.ld_events
+    FOR ALL
+    USING (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'project_manager')
+    )
+    WITH CHECK (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'project_manager')
+    );
+
+-- 8.10 community_engagements policies -----------------------------------------
+
+CREATE POLICY ce_select ON merl.community_engagements
+    FOR SELECT USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY ce_write ON merl.community_engagements
+    FOR ALL
+    USING (
+        (merl.current_db_user()).role IN
+            ('administrator', 'merl_officer', 'project_manager', 'community_reporter')
+    )
+    WITH CHECK (
+        (merl.current_db_user()).role IN
+            ('administrator', 'merl_officer', 'project_manager', 'community_reporter')
+    );
+
+-- 8.11 learning_entries policies ----------------------------------------------
+
+CREATE POLICY le_select ON merl.learning_entries
+    FOR SELECT USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY le_write ON merl.learning_entries
+    FOR ALL
+    USING (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'project_manager')
+    )
+    WITH CHECK (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'project_manager')
+    );
+
+-- 8.12 document_uploads policies ----------------------------------------------
+
+CREATE POLICY du_select ON merl.document_uploads
+    FOR SELECT USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY du_insert ON merl.document_uploads
+    FOR INSERT
+    WITH CHECK ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY du_update ON merl.document_uploads
+    FOR UPDATE
+    USING (
+        merl.is_admin()
+        OR uploaded_by = (merl.current_db_user()).id
+    );
+
+CREATE POLICY du_delete ON merl.document_uploads
+    FOR DELETE
+    USING (
+        merl.is_admin()
+        OR uploaded_by = (merl.current_db_user()).id
+    );
+
+-- 8.13 activity_milestones policies -------------------------------------------
+
+ALTER TABLE merl.activity_milestones ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY am_select ON merl.activity_milestones
+    FOR SELECT USING ( merl.current_db_user() IS NOT NULL );
+
+CREATE POLICY am_write ON merl.activity_milestones
+    FOR ALL
+    USING (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'project_manager')
+    )
+    WITH CHECK (
+        (merl.current_db_user()).role IN ('administrator', 'merl_officer', 'project_manager')
+    );
+

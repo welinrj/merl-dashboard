@@ -7,7 +7,7 @@ const ROLES = [
   { id: 'ROLE_DOCC_SENIOR',  label: 'DoCC Senior Officer',  color: 'bg-purple-100 text-purple-700' },
   { id: 'ROLE_DOCC_MEO',     label: 'DoCC M&E Officer',     color: 'bg-blue-100 text-blue-700' },
   { id: 'ROLE_PROJ_MANAGER', label: 'Project Manager',      color: 'bg-green-100 text-green-700' },
-  { id: 'ROLE_PROJ_STAFF',   label: 'Project Staff',        color: 'bg-gray-100 text-gray-700' },
+  { id: 'ROLE_FIELD_STAFF',   label: 'Field Staff',        color: 'bg-gray-100 text-gray-700' },
 ];
 
 const CATEGORIES = [
@@ -41,7 +41,7 @@ function TabButton({ label, active, onClick }) {
 function UsersTab({ projects }) {
   const [users, setUsers] = useState(SYSTEM_USERS);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', role: 'ROLE_PROJ_STAFF', project: '' });
+  const [form, setForm] = useState({ name: '', email: '', role: 'ROLE_FIELD_STAFF', project: '' });
 
   const addUser = () => {
     if (!form.name.trim() || !form.email.trim()) return;
@@ -49,7 +49,7 @@ function UsersTab({ projects }) {
       ...prev,
       { id: prev.length + 1, ...form, active: true, last_login: null },
     ]);
-    setForm({ name: '', email: '', role: 'ROLE_PROJ_STAFF', project: '' });
+    setForm({ name: '', email: '', role: 'ROLE_FIELD_STAFF', project: '' });
     setShowForm(false);
   };
 

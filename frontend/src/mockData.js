@@ -126,7 +126,7 @@ export const SYSTEM_USERS = [
   { id: 2, name: 'Bob Senior',    email: 'senior@docc.gov.vu',  role: 'ROLE_DOCC_SENIOR',  project: null,         active: true, last_login: '2026-04-14T07:30:00Z' },
   { id: 3, name: 'Carol MEO',     email: 'meo@docc.gov.vu',     role: 'ROLE_DOCC_MEO',     project: null,         active: true, last_login: '2026-04-13T16:00:00Z' },
   { id: 4, name: 'David Manager', email: 'manager@project.vu',  role: 'ROLE_PROJ_MANAGER', project: 'VCCRP-001',  active: true, last_login: '2026-04-12T11:00:00Z' },
-  { id: 5, name: 'Eve Staff',     email: 'staff@project.vu',    role: 'ROLE_PROJ_STAFF',   project: 'VCAP2-001',  active: true, last_login: '2026-04-10T09:00:00Z' },
+  { id: 5, name: 'Eve Staff',     email: 'staff@project.vu',    role: 'ROLE_FIELD_STAFF',   project: 'VCAP2-001',  active: true, last_login: '2026-04-10T09:00:00Z' },
 ];
 
 // ── Audit log ─────────────────────────────────────────────────────────────────
