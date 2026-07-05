@@ -490,7 +490,7 @@ export default function App() {
                 <div>
                   <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.2rem' }}>Upload rejected</div>
                   <div style={{ fontSize: '0.75rem', color: '#f1f5f9', lineHeight: 1.4, marginBottom: '0.2rem' }}>{String(row.name)}</div>
-                  {row.review_note && (
+                  {!!row.review_note && (
                     <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.45)' }}>{String(row.review_note)}</div>
                   )}
                 </div>
@@ -610,7 +610,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to={defaultPath} replace />} />
             <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard user={user} /> : <Navigate to={defaultPath} replace />} />
-            <Route path="/projects"  element={allowed.includes('projects')  ? <Projects  user={user} projects={projects} setProjects={setProjects} /> : <Navigate to={defaultPath} replace />} />
+            <Route path="/projects"  element={allowed.includes('projects')  ? <Projects  user={user} projects={projects} /> : <Navigate to={defaultPath} replace />} />
             <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user} /> : <Navigate to={defaultPath} replace />} />
             <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis  user={user} /> : <Navigate to={defaultPath} replace />} />
             <Route path="/reports"   element={allowed.includes('reports')   ? <Reports   user={user} /> : <Navigate to={defaultPath} replace />} />

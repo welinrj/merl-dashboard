@@ -32,7 +32,7 @@ export interface NavItem {
   key: NavKey;
   path: string;
   label: string;
-  Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+  Icon: React.ComponentType<{ size?: number | string; style?: React.CSSProperties }>;
 }
 
 // ── Projects & RBM ───────────────────────────────────────────────────────────
