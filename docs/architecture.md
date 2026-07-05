@@ -1,369 +1,196 @@
-# System Architecture — MERL Dashboard
+# Technical Architecture — DoCC M&E Monitoring Platform (DMP)
+
+**Project:** Vanuatu Loss and Damage Fund Development Project
+**Client:** Department of Climate Change (DoCC), Ministry of Climate Change, Government of Vanuatu
+**Funded by:** Ministry of Foreign Affairs and Trade (MFAT), Government of New Zealand
+
+This document is part of the contract Deliverable 4 documentation package.
+
+---
 
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
-2. [Component Descriptions](#2-component-descriptions)
-3. [Data Flow](#3-data-flow)
-4. [Network Topology](#4-network-topology)
+2. [Technology Stack](#2-technology-stack)
+3. [Component Descriptions](#3-component-descriptions)
+4. [Database Design](#4-database-design)
 5. [Security Architecture](#5-security-architecture)
-6. [Backup Architecture](#6-backup-architecture)
+6. [Deployment Environments](#6-deployment-environments)
+7. [Data Flow](#7-data-flow)
 
 ---
 
 ## 1. System Overview
 
-The MERL Dashboard is a containerised, multi-service web application deployed via Docker Compose. All services communicate over a private Docker bridge network (`merl-net`) and are exposed externally only through the NGINX reverse proxy.
+The DMP is a full-stack, multi-user web-based M&E system. It consists of a
+React single-page application (SPA) served as static files, and a Supabase
+backend that provides the PostgreSQL database, authentication, file storage,
+auto-generated REST API, and real-time change notifications.
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                        HOST SERVER (GoV / Cloud)                         │
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │                  NGINX :80 / :443  (TLS termination)               │  │
-│  │        Reverse proxies to frontend, backend, superset, airflow     │  │
-│  └──────┬──────────────┬─────────────────┬──────────────┬─────────────┘  │
-│         │              │                 │              │                 │
-│  ┌──────▼──────┐ ┌─────▼──────┐ ┌───────▼──────┐ ┌────▼──────────┐      │
-│  │  Frontend   │ │  Backend   │ │   Superset   │ │   Airflow     │      │
-│  │  React/Vite │ │  FastAPI   │ │   (BI/viz)   │ │  (scheduler)  │      │
-│  │  :3000      │ │  :8000     │ │  :8088       │ │  :8080        │      │
-│  └──────────────┘ └─────┬──────┘ └──────┬───────┘ └──────┬────────┘      │
-│                         │               │                 │               │
-│                  ┌──────▼───────────────▼─────────────────▼──────┐        │
-│                  │              merl-net (bridge)                 │        │
-│                  └──────┬──────────────────────────┬─────────────┘        │
-│                         │                          │                      │
-│              ┌──────────▼──────────┐   ┌──────────▼──────────┐            │
-│              │  PostgreSQL 16      │   │  ClickHouse 24.2     │            │
-│              │  (PostGIS)          │   │  (columnar OLAP)     │            │
-│              │  :5432              │   │  :8123 / :9000       │            │
-│              └──────────┬──────────┘   └──────────────────────┘            │
-│                         │   CDC replication                                │
-│                         │   via PeerDB :8085                               │
-│                         └──────────────────────────────────────────────►  │
-│                                                                            │
-│              ┌────────────────┐   ┌──────────────────────────────┐         │
-│              │  Keycloak      │   │  Redis :6379                 │         │
-│              │  IAM  :8180    │   │  (Celery broker, cache)      │         │
-│              └────────────────┘   └──────────────────────────────┘         │
-│                                                                            │
-└────────────────────────────────────────────────────────────────────────────┘
+┌───────────────┐   HTTPS/TLS 1.2+    ┌─────────────────────────────────────┐
+│   Browser     │ ──────────────────► │  nginx reverse proxy (:80/:443)     │
+│  (any modern  │                     │   ├─ dmp.gov.vu     → frontend      │
+│   browser)    │                     │   └─ api.dmp.gov.vu → Supabase Kong │
+└───────────────┘                     └───────────┬─────────────┬───────────┘
+                                                  │             │
+                                       ┌──────────▼───┐   ┌─────▼────────────────────┐
+                                       │  Frontend    │   │  Supabase (self-hosted)  │
+                                       │  React SPA   │   │   ├─ Auth (GoTrue, JWT)  │
+                                       │  static via  │   │   ├─ PostgREST (API)     │
+                                       │  nginx :3000 │   │   ├─ Realtime (WebSocket)│
+                                       └──────────────┘   │   ├─ Storage (files)     │
+                                                          │   └─ PostgreSQL 15       │
+                                                          │       + PostGIS          │
+                                                          └──────────────────────────┘
 ```
 
----
+There is **no custom backend server**. All business rules that must be
+enforced server-side live in the PostgreSQL schema itself: Row-Level
+Security (RLS) policies, triggers, constraints, and the immutable audit
+log. This keeps the system simple to operate and fully self-hostable by
+Government ICT staff.
 
-## 2. Component Descriptions
+## 2. Technology Stack
 
-### 2.1 NGINX (nginx:1.25-alpine)
+| Layer | Technology | Purpose |
+|---|---|---|
+| Frontend | React 18 + TypeScript, Vite 5 | Single-page application |
+| Styling | Tailwind CSS 3.4 | Responsive UI, low-bandwidth friendly |
+| Charts | Recharts 2 | KPI charts, indicator trend lines |
+| Mapping | Leaflet 1.9 (react-leaflet) | GIS mapping, spatial disaggregation |
+| i18n | i18next / react-i18next | English and French interfaces |
+| Data fetching | @tanstack/react-query, supabase-js v2 | Server state, caching |
+| File parsing | PapaParse (CSV), SheetJS/xlsx (Excel) | Dataset import |
+| Report export | SheetJS (Excel); PDF export | DoCC / MFAT-aligned reports |
+| Backend | Supabase v2 (self-hostable) | Auth, REST API, Realtime, Storage |
+| Database | PostgreSQL 15 + PostGIS | All M&E data, spatial data, audit log |
+| Deployment | Docker Compose + nginx | Government server deployment |
 
-The entry point for all external traffic. Responsibilities:
+All components are open-source and self-hostable, satisfying the contract's
+national-ownership and data-sovereignty requirements.
 
-- TLS termination using Let's Encrypt or GoV-provided certificates stored in `nginx/ssl/`.
-- Routing HTTP requests to the correct upstream service based on path prefix:
-  - `/` → frontend (React SPA)
-  - `/api` → backend (FastAPI)
-  - `/superset` → Superset
-  - `/airflow` → Airflow webserver
-  - `/auth` → Keycloak
-- Setting security headers (`HSTS`, `X-Frame-Options`, `Content-Security-Policy`).
-- Rate limiting on the API prefix to prevent abuse.
-- Serving static assets for the frontend with appropriate cache headers.
+## 3. Component Descriptions
 
-### 2.2 PostgreSQL 16 with PostGIS 3.4 (postgis/postgis:16-3.4-alpine)
+### 3.1 Frontend (React SPA)
 
-The **primary transactional database**. Used for:
+Six role-gated modules, matching the navigation sidebar:
 
-- All application MERL data (indicators, activities, events, organisations, users).
-- Spatial data storage using PostGIS geometry types (points for event locations, polygons for provinces and communities).
-- Keycloak's identity data (realms, users, sessions, credentials) — in a dedicated `keycloak` schema.
-- Airflow's metadata database (DAG runs, task instances, connections) — in a dedicated `airflow` schema.
-- Superset's metadata (dashboards, charts, database connections) — in a dedicated `superset` schema.
+| Route | Module | Purpose |
+|---|---|---|
+| `/dashboard` | Dashboard | KPI overview, indicator progress, recent activity |
+| `/projects` | Projects | Project portfolio, RBM results chains |
+| `/datasets` | Datasets | CSV/Excel upload, photo/document evidence, approval workflow |
+| `/analysis` | Analysis & GIS | Trend analysis, disaggregation, Leaflet map views |
+| `/reports` | Reports | Generate and download DoCC/MFAT-aligned reports |
+| `/admin` | Admin Panel | User management, project configuration (Admin only) |
 
-The `init.sql` script creates all schemas and grants, while `seed_data.sql` populates reference data (provinces, islands, indicator framework).
+The app runs in two modes controlled by `VITE_APP_ENV`:
 
-### 2.3 ClickHouse 24.2 (clickhouse/clickhouse-server:24.2-alpine)
+- **Demo mode** (`VITE_APP_ENV` ≠ `production`): local demo accounts and
+  mock data allow stakeholder review on static hosting (GitHub Pages)
+  without exposing real data.
+- **Production mode**: Supabase Auth logins only; all data comes from the
+  live database.
 
-The **analytical columnar database** powering Superset dashboards. Key characteristics:
+### 3.2 Supabase services
 
-- Stores a replica of MERL data optimised for aggregation queries (GROUP BY province, time period, indicator type).
-- Uses the `MergeTree` table engine with partitioning by year/month for efficient time-series queries.
-- Materialized views (defined in `materialized_views.sql`) pre-aggregate common dashboard metrics, ensuring sub-second query response times.
-- Populated via PeerDB CDC from PostgreSQL — no direct writes from the application.
-- Superset connects directly to ClickHouse using the `clickhouse-connect` driver.
+| Service | Role in the DMP |
+|---|---|
+| **GoTrue (Auth)** | Email/password login, JWT issuance (1-hour expiry, auto-refresh), TOTP MFA |
+| **PostgREST** | Auto-generated REST API over the `merl` schema; every request executes under the caller's JWT so RLS applies |
+| **Realtime** | WebSocket change feeds — used for dataset-approval notifications |
+| **Storage** | Project-scoped private buckets for photos, PDFs, and signed agreements (Means of Verification) |
+| **Kong** | API gateway in front of the above services |
 
-### 2.4 PeerDB (ghcr.io/peerdb-io/peerdb:stable)
+## 4. Database Design
 
-**Change Data Capture (CDC) replication** from PostgreSQL to ClickHouse. PeerDB:
+Single schema `merl` (see `supabase/migrations/0001_initial_schema.sql`).
 
-- Uses PostgreSQL logical replication slots to capture every INSERT, UPDATE and DELETE.
-- Transforms and streams changes to ClickHouse in near-real-time (typically < 5 seconds lag).
-- Configuration is defined in `peerdb/config.json` which specifies the source mirror, destination peer, and table mapping.
-- Provides a web UI on port 8085 to monitor replication lag and mirror health.
+### 4.1 Core tables
 
-### 2.5 FastAPI Backend (./backend)
+| Table | Contents |
+|---|---|
+| `users` | Application user profiles and roles |
+| `indicators` | Indicator definitions: baseline, target, unit, domain, GEDSI disaggregation type |
+| `indicator_values` | Time-series indicator measurements with reporting period, province, disaggregation |
+| `activities` / `activity_milestones` | RBM activities and their milestones |
+| `financial_transactions` | Disbursements and expenditures per activity |
+| `ld_events` | Loss & damage events with PostGIS geometry (`geom`) for mapping |
+| `community_engagements` | Consultations, trainings, awareness sessions by province/island |
+| `learning_entries` | MERL lessons-learned register |
+| `document_uploads` | Evidence file metadata (files live in Supabase Storage) |
+| `audit_logs` | Immutable audit trail — INSERT-only; DELETE/TRUNCATE revoked |
 
-The **application API layer**. Provides:
+### 4.2 GEDSI disaggregation
 
-- RESTful endpoints for all MERL data entities (CRUD + search + export).
-- File upload handling (evidence documents, CSV imports) stored in `uploads_data` volume.
-- JWT validation against Keycloak JWKS endpoint — every request must carry a valid Bearer token.
-- Role-based permission enforcement via FastAPI dependencies.
-- Background tasks for async processing (CSV import validation, report generation triggers).
-- `/health` endpoint for Docker and NGINX health checks.
-- OpenAPI documentation at `/api/docs` and `/api/redoc`.
+Disaggregation (sex, age, disability, location) is a first-class column set
+on `indicator_values`, not an afterthought — data cannot be entered without
+passing through the disaggregation model, satisfying the contract's GEDSI
+requirement.
 
-### 2.6 React Frontend (./frontend)
+### 4.3 Spatial data
 
-A **Single-Page Application** built with React 18, Vite, and TypeScript. Features:
-
-- Keycloak JS adapter for SSO authentication.
-- Indicator value entry forms with client-side validation.
-- Activity and event reporting workflows.
-- Interactive map (MapLibre GL or Mapbox) showing events by province.
-- Offline-first service worker for community reporters (IndexedDB sync queue).
-- CSV upload wizard with column-mapping and preview.
-- Responsive, mobile-first UI.
-
-### 2.7 Apache Airflow (./airflow)
-
-**Workflow orchestration** for scheduled and triggered jobs:
-
-- `dag_daily_backup.py` — nightly `pg_dump` + ClickHouse backup, compressed and uploaded to S3.
-- `dag_data_validation.py` — daily checks for missing indicator submissions by province.
-- `dag_report_generation.py` — weekly Superset dashboard export to PDF, emailed to stakeholders.
-- `dag_clickhouse_refresh.py` — periodically refreshes ClickHouse materialized views.
-- Uses Redis as Celery broker for scalable task execution.
-- Runs in standalone mode (webserver + scheduler in one container) suitable for single-server deployment.
-
-### 2.8 Apache Superset 3.1.0
-
-**Business intelligence and data visualisation**:
-
-- Connected to ClickHouse as the primary analytical data source.
-- Dashboards for: indicator progress, activity tracker, L&D events map, community engagement summary, provincial comparison.
-- Role-based dashboard access mapped to Keycloak roles via Superset's RBAC.
-- Exports to PDF and CSV available to authorised users.
-
-### 2.9 Keycloak 23.0
-
-**Identity and Access Management (IAM)**:
-
-- Single Sign-On (SSO) for all services (frontend, API, Superset, Airflow).
-- MERL realm with five application roles (see user roles in README).
-- OIDC/OAuth2 tokens issued to authenticated users and validated by the backend.
-- Social login (optional) and MFA (TOTP) can be configured per realm.
-- Admin console available at `/auth`.
-
-### 2.10 Redis 7.2
-
-**In-memory data store** used for:
-
-- Airflow Celery broker (`redis:6379/1`).
-- Airflow Celery results backend.
-- Superset query result caching (`redis:6379/2`).
-- Backend session/token caching (`redis:6379/0`).
-
----
-
-## 3. Data Flow
-
-### 3.1 Field Data Entry Flow
-
-```
-  Community Reporter / Field Officer
-         │
-         │  HTTPS (JWT Bearer token)
-         ▼
-    NGINX :443
-         │
-         │  /api/*
-         ▼
-    FastAPI Backend :8000
-         │
-         ├─► Validates JWT with Keycloak JWKS
-         ├─► Enforces role-based permissions
-         ├─► Validates and sanitises input
-         │
-         ▼
-    PostgreSQL :5432
-         │  (logical replication slot)
-         ▼
-    PeerDB CDC :8085
-         │  (streams changes)
-         ▼
-    ClickHouse :8123
-         │  (materialized views refresh)
-         ▼
-    Superset Dashboards
-         │
-         │  HTTPS (JWT Bearer token)
-         ▼
-    Dashboard Viewers / Donors
-```
-
-### 3.2 Offline Community Reporter Flow
-
-```
-  Community Reporter (mobile, offline)
-         │
-         │  Writes to IndexedDB sync queue
-         │  (service worker intercepts API calls)
-         ▼
-    Local Browser Storage
-         │
-         │  When connectivity restored:
-         │  Background sync fires
-         ▼
-    FastAPI Backend :8000  (same path as above)
-```
-
-### 3.3 Backup Data Flow
-
-```
-  Airflow Scheduler (nightly, 02:00 VUT)
-         │
-         ├─► pg_dump → gzip → S3 bucket
-         │   (PostgreSQL full backup)
-         │
-         ├─► clickhouse-backup → gzip → S3 bucket
-         │   (ClickHouse table backup)
-         │
-         └─► Notification email → ALERT_EMAIL
-```
-
-### 3.4 Authentication Flow (Keycloak JWT)
-
-```
-  Browser / Client
-         │
-         │  1. Redirect to Keycloak login page
-         ▼
-    Keycloak :8180 (proxied as /auth)
-         │
-         │  2. User enters credentials
-         │  3. Keycloak issues access token (JWT) + refresh token
-         │
-         ▼
-  Browser / Client
-         │
-         │  4. Includes JWT in every API request:
-         │     Authorization: Bearer <token>
-         ▼
-    FastAPI Backend
-         │
-         │  5. Fetches JWKS from Keycloak (cached)
-         │  6. Verifies JWT signature and claims
-         │  7. Extracts roles from token claims
-         │
-         ▼
-    Protected Resource
-```
-
----
-
-## 4. Network Topology
-
-All containers share the `merl-net` Docker bridge network. Container-to-container communication uses service names as hostnames (e.g. `postgres`, `clickhouse`, `redis`).
-
-Only the following ports are mapped to the host:
-
-| Container Port | Host Port | Purpose |
-|----------------|-----------|---------|
-| nginx:80 | 80 | HTTP (redirects to HTTPS in production) |
-| nginx:443 | 443 | HTTPS (TLS terminated) |
-| postgres:5432 | 5432 | Direct DB access (disable in production firewall) |
-| clickhouse:8123 | 8123 | ClickHouse HTTP (disable in production firewall) |
-| clickhouse:9000 | 9000 | ClickHouse native protocol (disable in production firewall) |
-| keycloak:8080 | 8180 | Keycloak admin (accessible during setup; restrict in production) |
-| peerdb:8085 | 8085 | PeerDB UI (restrict to admin IPs in production) |
-| airflow:8080 | 8080 | Airflow (proxied via NGINX at /airflow; direct port optional) |
-| superset:8088 | 8088 | Superset (proxied via NGINX at /superset; direct port optional) |
-| redis:6379 | 6379 | Redis (bind to 127.0.0.1 in production) |
-
-### Production Firewall Recommendations
-
-In a production GoV server deployment, the following iptables rules are recommended:
-
-```
-# Allow public HTTP/HTTPS only
-iptables -A INPUT -p tcp --dport 80 -j ACCEPT
-iptables -A INPUT -p tcp --dport 443 -j ACCEPT
-
-# Allow SSH from admin IP only
-iptables -A INPUT -p tcp --dport 22 -s <ADMIN_IP> -j ACCEPT
-
-# Allow PeerDB UI from admin IP only
-iptables -A INPUT -p tcp --dport 8085 -s <ADMIN_IP> -j ACCEPT
-
-# Block all direct database access from external
-iptables -A INPUT -p tcp --dport 5432 -j DROP
-iptables -A INPUT -p tcp --dport 8123 -j DROP
-iptables -A INPUT -p tcp --dport 9000 -j DROP
-iptables -A INPUT -p tcp --dport 6379 -j DROP
-```
-
----
+PostGIS is enabled. `ld_events.geom` carries event geometry with a GIST
+index; provinces and islands are recorded on engagement and indicator
+records for spatial disaggregation in the Analysis module.
 
 ## 5. Security Architecture
 
-### 5.1 Authentication and Authorisation
+Defence in depth, in four layers:
 
-- All services use Keycloak as the single source of truth for identity.
-- The frontend uses the `keycloak-js` adapter to initiate OIDC flows.
-- The backend validates every incoming JWT using Keycloak's JWKS endpoint (`/auth/realms/merl/protocol/openid-connect/certs`).
-- Tokens expire after 5 minutes (configurable in Keycloak); refresh tokens last 30 minutes.
-- Superset and Airflow are integrated with Keycloak via OAuth2 proxy or native OIDC support.
+1. **Transport** — HTTPS/TLS 1.2+ everywhere; HSTS; security headers set
+   at the nginx proxy.
+2. **Authentication** — Supabase Auth: bcrypt-hashed passwords (min 10
+   characters), JWT tokens expiring after 1 hour with automatic refresh,
+   TOTP MFA (mandatory for the System Administrator role).
+3. **Authorization** —
+   - *Application level*: role-based navigation and route guards
+     (`TAB_ACCESS` in `frontend/src/App.tsx`).
+   - *Database level*: Row-Level Security policies on every table.
+     Because PostgREST executes queries as the calling user, RLS holds even
+     if the application layer is bypassed or an API request is crafted
+     directly.
+4. **Accountability** — every create/update/delete is recorded in
+   `merl.audit_logs` (user identity, timestamp, changed values). The table
+   is INSERT-only; DELETE and TRUNCATE privileges are revoked.
 
-### 5.2 Transport Security
+### 5.1 User roles
 
-- All external traffic uses TLS 1.2+.
-- NGINX is configured with a strong cipher suite and HSTS header.
-- Certificates are stored in `nginx/ssl/` and renewed automatically via Certbot (see migration runbook).
+| Role | Access |
+|---|---|
+| System Administrator | All modules incl. Admin Panel; user and project management; MFA mandatory |
+| DoCC Senior Officer | Dashboard, Projects, Datasets, Analysis, Reports (approve/publish) |
+| DoCC M&E Officer | Dashboard, Projects, Datasets, Analysis, Reports (full read/write) |
+| Project Manager | Dashboard, Projects, Datasets, Analysis, Reports (assigned projects) |
+| Field Staff | Datasets, Analysis (data submission and review) |
 
-### 5.3 Secrets Management
+> **Known gap (tracked):** the database `user_role` enum predates the final
+> five-role model and must be aligned. See the repository issue
+> "Align database role enum with the five contract roles".
 
-- All sensitive values (passwords, API keys, secret keys) are stored in `.env` and injected as Docker environment variables at container startup.
-- `.env` is excluded from git via `.gitignore`.
-- In production, consider replacing `.env` with Docker Secrets or a vault solution.
+## 6. Deployment Environments
 
-### 5.4 Data Security
+| Environment | Frontend | Backend | Purpose |
+|---|---|---|---|
+| Development | Vite dev server (localhost:5173) | Supabase Cloud (dev project) | Consultant development |
+| Staging | GitHub Pages (demo mode) | Mock data / Supabase Cloud | Stakeholder review, UAT |
+| **Production** | Docker on Government server | **Self-hosted Supabase** on the same server | Final deployment — all data inside Government systems |
 
-- PostgreSQL uses row-level security (RLS) policies to enforce province-level data isolation for coordinators.
-- File uploads are stored in a Docker-managed volume inaccessible from the web directly; the API validates and serves uploads via authenticated endpoints.
-- ClickHouse is not directly accessible from the internet; all queries pass through Superset which enforces its own RBAC.
+The migration from staging to the Government server is fully scripted in
+[migration-runbook.md](migration-runbook.md).
 
----
+## 7. Data Flow
 
-## 6. Backup Architecture
+Example — an M&E Officer uploads a quarterly indicator CSV:
 
-### 6.1 Automated Backup Schedule
-
-| Job | Schedule (VUT) | Target | Retention |
-|-----|----------------|--------|-----------|
-| PostgreSQL full dump | Daily 02:00 | S3 + local volume | 30 days |
-| ClickHouse backup | Daily 02:30 | S3 + local volume | 30 days |
-| Weekly archive | Sunday 03:00 | S3 (separate prefix) | 1 year |
-
-### 6.2 Backup Storage Locations
-
-```
-backups/                    (Docker volume: backups_data)
-  postgres/
-    merl_postgres_YYYYMMDD_HHMMSS.sql.gz
-  clickhouse/
-    merl_clickhouse_YYYYMMDD_HHMMSS.tar.gz
-
-S3 bucket: s3://${BACKUP_S3_BUCKET}/
-  postgres/
-  clickhouse/
-  weekly/
-```
-
-### 6.3 Recovery
-
-See [backup-restore.md](backup-restore.md) for step-by-step restore procedures and tested recovery time objectives.
-
----
-
-*Document version: 1.0 | March 2026 | Vanua Spatial Solutions*
+1. Officer signs in; GoTrue returns a JWT encoding their identity.
+2. Officer uploads the CSV in **Datasets**; PapaParse parses it in the
+   browser, columns are auto-mapped and validated client-side.
+3. Rows are written via supabase-js → PostgREST → PostgreSQL. RLS verifies
+   the officer's role permits writes to `indicator_values`.
+4. A database trigger writes the change to `audit_logs`.
+5. Supabase Realtime broadcasts the new dataset; reviewers see an in-app
+   notification and approve or return the dataset.
+6. Approved data immediately appears in Dashboard KPIs, Analysis charts,
+   and generated reports.

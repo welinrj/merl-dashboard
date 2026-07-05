@@ -1,503 +1,83 @@
-# ICT Handover Checklist — MERL Dashboard
+# ICT Handover Checklist — DoCC M&E Monitoring Platform (DMP)
 
-**Project:** Vanuatu Loss and Damage Fund Development Project — MERL Dashboard
-**Prepared by:** Vanua Spatial Solutions
-**Handover to:** Government of Vanuatu ICT Team, DoCC/MoCC
-
-This checklist must be completed by the ICT team receiving the MERL Dashboard system. Each item must be verified and signed off before the handover is considered complete. Do not mark an item complete until you have personally run the verification command or observed the behaviour described.
-
----
-
-## Handover Information
-
-| Item | Value |
-|------|-------|
-| Server hostname | |
-| Server IP address | |
-| Application URL | |
-| Date of handover | |
-| Vanua Spatial Solutions contact | |
-| GoV ICT officer | |
-| Sign-off date | |
+**Purpose:** formal transfer of the platform from the consultant (Vanua
+Spatial Solutions) to the Department of Climate Change, per contract
+Deliverable 5 (full system handover). Work through every section in a
+joint session; both parties sign §7.
 
 ---
 
-## Section 1 — Infrastructure and Container Health
-
-### 1.1 All Services Running and Healthy
-
-Run the following command and confirm all 10 services show `running` or `running (healthy)` in the STATUS column:
-
-```bash
-cd /opt/merl-dashboard
-docker compose ps
-```
-
-- [ ] `merl-nginx` — Status: `running`
-- [ ] `merl-postgres` — Status: `running (healthy)`
-- [ ] `merl-clickhouse` — Status: `running (healthy)`
-- [ ] `merl-peerdb` — Status: `running`
-- [ ] `merl-backend` — Status: `running (healthy)`
-- [ ] `merl-frontend` — Status: `running`
-- [ ] `merl-airflow` — Status: `running`
-- [ ] `merl-superset` — Status: `running`
-- [ ] `merl-keycloak` — Status: `running`
-- [ ] `merl-redis` — Status: `running`
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 1.2 Docker and Docker Compose Versions
-
-```bash
-docker --version
-docker compose version
-```
-
-- [ ] Docker Engine version is 24.0 or higher
-- [ ] Docker Compose version is v2.20 or higher
-
-**Recorded versions:**
-
-Docker: _______________________
-
-Docker Compose: _______________________
-
----
-
-## Section 2 — Database Services
-
-### 2.1 PostgreSQL Accepting Connections
-
-```bash
-cd /opt/merl-dashboard
-export $(grep -v '^#' .env | xargs)
-docker compose exec postgres pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
-```
-
-Expected output: `localhost:5432 - accepting connections`
-
-- [ ] PostgreSQL accepts connections
-
-```bash
-# Verify core MERL tables exist and contain data
-docker compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB \
-  -c "SELECT tablename FROM pg_tables WHERE schemaname='merl' ORDER BY tablename;"
-```
-
-- [ ] MERL schema tables are listed
-- [ ] Row counts are non-zero (data was restored from backup)
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 2.2 ClickHouse Responding on Port 8123
-
-```bash
-curl -sf http://localhost:8123/ping
-```
-
-Expected output: `Ok.`
-
-- [ ] ClickHouse HTTP API responding
-
-```bash
-# Check tables exist
-export $(grep -v '^#' .env | xargs)
-docker compose exec clickhouse clickhouse-client \
-  --user=$CLICKHOUSE_USER --password=$CLICKHOUSE_PASSWORD \
-  --query="SHOW TABLES FROM $CLICKHOUSE_DB"
-```
-
-- [ ] ClickHouse analytics tables are listed
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 2.3 PeerDB Replication Active
-
-Open the PeerDB web UI: **http://\<server-ip\>:8085**
-
-- [ ] PeerDB UI is accessible
-- [ ] At least one mirror is listed with status `RUNNING` (not `ERROR` or `PAUSED`)
-- [ ] Replication lag is less than 60 seconds
-
-```bash
-docker compose logs peerdb | tail -20
-```
-
-- [ ] No `ERROR` messages in PeerDB logs
-
-**Notes:**
-
-___________________________________________________________________________
-
----
-
-## Section 3 — Application Services
-
-### 3.1 Backend API Health
-
-```bash
-curl -sf http://localhost:8000/health
-```
-
-Expected: HTTP 200 with JSON body indicating all dependencies are healthy.
-
-- [ ] Backend `/health` endpoint returns 200
-
-```bash
-# Check API documentation is accessible
-curl -sf http://localhost/api/docs -o /dev/null -w "%{http_code}"
-```
-
-- [ ] API docs accessible at `https://<domain>/api/docs` — returns 200
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 3.2 React Portal Loading
-
-Open in a browser: **https://\<domain\>**
-
-- [ ] Page loads without JavaScript errors (check browser console)
-- [ ] Login page is displayed (redirects through Keycloak)
-- [ ] No broken images or missing CSS
-- [ ] Page title shows "MERL Dashboard" or equivalent
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 3.3 Keycloak Admin Console Accessible
-
-Open in a browser: **https://\<domain\>/auth**
-
-- [ ] Keycloak login page loads
-- [ ] Admin login succeeds with the credentials in `.env` (`KEYCLOAK_ADMIN_USER` / `KEYCLOAK_ADMIN_PASSWORD`)
-- [ ] The `merl` realm exists in the realm dropdown
-- [ ] User list shows at least one admin user
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 3.4 Airflow Web UI and DAGs Visible
-
-Open in a browser: **https://\<domain\>/airflow**
-
-- [ ] Airflow login page loads
-- [ ] Login succeeds (default: admin / admin — change immediately)
-- [ ] DAG list shows at minimum: `dag_daily_backup`, `dag_data_validation`, `dag_report_generation`
-- [ ] DAGs are not showing `Import Error` status
-- [ ] Scheduler is shown as `Healthy` in the Airflow UI footer
-
-```bash
-# CLI check
-docker compose exec airflow airflow dags list
-docker compose exec airflow airflow scheduler --health-check
-```
-
-- [ ] DAG list printed without errors
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 3.5 Superset Dashboards Loading
-
-Open in a browser: **https://\<domain\>/superset**
-
-- [ ] Superset login page loads
-- [ ] Login succeeds (admin credentials from `.env`)
-- [ ] Dashboard list shows at least one MERL dashboard
-- [ ] Opening a dashboard renders charts without errors
-- [ ] Charts display data (not empty / no database connection errors)
-
-**Notes:**
-
-___________________________________________________________________________
-
----
-
-## Section 4 — Security and Networking
-
-### 4.1 SSL Certificate Valid
-
-```bash
-echo | openssl s_client -connect <domain>:443 -servername <domain> 2>/dev/null \
-  | openssl x509 -noout -dates -subject
-```
-
-- [ ] `notAfter` date is more than 30 days in the future
-- [ ] `subject` matches the server's domain name
-- [ ] Browser shows padlock icon (no mixed-content warnings)
-
-**Certificate expiry date:** _______________________
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 4.2 Firewall Rules Verified
-
-```bash
-sudo ufw status verbose
-```
-
-- [ ] Port 22 (SSH) is restricted to admin IP only (not `0.0.0.0/0`)
-- [ ] Port 80 is open to all (HTTP → HTTPS redirect)
-- [ ] Port 443 is open to all (HTTPS)
-- [ ] Port 5432 (PostgreSQL) is NOT open to external addresses
-- [ ] Port 6379 (Redis) is NOT open to external addresses
-- [ ] Port 8123/9000 (ClickHouse) is NOT open to external addresses
-- [ ] Port 8085 (PeerDB UI) is restricted to admin IP only
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 4.3 DNS Pointing Correctly
-
-```bash
-dig <domain> +short
-```
-
-Expected: returns the server's public IP address.
-
-- [ ] DNS A record resolves to the correct server IP
-- [ ] `https://<domain>` loads the MERL portal (not a default server page)
-
-**Resolved IP:** _______________________
-**Expected IP:** _______________________
-
-**Notes:**
-
-___________________________________________________________________________
-
----
-
-## Section 5 — Backup and Monitoring
-
-### 5.1 Backup DAG Runs Successfully
-
-Trigger the backup DAG manually and verify it completes:
-
-```bash
-docker compose exec airflow airflow dags trigger dag_daily_backup
-```
-
-Wait 2–5 minutes, then check:
-
-```bash
-docker compose exec airflow airflow dags show-run dag_daily_backup
-```
-
-Open Airflow UI → DAGs → `dag_daily_backup` → last run → all tasks should be green.
-
-- [ ] `dag_daily_backup` triggered successfully
-- [ ] All tasks completed with status `success`
-- [ ] Backup files created in `backups/` directory:
-
-```bash
-ls -lht /opt/merl-dashboard/backups/ | head -10
-```
-
-- [ ] Backup files exist and are non-zero size
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 5.2 S3 Backup Upload Verified
-
-```bash
-export $(grep -v '^#' .env | xargs)
-aws s3 ls s3://${BACKUP_S3_BUCKET}/postgres/ --human-readable | tail -5
-```
-
-- [ ] At least one backup file is visible in S3
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 5.3 SMTP Alert Email Working
-
-Trigger a test email from Airflow:
-
-```bash
-docker compose exec airflow airflow email-test -e $ALERT_EMAIL
-```
-
-- [ ] Test email received at the `ALERT_EMAIL` address
-- [ ] Email came from the configured `SMTP_USER` address
-
-**Notes:**
-
-___________________________________________________________________________
-
----
-
-## Section 6 — User Acceptance Testing
-
-These tests should be performed with the MERL project manager or a designated system user.
-
-### 6.1 User Login — Each Role
-
-Test login for each of the following roles using Keycloak-managed accounts:
-
-| Role | Username | Login Result |
-|------|----------|--------------|
-| `merl-admin` | | Pass / Fail |
-| `merl-coordinator` | | Pass / Fail |
-| `merl-officer` | | Pass / Fail |
-| `merl-community` | | Pass / Fail |
-| `merl-donor` | | Pass / Fail |
-
-- [ ] All five roles can log in successfully
-- [ ] Each role sees only the UI sections appropriate to their role
-- [ ] Admin sees user management and system settings
-- [ ] Donor sees dashboards only (no data entry forms)
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 6.2 Data Entry Form Submits Successfully
-
-Log in as a `merl-officer` and submit a test indicator value:
-
-- [ ] Navigate to "Submit Indicator Value"
-- [ ] Select an indicator from the dropdown
-- [ ] Enter a numeric value and reporting period
-- [ ] Click Submit — no error message appears
-- [ ] The new record is visible in the "My Submissions" list
-- [ ] The record appears in the Superset dashboard within 60 seconds (PeerDB propagation)
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 6.3 Community Reporter Offline Mode Works
-
-In a browser, simulate offline conditions:
-
-1. Open the MERL portal as a `merl-community` user.
-2. In Chrome DevTools → Network tab → set to "Offline".
-3. Navigate to the community reporting form.
-
-- [ ] The offline page loads without a network error
-- [ ] The form is usable while offline
-- [ ] Submitting while offline shows a "Saved for sync" message
-- [ ] When network is restored, the pending submission appears in the sync queue
-- [ ] After sync, the record appears in the backend (check API)
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 6.4 Map View Loads
-
-Navigate to the map view in the portal:
-
-- [ ] Map tiles load correctly (no grey boxes)
-- [ ] Existing L&D event markers are visible on the map
-- [ ] Clicking a marker shows event details popup
-- [ ] Province boundary polygons are displayed
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 6.5 CSV Upload Works
-
-Log in as a `merl-officer` or `merl-coordinator` and upload a test CSV:
-
-- [ ] Navigate to "Upload Data"
-- [ ] Select a correctly formatted test CSV file
-- [ ] Column mapping wizard appears
-- [ ] Preview shows correct data
-- [ ] Submit import — success message appears
-- [ ] Imported records appear in the data list
-
-**Notes:**
-
-___________________________________________________________________________
-
-### 6.6 Report Download Works
-
-Log in as a `merl-coordinator` or admin and download a report:
-
-- [ ] Navigate to "Reports" or "Download"
-- [ ] Select a reporting period
-- [ ] Click "Download CSV" (or "Download PDF")
-- [ ] File downloads successfully and contains data
-
-**Notes:**
-
-___________________________________________________________________________
-
----
-
-## Section 7 — Documentation and Credentials
-
-- [ ] `.env` file is backed up securely (not stored in git)
-- [ ] A copy of the `.env` file has been provided to the GoV ICT team via secure channel
-- [ ] Keycloak admin password has been changed from the default
-- [ ] Superset admin password has been changed from the default
-- [ ] Airflow admin password has been changed from the default
-- [ ] All documentation in `docs/` directory has been reviewed by the ICT team
-- [ ] [docs/admin-manual.md](admin-manual.md) has been read by the GoV admin
-- [ ] [docs/backup-restore.md](backup-restore.md) has been reviewed
-- [ ] ICT team knows how to reach Vanua Spatial Solutions support contact
-
----
-
-## Section 8 — Sign-Off
-
-### Vanua Spatial Solutions
-
-I certify that the MERL Dashboard has been deployed and configured according to project specifications, and that all items in this checklist have been verified.
-
-**Name:** _______________________
-
-**Signature:** _______________________
-
-**Date:** _______________________
-
----
-
-### Government of Vanuatu ICT Officer
-
-I confirm that I have verified each item in this checklist and accept responsibility for the ongoing operation of the MERL Dashboard on GoV infrastructure.
-
-**Name:** _______________________
-
-**Title:** _______________________
-
-**Department:** _______________________
-
-**Signature:** _______________________
-
-**Date:** _______________________
-
----
-
-### MERL Project Manager
-
-I confirm that the system has been tested and is fit for use by project staff.
-
-**Name:** _______________________
-
-**Signature:** _______________________
-
-**Date:** _______________________
-
----
-
-*Checklist version: 1.0 | March 2026 | Vanua Spatial Solutions*
+## 1. Source Code and Repository
+
+- [ ] DoCC/Government GitHub organisation or account has **owner** access
+      to the repository (or has received a complete archive)
+- [ ] Repository contains: frontend source, database schema
+      (`supabase/migrations/`), seed data, deployment stack
+      (`docker-compose.yml`, `nginx/`), and all documentation (`docs/`)
+- [ ] CI build passes on the default branch
+- [ ] Consultant's personal access removed or downgraded as directed by DoCC
+
+## 2. Documentation Package (contract Deliverable 4)
+
+- [ ] Technical architecture — `docs/architecture.md`
+- [ ] User manual (role-specific) — `docs/user-manual.md`
+- [ ] System administrator guide — `docs/admin-manual.md`
+- [ ] Government server migration runbook — `docs/migration-runbook.md`
+- [ ] Backup & restore procedures — `docs/backup-restore.md`
+- [ ] Environment variables reference — `docs/environment-variables.md`
+- [ ] Compose operations reference — `docs/docker-compose-reference.md`
+- [ ] Training materials delivered and sessions completed
+      (M&E Officers: Day 27; Field Staff: Day 28)
+
+## 3. Credentials and Secrets (hand over in person / password manager — never by email)
+
+- [ ] Server SSH access transferred; consultant keys removed from
+      `~/.ssh/authorized_keys`
+- [ ] `/opt/supabase/docker/.env` secrets recorded in the Government
+      password manager (`POSTGRES_PASSWORD`, `JWT_SECRET`, `ANON_KEY`,
+      `SERVICE_ROLE_KEY`, Studio dashboard login, SMTP)
+- [ ] `/opt/dmp/.env` recorded
+- [ ] DNS zone control confirmed with Government ICT
+- [ ] TLS certificate renewal method understood (certbot automatic, or
+      Government CA procedure documented)
+- [ ] System Administrator application account created for the DoCC ICT
+      officer, with MFA enrolled
+- [ ] Supabase Cloud (staging) project ownership transferred or scheduled
+      for decommissioning (final backup exported first)
+
+## 4. Operational Readiness
+
+- [ ] DoCC ICT officer has performed, unassisted, with the consultant
+      observing:
+  - [ ] a manual database backup (backup-restore.md §2.1)
+  - [ ] a service restart (docker-compose-reference.md §3)
+  - [ ] a user creation + password reset (admin-manual.md §2)
+- [ ] Daily backup cron installed and last night's dump verified
+- [ ] Off-server backup destination agreed and first copy completed
+- [ ] Post-migration smoke test passed and signed
+      (migration-runbook.md §10)
+
+## 5. Support Arrangements
+
+- [ ] Post-launch support period, response times, and contact channel
+      confirmed in writing (per contract: support through end of contract
+      period)
+- [ ] Maintenance contact after contract end:
+      _Name:_ ______________  _Email/Phone:_ ______________
+- [ ] Escalation path documented for issues beyond DoCC ICT capacity
+
+## 6. Intellectual Property
+
+- [ ] Confirmed: all designs, source code, and work products are the
+      property of DoCC (contract clause D12)
+- [ ] No third-party licence in the stack restricts Government use
+      (all components open-source: React, Supabase, PostgreSQL, nginx,
+      Docker)
+
+## 7. Sign-off
+
+| | Name | Signature | Date |
+|---|---|---|---|
+| For DoCC (Purchaser) | | | |
+| DoCC ICT Officer | | | |
+| For the Contractor | Micky E. Welin | | |

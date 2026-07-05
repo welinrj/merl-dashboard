@@ -7,6 +7,15 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --frozen-lockfile 2>/dev/null || npm install
 
+# Build-time configuration — Vite bakes these into the static bundle.
+# Passed from docker-compose.yml (which reads them from .env).
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_APP_ENV=production
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
+    VITE_APP_ENV=$VITE_APP_ENV
+
 # Copy source and build
 COPY . .
 RUN npm run build
