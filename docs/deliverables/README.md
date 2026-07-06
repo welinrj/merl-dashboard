@@ -12,7 +12,7 @@ before the corresponding milestone payment is released.
 | # | Deliverable | Contract due | Status | Approved (date / by) |
 |---|---|---|---|---|
 | 1 | [Inception Report](D1-inception-report.md) — work plan, requirements, architecture proposal | Day 10 (~10 Jul 2026) | **Draft — in review** | |
-| 2 | Prototype Dashboard — deployed to staging for DoCC review & UAT | Day 24 (~24 Jul 2026) | In progress (staging demo live) | |
+| 2 | Prototype Dashboard — deployed to staging for DoCC review & UAT | Day 24 (~24 Jul 2026) | In progress — live Supabase staging backend (auth + data), see `docs/staging.md` | |
 | 3 | Final Dashboard — production deployment incl. UAT feedback, field forms, MFAT-aligned reports; admin access handed to DoCC *(GIS layers descoped — see change record)* | Day 28 (~28 Jul 2026) | Not started | |
 | 4 | Documentation & Training — role-specific user manual, technical architecture, sysadmin guide, migration runbook; 2 training sessions (M&E Officers Day 27, Field Staff Day 28) | Day 29 (~29 Jul 2026) | Docs drafted in `docs/`; training not yet scheduled | |
 | 5 | Final Report + full system handover incl. source code repository | Day 30 (~30 Jul 2026) | Not started | |

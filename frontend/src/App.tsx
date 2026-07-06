@@ -14,13 +14,13 @@ import Analysis   from './pages/Analysis';
 import Reports    from './pages/Reports';
 import AdminPanel from './pages/AdminPanel';
 import { PROJECTS } from './mockData';
-import { supabase } from './supabaseClient';
+import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
 
 // ── Environment ───────────────────────────────────────────────────────────────
 // VITE_APP_ENV is set to "production" in the production build .env file.
-// The "Demo Mode" badge is shown only when NOT in production.
-const IS_DEMO = import.meta.env.VITE_APP_ENV !== 'production';
+// The "Staging" badge is shown only when NOT in production.
+const IS_STAGING = import.meta.env.VITE_APP_ENV !== 'production';
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const ROLES: Record<UserRole, string> = {
@@ -31,50 +31,24 @@ const ROLES: Record<UserRole, string> = {
   ROLE_FIELD_STAFF:  'Field Staff',          // aligned with RFQ Section C
 };
 
-// ── Demo accounts ─────────────────────────────────────────────────────────────
-// Credentials are loaded from environment variables so they are never committed
-// to source control in plaintext. In production, real auth is handled by
-// Supabase Auth / Keycloak — these demo stubs are disabled when
-// VITE_APP_ENV === 'production'.
-//
-// Set in .env.local (never committed):
-//   VITE_DEMO_ADMIN_PASS=...
-//   VITE_DEMO_SENIOR_PASS=...
-//   VITE_DEMO_MEO_PASS=...
-//   VITE_DEMO_MGR_PASS=...
-//   VITE_DEMO_STAFF_PASS=...
-//
-// Fallback empty strings cause login to fail gracefully when env vars absent.
-const DEMO_USERS: AppUser[] = [
-  { id: 1, username: 'admin',   role: 'ROLE_ADMIN',        name: 'Alice Natapei',  mfaEnabled: true  },
-  { id: 2, username: 'senior',  role: 'ROLE_DOCC_SENIOR',  name: 'Bob Tahi',       mfaEnabled: false },
-  { id: 3, username: 'meo',     role: 'ROLE_DOCC_MEO',     name: 'Carol Mele',     mfaEnabled: false },
-  { id: 4, username: 'manager', role: 'ROLE_PROJ_MANAGER', name: 'David Aru',      mfaEnabled: false },
-  { id: 5, username: 'staff',   role: 'ROLE_FIELD_STAFF',  name: 'Eve Tamata',     mfaEnabled: false },
-];
-
-// Password map — sourced from env vars, never hardcoded.
-const DEMO_PASSWORDS: Record<string, string> = {
-  admin:   import.meta.env.VITE_DEMO_ADMIN_PASS  ?? '',
-  senior:  import.meta.env.VITE_DEMO_SENIOR_PASS ?? '',
-  meo:     import.meta.env.VITE_DEMO_MEO_PASS    ?? '',
-  manager: import.meta.env.VITE_DEMO_MGR_PASS    ?? '',
-  staff:   import.meta.env.VITE_DEMO_STAFF_PASS  ?? '',
-};
-
-// ── MFA — TOTP via Supabase Auth ─────────────────────────────────────────────
-// For the ROLE_ADMIN account, a TOTP second factor is enforced.
-// The backend Keycloak instance handles real MFA in production.
-// In the demo, we use Supabase's MFA enrollment flow.
-//
-// To set up: admin logs in → is shown QR code → scans with authenticator app
-// → subsequent logins require a 6-digit code.
-//
-// For demo convenience, if no Supabase MFA factor is enrolled for the demo
-// account, we fall back to a fixed-length code check against
-// VITE_DEMO_ADMIN_TOTP_CODE (set in .env.local). This satisfies the RFQ
-// requirement while allowing testers to proceed without a physical device.
-const DEMO_ADMIN_TOTP = import.meta.env.VITE_DEMO_ADMIN_TOTP_CODE ?? '';
+// ── Supabase Auth ─────────────────────────────────────────────────────────────
+// Sign-in is email/password against Supabase Auth. The signed-in user's
+// platform profile (name + contract role) comes from the current_profile()
+// RPC (migration 0003), which resolves auth.uid() → merl.users. TOTP MFA is
+// enforced for the System Administrator role: an admin without an enrolled
+// factor is walked through QR enrollment on first sign-in.
+async function loadProfile(): Promise<AppUser | null> {
+  const { data, error } = await supabase.rpc('current_profile');
+  if (error || !data || data.length === 0) return null;
+  const p = data[0] as { id: string; email: string; full_name: string; role: string };
+  return {
+    id: p.id,
+    username: p.email,
+    role: toAppRole(p.role),
+    name: p.full_name,
+    mfaEnabled: p.role === 'administrator',
+  };
+}
 
 // ── Tab access map ────────────────────────────────────────────────────────────
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
@@ -100,78 +74,100 @@ interface LoginScreenProps {
 }
 
 function LoginScreen({ onLogin }: LoginScreenProps) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [showPass, setShowPass]   = useState(false);
-  const [error, setError]         = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
 
   // MFA step state
-  const [pendingUser, setPendingUser]   = useState<AppUser | null>(null);
-  const [mfaCode, setMfaCode]           = useState('');
-  const [mfaError, setMfaError]         = useState('');
-  const [mfaLoading, setMfaLoading]     = useState(false);
+  const [pendingUser, setPendingUser] = useState<AppUser | null>(null);
+  const [factorId, setFactorId]       = useState('');
+  const [enrollQr, setEnrollQr]       = useState('');   // non-empty ⇒ enrollment step
+  const [enrollSecret, setEnrollSecret] = useState('');
+  const [mfaCode, setMfaCode]         = useState('');
+  const [mfaError, setMfaError]       = useState('');
+  const [mfaLoading, setMfaLoading]   = useState(false);
 
-  const [showHints, setShowHints] = useState(false);
-
-  // Step 1 — credential check
-  const handleCredentials = (e: React.FormEvent) => {
+  // Step 1 — Supabase Auth credential check
+  const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
-    const found = DEMO_USERS.find(u => u.username === username);
-    if (!found || DEMO_PASSWORDS[username] !== password || DEMO_PASSWORDS[username] === '') {
-      setError('Incorrect username or password.');
-      return;
-    }
-    if (found.role === 'ROLE_ADMIN') {
+    setLoading(true);
+    setError('');
+    try {
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (authErr) {
+        setError('Incorrect email or password.');
+        return;
+      }
+      const profile = await loadProfile();
+      if (!profile) {
+        await supabase.auth.signOut();
+        setError('No active platform profile is linked to this account. Contact the system administrator.');
+        return;
+      }
+      if (profile.role !== 'ROLE_ADMIN') {
+        onLogin(profile);
+        return;
+      }
       // MFA required for System Administrator
-      setPendingUser(found);
-    } else {
-      onLogin(found);
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factors?.totp?.find(f => f.status === 'verified') ?? factors?.totp?.[0];
+      if (totpFactor) {
+        setFactorId(totpFactor.id);
+        setPendingUser(profile);
+      } else {
+        // First sign-in: enroll a TOTP factor before granting access
+        const { data: enroll, error: eErr } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+        if (eErr || !enroll) {
+          await supabase.auth.signOut();
+          setError(eErr?.message ?? 'Could not start MFA enrollment.');
+          return;
+        }
+        setFactorId(enroll.id);
+        setEnrollQr(enroll.totp.qr_code);
+        setEnrollSecret(enroll.totp.secret);
+        setPendingUser(profile);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Step 2 — MFA verification
+  // Step 2 — MFA verification (covers both enrolled factors and enrollment)
   const handleMFA = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pendingUser) return;
     setMfaLoading(true);
     setMfaError('');
-
     try {
-      // Try Supabase MFA first (real TOTP if enrolled)
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factors?.totp?.[0];
+      const { data: challenge, error: cErr } =
+        await supabase.auth.mfa.challenge({ factorId });
+      if (cErr) throw cErr;
 
-      if (totpFactor) {
-        // Real Supabase TOTP flow
-        const { data: challenge, error: cErr } =
-          await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
-        if (cErr) throw cErr;
-
-        const { error: vErr } = await supabase.auth.mfa.verify({
-          factorId:    totpFactor.id,
-          challengeId: challenge.id,
-          code:        mfaCode.replace(/\s/g, ''),
-        });
-        if (vErr) throw new Error('Invalid code. Please try again.');
-        onLogin(pendingUser);
-      } else {
-        // Demo fallback: compare against env var TOTP code
-        if (DEMO_ADMIN_TOTP === '') {
-          throw new Error(
-            'MFA not configured. Set VITE_DEMO_ADMIN_TOTP_CODE in .env.local or enroll a Supabase TOTP factor.'
-          );
-        }
-        if (mfaCode.replace(/\s/g, '') !== DEMO_ADMIN_TOTP) {
-          throw new Error('Invalid code. Please try again.');
-        }
-        onLogin(pendingUser);
-      }
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.id,
+        code:        mfaCode.replace(/\s/g, ''),
+      });
+      if (vErr) throw new Error('Invalid code. Please try again.');
+      onLogin(pendingUser);
     } catch (err: unknown) {
       setMfaError(err instanceof Error ? err.message : 'MFA verification failed.');
     } finally {
       setMfaLoading(false);
     }
-  }, [pendingUser, mfaCode, onLogin]);
+  }, [pendingUser, factorId, mfaCode, onLogin]);
+
+  const cancelMFA = useCallback(async () => {
+    await supabase.auth.signOut();
+    setPendingUser(null);
+    setFactorId('');
+    setEnrollQr('');
+    setEnrollSecret('');
+    setMfaCode('');
+    setMfaError('');
+  }, []);
 
   return (
     <div style={{
@@ -268,9 +264,9 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 
               <form onSubmit={handleCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label className="field-label">Username</label>
-                  <input value={username} onChange={e => { setUsername(e.target.value); setError(''); }}
-                    className="field-input" placeholder="Enter your username" required />
+                  <label className="field-label">Email</label>
+                  <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }}
+                    className="field-input" placeholder="you@example.gov.vu" autoComplete="username" required />
                 </div>
                 <div>
                   <label className="field-label">Password</label>
@@ -292,41 +288,11 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
                   </div>
                 )}
 
-                <button type="submit" className="btn-primary"
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '0.9375rem', marginTop: '0.25rem', borderRadius: 8 }}>
-                  Sign In
+                <button type="submit" className="btn-primary" disabled={loading}
+                  style={{ width: '100%', padding: '0.75rem', fontSize: '0.9375rem', marginTop: '0.25rem', borderRadius: 8, opacity: loading ? 0.6 : 1 }}>
+                  {loading ? 'Signing in…' : 'Sign In'}
                 </button>
               </form>
-
-              {IS_DEMO && (
-                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                  <button onClick={() => setShowHints(!showHints)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--green-700)', fontSize: '0.8125rem', fontWeight: 600, textDecoration: 'underline', textDecorationStyle: 'dotted' }}>
-                    {showHints ? 'Hide' : 'View'} demo credentials
-                  </button>
-
-                  {showHints && (
-                    <div style={{ marginTop: '0.875rem', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 8, padding: '0.875rem', textAlign: 'left' }}>
-                      <div style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '0.5rem' }}>
-                        Demo Accounts — set passwords in .env.local
-                      </div>
-                      {DEMO_USERS.map(u => (
-                        <div key={u.id} style={{ fontSize: '0.8125rem', color: 'var(--text-2)', padding: '0.25rem 0', borderBottom: '1px solid var(--green-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--green-800)', fontWeight: 600 }}>
-                            {u.username}
-                            {u.mfaEnabled && (
-                              <span style={{ marginLeft: '0.375rem', fontSize: '0.625rem', background: 'var(--green-100)', color: 'var(--green-800)', borderRadius: 4, padding: '0.1rem 0.3rem', fontWeight: 700 }}>
-                                MFA
-                              </span>
-                            )}
-                          </span>
-                          <span style={{ fontSize: '0.6875rem', color: 'var(--text-3)' }}>{ROLES[u.role]}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </>
           )}
 
@@ -347,10 +313,28 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
                 </div>
               </div>
 
-              <p style={{ color: 'var(--text-2)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-                Enter the 6-digit code from your authenticator app to continue as{' '}
-                <strong>{pendingUser.name}</strong>.
-              </p>
+              {enrollQr ? (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <p style={{ color: 'var(--text-2)', fontSize: '0.875rem', marginBottom: '1rem', lineHeight: 1.5 }}>
+                    First sign-in for <strong>{pendingUser.name}</strong>: scan this QR code with your
+                    authenticator app (Google Authenticator, Authy, …), then enter the 6-digit code
+                    it shows to activate two-factor authentication.
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                    <img src={enrollQr} alt="TOTP enrollment QR code"
+                      style={{ width: 168, height: 168, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }} />
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: '0.6875rem', color: 'var(--text-3)' }}>
+                    Can't scan? Enter this key manually:{' '}
+                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-2)', wordBreak: 'break-all' }}>{enrollSecret}</span>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--text-2)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                  Enter the 6-digit code from your authenticator app to continue as{' '}
+                  <strong>{pendingUser.name}</strong>.
+                </p>
+              )}
 
               <form onSubmit={handleMFA} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
@@ -376,10 +360,10 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 
                 <button type="submit" className="btn-primary" disabled={mfaLoading || mfaCode.length !== 6}
                   style={{ width: '100%', padding: '0.75rem', fontSize: '0.9375rem', borderRadius: 8, opacity: (mfaLoading || mfaCode.length !== 6) ? 0.6 : 1 }}>
-                  {mfaLoading ? 'Verifying…' : 'Verify & Sign In'}
+                  {mfaLoading ? 'Verifying…' : enrollQr ? 'Activate & Sign In' : 'Verify & Sign In'}
                 </button>
 
-                <button type="button" onClick={() => { setPendingUser(null); setMfaCode(''); setMfaError(''); }}
+                <button type="button" onClick={cancelMFA}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.8125rem', textAlign: 'center' }}>
                   ← Back to sign in
                 </button>
@@ -399,7 +383,23 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 // ── App Shell ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
+  const [booting, setBooting] = useState(true);
   const [projects, setProjects] = useState(PROJECTS);
+
+  // ── Session restore ────────────────────────────────────────────────────────
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        const profile = await loadProfile();
+        if (profile) setUser(profile);
+      }
+      setBooting(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'SIGNED_OUT') setUser(null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   // ── Real-time: dataset upload notifications ──────────────────────────────
   useEffect(() => {
@@ -504,6 +504,7 @@ export default function App() {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
+  if (booting) return null;
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const allowed    = TAB_ACCESS[user.role] ?? [];
@@ -564,7 +565,7 @@ export default function App() {
               <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ROLES[user.role]}</div>
             </div>
           </div>
-          <button onClick={() => setUser(null)} style={{
+          <button onClick={() => { void supabase.auth.signOut(); setUser(null); }} style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             gap: '0.4rem', padding: '0.5rem', borderRadius: 7,
             background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
@@ -591,14 +592,14 @@ export default function App() {
             Vanuatu L&amp;D Fund Development Project
           </span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {IS_DEMO && (
+            {IS_STAGING && (
               <div style={{
                 fontSize: '0.6875rem', color: 'var(--text-3)',
                 padding: '0.25rem 0.625rem',
                 background: 'var(--green-50)', border: '1px solid var(--green-100)',
                 borderRadius: 9999, fontWeight: 600, letterSpacing: '0.04em',
               }}>
-                Demo Mode
+                Staging
               </div>
             )}
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green-500)', boxShadow: '0 0 0 3px rgba(74,171,130,0.2)' }} />

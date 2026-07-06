@@ -1,10 +1,13 @@
 // ── Supabase client — DoCC MERL Dashboard ────────────────────────────────────
-// Project: merl-dashboard-docc  |  Region: ap-southeast-2
+// Project: merl-dashboard-staging (ndntvncboeajanipafeq)  |  Region: ap-southeast-2
+// Override per environment with VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.
 import { createClient } from '@supabase/supabase-js';
 import type { UserRole } from './types';
 
-const SUPABASE_URL  = 'https://mgqveofmnofmwejxrbxp.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ncXZlb2Ztbm9mbXdlanhyYnhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNzAxMDIsImV4cCI6MjA5MTg0NjEwMn0.2EnzuxujaAHSlQoXaFQZsdIW1Rmj4FHAxexYzv0gk-8';
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
+  ?? 'https://ndntvncboeajanipafeq.supabase.co';
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
+  ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kbnR2bmNib2VhamFuaXBhZmVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyODA3ODEsImV4cCI6MjA5ODg1Njc4MX0.EPLQbtDvTPIVY57NCZEjsUJzxrbMhP-gngVyP1Vfpm4';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
