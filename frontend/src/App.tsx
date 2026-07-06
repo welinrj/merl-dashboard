@@ -184,8 +184,8 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         .lg-brand__bar{position:relative;display:flex;align-items:center;gap:.6rem;padding:1.05rem 2.75rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:.6875rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-400)}
         .lg-brand__bar::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold-400);box-shadow:0 0 10px var(--gold-400)}
         .lg-brand__body{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2.5rem 2.75rem;gap:1.75rem}
-        .lg-crest{width:220px;height:220px;border-radius:32px;display:flex;align-items:center;justify-content:center;padding:26px;background:rgba(255,255,255,.06);border:1px solid rgba(212,168,67,.35);box-shadow:0 14px 40px rgba(0,0,0,.3),inset 0 0 28px rgba(212,168,67,.08)}
-        .lg-crest img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
+        .lg-crest{width:min(460px,82%);aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+        .lg-crest img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4))}
         .lg-ident__k{font-size:.6875rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-400)}
         .lg-ident__d{font-size:1rem;font-weight:600;color:rgba(255,255,255,.92);margin-top:.15rem}
         .lg-title{font-family:var(--font-display);font-size:2.4rem;line-height:1.08;letter-spacing:-.03em;font-weight:600;color:#fff;margin:0}
@@ -226,7 +226,6 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
       {/* ── Brand panel ── */}
       <aside className="lg-brand">
         <div className="lg-brand__texture" />
-        <div className="lg-brand__bar">Official Government of Vanuatu system</div>
         <div className="lg-brand__body">
           <div className="lg-crest">
             <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
