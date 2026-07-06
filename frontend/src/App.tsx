@@ -184,6 +184,21 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         .lg-root{min-height:100vh;min-height:100dvh;display:flex;font-family:var(--font-ui);background:var(--cream);color:var(--text-1)}
         .lg-brand{position:relative;width:44%;max-width:560px;flex-shrink:0;overflow:hidden;color:#fff;background:linear-gradient(158deg,var(--green-900) 0%,var(--green-800) 55%,#17402c 100%);display:flex;flex-direction:column}
         .lg-photo{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;transform:scale(1.02)}
+        .lg-anim{position:absolute;inset:0;z-index:0;width:100%;height:100%;pointer-events:none}
+        .lg-frond--l{transform-box:fill-box;transform-origin:0% 0%}
+        .lg-frond--r{transform-box:fill-box;transform-origin:100% 0%}
+        @media (prefers-reduced-motion:no-preference){
+          .lg-frond--l{animation:lgSwayL 7s ease-in-out infinite alternate}
+          .lg-frond--r{animation:lgSwayR 8.5s ease-in-out infinite alternate}
+          .lg-glow{animation:lgBreathe 8s ease-in-out infinite}
+          .lg-wave--1{animation:lgDrift1 9s ease-in-out infinite alternate}
+          .lg-wave--2{animation:lgDrift2 11s ease-in-out infinite alternate}
+        }
+        @keyframes lgSwayL{from{transform:rotate(-2deg)}to{transform:rotate(2.6deg)}}
+        @keyframes lgSwayR{from{transform:rotate(2deg)}to{transform:rotate(-2.6deg)}}
+        @keyframes lgBreathe{0%,100%{opacity:.4}50%{opacity:.8}}
+        @keyframes lgDrift1{from{transform:translateX(-16px)}to{transform:translateX(16px)}}
+        @keyframes lgDrift2{from{transform:translateX(12px)}to{transform:translateX(-14px)}}
         .lg-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(157deg,rgba(9,26,17,.9) 0%,rgba(20,52,38,.58) 42%,rgba(10,38,26,.84) 100%)}
         .lg-brand__texture{position:absolute;inset:0;z-index:2;opacity:.05;pointer-events:none;background-image:radial-gradient(circle at 18% 30%,var(--gold-400) 1px,transparent 1px),radial-gradient(circle at 78% 68%,var(--gold-400) 1px,transparent 1px);background-size:46px 46px}
         .lg-brand__bar{position:relative;display:flex;align-items:center;gap:.6rem;padding:1.05rem 2.75rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:.6875rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-400)}
@@ -231,6 +246,23 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
       {/* ── Brand panel ── */}
       <aside className="lg-brand">
         <div className="lg-photo" style={{ backgroundImage: `url(${LOGIN_BG})` }} />
+        <svg className="lg-anim" viewBox="0 0 1000 1400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <defs>
+            <radialGradient id="lgGlow" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stopColor="#ffe6ad" stopOpacity="0.5" />
+              <stop offset="1" stopColor="#ffe6ad" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <ellipse className="lg-glow" cx="500" cy="900" rx="150" ry="150" fill="url(#lgGlow)" />
+          <ellipse className="lg-wave lg-wave--1" cx="430" cy="1040" rx="230" ry="26" fill="#cfe8dd" opacity="0.06" />
+          <ellipse className="lg-wave lg-wave--2" cx="580" cy="1150" rx="270" ry="30" fill="#cfe8dd" opacity="0.05" />
+          <g className="lg-frond lg-frond--l" fill="#06160f" opacity="0.92">
+            <path d="M-40 -20 C 150 60 250 150 300 300 C 250 210 150 150 40 130 C 170 150 250 230 280 340 C 210 250 120 210 20 210 C 150 240 210 320 230 400 C 150 300 60 280 -30 300 Z" />
+          </g>
+          <g className="lg-frond lg-frond--r" fill="#06160f" opacity="0.9">
+            <path d="M1040 -30 C 860 50 770 150 720 300 C 780 210 880 150 990 132 C 840 152 760 240 740 350 C 820 250 910 220 1010 220 C 870 250 810 330 795 410 C 880 300 970 285 1050 305 Z" />
+          </g>
+        </svg>
         <div className="lg-overlay" />
         <div className="lg-brand__texture" />
         <div className="lg-brand__body">
