@@ -165,9 +165,12 @@ Defence in depth, in four layers:
 | Project Manager | Dashboard, Projects, Datasets, Analysis, Reports (assigned projects) |
 | Field Staff | Datasets, Analysis (data submission and review) |
 
-> **Known gap (tracked):** the database `user_role` enum predates the final
-> five-role model and must be aligned. See the repository issue
-> "Align database role enum with the five contract roles".
+The database enum `merl.user_role` carries the same five roles
+(`administrator`, `docc_senior_officer`, `docc_me_officer`,
+`project_manager`, `field_staff`) since migration
+`supabase/migrations/0002_role_alignment.sql`; the frontend maps them to its
+`ROLE_*` constants via `toAppRole`/`toDbRole` in
+`frontend/src/supabaseClient.ts`.
 
 ## 6. Deployment Environments
 

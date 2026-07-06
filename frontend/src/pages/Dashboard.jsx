@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import createGlobe from 'cobe';
 import { PROJECTS, ALL_INDICATORS, DASHBOARD_SUMMARY } from '../mockData';
+import { supabase } from '../supabaseClient';
 import { TrendingUp, AlertTriangle, ArrowRight, Globe2 } from 'lucide-react';
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
@@ -15,6 +16,77 @@ const TRAFFIC     = { green:'#1a8c4e', amber:'#c97b00', red:'#c0392b' };
 const TRAFFIC_BG  = { green:'#d1fae5', amber:'#fef3c7', red:'#fee2e2' };
 const TRAFFIC_TXT = { green:'#065f46', amber:'#92400e', red:'#991b1b' };
 const TRAFFIC_LABEL = { green:'On Track', amber:'At Risk', red:'Off Track' };
+
+/* ── live data (v_indicator_status / v_domain_budget, migration 0003) ────── */
+const DOMAIN_META = {
+  governance: { label:'Governance', color:'#1a8c4e', short:'GOV' },
+  financial:  { label:'Financial',  color:'#c97b00', short:'FIN' },
+  community:  { label:'Community',  color:'#2563eb', short:'COM' },
+  events:     { label:'L&D Events', color:'#c0392b', short:'EVT' },
+  learning:   { label:'Learning',   color:'#7c3aed', short:'LRN' },
+};
+
+// Traffic light from progress toward target (handles decreasing targets,
+// e.g. response time in days where target < baseline).
+function trafficFor(baseline, current, target) {
+  const b = Number(baseline ?? 0), t = Number(target ?? 0);
+  const c = current == null ? b : Number(current);
+  if (t === b) return 'green';
+  const p = (c - b) / (t - b);
+  if (p >= 0.7) return 'green';
+  if (p >= 0.35) return 'amber';
+  return 'red';
+}
+
+function normaliseLive(indicatorRows, budgetRows) {
+  const indicators = indicatorRows.map(r => {
+    const meta = DOMAIN_META[r.domain] ?? { label: r.domain, color:'#64748b' };
+    const current = r.current_value == null ? Number(r.baseline_value ?? 0) : Number(r.current_value);
+    return {
+      id:       r.id,
+      code:     r.code,
+      name:     r.name,
+      baseline: Number(r.baseline_value ?? 0),
+      current,
+      target:   Number(r.target_value ?? 0),
+      traffic:  trafficFor(r.baseline_value, r.current_value, r.target_value),
+      category: meta.label,
+      color:    meta.color,
+    };
+  });
+  const budgetData = budgetRows.map(b => ({
+    name:   DOMAIN_META[b.domain]?.short ?? b.domain,
+    Budget: Math.round(Number(b.budget_vuv ?? 0) / 1e6),
+    Spent:  Math.round(Number(b.spent_vuv ?? 0) / 1e6),
+  }));
+  const green = indicators.filter(i => i.traffic === 'green').length;
+  const amber = indicators.filter(i => i.traffic === 'amber').length;
+  const red   = indicators.filter(i => i.traffic === 'red').length;
+  const summary = {
+    total_indicators: indicators.length,
+    indicators_green: green,
+    indicators_amber: amber,
+    indicators_red:   red,
+    total_budget_vuv: budgetRows.reduce((s, b) => s + Number(b.budget_vuv ?? 0), 0),
+    total_spent_vuv:  budgetRows.reduce((s, b) => s + Number(b.spent_vuv ?? 0), 0),
+    active_projects:  budgetRows.filter(b => Number(b.activities_active ?? 0) > 0).length,
+    total_projects:   budgetRows.length,
+  };
+  return { indicators, budgetData, summary };
+}
+
+function normaliseMock() {
+  const indicators = ALL_INDICATORS.map(ind => {
+    const proj = PROJECTS.find(pr => pr.code === ind.project_code);
+    return { ...ind, color: proj?.category_color ?? '#64748b' };
+  });
+  const budgetData = PROJECTS.map(p => ({
+    name:   p.code.split('-')[0],
+    Budget: Math.round(p.budget_vuv / 1e6),
+    Spent:  Math.round(p.spent_vuv  / 1e6),
+  }));
+  return { indicators, budgetData, summary: DASHBOARD_SUMMARY };
+}
 
 /* ── animated counter ───────────────────────────────────────────────────── */
 function useCountUp(target, duration = 1400) {
@@ -328,14 +400,23 @@ function StatRing({ label, value, total, color }) {
 
 /* ══ Dashboard ═══════════════════════════════════════════════════════════════ */
 export default function Dashboard({ user }) {
-  const S = DASHBOARD_SUMMARY;
-  const spentPct = pct(S.total_spent_vuv, S.total_budget_vuv);
+  const [live, setLive] = useState(null);
 
-  const budgetData = PROJECTS.map(p => ({
-    name:   p.code.split('-')[0],
-    Budget: Math.round(p.budget_vuv / 1e6),
-    Spent:  Math.round(p.spent_vuv  / 1e6),
-  }));
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [ind, bud] = await Promise.all([
+        supabase.from('v_indicator_status').select('*').order('code'),
+        supabase.from('v_domain_budget').select('*').order('domain'),
+      ]);
+      if (cancelled || ind.error || bud.error || !ind.data?.length) return;
+      setLive(normaliseLive(ind.data, bud.data ?? []));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const { indicators, budgetData, summary: S } = live ?? normaliseMock();
+  const spentPct = pct(S.total_spent_vuv, S.total_budget_vuv);
 
   const pieSrc = [
     { name:'On Track',  value:S.indicators_green, color:'#1a8c4e' },
@@ -363,7 +444,7 @@ export default function Dashboard({ user }) {
             MERL Dashboard
           </h1>
           <div style={{ fontSize:'0.8125rem', color:'rgba(255,255,255,0.5)', marginTop:'0.375rem' }}>
-            Overview · April 2026 · Funded by MFAT New Zealand
+            Overview · Funded by MFAT New Zealand · {live ? 'Live data' : 'Sample data (offline)'}
           </div>
         </div>
       </div>
@@ -434,7 +515,7 @@ export default function Dashboard({ user }) {
                 All Indicators — Current Status
               </div>
               <div style={{ fontSize:'0.75rem', color:'var(--text-3)', marginTop:2 }}>
-                {ALL_INDICATORS.length} indicators across {PROJECTS.length} programme components
+                {indicators.length} indicators across {S.total_projects} programme components
               </div>
             </div>
             <NavLink to="/analysis" style={{ display:'flex', alignItems:'center', gap:'0.375rem', fontSize:'0.8125rem', fontWeight:600, color:'var(--green-700)', textDecoration:'none' }}>
@@ -453,9 +534,8 @@ export default function Dashboard({ user }) {
               </tr>
             </thead>
             <tbody>
-              {ALL_INDICATORS.map(ind => {
+              {indicators.map(ind => {
                 const p = pct(ind.current, ind.target);
-                const proj = PROJECTS.find(pr => pr.code === ind.project_code);
                 return (
                   <tr key={ind.id}>
                     <td>
@@ -463,7 +543,7 @@ export default function Dashboard({ user }) {
                       <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--text-3)' }}>{ind.code}</div>
                     </td>
                     <td>
-                      <span style={{ background:`${proj?.category_color}22`, color:proj?.category_color, border:`1px solid ${proj?.category_color}44`, borderRadius:9999, padding:'0.125rem 0.5rem', fontSize:'0.6875rem', fontWeight:700, letterSpacing:'0.04em' }}>
+                      <span style={{ background:`${ind.color}22`, color:ind.color, border:`1px solid ${ind.color}44`, borderRadius:9999, padding:'0.125rem 0.5rem', fontSize:'0.6875rem', fontWeight:700, letterSpacing:'0.04em' }}>
                         {ind.category}
                       </span>
                     </td>

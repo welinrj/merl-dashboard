@@ -13,7 +13,7 @@ export type UserRole =
   | 'ROLE_FIELD_STAFF';
 
 export interface AppUser {
-  id: number;
+  id: number | string;
   username: string;
   role: UserRole;
   name: string;
