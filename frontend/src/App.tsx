@@ -4,6 +4,7 @@ import {
   LayoutDashboard, FolderOpen, Database,
   Map, FileBarChart, Settings, LogOut,
   ChevronRight, Eye, EyeOff, AlertCircle, ShieldCheck,
+  Mail, Lock, BadgeCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -170,127 +171,138 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
   }, []);
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex',
-      fontFamily: 'var(--font-ui)',
-      background: 'var(--cream)',
-    }}>
-      {/* Left panel */}
-      <div style={{
-        width: '45%', flexShrink: 0,
-        background: 'linear-gradient(160deg, var(--green-900) 0%, var(--green-800) 60%, var(--green-700) 100%)',
-        display: 'flex', flexDirection: 'column',
-        justifyContent: 'space-between',
-        padding: '3rem 3.5rem',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0, opacity: 0.06,
-          backgroundImage: `radial-gradient(circle at 20% 50%, var(--gold-400) 1px, transparent 1px),
-                            radial-gradient(circle at 80% 20%, var(--gold-400) 1px, transparent 1px)`,
-          backgroundSize: '48px 48px',
-        }} />
-
-        <div style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-            <div style={{
-              width: 120, height: 120, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.08)',
-              border: '1.5px solid rgba(212,168,67,0.35)',
-              boxShadow: '0 0 32px rgba(212,168,67,0.15), 0 8px 24px rgba(0,0,0,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12,
-            }}>
-              <img src="/vanuatu-coat-of-arms.svg" alt="Vanuatu Coat of Arms"
-                style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }} />
-            </div>
+    <div className="lg-root">
+      <style>{`
+        .lg-root{min-height:100vh;min-height:100dvh;display:flex;font-family:var(--font-ui);background:var(--cream);color:var(--text-1)}
+        .lg-brand{position:relative;width:44%;max-width:560px;flex-shrink:0;overflow:hidden;color:#fff;background:linear-gradient(158deg,var(--green-900) 0%,var(--green-800) 55%,#17402c 100%);display:flex;flex-direction:column}
+        .lg-brand__texture{position:absolute;inset:0;opacity:.05;pointer-events:none;background-image:radial-gradient(circle at 18% 30%,var(--gold-400) 1px,transparent 1px),radial-gradient(circle at 78% 68%,var(--gold-400) 1px,transparent 1px);background-size:46px 46px}
+        .lg-brand__bar{position:relative;display:flex;align-items:center;gap:.6rem;padding:1.05rem 2.75rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:.6875rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-400)}
+        .lg-brand__bar::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold-400);box-shadow:0 0 10px var(--gold-400)}
+        .lg-brand__body{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:2.5rem 2.75rem;gap:1.6rem}
+        .lg-crest{width:104px;height:104px;border-radius:18px;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(255,255,255,.06);border:1px solid rgba(212,168,67,.35);box-shadow:0 10px 30px rgba(0,0,0,.28),inset 0 0 24px rgba(212,168,67,.08)}
+        .lg-crest img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
+        .lg-ident__k{font-size:.6875rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-400)}
+        .lg-ident__d{font-size:1rem;font-weight:600;color:rgba(255,255,255,.92);margin-top:.15rem}
+        .lg-title{font-family:var(--font-display);font-size:2.4rem;line-height:1.08;letter-spacing:-.03em;font-weight:600;color:#fff;margin:0}
+        .lg-sub{font-size:.95rem;line-height:1.6;color:rgba(255,255,255,.62);max-width:40ch;margin:0}
+        .lg-trust{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.7rem}
+        .lg-trust li{display:flex;align-items:center;gap:.6rem;font-size:.8125rem;color:rgba(255,255,255,.8)}
+        .lg-trust svg{color:var(--gold-400);flex-shrink:0}
+        .lg-fund{position:relative;margin:0 2.75rem 2.25rem;padding:1rem 1.25rem;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+        .lg-fund__k{font-size:.625rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:.25rem}
+        .lg-fund__a{font-size:.875rem;font-weight:600;color:rgba(255,255,255,.9)}
+        .lg-fund__b{font-size:.8125rem;color:rgba(255,255,255,.55)}
+        .lg-main{flex:1;display:flex;align-items:center;justify-content:center;padding:2.5rem 1.5rem}
+        .lg-card{width:100%;max-width:400px}
+        .lg-mobile-brand{display:none}
+        .lg-mobile-brand__crest{width:44px;height:44px;border-radius:10px;flex-shrink:0;padding:6px;background:var(--green-800);display:flex;align-items:center;justify-content:center}
+        .lg-mobile-brand__crest img{width:100%;height:100%;object-fit:contain}
+        .lg-eyebrow{display:inline-flex;align-items:center;gap:.4rem;font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green-700);margin-bottom:.85rem}
+        .lg-h2{font-family:var(--font-display);font-size:1.75rem;font-weight:600;letter-spacing:-.025em;color:var(--text-1);margin:0 0 .4rem}
+        .lg-lead{color:var(--text-2);font-size:.9rem;margin:0 0 1.75rem;line-height:1.5}
+        .lg-ifield{position:relative}
+        .lg-ifield>.lg-ficon{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none;display:flex}
+        .lg-input{padding-left:2.5rem !important}
+        .lg-eye{position:absolute;right:.4rem;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:none;border:none;cursor:pointer;color:var(--text-3);border-radius:7px}
+        .lg-eye:hover{color:var(--text-2);background:var(--green-50)}
+        .lg-alert{display:flex;align-items:flex-start;gap:.5rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:.7rem .875rem;color:#991b1b;font-size:.8125rem;line-height:1.4}
+        .lg-submit{width:100%;padding:.8rem;font-size:.9375rem;font-weight:600;border-radius:9px;border:none;cursor:pointer;color:#fff;background:linear-gradient(180deg,var(--green-700),var(--green-800));box-shadow:var(--shadow-sm);transition:filter .18s ease,box-shadow .18s ease}
+        .lg-submit:hover:not(:disabled){filter:brightness(1.07);box-shadow:var(--shadow-md)}
+        .lg-submit:disabled{opacity:.6;cursor:default}
+        .lg-notice{display:flex;align-items:flex-start;gap:.55rem;margin-top:1.5rem;padding:.75rem .9rem;border-radius:9px;background:var(--green-50);border:1px solid var(--green-100);font-size:.75rem;line-height:1.45;color:var(--text-2)}
+        .lg-notice svg{color:var(--green-700);flex-shrink:0;margin-top:1px}
+        .lg-foot{margin-top:1.1rem;text-align:center;font-size:.75rem;color:var(--text-3)}
+        .lg-mfa-badge{width:42px;height:42px;border-radius:11px;background:var(--green-50);border:1px solid var(--green-100);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .lg-link{background:none;border:none;cursor:pointer;color:var(--text-3);font-size:.8125rem;padding:.5rem;width:100%}
+        .lg-link:hover{color:var(--green-700)}
+        @media (max-width:860px){.lg-brand{display:none}.lg-mobile-brand{display:flex;align-items:center;gap:.7rem;justify-content:center;margin-bottom:1.75rem;padding-bottom:1.4rem;border-bottom:1px solid var(--border)}}
+        @media (prefers-reduced-motion:reduce){.lg-submit{transition:none}}
+      `}</style>
+      {/* ── Brand panel ── */}
+      <aside className="lg-brand">
+        <div className="lg-brand__texture" />
+        <div className="lg-brand__bar">Official Government of Vanuatu system</div>
+        <div className="lg-brand__body">
+          <div className="lg-crest">
+            <img src="/vanuatu-coat-of-arms.svg" alt="Coat of arms of the Republic of Vanuatu" />
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '2.5rem' }}>
-            <div>
-              <div style={{ color: 'var(--gold-400)', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Republic of Vanuatu
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', fontWeight: 600 }}>
-                Department of Climate Change
-              </div>
-            </div>
+          <div>
+            <div className="lg-ident__k">Republic of Vanuatu</div>
+            <div className="lg-ident__d">Department of Climate Change</div>
           </div>
-
-          <h1 style={{
-            fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 600,
-            color: '#ffffff', lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: '1rem',
-          }}>
-            Loss &amp; Damage Fund<br />MERL Dashboard
-          </h1>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9375rem', lineHeight: 1.6, maxWidth: 340 }}>
-            Monitoring, Evaluation, Reporting &amp; Learning platform for the
+          <h1 className="lg-title">Loss &amp; Damage Fund<br />MERL Dashboard</h1>
+          <p className="lg-sub">
+            The official Monitoring, Evaluation, Reporting &amp; Learning platform for the
             Vanuatu Loss and Damage Fund Development Project.
           </p>
+          <ul className="lg-trust">
+            <li><ShieldCheck size={16} /> Official government monitoring platform</li>
+            <li><Lock size={16} /> Encrypted, access-controlled connection</li>
+            <li><BadgeCheck size={16} /> Restricted to authorised personnel</li>
+          </ul>
         </div>
+        <div className="lg-fund">
+          <div className="lg-fund__k">Funded by</div>
+          <div className="lg-fund__a">Ministry of Foreign Affairs &amp; Trade</div>
+          <div className="lg-fund__b">Government of New Zealand — NZD 4 million</div>
+        </div>
+      </aside>
 
-        <div style={{ position: 'relative' }}>
-          <div style={{
-            padding: '1rem 1.25rem',
-            background: 'rgba(255,255,255,0.07)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 10,
-          }}>
-            <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-              Funded by
+      {/* ── Sign-in panel ── */}
+      <div className="lg-main">
+        <div className="lg-card">
+          <div className="lg-mobile-brand">
+            <div className="lg-mobile-brand__crest">
+              <img src="/vanuatu-coat-of-arms.svg" alt="Coat of arms of the Republic of Vanuatu" />
             </div>
-            <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.875rem', fontWeight: 600 }}>
-              Ministry of Foreign Affairs &amp; Trade
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8125rem' }}>
-              Government of New Zealand — NZD 4 million
+            <div>
+              <div style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--green-700)' }}>Republic of Vanuatu</div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-1)' }}>Department of Climate Change</div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Right panel */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <div style={{ width: '100%', maxWidth: 380 }}>
 
           {/* ── Step 1: credentials ── */}
           {!pendingUser && (
             <>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 600, color: 'var(--text-1)', marginBottom: '0.375rem', letterSpacing: '-0.025em' }}>
-                Sign in
-              </h2>
-              <p style={{ color: 'var(--text-3)', fontSize: '0.875rem', marginBottom: '2rem' }}>
-                Enter your credentials to access the platform.
-              </p>
+              <div className="lg-eyebrow"><Lock size={13} /> Secure sign-in</div>
+              <h2 className="lg-h2">Sign in to your account</h2>
+              <p className="lg-lead">Use your official DoCC credentials to access the platform.</p>
 
               <form onSubmit={handleCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label className="field-label">Email</label>
-                  <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }}
-                    className="field-input" placeholder="you@example.gov.vu" autoComplete="username" required />
+                  <label className="field-label" htmlFor="lg-email">Email address</label>
+                  <div className="lg-ifield">
+                    <span className="lg-ficon"><Mail size={16} /></span>
+                    <input id="lg-email" type="email" value={email}
+                      onChange={e => { setEmail(e.target.value); setError(''); }}
+                      className="field-input lg-input" placeholder="you@example.gov.vu"
+                      autoComplete="username" required />
+                  </div>
                 </div>
                 <div>
-                  <label className="field-label">Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <input type={showPass ? 'text' : 'password'}
+                  <label className="field-label" htmlFor="lg-pass">Password</label>
+                  <div className="lg-ifield">
+                    <span className="lg-ficon"><Lock size={16} /></span>
+                    <input id="lg-pass" type={showPass ? 'text' : 'password'}
                       value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
-                      className="field-input" style={{ paddingRight: '2.5rem' }}
-                      placeholder="Enter your password" required />
-                    <button type="button" onClick={() => setShowPass(!showPass)}
-                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', display: 'flex', padding: 0 }}>
+                      className="field-input lg-input" style={{ paddingRight: '2.75rem' }}
+                      placeholder="Enter your password" autoComplete="current-password" required />
+                    <button type="button" className="lg-eye"
+                      aria-label={showPass ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowPass(!showPass)}>
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
 
                 {error && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '0.625rem 0.875rem', color: '#991b1b', fontSize: '0.8125rem' }}>
-                    <AlertCircle size={14} style={{ flexShrink: 0 }} />{error}
+                  <div className="lg-alert" role="alert">
+                    <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />{error}
                   </div>
                 )}
 
-                <button type="submit" className="btn-primary" disabled={loading}
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '0.9375rem', marginTop: '0.25rem', borderRadius: 8, opacity: loading ? 0.6 : 1 }}>
-                  {loading ? 'Signing in…' : 'Sign In'}
+                <button type="submit" className="lg-submit" disabled={loading} style={{ marginTop: '0.25rem' }}>
+                  {loading ? 'Signing in…' : 'Sign in'}
                 </button>
               </form>
             </>
@@ -358,22 +370,22 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
                   </div>
                 )}
 
-                <button type="submit" className="btn-primary" disabled={mfaLoading || mfaCode.length !== 6}
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '0.9375rem', borderRadius: 8, opacity: (mfaLoading || mfaCode.length !== 6) ? 0.6 : 1 }}>
-                  {mfaLoading ? 'Verifying…' : enrollQr ? 'Activate & Sign In' : 'Verify & Sign In'}
+                <button type="submit" className="lg-submit" disabled={mfaLoading || mfaCode.length !== 6}>
+                  {mfaLoading ? 'Verifying…' : enrollQr ? 'Activate & sign in' : 'Verify & sign in'}
                 </button>
 
-                <button type="button" onClick={cancelMFA}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.8125rem', textAlign: 'center' }}>
+                <button type="button" className="lg-link" onClick={cancelMFA}>
                   ← Back to sign in
                 </button>
               </form>
             </>
           )}
 
-          <p style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-3)' }}>
-            Built by Vanua Spatial Solutions · April 2026
-          </p>
+          <div className="lg-notice">
+            <ShieldCheck size={15} />
+            <span>Authorised access only. Activity on this official Government of Vanuatu system is monitored and audited. Unauthorised use is prohibited.</span>
+          </div>
+          <p className="lg-foot">Vanuatu L&amp;D Fund Development Project · Built by Vanua Spatial Solutions</p>
         </div>
       </div>
     </div>
