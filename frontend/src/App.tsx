@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FolderOpen, Database,
   Map, FileBarChart, Settings, LogOut,
   ChevronRight, Eye, EyeOff, AlertCircle, ShieldCheck,
-  Mail, Lock, BadgeCheck,
+  Mail, Lock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -183,8 +183,8 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         .lg-brand__texture{position:absolute;inset:0;opacity:.05;pointer-events:none;background-image:radial-gradient(circle at 18% 30%,var(--gold-400) 1px,transparent 1px),radial-gradient(circle at 78% 68%,var(--gold-400) 1px,transparent 1px);background-size:46px 46px}
         .lg-brand__bar{position:relative;display:flex;align-items:center;gap:.6rem;padding:1.05rem 2.75rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:.6875rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-400)}
         .lg-brand__bar::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold-400);box-shadow:0 0 10px var(--gold-400)}
-        .lg-brand__body{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:2.5rem 2.75rem;gap:1.6rem}
-        .lg-crest{width:104px;height:104px;border-radius:18px;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(255,255,255,.06);border:1px solid rgba(212,168,67,.35);box-shadow:0 10px 30px rgba(0,0,0,.28),inset 0 0 24px rgba(212,168,67,.08)}
+        .lg-brand__body{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2.5rem 2.75rem;gap:1.75rem}
+        .lg-crest{width:220px;height:220px;border-radius:32px;display:flex;align-items:center;justify-content:center;padding:26px;background:rgba(255,255,255,.06);border:1px solid rgba(212,168,67,.35);box-shadow:0 14px 40px rgba(0,0,0,.3),inset 0 0 28px rgba(212,168,67,.08)}
         .lg-crest img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
         .lg-ident__k{font-size:.6875rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-400)}
         .lg-ident__d{font-size:1rem;font-weight:600;color:rgba(255,255,255,.92);margin-top:.15rem}
@@ -235,21 +235,6 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
             <div className="lg-ident__k">Republic of Vanuatu</div>
             <div className="lg-ident__d">Department of Climate Change</div>
           </div>
-          <h1 className="lg-title">Loss &amp; Damage Fund<br />MERL Dashboard</h1>
-          <p className="lg-sub">
-            The official Monitoring, Evaluation, Reporting &amp; Learning platform for the
-            Vanuatu Loss and Damage Fund Development Project.
-          </p>
-          <ul className="lg-trust">
-            <li><ShieldCheck size={16} /> Official government monitoring platform</li>
-            <li><Lock size={16} /> Encrypted, access-controlled connection</li>
-            <li><BadgeCheck size={16} /> Restricted to authorised personnel</li>
-          </ul>
-        </div>
-        <div className="lg-fund">
-          <div className="lg-fund__k">Funded by</div>
-          <div className="lg-fund__a">Ministry of Foreign Affairs &amp; Trade</div>
-          <div className="lg-fund__b">Government of New Zealand — NZD 4 million</div>
         </div>
       </aside>
 
