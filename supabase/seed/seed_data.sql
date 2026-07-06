@@ -12,12 +12,13 @@ BEGIN;
 -- ---------------------------------------------------------------------------
 -- 1. USERS
 -- ---------------------------------------------------------------------------
+-- One user per contract role (see migration 0002_role_alignment.sql).
 INSERT INTO merl.users (email, full_name, role, organisation, keycloak_id) VALUES
-    ('ronal.tavita@vcap.gov.vu',   'Ronal Tavita',      'administrator',      'VCAP Secretariat',                     'kc-u-001'),
-    ('mere.bani@vcap.gov.vu',      'Mere Bani',         'project_manager',    'VCAP Secretariat',                     'kc-u-002'),
-    ('jean.kalsakau@vcap.gov.vu',  'Jean Kalsakau',     'merl_officer',       'VCAP Secretariat',                     'kc-u-003'),
-    ('peter.naupa@mof.gov.vu',     'Peter Naupa',       'finance_officer',    'Ministry of Finance',                  'kc-u-004'),
-    ('sarah.loughman@oxfam.org.vu','Sarah Loughman',    'partner_viewer',     'Oxfam in the Pacific',                 'kc-u-005');
+    ('ronal.tavita@vcap.gov.vu',   'Ronal Tavita',      'administrator',        'VCAP Secretariat',                     'kc-u-001'),
+    ('mere.bani@vcap.gov.vu',      'Mere Bani',         'project_manager',      'VCAP Secretariat',                     'kc-u-002'),
+    ('jean.kalsakau@vcap.gov.vu',  'Jean Kalsakau',     'docc_me_officer',      'VCAP Secretariat',                     'kc-u-003'),
+    ('peter.naupa@mof.gov.vu',     'Peter Naupa',       'docc_senior_officer',  'Ministry of Finance',                  'kc-u-004'),
+    ('sarah.loughman@oxfam.org.vu','Sarah Loughman',    'field_staff',          'Oxfam in the Pacific',                 'kc-u-005');
 
 -- ---------------------------------------------------------------------------
 -- 2. INDICATORS
