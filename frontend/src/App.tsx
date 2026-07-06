@@ -27,6 +27,9 @@ const IS_STAGING = import.meta.env.VITE_APP_ENV !== 'production';
 // project path (/merl-dashboard/) as well as at the site root. HashRouter
 // keeps the document at BASE_URL on every route, so this stays correct.
 const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
+// Faded scenic backdrop for the sign-in brand panel. To use a real
+// photograph instead, drop a file in public/ and point LOGIN_BG at it.
+const LOGIN_BG = `${import.meta.env.BASE_URL}vanuatu-login-bg.svg`;
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const ROLES: Record<UserRole, string> = {
@@ -180,10 +183,12 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
       <style>{`
         .lg-root{min-height:100vh;min-height:100dvh;display:flex;font-family:var(--font-ui);background:var(--cream);color:var(--text-1)}
         .lg-brand{position:relative;width:44%;max-width:560px;flex-shrink:0;overflow:hidden;color:#fff;background:linear-gradient(158deg,var(--green-900) 0%,var(--green-800) 55%,#17402c 100%);display:flex;flex-direction:column}
-        .lg-brand__texture{position:absolute;inset:0;opacity:.05;pointer-events:none;background-image:radial-gradient(circle at 18% 30%,var(--gold-400) 1px,transparent 1px),radial-gradient(circle at 78% 68%,var(--gold-400) 1px,transparent 1px);background-size:46px 46px}
+        .lg-photo{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;transform:scale(1.02)}
+        .lg-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(157deg,rgba(9,26,17,.9) 0%,rgba(20,52,38,.58) 42%,rgba(10,38,26,.84) 100%)}
+        .lg-brand__texture{position:absolute;inset:0;z-index:2;opacity:.05;pointer-events:none;background-image:radial-gradient(circle at 18% 30%,var(--gold-400) 1px,transparent 1px),radial-gradient(circle at 78% 68%,var(--gold-400) 1px,transparent 1px);background-size:46px 46px}
         .lg-brand__bar{position:relative;display:flex;align-items:center;gap:.6rem;padding:1.05rem 2.75rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:.6875rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-400)}
         .lg-brand__bar::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold-400);box-shadow:0 0 10px var(--gold-400)}
-        .lg-brand__body{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2.5rem 2.75rem;gap:1.75rem}
+        .lg-brand__body{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2.5rem 2.75rem;gap:1.75rem}
         .lg-crest{width:min(460px,82%);aspect-ratio:1;display:flex;align-items:center;justify-content:center}
         .lg-crest img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4))}
         .lg-ident__k{font-size:.6875rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-400)}
@@ -225,6 +230,8 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
       `}</style>
       {/* ── Brand panel ── */}
       <aside className="lg-brand">
+        <div className="lg-photo" style={{ backgroundImage: `url(${LOGIN_BG})` }} />
+        <div className="lg-overlay" />
         <div className="lg-brand__texture" />
         <div className="lg-brand__body">
           <div className="lg-crest">
@@ -254,8 +261,8 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
           {!pendingUser && (
             <>
               <div className="lg-eyebrow"><Lock size={13} /> Secure sign-in</div>
-              <h2 className="lg-h2">Sign in to your account</h2>
-              <p className="lg-lead">Use your official DoCC credentials to access the platform.</p>
+              <h2 className="lg-h2">Welcome back</h2>
+              <p className="lg-lead">Sign in with your official DoCC credentials to continue to the MERL platform.</p>
 
               <form onSubmit={handleCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>

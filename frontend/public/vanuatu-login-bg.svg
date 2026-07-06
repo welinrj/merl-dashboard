@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0c2418"/>
+      <stop offset="0.38" stop-color="#164a34"/>
+      <stop offset="0.52" stop-color="#c98a3e"/>
+      <stop offset="0.545" stop-color="#e6b45f"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b88a44"/>
+      <stop offset="0.10" stop-color="#2c5f47"/>
+      <stop offset="0.5" stop-color="#0e3527"/>
+      <stop offset="1" stop-color="#071d15"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.545" r="0.42">
+      <stop offset="0" stop-color="#ffe6ad" stop-opacity="0.95"/>
+      <stop offset="0.25" stop-color="#f2c579" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#f2c579" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vignette" cx="0.5" cy="0.46" r="0.75">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#04120c" stop-opacity="0.72"/>
+    </radialGradient>
+    <radialGradient id="refl" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffe6ad" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#ffe6ad" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0"/>
+    </filter>
+  </defs>
+
+  <!-- sky + horizon glow -->
+  <rect x="0" y="0" width="1000" height="770" fill="url(#sky)"/>
+  <rect x="0" y="120" width="1000" height="650" fill="url(#sun)"/>
+
+  <!-- distant island ridge (far, hazy) -->
+  <path d="M0 742 C 120 700 210 712 300 726 C 360 700 430 706 500 720 C 590 686 680 704 760 720 C 850 706 930 716 1000 728 L1000 772 L0 772 Z" fill="#2a5b42" opacity="0.55"/>
+
+  <!-- volcanic island silhouette (mid) -->
+  <path d="M0 770 L0 748 C 90 742 150 736 210 726 C 300 640 372 566 452 566 C 520 566 566 626 628 706 C 690 724 760 726 830 734 C 900 740 960 748 1000 752 L1000 770 Z" fill="#0c2a1e"/>
+  <!-- subtle crater rim highlight -->
+  <path d="M452 566 C 500 566 536 612 566 662" fill="none" stroke="#d69a4d" stroke-opacity="0.28" stroke-width="3"/>
+
+  <!-- sea -->
+  <rect x="0" y="770" width="1000" height="630" fill="url(#sea)"/>
+  <!-- sun reflection on water (soft glow) -->
+  <ellipse cx="500" cy="880" rx="130" ry="150" fill="url(#refl)"/>
+
+  <!-- palm fronds, top-left -->
+  <g fill="#06160f" opacity="0.92">
+    <path d="M-40 -20 C 150 60 250 150 300 300 C 250 210 150 150 40 130 C 170 150 250 230 280 340 C 210 250 120 210 20 210 C 150 240 210 320 230 400 C 150 300 60 280 -30 300 Z"/>
+  </g>
+  <!-- palm fronds, top-right -->
+  <g fill="#06160f" opacity="0.9">
+    <path d="M1040 -30 C 860 50 770 150 720 300 C 780 210 880 150 990 132 C 840 152 760 240 740 350 C 820 250 910 220 1010 220 C 870 250 810 330 795 410 C 880 300 970 285 1050 305 Z"/>
+  </g>
+
+  <!-- grain + vignette -->
+  <rect x="0" y="0" width="1000" height="1400" filter="url(#grain)" opacity="0.05"/>
+  <rect x="0" y="0" width="1000" height="1400" fill="url(#vignette)"/>
+</svg>
