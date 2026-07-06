@@ -13,7 +13,7 @@ before the corresponding milestone payment is released.
 |---|---|---|---|---|
 | 1 | [Inception Report](D1-inception-report.md) — work plan, requirements, architecture proposal | Day 10 (~10 Jul 2026) | **Draft — in review** | |
 | 2 | Prototype Dashboard — deployed to staging for DoCC review & UAT | Day 24 (~24 Jul 2026) | In progress (staging demo live) | |
-| 3 | Final Dashboard — production deployment incl. UAT feedback, field forms, GIS layers, MFAT-aligned reports; admin access handed to DoCC | Day 28 (~28 Jul 2026) | Not started | |
+| 3 | Final Dashboard — production deployment incl. UAT feedback, field forms, MFAT-aligned reports; admin access handed to DoCC *(GIS layers descoped — see change record)* | Day 28 (~28 Jul 2026) | Not started | |
 | 4 | Documentation & Training — role-specific user manual, technical architecture, sysadmin guide, migration runbook; 2 training sessions (M&E Officers Day 27, Field Staff Day 28) | Day 29 (~29 Jul 2026) | Docs drafted in `docs/`; training not yet scheduled | |
 | 5 | Final Report + full system handover incl. source code repository | Day 30 (~30 Jul 2026) | Not started | |
 
@@ -30,6 +30,15 @@ before the corresponding milestone payment is released.
 **Change control:** scope additions after Day 10 requirements sign-off
 require written approval from the DoCC Project Manager (risk register,
 quotation §Risk Management).
+
+## Change record
+
+| Date | Change | Scope affected |
+|---|---|---|
+| 05 Jul 2026 | GIS/map features removed from the contract (GIS layers dropped from D2 prototype scope and D3 final dashboard scope; the Analysis map already built remains in the app as-is, with no further GIS work) | D2, D3 |
+
+File the written variation/approval for each change in `acceptance/`
+alongside the milestone approvals.
 
 ## Acceptance record
 
