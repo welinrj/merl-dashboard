@@ -45,17 +45,7 @@
 
   <!-- sea -->
   <rect x="0" y="770" width="1000" height="630" fill="url(#sea)"/>
-  <!-- sun reflection on water (soft glow) -->
-  <ellipse cx="500" cy="880" rx="130" ry="150" fill="url(#refl)"/>
-
-  <!-- palm fronds, top-left -->
-  <g fill="#06160f" opacity="0.92">
-    <path d="M-40 -20 C 150 60 250 150 300 300 C 250 210 150 150 40 130 C 170 150 250 230 280 340 C 210 250 120 210 20 210 C 150 240 210 320 230 400 C 150 300 60 280 -30 300 Z"/>
-  </g>
-  <!-- palm fronds, top-right -->
-  <g fill="#06160f" opacity="0.9">
-    <path d="M1040 -30 C 860 50 770 150 720 300 C 780 210 880 150 990 132 C 840 152 760 240 740 350 C 820 250 910 220 1010 220 C 870 250 810 330 795 410 C 880 300 970 285 1050 305 Z"/>
-  </g>
+  <!-- (palm fronds + water glow are rendered as an animated inline layer) -->
 
   <!-- grain + vignette -->
   <rect x="0" y="0" width="1000" height="1400" filter="url(#grain)" opacity="0.05"/>
