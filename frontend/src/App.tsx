@@ -23,6 +23,11 @@ import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
 // The "Staging" badge is shown only when NOT in production.
 const IS_STAGING = import.meta.env.VITE_APP_ENV !== 'production';
 
+// Base-aware asset URL so the coat of arms resolves under the GitHub Pages
+// project path (/merl-dashboard/) as well as at the site root. HashRouter
+// keeps the document at BASE_URL on every route, so this stays correct.
+const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
+
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const ROLES: Record<UserRole, string> = {
   ROLE_ADMIN:        'System Administrator',
@@ -224,7 +229,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         <div className="lg-brand__bar">Official Government of Vanuatu system</div>
         <div className="lg-brand__body">
           <div className="lg-crest">
-            <img src="/vanuatu-coat-of-arms.svg" alt="Coat of arms of the Republic of Vanuatu" />
+            <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
           </div>
           <div>
             <div className="lg-ident__k">Republic of Vanuatu</div>
@@ -253,7 +258,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         <div className="lg-card">
           <div className="lg-mobile-brand">
             <div className="lg-mobile-brand__crest">
-              <img src="/vanuatu-coat-of-arms.svg" alt="Coat of arms of the Republic of Vanuatu" />
+              <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
             </div>
             <div>
               <div style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--green-700)' }}>Republic of Vanuatu</div>
@@ -536,7 +541,7 @@ export default function App() {
         <div style={{ padding: '1.5rem 1.25rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(212,168,67,0.12)', border: '1.5px solid rgba(212,168,67,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 4 }}>
-              <img src="/vanuatu-coat-of-arms.svg" alt="Vanuatu Coat of Arms"
+              <img src={CREST} alt="Vanuatu Coat of Arms"
                 style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'brightness(1.8) drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
             </div>
             <div>
