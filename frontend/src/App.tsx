@@ -584,11 +584,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* Center pill nav (desktop) */}
+        {/* Center pill nav (desktop) — text-only tabs, like the reference */}
         <nav className="topnav-links" style={{ margin: '0 auto' }}>
-          {visibleNav.map(({ key, path, label, Icon }) => (
+          {visibleNav.map(({ key, path, label }) => (
             <NavLink key={key} to={path} className={({ isActive }) => `topnav-link${isActive ? ' active' : ''}`}>
-              <Icon size={15} />{label}
+              {label}
             </NavLink>
           ))}
         </nav>
