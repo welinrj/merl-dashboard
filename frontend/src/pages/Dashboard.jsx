@@ -4,10 +4,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, CartesianGrid,
 } from 'recharts';
-import createGlobe from 'cobe';
 import { PROJECTS, ALL_INDICATORS, DASHBOARD_SUMMARY } from '../mockData';
 import { supabase } from '../supabaseClient';
-import { TrendingUp, AlertTriangle, ArrowRight, Globe2 } from 'lucide-react';
+import { TrendingUp, AlertTriangle, ArrowRight } from 'lucide-react';
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
 const pct  = (a, b) => b ? Math.round((a / b) * 100) : 0;
@@ -279,92 +278,6 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-/* ── Vanuatu 3D Globe (cobe) ─────────────────────────────────────────────── */
-function VanuatuGlobe() {
-  const canvasRef   = useRef(null);
-  const pointerDown = useRef(null);
-  const lastDelta   = useRef(0);
-  const phiRef      = useRef(3.4);
-  const [rotOffset, setRotOffset] = useState(0);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    let width = canvas.offsetWidth;
-
-    const globe = createGlobe(canvas, {
-      devicePixelRatio: 2,
-      width:  width * 2,
-      height: width * 2,
-      phi:    3.4,
-      theta:  0.25,
-      dark:   0,
-      diffuse: 1.4,
-      mapSamples: 20000,
-      mapBrightness: 7,
-      baseColor:   [0.90, 0.97, 0.92],
-      markerColor: [0.07, 0.55, 0.28],
-      glowColor:   [0.75, 0.97, 0.80],
-      markers: [
-        { location: [-17.733, 168.322], size: 0.09 }, // Shefa — Port Vila
-        { location: [-15.516, 167.183], size: 0.07 }, // Sanma — Luganville
-        { location: [-15.283, 168.033], size: 0.06 }, // Penama
-        { location: [-16.067, 167.424], size: 0.06 }, // Malampa
-        { location: [-13.878, 167.557], size: 0.05 }, // Torba
-        { location: [-19.533, 169.267], size: 0.07 }, // Tafea
-      ],
-      onRender: state => {
-        if (!pointerDown.current) phiRef.current += 0.003;
-        state.phi    = phiRef.current + rotOffset;
-        state.width  = width * 2;
-        state.height = width * 2;
-      },
-    });
-
-    requestAnimationFrame(() => { if (canvas) canvas.style.opacity = '1'; });
-
-    const onResize = () => { width = canvas.offsetWidth; };
-    window.addEventListener('resize', onResize);
-    return () => { globe.destroy(); window.removeEventListener('resize', onResize); };
-  }, [rotOffset]);
-
-  return (
-    <div style={{ position:'relative', display:'flex', flexDirection:'column', alignItems:'center' }}>
-      <div style={{
-        position:'absolute', top:'50%', left:'50%',
-        transform:'translate(-50%,-50%)',
-        width:'88%', aspectRatio:'1', borderRadius:'50%',
-        background:'radial-gradient(circle, rgba(74,171,130,0.14) 0%, transparent 70%)',
-        pointerEvents:'none',
-      }} />
-      <canvas
-        ref={canvasRef}
-        style={{ width:'100%', aspectRatio:'1', cursor:'grab', opacity:0, transition:'opacity 1.2s ease', borderRadius:'50%' }}
-        onPointerDown={e => { pointerDown.current = e.clientX - lastDelta.current; canvasRef.current.style.cursor = 'grabbing'; }}
-        onPointerUp={() => { pointerDown.current = null; canvasRef.current.style.cursor = 'grab'; }}
-        onPointerOut={() => { pointerDown.current = null; canvasRef.current.style.cursor = 'grab'; }}
-        onMouseMove={e => {
-          if (pointerDown.current !== null) {
-            const delta = e.clientX - pointerDown.current;
-            lastDelta.current = delta;
-            setRotOffset(delta / 180);
-          }
-        }}
-        onTouchMove={e => {
-          if (pointerDown.current !== null && e.touches[0]) {
-            const delta = e.touches[0].clientX - pointerDown.current;
-            lastDelta.current = delta;
-            setRotOffset(delta / 100);
-          }
-        }}
-      />
-      <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', marginTop:'0.75rem', color:'var(--text-3)', fontSize:'0.6875rem' }}>
-        <Globe2 size={11} /> Vanuatu — 6 province locations · drag to rotate
-      </div>
-    </div>
-  );
-}
-
 /* ── SVG progress ring ───────────────────────────────────────────────────── */
 function ProgressRing({ value, total, color, size = 64, stroke = 5 }) {
   const p = pct(value, total);
@@ -457,52 +370,36 @@ export default function Dashboard({ user }) {
         <KpiCard label="At Risk / Off Track" value={S.indicators_amber + S.indicators_red}  sub={`${S.indicators_amber} at risk · ${S.indicators_red} off track`}   color={S.indicators_red > 0 ? 'red' : 'amber'} icon={AlertTriangle} animate />
       </div>
 
-      {/* ── Globe + charts ────────────────────────────────────────────── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:'1rem', marginBottom:'1.5rem' }}>
-
-        <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
-          {/* Budget bar chart */}
-          <div className="card">
-            <div className="section-label" style={{ marginBottom:'1rem' }}>Budget vs Expenditure by Component (VUV M)</div>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={budgetData} barGap={4} barSize={16}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--green-50)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize:11, fill:'var(--text-3)', fontFamily:'var(--font-ui)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize:10, fill:'var(--text-3)', fontFamily:'var(--font-ui)' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="Budget" fill="var(--green-100)" radius={[4,4,0,0]} name="Budget" />
-                <Bar dataKey="Spent"  fill="var(--green-600)" radius={[4,4,0,0]} name="Spent" />
-              </BarChart>
-            </ResponsiveContainer>
-            <div style={{ display:'flex', gap:'1rem', marginTop:'0.5rem' }}>
-              {[['var(--green-100)','Budget'],['var(--green-600)','Spent']].map(([c,l]) => (
-                <div key={l} style={{ display:'flex', alignItems:'center', gap:'0.375rem', fontSize:'0.75rem', color:'var(--text-3)' }}>
-                  <span style={{ width:10, height:10, borderRadius:2, background:c }}/>{l}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 3D progress rings */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.75rem' }}>
-            <StatRing label="On Track"  value={S.indicators_green} total={S.total_indicators} color="#1a8c4e" />
-            <StatRing label="At Risk"   value={S.indicators_amber} total={S.total_indicators} color="#c97b00" />
-            <StatRing label="Off Track" value={S.indicators_red}   total={S.total_indicators} color="#c0392b" />
+      {/* ── Charts ────────────────────────────────────────────────────── */}
+      <div style={{ display:'flex', flexDirection:'column', gap:'1rem', marginBottom:'1.5rem' }}>
+        {/* Budget bar chart */}
+        <div className="card">
+          <div className="section-label" style={{ marginBottom:'1rem' }}>Budget vs Expenditure by Component (VUV M)</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={budgetData} barGap={4} barSize={22}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--green-50)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize:11, fill:'var(--text-3)', fontFamily:'var(--font-ui)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize:10, fill:'var(--text-3)', fontFamily:'var(--font-ui)' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="Budget" fill="var(--green-100)" radius={[4,4,0,0]} name="Budget" />
+              <Bar dataKey="Spent"  fill="var(--green-600)" radius={[4,4,0,0]} name="Spent" />
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ display:'flex', gap:'1rem', marginTop:'0.5rem' }}>
+            {[['var(--green-100)','Budget'],['var(--green-600)','Spent']].map(([c,l]) => (
+              <div key={l} style={{ display:'flex', alignItems:'center', gap:'0.375rem', fontSize:'0.75rem', color:'var(--text-3)' }}>
+                <span style={{ width:10, height:10, borderRadius:2, background:c }}/>{l}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 3D Globe */}
-        <TiltCard className="card" style={{ display:'flex', flexDirection:'column', justifyContent:'center' }}>
-          <div className="section-label" style={{ marginBottom:'0.75rem', textAlign:'center' }}>Project Coverage</div>
-          <VanuatuGlobe />
-          <div style={{ marginTop:'0.875rem', display:'flex', flexWrap:'wrap', gap:'0.4rem', justifyContent:'center' }}>
-            {['Shefa','Sanma','Penama','Malampa','Torba','Tafea'].map(p => (
-              <span key={p} style={{ fontSize:'0.625rem', fontWeight:700, background:'var(--green-50)', color:'var(--green-800)', border:'1px solid var(--green-100)', borderRadius:9999, padding:'0.15rem 0.5rem', letterSpacing:'0.04em' }}>
-                {p}
-              </span>
-            ))}
-          </div>
-        </TiltCard>
+        {/* progress rings */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.75rem' }}>
+          <StatRing label="On Track"  value={S.indicators_green} total={S.total_indicators} color="#1a8c4e" />
+          <StatRing label="At Risk"   value={S.indicators_amber} total={S.total_indicators} color="#c97b00" />
+          <StatRing label="Off Track" value={S.indicators_red}   total={S.total_indicators} color="#c0392b" />
+        </div>
       </div>
 
       {/* ── Indicators table + donut ──────────────────────────────────── */}

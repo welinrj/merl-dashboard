@@ -1,6 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   BarChart, Bar, Legend,
@@ -20,15 +18,6 @@ const DOMAIN_META = {
   learning:   { label: 'Learning',   short: 'LRN', color: '#7c3aed' },
 };
 const DOMAINS = Object.keys(DOMAIN_META);
-
-const EVENT_COLORS = {
-  cyclone: '#d21034', flood: '#2563eb', drought: '#c99700',
-  sea_level_rise: '#0891b2', acidification: '#7c3aed', other: '#64748b',
-};
-const EVENT_LABEL = {
-  cyclone: 'Cyclone', flood: 'Flood', drought: 'Drought',
-  sea_level_rise: 'Sea-level rise', acidification: 'Acidification', other: 'Other',
-};
 
 function qLabel(dateStr) {
   const d = new Date(dateStr);
@@ -69,21 +58,19 @@ export default function Analysis() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [trends, budget, status, events, engage] = await Promise.all([
+      const [trends, budget, status, engage] = await Promise.all([
         supabase.from('v_indicator_trends').select('code,name,domain,value,target_value,reporting_period,verified').eq('verified', true).order('reporting_period'),
         supabase.from('v_domain_budget').select('domain,budget_vuv,spent_vuv'),
         supabase.from('v_indicator_status').select('code,name,domain,baseline_value,target_value,current_value').order('code'),
-        supabase.from('v_ld_events').select('event_name,event_type,onset_type,lat,lng,economic_loss_vuv,provinces_affected'),
         supabase.from('v_engagement_stats').select('*'),
       ]);
       if (cancelled) return;
-      const firstErr = trends.error || budget.error || status.error || events.error || engage.error;
+      const firstErr = trends.error || budget.error || status.error || engage.error;
       if (firstErr) { setError(firstErr.message); return; }
       setData({
         trends: trends.data ?? [],
         budget: budget.data ?? [],
         status: status.data ?? [],
-        events: events.data ?? [],
         engage: engage.data ?? [],
       });
     })();
@@ -158,10 +145,10 @@ export default function Analysis() {
       <div style={{ marginBottom: '1.75rem' }}>
         <div className="section-label" style={{ marginBottom: '0.375rem' }}>Analytics</div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.875rem', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.025em', margin: 0 }}>
-          Analysis &amp; GIS
+          Analysis
         </h1>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>
-          Live cross-domain trend analysis, budget visualisation, GEDSI reach, and loss &amp; damage event mapping.
+          Live cross-domain trend analysis, budget visualisation, and GEDSI reach.
         </p>
       </div>
 
@@ -267,50 +254,6 @@ export default function Analysis() {
         </ResponsiveContainer>
       </div>
 
-      {/* GIS Map — L&D events */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
-          <div className="section-label" style={{ marginBottom: '0.25rem' }}>Geographic Distribution</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.0625rem', fontWeight: 600, color: 'var(--text-1)' }}>
-            Documented Loss &amp; Damage Events — Vanuatu
-          </div>
-        </div>
-        <div style={{ height: 440 }}>
-          <MapContainer center={[-16.5, 167.9]} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />
-            {data.events.map((e, i) => {
-              const color = EVENT_COLORS[e.event_type] ?? EVENT_COLORS.other;
-              const loss = Number(e.economic_loss_vuv || 0);
-              const radius = 8 + Math.min(16, Math.log10(Math.max(loss, 1)) * 1.6);
-              return (
-                <CircleMarker key={i} center={[e.lat, e.lng]} radius={radius}
-                  pathOptions={{ color, fillColor: color, fillOpacity: 0.65, weight: 2 }}>
-                  <Popup>
-                    <div style={{ fontFamily: 'var(--font-ui)', minWidth: 200, padding: '0.25rem' }}>
-                      <div style={{ fontWeight: 700, color, fontSize: '0.7rem', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.375rem' }}>
-                        {EVENT_LABEL[e.event_type] ?? e.event_type} · {e.onset_type === 'slow_onset' ? 'Slow onset' : 'Extreme'}
-                      </div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-1)', marginBottom: '0.375rem', fontSize: '0.875rem', lineHeight: 1.3 }}>{e.event_name}</div>
-                      {loss > 0 && <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Economic loss: VUV {fmtM(loss)}</div>}
-                      {e.provinces_affected?.length > 0 && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{e.provinces_affected.join(', ')}</div>
-                      )}
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              );
-            })}
-          </MapContainer>
-        </div>
-        <div style={{ padding: '0.875rem 1.5rem', background: 'var(--cream)', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-          {Object.keys(EVENT_LABEL).map(k => (
-            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-2)' }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: EVENT_COLORS[k] }} />
-              {EVENT_LABEL[k]}
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
