@@ -181,8 +181,10 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
   return (
     <div className="lg-root">
       <style>{`
-        .lg-root{min-height:100vh;min-height:100dvh;display:flex;font-family:var(--font-ui);background:var(--cream);color:var(--text-1)}
-        .lg-brand{position:relative;width:44%;max-width:560px;flex-shrink:0;overflow:hidden;color:#fff;background:linear-gradient(158deg,var(--green-900) 0%,var(--green-800) 55%,#17402c 100%);display:flex;flex-direction:column}
+        .lg-root{position:relative;min-height:100vh;min-height:100dvh;display:flex;font-family:var(--font-ui);background:var(--cream);color:var(--text-1)}
+        .lg-flagbar{position:absolute;top:0;left:0;right:0;height:5px;z-index:20;background:linear-gradient(90deg,var(--red-600) 0 33.33%,var(--gold-500) 33.33% 66.66%,var(--green-600) 66.66% 100%)}
+        .lg-flagrule{width:72px;height:3px;border-radius:2px;margin:.15rem auto 0;background:linear-gradient(90deg,var(--red-500) 0 33%,var(--gold-400) 33% 66%,var(--green-500) 66% 100%)}
+        .lg-brand{position:relative;width:44%;max-width:560px;flex-shrink:0;overflow:hidden;color:#fff;background:linear-gradient(158deg,var(--green-800) 0%,var(--green-900) 48%,var(--ink) 100%);display:flex;flex-direction:column}
         .lg-photo{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;transform:scale(1.02)}
         .lg-anim{position:absolute;inset:0;z-index:0;width:100%;height:100%;pointer-events:none}
         .lg-frond--l{transform-box:fill-box;transform-origin:0% 0%}
@@ -199,7 +201,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         @keyframes lgBreathe{0%,100%{opacity:.4}50%{opacity:.8}}
         @keyframes lgDrift1{from{transform:translateX(-16px)}to{transform:translateX(16px)}}
         @keyframes lgDrift2{from{transform:translateX(12px)}to{transform:translateX(-14px)}}
-        .lg-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(157deg,rgba(9,26,17,.9) 0%,rgba(20,52,38,.58) 42%,rgba(10,38,26,.84) 100%)}
+        .lg-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(157deg,rgba(6,24,15,.9) 0%,rgba(10,45,30,.5) 42%,rgba(4,7,5,.9) 100%)}
         .lg-brand__texture{position:absolute;inset:0;z-index:2;opacity:.05;pointer-events:none;background-image:radial-gradient(circle at 18% 30%,var(--gold-400) 1px,transparent 1px),radial-gradient(circle at 78% 68%,var(--gold-400) 1px,transparent 1px);background-size:46px 46px}
         .lg-brand__bar{position:relative;display:flex;align-items:center;gap:.6rem;padding:1.05rem 2.75rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:.6875rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-400)}
         .lg-brand__bar::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold-400);box-shadow:0 0 10px var(--gold-400)}
@@ -243,6 +245,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         @media (max-width:860px){.lg-brand{display:none}.lg-mobile-brand{display:flex;align-items:center;gap:.7rem;justify-content:center;margin-bottom:1.75rem;padding-bottom:1.4rem;border-bottom:1px solid var(--border)}}
         @media (prefers-reduced-motion:reduce){.lg-submit{transition:none}}
       `}</style>
+      <div className="lg-flagbar" />
       {/* ── Brand panel ── */}
       <aside className="lg-brand">
         <div className="lg-photo" style={{ backgroundImage: `url(${LOGIN_BG})` }} />
@@ -272,6 +275,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
           <div>
             <div className="lg-ident__k">Republic of Vanuatu</div>
             <div className="lg-ident__d">Department of Climate Change</div>
+            <div className="lg-flagrule" />
           </div>
         </div>
       </aside>
