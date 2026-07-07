@@ -8,19 +8,40 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Vanuatu flag-inspired palette
+        // ── Vanuatu national palette, standardised across the portal ──
+        // green #009543 · red #D21034 · gold #FDCE12 · black. Overriding
+        // Tailwind's default green/red/gold scales themes every utility class
+        // (bg-green-700, text-red-600, …) to the flag colours.
+        green: {
+          50: '#eefbf3', 100: '#d6f5e4', 200: '#a5e3c0', 300: '#6fd39d',
+          400: '#34c273', 500: '#18b25b', 600: '#009543', 700: '#00713a',
+          800: '#063a26', 900: '#04231a', 950: '#04231a',
+        },
+        emerald: {
+          50: '#eefbf3', 100: '#d6f5e4', 200: '#a5e3c0', 300: '#6fd39d',
+          400: '#34c273', 500: '#18b25b', 600: '#009543', 700: '#00713a',
+          800: '#063a26', 900: '#04231a', 950: '#04231a',
+        },
+        red: {
+          50: '#fef2f4', 100: '#fde0e5', 200: '#fbc7d0', 300: '#f59aab',
+          400: '#ee6480', 500: '#e8324f', 600: '#d21034', 700: '#a20c28',
+          800: '#87102a', 900: '#6f1026', 950: '#4d0b1a',
+        },
+        yellow: {
+          50: '#fff9e6', 100: '#fff6d6', 200: '#ffe9a3', 300: '#ffdd6f',
+          400: '#ffd94a', 500: '#f5c518', 600: '#d9a800', 700: '#a87f00',
+          800: '#7a5c00', 900: '#5c4500', 950: '#3d2e00',
+        },
+        amber: {
+          50: '#fff9e6', 100: '#fff6d6', 200: '#ffe9a3', 300: '#ffdd6f',
+          400: '#ffd94a', 500: '#f5c518', 600: '#d9a800', 700: '#a87f00',
+          800: '#7a5c00', 900: '#5c4500', 950: '#3d2e00',
+        },
+        // Primary brand alias (Vanuatu green)
         brand: {
-          50:  '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#eefbf3', 100: '#d6f5e4', 200: '#a5e3c0', 300: '#6fd39d',
+          400: '#34c273', 500: '#18b25b', 600: '#009543', 700: '#00713a',
+          800: '#063a26', 900: '#04231a', 950: '#04231a',
         },
         // Event type colours
         cyclone:  { DEFAULT: '#ef4444', light: '#fee2e2' },
