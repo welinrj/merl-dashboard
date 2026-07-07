@@ -683,7 +683,7 @@ function SystemTab() {
 }
 
 // ── AdminPanel (default export) ───────────────────────────────────────────────
-// `projects` and `setProjects` are passed down from App.jsx shared state.
+// Each tab is self-contained and loads its own data from Supabase.
 export default function AdminPanel({ user }) {
   const [tab, setTab] = useState('users');
 
@@ -704,7 +704,7 @@ export default function AdminPanel({ user }) {
         <TabButton label="System"    active={tab === 'system'}   onClick={() => setTab('system')} />
       </div>
 
-      {tab === 'users'    && <UsersTab projects={projects} />}
+      {tab === 'users'    && <UsersTab />}
       {tab === 'projects' && <ProjectsTab />}
       {tab === 'audit'    && <AuditTab />}
       {tab === 'system'   && <SystemTab />}
