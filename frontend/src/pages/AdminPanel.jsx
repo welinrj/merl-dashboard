@@ -1,5 +1,14 @@
-import { useState } from 'react';
-import { SYSTEM_USERS, AUDIT_LOG } from '../mockData';
+import { useState, useEffect, useCallback } from 'react';
+import { AUDIT_LOG } from '../mockData';
+import { supabase } from '../supabaseClient';
+
+const DB_ROLES = [
+  { id: 'administrator',       label: 'System Administrator', color: 'bg-red-100 text-red-700' },
+  { id: 'docc_senior_officer', label: 'DoCC Senior Officer',  color: 'bg-purple-100 text-purple-700' },
+  { id: 'docc_me_officer',     label: 'DoCC M&E Officer',     color: 'bg-blue-100 text-blue-700' },
+  { id: 'project_manager',     label: 'Project Manager',      color: 'bg-green-100 text-green-700' },
+  { id: 'field_staff',         label: 'Field Staff',          color: 'bg-gray-100 text-gray-700' },
+];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ROLES = [
@@ -38,107 +47,183 @@ function TabButton({ label, active, onClick }) {
 }
 
 // ── Users Tab ─────────────────────────────────────────────────────────────────
-function UsersTab({ projects }) {
-  const [users, setUsers] = useState(SYSTEM_USERS);
+function UsersTab() {
+  const [users, setUsers]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', role: 'ROLE_FIELD_STAFF', project: '' });
+  const [form, setForm]         = useState({ email: '', full_name: '', role: 'field_staff', organisation: '' });
+  const [busy, setBusy]         = useState(false);
+  const [cred, setCred]         = useState(null);
 
-  const addUser = () => {
-    if (!form.name.trim() || !form.email.trim()) return;
-    setUsers(prev => [
-      ...prev,
-      { id: prev.length + 1, ...form, active: true, last_login: null },
-    ]);
-    setForm({ name: '', email: '', role: 'ROLE_FIELD_STAFF', project: '' });
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('v_admin_users').select('*').order('full_name');
+    if (error) setErr(error.message); else { setUsers(data || []); setErr(''); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const addUser = async () => {
+    if (!form.email.trim() || !form.full_name.trim()) { setErr('Full name and email are required.'); return; }
+    setBusy(true); setErr('');
+    const { data, error } = await supabase.rpc('admin_create_user', {
+      p_email: form.email.trim(), p_full_name: form.full_name.trim(),
+      p_role: form.role, p_organisation: form.organisation.trim() || null,
+    });
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    setCred({ email: form.email.trim().toLowerCase(), password: data });
+    setForm({ email: '', full_name: '', role: 'field_staff', organisation: '' });
     setShowForm(false);
+    load();
+  };
+
+  const resetPassword = async (u) => {
+    setBusy(true); setErr('');
+    const { data, error } = await supabase.rpc('admin_reset_password', { p_id: u.id });
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    setCred({ email: u.email, password: data });
+  };
+
+  const toggleActive = async (u) => {
+    setBusy(true); setErr('');
+    const { error } = await supabase.rpc('admin_set_active', { p_id: u.id, p_active: !u.active });
+    setBusy(false);
+    if (error) setErr(error.message); else load();
+  };
+
+  const removeUser = async (u) => {
+    if (!window.confirm(`Permanently delete ${u.full_name}?\n\nThis cannot be undone. To preserve the audit trail, use Deactivate instead.`)) return;
+    setBusy(true); setErr('');
+    const { error } = await supabase.rpc('admin_delete_user', { p_id: u.id });
+    setBusy(false);
+    if (error) setErr(error.message); else load();
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-base font-bold text-gray-800">System Users ({users.length})</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="text-sm bg-green-700 text-white px-4 py-1.5 rounded-lg hover:bg-green-800 transition"
-        >
+        <button onClick={() => setShowForm(!showForm)}
+          className="text-sm bg-green-700 text-white px-4 py-1.5 rounded-lg hover:bg-green-800 transition">
           + Add User
         </button>
       </div>
+
+      {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
 
       {showForm && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
           <h3 className="text-sm font-bold text-green-800">New User</h3>
           <div className="grid grid-cols-2 gap-3">
-            <input
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              placeholder="Full name"
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
-            />
-            <input
-              value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
-              placeholder="Email address"
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
-            />
-            <select
-              value={form.role}
-              onChange={e => setForm({ ...form, role: e.target.value })}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
-            >
-              {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+            <input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })}
+              placeholder="Full name" className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
+            <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} type="email"
+              placeholder="Email address" className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
+            <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full">
+              {DB_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
             </select>
-            <select
-              value={form.project}
-              onChange={e => setForm({ ...form, project: e.target.value })}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
-            >
-              <option value="">— No project assigned —</option>
-              {projects.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
-            </select>
+            <input value={form.organisation} onChange={e => setForm({ ...form, organisation: e.target.value })}
+              placeholder="Organisation (optional)" className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
           </div>
           <div className="flex gap-2">
-            <button onClick={addUser} className="text-sm bg-green-700 text-white px-4 py-1.5 rounded-lg hover:bg-green-800">Save</button>
-            <button onClick={() => setShowForm(false)} className="text-sm text-gray-600 px-4 py-1.5 rounded-lg hover:bg-gray-100">Cancel</button>
+            <button onClick={addUser} disabled={busy}
+              className="text-sm bg-green-700 text-white px-4 py-1.5 rounded-lg hover:bg-green-800 disabled:opacity-60">
+              {busy ? 'Creating…' : 'Create user'}
+            </button>
+            <button onClick={() => { setShowForm(false); setErr(''); }}
+              className="text-sm text-gray-600 px-4 py-1.5 rounded-lg hover:bg-gray-100">Cancel</button>
           </div>
         </div>
       )}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
-            <th className="pb-2 pr-4">Name</th>
-            <th className="pb-2 pr-4">Email</th>
-            <th className="pb-2 pr-4">Role</th>
-            <th className="pb-2 pr-4">Project</th>
-            <th className="pb-2 pr-4">Last Login</th>
-            <th className="pb-2">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {users.map(u => {
-            const role = ROLES.find(r => r.id === u.role);
-            return (
-              <tr key={u.id} className="hover:bg-gray-50">
-                <td className="py-2.5 pr-4 font-medium text-gray-800">{u.name}</td>
-                <td className="py-2.5 pr-4 text-gray-500">{u.email}</td>
-                <td className="py-2.5 pr-4">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${role?.color || 'bg-gray-100 text-gray-600'}`}>
-                    {role?.label || u.role}
-                  </span>
-                </td>
-                <td className="py-2.5 pr-4 text-gray-500 font-mono text-xs">{u.project || '—'}</td>
-                <td className="py-2.5 pr-4 text-gray-400 text-xs">
-                  {u.last_login ? new Date(u.last_login).toLocaleDateString() : '—'}
-                </td>
-                <td className="py-2.5">
-                  <span className={`w-2 h-2 rounded-full inline-block ${u.active ? 'bg-green-500' : 'bg-gray-300'}`} />
-                </td>
+      {loading ? (
+        <div className="text-sm text-gray-400 py-6">Loading users…</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
+                <th className="pb-2 pr-4">Name</th>
+                <th className="pb-2 pr-4">Email</th>
+                <th className="pb-2 pr-4">Role</th>
+                <th className="pb-2 pr-4">Organisation</th>
+                <th className="pb-2 pr-4">Status</th>
+                <th className="pb-2 text-right">Actions</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {users.map(u => {
+                const role = DB_ROLES.find(r => r.id === u.role);
+                return (
+                  <tr key={u.id} className="hover:bg-gray-50 align-middle">
+                    <td className="py-2.5 pr-4 font-medium text-gray-800">{u.full_name}</td>
+                    <td className="py-2.5 pr-4 text-gray-500">{u.email}</td>
+                    <td className="py-2.5 pr-4">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${role?.color || 'bg-gray-100 text-gray-600'}`}>
+                        {role?.label || u.role}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4 text-gray-500 text-xs">{u.organisation || '—'}</td>
+                    <td className="py-2.5 pr-4">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.active ? 'text-green-700' : 'text-gray-400'}`}>
+                        <span className={`w-2 h-2 rounded-full inline-block ${u.active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        {u.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-right whitespace-nowrap">
+                      <button onClick={() => resetPassword(u)} disabled={busy || !u.has_login}
+                        className="text-xs font-semibold text-green-700 hover:underline disabled:text-gray-300 disabled:no-underline mr-3">
+                        Reset password
+                      </button>
+                      <button onClick={() => toggleActive(u)} disabled={busy}
+                        className="text-xs font-semibold text-gray-600 hover:underline mr-3">
+                        {u.active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button onClick={() => removeUser(u)} disabled={busy}
+                        className="text-xs font-semibold text-red-600 hover:underline">
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {users.length === 0 && (
+                <tr><td colSpan={6} className="py-6 text-sm text-gray-400">No users yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {cred && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCred(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900">Temporary password</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Shown once. Share it securely with the user — they should change it after signing in.
+              Passwords are stored as one-way hashes and can never be viewed again.
+            </p>
+            <div className="mt-4 space-y-1">
+              <div className="text-xs font-semibold text-gray-400 uppercase">Email</div>
+              <div className="font-mono text-sm text-gray-800 break-all">{cred.email}</div>
+              <div className="text-xs font-semibold text-gray-400 uppercase pt-3">Temporary password</div>
+              <div className="flex items-center gap-2">
+                <code className="font-mono text-sm bg-gray-100 border border-gray-200 rounded px-2 py-1 flex-1 break-all">{cred.password}</code>
+                <button onClick={() => navigator.clipboard?.writeText(cred.password)}
+                  className="text-xs font-semibold text-green-700 hover:underline">Copy</button>
+              </div>
+            </div>
+            <button onClick={() => setCred(null)}
+              className="mt-5 w-full bg-green-700 text-white text-sm font-semibold rounded-lg py-2 hover:bg-green-800">
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
