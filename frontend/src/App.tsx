@@ -30,11 +30,11 @@ const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
 // Faded scenic backdrop for the sign-in brand panel. To use a real
 // photograph instead, drop a file in public/ and point LOGIN_BG at it.
 const LOGIN_BG = `${import.meta.env.BASE_URL}vanuatu-login-bg.svg`;
-// Partner / funder logos shown in the portal footer.
-// MFAT (New Zealand Ministry of Foreign Affairs & Trade) is the official
-// transparent logo. DOCC_LOGO points at an optional department logo file:
-// drop the official DoCC logo into public/docc-logo.png and it replaces the
-// coat-of-arms identity lockup automatically (onError falls back until then).
+// Partner / funder logos shown in the portal footer. Both are the official
+// transparent marks: MFAT (New Zealand Ministry of Foreign Affairs & Trade,
+// Manatū Aorere) and the Department of Climate Change (Government of Vanuatu).
+// The footer's <img> keeps an onError fallback to a national-emblem lockup as
+// a safety net if the DoCC logo ever fails to load.
 const MFAT_LOGO = `${import.meta.env.BASE_URL}mfat-logo.png`;
 const DOCC_LOGO = `${import.meta.env.BASE_URL}docc-logo.png`;
 
@@ -690,8 +690,8 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minWidth: 0 }}>
             <img
               src={DOCC_LOGO}
-              alt="Department of Climate Change"
-              style={{ height: 32, width: 'auto' }}
+              alt="Department of Climate Change — Government of Vanuatu"
+              style={{ height: 38, width: 'auto' }}
               onError={(e) => {
                 const img = e.currentTarget;
                 img.style.display = 'none';
