@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Database,
   Activity, FileBarChart, Settings, LogOut,
@@ -14,6 +14,7 @@ import Datasets   from './pages/Datasets';
 import Analysis   from './pages/Analysis';
 import Reports    from './pages/Reports';
 import AdminPanel from './pages/AdminPanel';
+import ErrorBoundary from './components/ErrorBoundary';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
 
@@ -435,6 +436,7 @@ export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [booting, setBooting] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
 
   // ── Session restore ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -666,16 +668,18 @@ export default function App() {
         </header>
 
         <main style={{ flex: 1, overflowY: 'auto', background: 'var(--cream)' }} className="scrollbar-thin">
-          <Routes>
-            <Route path="/" element={<Navigate to={defaultPath} replace />} />
-            <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard user={user} /> : <Navigate to={defaultPath} replace />} />
-            <Route path="/projects"  element={allowed.includes('projects')  ? <Projects /> : <Navigate to={defaultPath} replace />} />
-            <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user} /> : <Navigate to={defaultPath} replace />} />
-            <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis /> : <Navigate to={defaultPath} replace />} />
-            <Route path="/reports"   element={allowed.includes('reports')   ? <Reports   user={user} /> : <Navigate to={defaultPath} replace />} />
-            <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
-            <Route path="*"          element={<Navigate to={defaultPath} replace />} />
-          </Routes>
+          <ErrorBoundary key={location.pathname}>
+            <Routes>
+              <Route path="/" element={<Navigate to={defaultPath} replace />} />
+              <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/projects"  element={allowed.includes('projects')  ? <Projects /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/reports"   element={allowed.includes('reports')   ? <Reports   user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="*"          element={<Navigate to={defaultPath} replace />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
 
         {/* Partner / funder footer */}
