@@ -476,7 +476,8 @@ function ProjectsTab({ projects, setProjects }) {
       )}
 
       {/* Projects table */}
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[640px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
             <th className="pb-2 pr-4">Project Name</th>
@@ -519,6 +520,7 @@ function ProjectsTab({ projects, setProjects }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -528,7 +530,8 @@ function AuditTab() {
   return (
     <div className="space-y-4">
       <h2 className="text-base font-bold text-gray-800">Audit Log</h2>
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[560px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
             <th className="pb-2 pr-4">Timestamp</th>
@@ -550,6 +553,7 @@ function AuditTab() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

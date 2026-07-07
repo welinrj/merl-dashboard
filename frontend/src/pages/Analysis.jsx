@@ -141,7 +141,7 @@ export default function Analysis() {
   }
 
   return (
-    <div style={{ padding: '2rem 2.5rem', maxWidth: 1400 }} className="animate-fade-up">
+    <div style={{ maxWidth: 1400 }} className="animate-fade-up page-pad">
       <div style={{ marginBottom: '1.75rem' }}>
         <div className="section-label" style={{ marginBottom: '0.375rem' }}>Analytics</div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.875rem', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.025em', margin: 0 }}>
@@ -153,7 +153,7 @@ export default function Analysis() {
       </div>
 
       {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+      <div className="grid-2" style={{ marginBottom: '1.25rem' }}>
         <div className="card">
           <div className="section-label" style={{ marginBottom: '1rem' }}>Indicator Achievement by Domain (% of target)</div>
           <ResponsiveContainer width="100%" height={230}>

@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Database,
   Activity, FileBarChart, Settings, LogOut,
-  ChevronRight, Eye, EyeOff, AlertCircle, ShieldCheck,
+  ChevronRight, Menu, Eye, EyeOff, AlertCircle, ShieldCheck,
   Mail, Lock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -429,6 +429,7 @@ export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [booting, setBooting] = useState(true);
   const [projects, setProjects] = useState(PROJECTS);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ── Session restore ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -557,10 +558,10 @@ export default function App() {
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'var(--font-ui)' }}>
+    <div className="app-shell" style={{ display: 'flex', overflow: 'hidden', fontFamily: 'var(--font-ui)' }}>
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className={`app-sidebar${sidebarOpen ? ' open' : ''}`} style={{
         width: 232, flexShrink: 0, display: 'flex', flexDirection: 'column',
         background: 'var(--green-900)', boxShadow: '4px 0 24px rgba(0,0,0,0.18)',
       }}>
@@ -584,7 +585,7 @@ export default function App() {
 
         <nav style={{ flex: 1, padding: '0 0.625rem', overflowY: 'auto' }} className="scrollbar-thin">
           {visibleNav.map(({ key, path, label, Icon }) => (
-            <NavLink key={key} to={path} style={({ isActive }) => ({
+            <NavLink key={key} to={path} onClick={() => setSidebarOpen(false)} style={({ isActive }) => ({
               display: 'flex', alignItems: 'center', gap: '0.625rem',
               padding: '0.6rem 0.75rem', borderRadius: 8, margin: '0.125rem 0',
               textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500,
@@ -623,16 +624,24 @@ export default function App() {
         </div>
       </aside>
 
+      {/* Mobile drawer scrim */}
+      {sidebarOpen && <div className="app-scrim" onClick={() => setSidebarOpen(false)} />}
+
       {/* Main */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         <header style={{
           height: 52, flexShrink: 0,
           background: 'var(--white)', borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', padding: '0 1.75rem', gap: '0.5rem',
+          display: 'flex', alignItems: 'center', padding: '0 1rem', gap: '0.5rem',
         }}>
-          <ChevronRight size={14} style={{ color: 'var(--text-3)' }} />
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-3)', fontWeight: 500 }}>
+          <button className="app-hamburger" aria-label="Open navigation menu"
+            onClick={() => setSidebarOpen(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)', alignItems: 'center', padding: '0.25rem' }}>
+            <Menu size={20} />
+          </button>
+          <ChevronRight size={14} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-3)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             Vanuatu L&amp;D Fund Development Project
           </span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
