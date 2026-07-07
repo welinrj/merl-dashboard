@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Database,
-  Map, FileBarChart, Settings, LogOut,
+  Activity, FileBarChart, Settings, LogOut,
   ChevronRight, Eye, EyeOff, AlertCircle, ShieldCheck,
   Mail, Lock,
 } from 'lucide-react';
@@ -72,7 +72,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', path: '/dashboard', label: 'Dashboard',       Icon: LayoutDashboard },
   { key: 'projects',  path: '/projects',  label: 'L&D Components',  Icon: FolderOpen      },
   { key: 'datasets',  path: '/datasets',  label: 'Datasets',        Icon: Database        },
-  { key: 'analysis',  path: '/analysis',  label: 'Analysis & GIS',  Icon: Map             },
+  { key: 'analysis',  path: '/analysis',  label: 'Analysis',        Icon: Activity        },
   { key: 'reports',   path: '/reports',   label: 'Reports',         Icon: FileBarChart    },
   { key: 'admin',     path: '/admin',     label: 'Administration',  Icon: Settings        },
 ];

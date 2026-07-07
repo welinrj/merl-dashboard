@@ -35,7 +35,6 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'chart-vendor': ['recharts'],
-          'map-vendor': ['leaflet', 'react-leaflet'],
           'query-vendor': ['@tanstack/react-query'],
           'i18n-vendor': ['i18next', 'react-i18next'],
         },
@@ -51,8 +50,6 @@ export default defineConfig({
       'react-router-dom',
       'axios',
       'recharts',
-      'leaflet',
-      'react-leaflet',
       '@tanstack/react-query',
       'i18next',
       'react-i18next',

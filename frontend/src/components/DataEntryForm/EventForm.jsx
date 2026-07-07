@@ -1,13 +1,10 @@
-import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
-import { X, MapPin } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-
-// Leaflet is large — lazy-load the map picker
-const MapPicker = lazy(() => import('./MapPicker'));
 
 const PROVINCES = ['Malampa', 'Penama', 'Sanma', 'Shefa', 'Tafea', 'Torba'];
 
@@ -65,7 +62,6 @@ export default function EventForm({ onSuccess, onClose }) {
   const { t } = useTranslation();
   const [islandsSelected, setIslandsSelected]     = useState([]);
   const [provincesSelected, setProvincesSelected] = useState([]);
-  const [showMap, setShowMap]                     = useState(false);
   const [pinLatLng, setPinLatLng]                 = useState(null);
 
   const {
@@ -252,49 +248,30 @@ export default function EventForm({ onSuccess, onClose }) {
             />
           </div>
 
-          {/* Map pin */}
+          {/* Location coordinates (optional) */}
           <div>
-            <label className="field-label">{t('events.pinOnMap')} {t('common.optional')}</label>
-            <button
-              type="button"
-              onClick={() => setShowMap(true)}
-              className="btn-secondary"
-            >
-              <MapPin size={15} />
-              {pinLatLng
-                ? `Pin set: ${pinLatLng.lat.toFixed(4)}, ${pinLatLng.lng.toFixed(4)}`
-                : 'Set location on map'}
-            </button>
-            {pinLatLng && (
-              <button
-                type="button"
-                onClick={() => setPinLatLng(null)}
-                className="ml-2 text-xs text-red-500 hover:underline"
-              >
-                Remove
-              </button>
-            )}
+            <label className="field-label">Location coordinates {t('common.optional')}</label>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="number" step="any" placeholder="Latitude (e.g. -17.7334)"
+                value={pinLatLng?.lat ?? ''}
+                onChange={e => {
+                  const v = e.target.value;
+                  setPinLatLng(p => ({ lat: v === '' ? null : parseFloat(v), lng: p?.lng ?? null }));
+                }}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
+              />
+              <input
+                type="number" step="any" placeholder="Longitude (e.g. 168.3273)"
+                value={pinLatLng?.lng ?? ''}
+                onChange={e => {
+                  const v = e.target.value;
+                  setPinLatLng(p => ({ lat: p?.lat ?? null, lng: v === '' ? null : parseFloat(v) }));
+                }}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
+              />
+            </div>
           </div>
-
-          {/* Map Picker Modal */}
-          {showMap && (
-            <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>}>
-              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">Click to set location</h3>
-                    <button onClick={() => setShowMap(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
-                      <X size={18} />
-                    </button>
-                  </div>
-                  <MapPicker
-                    initialLatLng={pinLatLng}
-                    onSelect={(latlng) => { setPinLatLng(latlng); setShowMap(false); }}
-                  />
-                </div>
-              </div>
-            </Suspense>
-          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">

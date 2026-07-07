@@ -176,18 +176,3 @@
     to   { opacity: 1; }
   }
 }
-
-/* ── Leaflet overrides ─────────────────────────────────────────────────── */
-.leaflet-container {
-  font-family: var(--font-ui);
-  z-index: 0;
-  border-radius: 8px;
-}
-.leaflet-popup-content-wrapper {
-  border-radius: 10px;
-  box-shadow: var(--shadow-lg);
-  font-family: var(--font-ui);
-  font-size: 0.875rem;
-  border: 1px solid var(--border);
-}
-.leaflet-popup-tip { background: var(--white); }
