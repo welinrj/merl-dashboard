@@ -657,7 +657,7 @@ export default function App() {
             <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard user={user} /> : <Navigate to={defaultPath} replace />} />
             <Route path="/projects"  element={allowed.includes('projects')  ? <Projects  user={user} projects={projects} /> : <Navigate to={defaultPath} replace />} />
             <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user} /> : <Navigate to={defaultPath} replace />} />
-            <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis  user={user} /> : <Navigate to={defaultPath} replace />} />
+            <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis /> : <Navigate to={defaultPath} replace />} />
             <Route path="/reports"   element={allowed.includes('reports')   ? <Reports   user={user} /> : <Navigate to={defaultPath} replace />} />
             <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} projects={projects} setProjects={setProjects} /> : <Navigate to={defaultPath} replace />} />
             <Route path="*"          element={<Navigate to={defaultPath} replace />} />
