@@ -14,7 +14,6 @@ import Datasets   from './pages/Datasets';
 import Analysis   from './pages/Analysis';
 import Reports    from './pages/Reports';
 import AdminPanel from './pages/AdminPanel';
-import { PROJECTS } from './mockData';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
 
@@ -435,7 +434,6 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [booting, setBooting] = useState(true);
-  const [projects, setProjects] = useState(PROJECTS);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ── Session restore ────────────────────────────────────────────────────────
@@ -675,7 +673,7 @@ export default function App() {
             <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user} /> : <Navigate to={defaultPath} replace />} />
             <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis /> : <Navigate to={defaultPath} replace />} />
             <Route path="/reports"   element={allowed.includes('reports')   ? <Reports   user={user} /> : <Navigate to={defaultPath} replace />} />
-            <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} projects={projects} setProjects={setProjects} /> : <Navigate to={defaultPath} replace />} />
+            <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
             <Route path="*"          element={<Navigate to={defaultPath} replace />} />
           </Routes>
         </main>

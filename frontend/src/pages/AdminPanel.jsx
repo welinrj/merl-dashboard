@@ -229,15 +229,33 @@ function UsersTab() {
 }
 
 // ── Projects Tab ──────────────────────────────────────────────────────────────
-function ProjectsTab({ projects, setProjects }) {
+function ProjectsTab() {
   const EMPTY_FORM = {
     name: '', code: '', category: 'CC-ADAPT', lead_agency: '',
     description: '', start_date: '', end_date: '',
     budget_vuv: '', status: 'active', provinces: [],
   };
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState('');       // page-level load error
+  const [form, setForm]         = useState(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [error, setError]       = useState('');       // form-level error
+  const [busy, setBusy]         = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null); // project pending delete
+
+  const catColor = cat => CATEGORIES.find(c => c.id === cat)?.color || '#6b7280';
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr('');
+    const { data, error: e } = await supabase.from('v_projects').select('*').order('code');
+    if (e) setErr(e.message);
+    else setProjects(data ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const toggleProvince = prov =>
     setForm(f => ({
@@ -247,76 +265,82 @@ function ProjectsTab({ projects, setProjects }) {
         : [...f.provinces, prov],
     }));
 
-  const addProject = () => {
-    if (!form.name.trim()) { setError('Project name is required.'); return; }
-    if (!form.code.trim())  { setError('Project code is required.'); return; }
-    if (projects.some(p => p.code === form.code.trim())) {
-      setError(`Code "${form.code.trim()}" already exists.`); return;
-    }
+  const openAdd = () => { setEditingId(null); setForm(EMPTY_FORM); setError(''); setShowForm(true); };
+
+  const openEdit = p => {
+    setEditingId(p.id);
+    setForm({
+      name: p.name || '', code: p.code || '', category: p.category || 'CC-ADAPT',
+      lead_agency: p.lead_agency || '', description: p.description || '',
+      start_date: p.start_date || '', end_date: p.end_date || '',
+      budget_vuv: p.budget_vuv != null ? String(Math.round(Number(p.budget_vuv))) : '',
+      status: p.status || 'active', provinces: p.provinces || [],
+    });
     setError('');
+    setShowForm(true);
+  };
 
-    const cat = CATEGORIES.find(c => c.id === form.category);
-    const maxId  = Math.max(...projects.map(p => p.id), 0);
-    const maxInd = Math.max(...projects.flatMap(p => p.indicators.map(i => i.id)), 0);
-    const endYear = form.end_date ? new Date(form.end_date).getFullYear() : 2027;
+  const closeForm = () => { setShowForm(false); setEditingId(null); setForm(EMPTY_FORM); setError(''); };
 
-    const newProject = {
-      id:             maxId + 1,
-      code:           form.code.trim().toUpperCase(),
-      category:       form.category,
-      category_color: cat?.color || '#6b7280',
-      name:           form.name.trim(),
-      description:    form.description.trim() || 'Description to be added.',
-      status:         form.status,
-      start_date:     form.start_date || new Date().toISOString().slice(0, 10),
-      end_date:       form.end_date || '',
-      budget_vuv:     parseInt(form.budget_vuv) || 0,
-      spent_vuv:      0,
-      lead_agency:    form.lead_agency.trim() || 'DoCC',
-      provinces:      form.provinces.length ? form.provinces : ['Shefa'],
-      latitude:       -17.733,
-      longitude:      168.322,
-      rbm: {
-        goal: 'To be defined',
-        outcomes: [{ id: `OUT-${form.code}-1`, text: 'To be defined', outputs: [] }],
-      },
-      indicators: [
-        {
-          id:          maxInd + 1,
-          code:        `${form.code.trim().toUpperCase()}-IND-001`,
-          name:        'Key indicator (to be defined)',
-          unit:        'count',
-          baseline:    0,
-          target:      100,
-          current:     0,
-          target_year: endYear,
-          freq:        'Quarterly',
-          traffic:     'amber',
-        },
-      ],
-      quarterly: [],
+  const save = async () => {
+    if (!form.name.trim()) { setError('Project name is required.'); return; }
+    if (!editingId && !form.code.trim()) { setError('Project code is required.'); return; }
+    setBusy(true); setError('');
+
+    const common = {
+      p_name:        form.name.trim(),
+      p_category:    form.category,
+      p_lead_agency: form.lead_agency.trim() || null,
+      p_description: form.description.trim() || null,
+      p_start_date:  form.start_date || null,
+      p_end_date:    form.end_date || null,
+      p_budget_vuv:  form.budget_vuv ? Number(form.budget_vuv) : 0,
+      p_status:      form.status,
+      p_provinces:   form.provinces,
     };
 
-    setProjects(prev => [...prev, newProject]);
-    setForm(EMPTY_FORM);
-    setShowForm(false);
+    const resp = editingId
+      ? await supabase.rpc('admin_update_project', { p_id: editingId, ...common })
+      : await supabase.rpc('admin_create_project', { p_code: form.code.trim().toUpperCase(), ...common });
+
+    setBusy(false);
+    if (resp.error) { setError(resp.error.message); return; }
+    closeForm();
+    load();
+  };
+
+  const doDelete = async p => {
+    setBusy(true);
+    const { error: e } = await supabase.rpc('admin_delete_project', { p_id: p.id });
+    setBusy(false);
+    setConfirmDel(null);
+    if (e) { setErr(e.message); return; }
+    load();
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-base font-bold text-gray-800">Projects ({projects.length})</h2>
+        <h2 className="text-base font-bold text-gray-800">
+          Projects ({projects.length}){loading && <span className="ml-2 text-xs font-normal text-gray-400">loading…</span>}
+        </h2>
         <button
-          onClick={() => { setShowForm(!showForm); setError(''); }}
+          onClick={openAdd}
           className="text-sm bg-green-700 text-white px-4 py-1.5 rounded-lg hover:bg-green-800 transition"
         >
           + Add Project
         </button>
       </div>
 
+      {err && (
+        <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {err}
+        </div>
+      )}
+
       {showForm && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-green-800">New Project</h3>
+          <h3 className="text-sm font-bold text-green-800">{editingId ? 'Edit Project' : 'New Project'}</h3>
 
           {error && (
             <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -336,14 +360,20 @@ function ProjectsTab({ projects, setProjects }) {
               />
             </div>
 
-            {/* Code */}
+            {/* Code — immutable once created */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Project Code *</label>
+              <label className="text-xs text-gray-500 block mb-1">
+                Project Code{editingId ? '' : ' *'}
+              </label>
               <input
                 value={form.code}
                 onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
                 placeholder="e.g. VCRP-001"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono"
+                readOnly={!!editingId}
+                title={editingId ? 'Project code cannot be changed' : undefined}
+                className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono ${
+                  editingId ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
+                }`}
               />
             </div>
 
@@ -454,19 +484,16 @@ function ProjectsTab({ projects, setProjects }) {
             </div>
           </div>
 
-          <p className="text-xs text-gray-400 italic">
-            A placeholder indicator (IND-001) will be created automatically. You can edit indicators after saving.
-          </p>
-
           <div className="flex gap-2 pt-1">
             <button
-              onClick={addProject}
-              className="text-sm bg-green-700 text-white px-5 py-2 rounded-lg hover:bg-green-800 font-semibold"
+              onClick={save}
+              disabled={busy}
+              className="text-sm bg-green-700 text-white px-5 py-2 rounded-lg hover:bg-green-800 font-semibold disabled:opacity-60"
             >
-              Save Project
+              {busy ? 'Saving…' : editingId ? 'Save Changes' : 'Save Project'}
             </button>
             <button
-              onClick={() => { setShowForm(false); setForm(EMPTY_FORM); setError(''); }}
+              onClick={closeForm}
               className="text-sm text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100"
             >
               Cancel
@@ -486,10 +513,14 @@ function ProjectsTab({ projects, setProjects }) {
             <th className="pb-2 pr-4">Lead Agency</th>
             <th className="pb-2 pr-4">Budget (VUV)</th>
             <th className="pb-2 pr-4">Provinces</th>
-            <th className="pb-2">Status</th>
+            <th className="pb-2 pr-4">Status</th>
+            <th className="pb-2 text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
+          {!loading && projects.length === 0 && (
+            <tr><td colSpan={8} className="py-6 text-center text-sm text-gray-400">No projects yet. Click “+ Add Project” to create one.</td></tr>
+          )}
           {projects.map(p => (
             <tr key={p.id} className="hover:bg-gray-50">
               <td className="py-2.5 pr-4 font-medium text-gray-800">{p.name}</td>
@@ -497,17 +528,17 @@ function ProjectsTab({ projects, setProjects }) {
               <td className="py-2.5 pr-4">
                 <span
                   className="text-xs px-2 py-0.5 rounded-full text-white font-semibold"
-                  style={{ background: p.category_color }}
+                  style={{ background: catColor(p.category) }}
                 >
                   {p.category}
                 </span>
               </td>
-              <td className="py-2.5 pr-4 text-gray-500">{p.lead_agency}</td>
+              <td className="py-2.5 pr-4 text-gray-500">{p.lead_agency || '—'}</td>
               <td className="py-2.5 pr-4 text-gray-500">
                 {p.budget_vuv ? `${(p.budget_vuv / 1e6).toFixed(1)}M` : '—'}
               </td>
               <td className="py-2.5 pr-4 text-gray-400 text-xs">{p.provinces?.join(', ') || '—'}</td>
-              <td className="py-2.5">
+              <td className="py-2.5 pr-4">
                 <span className={`text-xs px-2 py-0.5 rounded-full font-semibold capitalize ${
                   p.status === 'active'    ? 'bg-green-100 text-green-700' :
                   p.status === 'completed' ? 'bg-blue-100 text-blue-700'  :
@@ -516,11 +547,57 @@ function ProjectsTab({ projects, setProjects }) {
                   {p.status}
                 </span>
               </td>
+              <td className="py-2.5 text-right whitespace-nowrap">
+                <button
+                  onClick={() => openEdit(p)}
+                  className="text-xs font-semibold text-green-700 hover:text-green-900 px-2 py-1 rounded hover:bg-green-50"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setConfirmDel(p)}
+                  className="text-xs font-semibold text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
       </div>
+
+      {/* Delete confirmation */}
+      {confirmDel && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => !busy && setConfirmDel(null)}
+        >
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900">Delete project?</h3>
+            <p className="text-sm text-gray-600 mt-2">
+              This permanently deletes <span className="font-semibold">{confirmDel.name}</span>{' '}
+              (<span className="font-mono text-xs">{confirmDel.code}</span>). This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => setConfirmDel(null)}
+                disabled={busy}
+                className="text-sm text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => doDelete(confirmDel)}
+                disabled={busy}
+                className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold disabled:opacity-60"
+              >
+                {busy ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -607,7 +684,7 @@ function SystemTab() {
 
 // ── AdminPanel (default export) ───────────────────────────────────────────────
 // `projects` and `setProjects` are passed down from App.jsx shared state.
-export default function AdminPanel({ user, projects, setProjects }) {
+export default function AdminPanel({ user }) {
   const [tab, setTab] = useState('users');
 
   return (
@@ -628,7 +705,7 @@ export default function AdminPanel({ user, projects, setProjects }) {
       </div>
 
       {tab === 'users'    && <UsersTab projects={projects} />}
-      {tab === 'projects' && <ProjectsTab projects={projects} setProjects={setProjects} />}
+      {tab === 'projects' && <ProjectsTab />}
       {tab === 'audit'    && <AuditTab />}
       {tab === 'system'   && <SystemTab />}
     </div>
