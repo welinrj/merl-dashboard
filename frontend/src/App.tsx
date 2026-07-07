@@ -30,6 +30,13 @@ const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
 // Faded scenic backdrop for the sign-in brand panel. To use a real
 // photograph instead, drop a file in public/ and point LOGIN_BG at it.
 const LOGIN_BG = `${import.meta.env.BASE_URL}vanuatu-login-bg.svg`;
+// Partner / funder logos shown in the portal footer. Both are the official
+// transparent marks: MFAT (New Zealand Ministry of Foreign Affairs & Trade,
+// Manatū Aorere) and the Department of Climate Change (Government of Vanuatu).
+// The footer's <img> keeps an onError fallback to a national-emblem lockup as
+// a safety net if the DoCC logo ever fails to load.
+const MFAT_LOGO = `${import.meta.env.BASE_URL}mfat-logo.png`;
+const DOCC_LOGO = `${import.meta.env.BASE_URL}docc-logo.png`;
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const ROLES: Record<UserRole, string> = {
@@ -672,6 +679,48 @@ export default function App() {
             <Route path="*"          element={<Navigate to={defaultPath} replace />} />
           </Routes>
         </main>
+
+        {/* Partner / funder footer */}
+        <footer style={{
+          flexShrink: 0, background: 'var(--white)', borderTop: '1px solid var(--border)',
+          padding: '0.5rem 1.25rem', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', gap: '1rem', rowGap: '0.5rem', flexWrap: 'wrap',
+        }}>
+          {/* Implementing agency — Department of Climate Change */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minWidth: 0 }}>
+            <img
+              src={DOCC_LOGO}
+              alt="Department of Climate Change — Government of Vanuatu"
+              style={{ height: 38, width: 'auto' }}
+              onError={(e) => {
+                const img = e.currentTarget;
+                img.style.display = 'none';
+                const fb = img.nextElementSibling as HTMLElement | null;
+                if (fb) fb.style.display = 'flex';
+              }}
+            />
+            {/* Fallback identity lockup (national emblem) until the DoCC logo file is provided */}
+            <span style={{ display: 'none', alignItems: 'center', gap: '0.5rem' }}>
+              <img src={CREST} alt="" style={{ height: 28, width: 'auto', filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} />
+              <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap' }}>Department of Climate Change</span>
+                <span style={{ fontSize: '0.625rem', color: 'var(--text-3)', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Republic of Vanuatu</span>
+              </span>
+            </span>
+          </div>
+
+          {/* Funder — New Zealand MFAT */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+            <span style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+              Funded by
+            </span>
+            <img
+              src={MFAT_LOGO}
+              alt="New Zealand Ministry of Foreign Affairs and Trade — Manatū Aorere"
+              style={{ height: 36, width: 'auto' }}
+            />
+          </div>
+        </footer>
       </div>
     </div>
   );
