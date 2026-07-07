@@ -4,34 +4,37 @@
 
 /* ── Design Tokens ─────────────────────────────────────────────────────── */
 :root {
-  /* Vanuatu national palette — green #009543 · red #D21034 · gold #FDCE12 · black */
-  --green-900: #04231a;
-  --green-800: #063a26;
-  --green-700: #00713a;
-  --green-600: #009543;
-  --green-500: #18b25b;
-  --green-200: #a5e3c0;
-  --green-100: #d6f5e4;
-  --green-50:  #eefbf3;
-  --gold-500:  #f5c518;
-  --gold-400:  #ffd94a;
-  --gold-100:  #fff6d6;
-  --red-700:   #a20c28;
-  --red-600:   #d21034;
-  --red-500:   #e8324f;
-  --red-100:   #fde0e5;
-  --red-50:    #fef2f4;
-  --ink:       #0b0f0d;
-  --cream:     #f7f8f4;
+  /* Clean light theme — indigo primary with colourful accent tiles.
+     Token names kept (--green-*) but now hold the primary indigo scale, so the
+     whole portal re-themes from one place. Positive/success stays green via the
+     hardcoded .badge-green + chart colours; negative red; savings/warning orange. */
+  --green-900: #1e1b4b;  /* indigo-950 — deep hero */
+  --green-800: #312e81;  /* indigo-900 */
+  --green-700: #4338ca;  /* indigo-700 */
+  --green-600: #4f46e5;  /* indigo-600 — primary */
+  --green-500: #6366f1;  /* indigo-500 */
+  --green-200: #c7d2fe;  /* indigo-200 */
+  --green-100: #e0e7ff;  /* indigo-100 */
+  --green-50:  #eef2ff;  /* indigo-50 */
+  --gold-500:  #f97316;  /* orange-500 */
+  --gold-400:  #fb923c;  /* orange-400 */
+  --gold-100:  #ffedd5;  /* orange-100 */
+  --red-700:   #b91c1c;
+  --red-600:   #dc2626;
+  --red-500:   #ef4444;
+  --red-100:   #fee2e2;
+  --red-50:    #fef2f2;
+  --ink:       #0f172a;  /* slate-900 */
+  --cream:     #eef1f6;  /* page background — cool light gray */
   --white:     #ffffff;
-  --border:    #dde4de;
-  --text-1:    #111a14;
-  --text-2:    #445048;
-  --text-3:    #7a8c80;
-  --shadow-sm: 0 1px 3px rgba(15,35,24,0.07), 0 1px 2px rgba(15,35,24,0.04);
-  --shadow-md: 0 4px 12px rgba(15,35,24,0.09), 0 2px 4px rgba(15,35,24,0.05);
-  --shadow-lg: 0 12px 32px rgba(15,35,24,0.11), 0 4px 8px rgba(15,35,24,0.06);
-  --font-display: 'Fraunces', Georgia, serif;
+  --border:    #e7eaf1;
+  --text-1:    #0f172a;
+  --text-2:    #475569;
+  --text-3:    #94a3b8;
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.05);
+  --shadow-md: 0 4px 16px rgba(16,24,40,0.08);
+  --shadow-lg: 0 16px 40px rgba(16,24,40,0.12);
+  --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-ui:      'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
 }
@@ -59,8 +62,8 @@
   .card {
     background: var(--white);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.25rem;
+    border-radius: 16px;
+    padding: 1.375rem;
     box-shadow: var(--shadow-sm);
   }
   .card-accent { border-left: 3px solid var(--green-500); }
@@ -83,11 +86,11 @@
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center;
-    gap: 0.4rem; border-radius: 7px; padding: 0.5rem 1rem;
+    gap: 0.4rem; border-radius: 10px; padding: 0.5rem 1rem;
     font-size: 0.8125rem; font-weight: 600; font-family: var(--font-ui);
     letter-spacing: -0.01em; transition: all 0.15s; cursor: pointer; border: none;
   }
-  .btn-primary { background: var(--green-800); color: var(--white); }
+  .btn-primary { background: var(--green-600); color: var(--white); }
   .btn-primary:hover { background: var(--green-700); box-shadow: var(--shadow-md); }
   .btn-secondary {
     background: var(--white); color: var(--text-2);
@@ -105,14 +108,14 @@
   }
   .field-input {
     width: 100%; padding: 0.6rem 0.875rem;
-    border: 1.5px solid var(--border); border-radius: 7px;
+    border: 1.5px solid var(--border); border-radius: 10px;
     font-size: 0.875rem; font-family: var(--font-ui);
     color: var(--text-1); background: var(--white); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .field-input:focus {
     border-color: var(--green-600);
-    box-shadow: 0 0 0 3px rgba(58,138,104,0.15);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
   }
   .field-input::placeholder { color: var(--text-3); }
 
@@ -177,22 +180,43 @@
   }
 }
 
-/* ── Responsive: app shell (drawer sidebar on mobile/tablet) ─────────────── */
+/* ── App shell (top navigation) ──────────────────────────────────────────── */
 .app-shell { height: 100vh; height: 100dvh; }
-.app-hamburger { display: none; }
 
-@media (max-width: 1023px) {
-  .app-hamburger { display: inline-flex; }
-  .app-sidebar {
-    position: fixed; top: 0; bottom: 0; left: 0; z-index: 60;
-    transform: translateX(-100%);
-    transition: transform 0.25s ease;
-  }
-  .app-sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.35); }
-  .app-scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 55; }
+/* Center pill navigation */
+.topnav-links { display: flex; align-items: center; gap: 0.25rem; }
+.topnav-link {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.5rem 0.9rem; border-radius: 9999px;
+  font-size: 0.8125rem; font-weight: 600; text-decoration: none;
+  color: var(--text-2); white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
 }
-@media (prefers-reduced-motion: reduce) {
-  .app-sidebar { transition: none; }
+.topnav-link:hover { background: #f1f5f9; color: var(--text-1); }
+.topnav-link.active { background: var(--ink); color: #ffffff; }
+
+.topnav-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 10px;
+  background: #f1f5f9; border: none; cursor: pointer; color: var(--text-2);
+  transition: background 0.15s, color 0.15s;
+}
+.topnav-icon-btn:hover { background: #e6e9ef; color: var(--text-1); }
+
+.topnav-hamburger { display: none; }
+
+/* Mobile dropdown nav */
+.topnav-mobile { display: none; }
+.topnav-mobile.open {
+  display: flex; flex-direction: column; gap: 0.125rem;
+  padding: 0.5rem 1rem 0.875rem;
+  background: var(--white); border-bottom: 1px solid var(--border);
+}
+.topnav-mobile .topnav-link { border-radius: 10px; padding: 0.65rem 0.9rem; }
+
+@media (max-width: 960px) {
+  .topnav-links { display: none; }
+  .topnav-hamburger { display: inline-flex; }
 }
 
 /* ── Responsive layout helpers (used by inline-styled pages) ─────────────── */

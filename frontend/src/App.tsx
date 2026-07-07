@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, FolderOpen, Database,
   Activity, FileBarChart, Settings, LogOut,
-  ChevronRight, Menu, Eye, EyeOff, AlertCircle, ShieldCheck,
+  ChevronRight, ChevronDown, Bell, Menu, Eye, EyeOff, AlertCircle, ShieldCheck,
   Mail, Lock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -435,7 +435,8 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [booting, setBooting] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);   // mobile nav dropdown
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
 
   // ── Session restore ────────────────────────────────────────────────────────
@@ -565,107 +566,96 @@ export default function App() {
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   return (
-    <div className="app-shell" style={{ display: 'flex', overflow: 'hidden', fontFamily: 'var(--font-ui)' }}>
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
 
-      {/* Sidebar */}
-      <aside className={`app-sidebar${sidebarOpen ? ' open' : ''}`} style={{
-        width: 232, flexShrink: 0, display: 'flex', flexDirection: 'column',
-        background: 'var(--green-900)', boxShadow: '4px 0 24px rgba(0,0,0,0.18)',
+      {/* Top navigation */}
+      <header style={{
+        flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--border)',
+        display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1.25rem',
       }}>
         {/* Brand */}
-        <div style={{ padding: '1.5rem 1.25rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(212,168,67,0.12)', border: '1.5px solid rgba(212,168,67,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 4 }}>
-              <img src={CREST} alt="Vanuatu Coat of Arms"
-                style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'brightness(1.8) drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', color: '#ffffff', fontSize: '0.9375rem', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.2 }}>L&amp;D MERL</div>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6875rem', letterSpacing: '0.04em' }}>DoCC · Vanuatu</div>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--green-50)', border: '1px solid var(--green-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0 }}>
+            <img src={CREST} alt="Vanuatu Coat of Arms" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
+          <div style={{ lineHeight: 1.1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', color: 'var(--text-1)', fontSize: '0.95rem', fontWeight: 700, letterSpacing: '-0.01em' }}>L&amp;D MERL</div>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.625rem', letterSpacing: '0.04em' }}>DoCC · Vanuatu</div>
           </div>
         </div>
 
-        <div style={{ padding: '1rem 1.25rem 0.375rem' }}>
-          <span style={{ fontSize: '0.5625rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)' }}>Navigation</span>
-        </div>
-
-        <nav style={{ flex: 1, padding: '0 0.625rem', overflowY: 'auto' }} className="scrollbar-thin">
+        {/* Center pill nav (desktop) */}
+        <nav className="topnav-links" style={{ margin: '0 auto' }}>
           {visibleNav.map(({ key, path, label, Icon }) => (
-            <NavLink key={key} to={path} onClick={() => setSidebarOpen(false)} style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '0.625rem',
-              padding: '0.6rem 0.75rem', borderRadius: 8, margin: '0.125rem 0',
-              textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500,
-              transition: 'all 0.15s',
-              color: isActive ? '#ffffff' : 'rgba(255,255,255,0.5)',
-              background: isActive ? 'linear-gradient(135deg, rgba(212,168,67,0.18), rgba(212,168,67,0.08))' : 'transparent',
-              borderLeft: isActive ? '2.5px solid var(--gold-500)' : '2.5px solid transparent',
-            })}>
-              <Icon size={15} style={{ flexShrink: 0 }} />
-              {label}
+            <NavLink key={key} to={path} className={({ isActive }) => `topnav-link${isActive ? ' active' : ''}`}>
+              <Icon size={15} />{label}
             </NavLink>
           ))}
         </nav>
 
-        <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.75rem' }}>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, var(--green-600), var(--green-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.6875rem', fontWeight: 700, flexShrink: 0 }}>
-              {initials}
+        {/* Right cluster */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', flexShrink: 0 }}>
+          {IS_STAGING && (
+            <div style={{
+              fontSize: '0.6875rem', color: 'var(--green-700)',
+              padding: '0.25rem 0.625rem', background: 'var(--green-50)',
+              border: '1px solid var(--green-100)', borderRadius: 9999,
+              fontWeight: 700, letterSpacing: '0.04em',
+            }}>
+              Staging
             </div>
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ color: '#fff', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ROLES[user.role]}</div>
-            </div>
+          )}
+          <button className="topnav-icon-btn" title="Notifications" aria-label="Notifications">
+            <Bell size={17} />
+          </button>
+
+          {/* Account menu */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setUserMenuOpen(o => !o)} aria-label="Account menu" style={{
+              display: 'flex', alignItems: 'center', gap: '0.35rem',
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '0.15rem 0.25rem 0.15rem 0.15rem', borderRadius: 9999,
+            }}>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--green-600), var(--green-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.75rem', fontWeight: 700 }}>
+                {initials}
+              </div>
+              <ChevronDown size={15} style={{ color: 'var(--text-3)' }} />
+            </button>
+            {userMenuOpen && (
+              <>
+                <div onClick={() => setUserMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 224, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
+                  <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-3)', marginTop: 2 }}>{ROLES[user.role]}</div>
+                  </div>
+                  <button onClick={() => { setUserMenuOpen(false); void supabase.auth.signOut(); setUser(null); }} style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.75rem 1rem', background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--red-600)', fontSize: '0.8125rem', fontWeight: 600,
+                  }}>
+                    <LogOut size={15} /> Sign Out
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-          <button onClick={() => { void supabase.auth.signOut(); setUser(null); }} style={{
-            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: '0.4rem', padding: '0.5rem', borderRadius: 7,
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-            color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.15s',
-          }}
-          onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; }}
-          onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.5)'; }}
-          >
-            <LogOut size={13} /> Sign Out
+
+          {/* Mobile hamburger */}
+          <button className="topnav-hamburger topnav-icon-btn" aria-label="Toggle navigation menu" onClick={() => setSidebarOpen(o => !o)}>
+            <Menu size={18} />
           </button>
         </div>
-      </aside>
+      </header>
 
-      {/* Mobile drawer scrim */}
-      {sidebarOpen && <div className="app-scrim" onClick={() => setSidebarOpen(false)} />}
-
-      {/* Main */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        <header style={{
-          height: 52, flexShrink: 0,
-          background: 'var(--white)', borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', padding: '0 1rem', gap: '0.5rem',
-        }}>
-          <button className="app-hamburger" aria-label="Open navigation menu"
-            onClick={() => setSidebarOpen(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)', alignItems: 'center', padding: '0.25rem' }}>
-            <Menu size={20} />
-          </button>
-          <ChevronRight size={14} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-3)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Vanuatu L&amp;D Fund Development Project
-          </span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {IS_STAGING && (
-              <div style={{
-                fontSize: '0.6875rem', color: 'var(--text-3)',
-                padding: '0.25rem 0.625rem',
-                background: 'var(--green-50)', border: '1px solid var(--green-100)',
-                borderRadius: 9999, fontWeight: 600, letterSpacing: '0.04em',
-              }}>
-                Staging
-              </div>
-            )}
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green-500)', boxShadow: '0 0 0 3px rgba(74,171,130,0.2)' }} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Online</span>
-          </div>
-        </header>
+      {/* Mobile dropdown nav */}
+      <nav className={`topnav-mobile${sidebarOpen ? ' open' : ''}`}>
+        {visibleNav.map(({ key, path, label, Icon }) => (
+          <NavLink key={key} to={path} onClick={() => setSidebarOpen(false)} className={({ isActive }) => `topnav-link${isActive ? ' active' : ''}`}>
+            <Icon size={16} />{label}
+          </NavLink>
+        ))}
+      </nav>
 
         <main style={{ flex: 1, overflowY: 'auto', background: 'var(--cream)' }} className="scrollbar-thin">
           <ErrorBoundary key={location.pathname}>
@@ -723,7 +713,6 @@ export default function App() {
             />
           </div>
         </footer>
-      </div>
     </div>
   );
 }
