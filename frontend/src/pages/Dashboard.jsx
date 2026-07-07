@@ -338,7 +338,7 @@ export default function Dashboard({ user }) {
   ].filter(d => d.value > 0);
 
   return (
-    <div style={{ padding:'2rem 2.5rem', maxWidth:1400 }} className="animate-fade-up">
+    <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
 
       {/* ── Hero header ─────────────────────────────────────────────── */}
       <div style={{
@@ -363,7 +363,7 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* ── KPI row ──────────────────────────────────────────────────── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
+      <div className="grid-kpi" style={{ marginBottom:'1.5rem' }}>
         <KpiCard label="Active Components"   value={S.active_projects}                      sub={`of ${S.total_projects} total components`}                        color="green" icon={TrendingUp} animate />
         <KpiCard label="Total Indicators"    value={S.total_indicators}                     sub={`${S.indicators_green} on track`}                                 color="green"               animate />
         <KpiCard label="Budget (VUV)"        value={fmtM(S.total_budget_vuv)}               sub={`${spentPct}% utilised · ${fmtM(S.total_spent_vuv)} spent`}        color="gold"                         />
@@ -403,7 +403,7 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* ── Indicators table + donut ──────────────────────────────────── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 260px', gap:'1rem', marginBottom:'1.5rem' }}>
+      <div className="grid-main-side" style={{ marginBottom:'1.5rem' }}>
 
         <div className="card" style={{ padding:0, overflow:'hidden' }}>
           <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -419,7 +419,8 @@ export default function Dashboard({ user }) {
               View Analysis <ArrowRight size={14}/>
             </NavLink>
           </div>
-          <table className="data-table">
+          <div style={{ overflowX:'auto' }} className="scrollbar-thin">
+          <table className="data-table" style={{ minWidth:640 }}>
             <thead>
               <tr>
                 <th>Indicator</th><th>Component</th>
@@ -461,6 +462,7 @@ export default function Dashboard({ user }) {
               })}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Donut + budget summary */}
