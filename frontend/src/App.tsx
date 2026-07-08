@@ -1,19 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, FolderOpen, Database,
+  LayoutDashboard, FolderOpen, Database, ClipboardList,
   Activity, FileBarChart, Settings, LogOut,
   ChevronRight, ChevronDown, Bell, Menu, Eye, EyeOff, AlertCircle, ShieldCheck,
   Mail, Lock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
-import Dashboard  from './pages/Dashboard';
-import Projects   from './pages/Projects';
-import Datasets   from './pages/Datasets';
-import Analysis   from './pages/Analysis';
-import Reports    from './pages/Reports';
-import AdminPanel from './pages/AdminPanel';
+import Dashboard   from './pages/Dashboard';
+import ProjectRegistration from './pages/ProjectRegistration';
+import ResultsFramework    from './pages/ResultsFramework';
+import Projects    from './pages/Projects';
+import Datasets    from './pages/Datasets';
+import Analysis    from './pages/Analysis';
+import Reports     from './pages/Reports';
+import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
@@ -68,20 +71,21 @@ async function loadProfile(): Promise<AppUser | null> {
 
 // ── Tab access map ────────────────────────────────────────────────────────────
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['dashboard', 'projects', 'datasets', 'analysis', 'reports', 'admin'],
-  ROLE_DOCC_SENIOR:  ['dashboard', 'projects', 'datasets', 'analysis', 'reports'],
-  ROLE_DOCC_MEO:     ['dashboard', 'projects', 'datasets', 'analysis', 'reports'],
-  ROLE_PROJ_MANAGER: ['dashboard', 'projects', 'datasets', 'analysis', 'reports'],
+  ROLE_ADMIN:        ['dashboard', 'registration', 'projects', 'datasets', 'analysis', 'reports', 'admin'],
+  ROLE_DOCC_SENIOR:  ['dashboard', 'registration', 'projects', 'datasets', 'analysis', 'reports'],
+  ROLE_DOCC_MEO:     ['dashboard', 'registration', 'projects', 'datasets', 'analysis', 'reports'],
+  ROLE_PROJ_MANAGER: ['dashboard', 'registration', 'projects', 'datasets', 'analysis', 'reports'],
   ROLE_FIELD_STAFF:  ['datasets', 'analysis'],
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard', path: '/dashboard', label: 'Dashboard',       Icon: LayoutDashboard },
-  { key: 'projects',  path: '/projects',  label: 'L&D Components',  Icon: FolderOpen      },
-  { key: 'datasets',  path: '/datasets',  label: 'Datasets',        Icon: Database        },
-  { key: 'analysis',  path: '/analysis',  label: 'Analysis',        Icon: Activity        },
-  { key: 'reports',   path: '/reports',   label: 'Reports',         Icon: FileBarChart    },
-  { key: 'admin',     path: '/admin',     label: 'Administration',  Icon: Settings        },
+  { key: 'dashboard',    path: '/dashboard',    label: 'Dashboard',      Icon: LayoutDashboard },
+  { key: 'registration', path: '/registration', label: 'Registration',   Icon: ClipboardList   },
+  { key: 'projects',     path: '/projects',     label: 'L&D Components', Icon: FolderOpen      },
+  { key: 'datasets',     path: '/datasets',     label: 'Datasets',       Icon: Database        },
+  { key: 'analysis',     path: '/analysis',     label: 'Analysis',       Icon: Activity        },
+  { key: 'reports',      path: '/reports',      label: 'Reports',        Icon: FileBarChart    },
+  { key: 'admin',        path: '/admin',        label: 'Administration', Icon: Settings        },
 ];
 
 // ── Login screen ──────────────────────────────────────────────────────────────
@@ -437,6 +441,7 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);   // mobile nav dropdown
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { i18n } = useTranslation();
   const location = useLocation();
 
   // ── Session restore ────────────────────────────────────────────────────────
@@ -605,6 +610,21 @@ export default function App() {
               Staging
             </div>
           )}
+          {/* Language switcher (EN / FR) */}
+          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            {(['en', 'fr'] as const).map(lng => (
+              <button key={lng} onClick={() => i18n.changeLanguage(lng)}
+                aria-label={`Switch language to ${lng.toUpperCase()}`}
+                style={{
+                  padding: '0.3rem 0.55rem', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.03em',
+                  border: 'none', cursor: 'pointer',
+                  background: i18n.language === lng ? 'var(--green-600)' : 'var(--white)',
+                  color: i18n.language === lng ? '#fff' : 'var(--text-3)',
+                }}>
+                {lng.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <button className="topnav-icon-btn" title="Notifications" aria-label="Notifications">
             <Bell size={17} />
           </button>
@@ -662,6 +682,8 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/registration" element={allowed.includes('registration') ? <ProjectRegistration user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/results-framework" element={allowed.includes('registration') ? <ResultsFramework user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/projects"  element={allowed.includes('projects')  ? <Projects /> : <Navigate to={defaultPath} replace />} />
               <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis /> : <Navigate to={defaultPath} replace />} />
