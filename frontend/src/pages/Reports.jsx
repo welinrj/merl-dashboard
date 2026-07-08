@@ -1,12 +1,58 @@
-import { useState } from 'react';
-import { FileBarChart, Calendar, Download, Loader2, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileBarChart, Download, Printer, Loader2, CheckCircle } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { PROJECTS, ALL_INDICATORS } from '../mockData';
+import { supabase } from '../supabaseClient';
 
 const pct = (a,b) => b ? Math.round((a/b)*100) : 0;
 const TRAFFIC = { green:'#1a8c4e', amber:'#c97b00', red:'#c0392b' };
 const TRAFFIC_BG  = { green:'#d1fae5', amber:'#fef3c7', red:'#fee2e2' };
 const TRAFFIC_TXT = { green:'#065f46', amber:'#92400e', red:'#991b1b' };
 const TRAFFIC_LABEL = { green:'On Track', amber:'At Risk', red:'Off Track' };
+
+// Traffic light from progress toward target — same rule used on
+// Dashboard / Projects / Analysis so reports agree with the rest of the app.
+function trafficFor(baseline, current, target) {
+  const b = Number(baseline ?? 0), t = Number(target ?? 0);
+  const c = current == null ? b : Number(current);
+  if (t === b) return 'green';
+  const p = (c - b) / (t - b);
+  if (p >= 0.7) return 'green';
+  if (p >= 0.35) return 'amber';
+  return 'red';
+}
+
+// merl.indicators is linked to a domain, not to an individual project, so a
+// project filter only narrows indicators when the source data actually
+// carries a project_code (currently just the demo/mock data).
+function normaliseLive(projectRows, indicatorRows, budgetRows) {
+  const projects = projectRows.map(p => ({
+    code: p.code, name: p.name, category: p.category,
+    budget_vuv: Number(p.budget_vuv ?? 0), spent_vuv: Number(p.spent_vuv ?? 0),
+  }));
+  const indicators = indicatorRows.map(r => ({
+    id: r.id, code: r.code, name: r.name,
+    baseline: Number(r.baseline_value ?? 0),
+    current:  r.current_value == null ? Number(r.baseline_value ?? 0) : Number(r.current_value),
+    target:   Number(r.target_value ?? 0),
+    traffic:  trafficFor(r.baseline_value, r.current_value, r.target_value),
+  }));
+  const budgetRowsOut = budgetRows.map(b => ({
+    label: b.domain, budget_vuv: Number(b.budget_vuv ?? 0), spent_vuv: Number(b.spent_vuv ?? 0),
+  }));
+  return { projects, indicators, budgetRows: budgetRowsOut };
+}
+
+function normaliseMock() {
+  const projects = PROJECTS.map(p => ({
+    code: p.code, name: p.name, category: p.category,
+    budget_vuv: p.budget_vuv, spent_vuv: p.spent_vuv,
+  }));
+  const budgetRows = PROJECTS.map(p => ({
+    label: p.category, budget_vuv: p.budget_vuv, spent_vuv: p.spent_vuv,
+  }));
+  return { projects, indicators: ALL_INDICATORS, budgetRows };
+}
 
 const REPORT_TYPES = [
   { id:'quarterly', label:'Quarterly Progress Report', icon:'📅',
@@ -28,12 +74,11 @@ const REPORT_TYPES = [
 
 const PERIODS = ['Q1 2026','Q4 2025','Q3 2025','Q2 2025','2025 Annual','2024 Annual'];
 
-function ReportPreview({ type, projectId }) {
-  const inds = projectId ? PROJECTS.find(p=>p.id===parseInt(projectId))?.indicators || [] : ALL_INDICATORS.slice(0,8);
+function ReportPreview({ type, indicators, budgetRows }) {
   const now = new Date().toLocaleDateString('en-VU', { year:'numeric', month:'long', day:'numeric' });
 
   return (
-    <div style={{ fontFamily:'var(--font-ui)', fontSize:'0.8125rem', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
+    <div className="report-print-area" style={{ fontFamily:'var(--font-ui)', fontSize:'0.8125rem', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
       {/* Report header */}
       <div style={{ background:'var(--green-900)', color:'#fff', padding:'1.5rem 2rem' }}>
         <div style={{ fontSize:'0.625rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.375rem' }}>
@@ -64,8 +109,8 @@ function ReportPreview({ type, projectId }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {inds.slice(0,5).map(ind => (
-                    <tr key={ind.id} style={{ borderBottom:'1px solid var(--border)' }}>
+                  {indicators.slice(0,5).map(ind => (
+                    <tr key={ind.id ?? ind.code} style={{ borderBottom:'1px solid var(--border)' }}>
                       <td style={{ padding:'0.4rem 0.75rem', color:'var(--text-1)', fontWeight:500 }}>{ind.name}</td>
                       <td style={{ padding:'0.4rem 0.75rem', color:'var(--text-3)', fontFamily:'var(--font-mono)' }}>{ind.baseline}</td>
                       <td style={{ padding:'0.4rem 0.75rem', fontFamily:'var(--font-mono)', fontWeight:700 }}>{ind.current}</td>
@@ -92,12 +137,12 @@ function ReportPreview({ type, projectId }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {PROJECTS.map(p => (
-                    <tr key={p.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                      <td style={{ padding:'0.4rem 0.75rem', color:'var(--text-1)', fontWeight:500 }}>{p.category}</td>
-                      <td style={{ padding:'0.4rem 0.75rem', fontFamily:'var(--font-mono)', color:'var(--text-2)' }}>VUV {(p.budget_vuv/1e6).toFixed(0)}M</td>
-                      <td style={{ padding:'0.4rem 0.75rem', fontFamily:'var(--font-mono)', fontWeight:700 }}>VUV {(p.spent_vuv/1e6).toFixed(0)}M</td>
-                      <td style={{ padding:'0.4rem 0.75rem', fontFamily:'var(--font-mono)', fontWeight:700 }}>{pct(p.spent_vuv,p.budget_vuv)}%</td>
+                  {budgetRows.map(b => (
+                    <tr key={b.label} style={{ borderBottom:'1px solid var(--border)' }}>
+                      <td style={{ padding:'0.4rem 0.75rem', color:'var(--text-1)', fontWeight:500 }}>{b.label}</td>
+                      <td style={{ padding:'0.4rem 0.75rem', fontFamily:'var(--font-mono)', color:'var(--text-2)' }}>VUV {(b.budget_vuv/1e6).toFixed(0)}M</td>
+                      <td style={{ padding:'0.4rem 0.75rem', fontFamily:'var(--font-mono)', fontWeight:700 }}>VUV {(b.spent_vuv/1e6).toFixed(0)}M</td>
+                      <td style={{ padding:'0.4rem 0.75rem', fontFamily:'var(--font-mono)', fontWeight:700 }}>{pct(b.spent_vuv,b.budget_vuv)}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -117,16 +162,61 @@ function ReportPreview({ type, projectId }) {
   );
 }
 
-export default function Reports({ user }) {
+function exportExcel({ type, projectLabel, period, indicators, budgetRows }) {
+  const wb = XLSX.utils.book_new();
+
+  const indSheet = XLSX.utils.json_to_sheet(indicators.map(i => ({
+    Code: i.code, Indicator: i.name, Baseline: i.baseline, Current: i.current,
+    Target: i.target, '% of target': pct(i.current, i.target), Status: TRAFFIC_LABEL[i.traffic],
+  })));
+  XLSX.utils.book_append_sheet(wb, indSheet, 'Indicators');
+
+  const budSheet = XLSX.utils.json_to_sheet(budgetRows.map(b => ({
+    Component: b.label, 'Budget (VUV)': b.budget_vuv, 'Spent (VUV)': b.spent_vuv,
+    '% utilised': pct(b.spent_vuv, b.budget_vuv),
+  })));
+  XLSX.utils.book_append_sheet(wb, budSheet, 'Budget');
+
+  const fname = `${type.id}-report_${projectLabel}_${period}`.replace(/\s+/g, '_') + '.xlsx';
+  XLSX.writeFile(wb, fname);
+}
+
+export default function Reports() {
+  const [live, setLive]         = useState(null);
   const [selected, setSelected] = useState(REPORT_TYPES[0]);
   const [project, setProject]   = useState('');
   const [period, setPeriod]     = useState('Q1 2026');
   const [state, setState]       = useState('idle'); // idle | generating | ready
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [proj, ind, bud] = await Promise.all([
+        supabase.from('v_projects').select('*').order('code'),
+        supabase.from('v_indicator_status').select('*').order('code'),
+        supabase.from('v_domain_budget').select('*').order('domain'),
+      ]);
+      if (cancelled) return;
+      if (proj.error || ind.error || bud.error || !ind.data?.length) return;
+      setLive(normaliseLive(proj.data ?? [], ind.data, bud.data ?? []));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const { projects, indicators, budgetRows } = live ?? normaliseMock();
+
+  // Only narrows the indicator set when the underlying rows actually carry a
+  // project_code (true for the demo data; live indicators are domain-scoped).
+  const previewIndicators = (project && indicators.some(i => i.project_code === project))
+    ? indicators.filter(i => i.project_code === project)
+    : indicators.slice(0, 8);
+
   const generate = () => {
     setState('generating');
     setTimeout(() => setState('ready'), 900);
   };
+
+  const projectLabel = project || 'All_Components';
 
   return (
     <div style={{ padding:'2rem 2.5rem', maxWidth:1400 }} className="animate-fade-up">
@@ -136,7 +226,7 @@ export default function Reports({ user }) {
           M&amp;E Reports
         </h1>
         <p style={{ fontSize:'0.875rem', color:'var(--text-3)', marginTop:'0.25rem' }}>
-          Generate, preview, and export TOR-aligned MERL reports.
+          Generate, preview, and export TOR-aligned MERL reports · {live ? 'Live data' : 'Sample data (offline)'}
         </p>
       </div>
 
@@ -176,7 +266,7 @@ export default function Reports({ user }) {
                 <label className="field-label">Component (optional)</label>
                 <select value={project} onChange={e=>setProject(e.target.value)} className="field-input">
                   <option value="">All Components</option>
-                  {PROJECTS.map(p => <option key={p.id} value={p.id}>{p.code}</option>)}
+                  {projects.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}
                 </select>
               </div>
               <div>
@@ -203,10 +293,18 @@ export default function Reports({ user }) {
                  <><FileBarChart size={14}/> Generate Preview</>}
               </button>
               {state==='ready' && (
-                <button onClick={() => alert('Export — available in full production deployment.')}
-                  className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
-                  <Download size={14}/> Export
-                </button>
+                <>
+                  <button
+                    onClick={() => exportExcel({ type: selected, projectLabel, period, indicators: previewIndicators, budgetRows })}
+                    className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
+                    <Download size={14}/> Excel
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
+                    <Printer size={14}/> PDF
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -214,7 +312,7 @@ export default function Reports({ user }) {
           {/* Preview */}
           {state !== 'idle' && (
             <div className="card animate-fade" style={{ padding:0, overflow:'hidden' }}>
-              <div style={{ padding:'1rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div className="no-print" style={{ padding:'1rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <span style={{ fontFamily:'var(--font-display)', fontSize:'1rem', fontWeight:600, color:'var(--text-1)' }}>
                   Report Preview
                 </span>
@@ -231,7 +329,7 @@ export default function Reports({ user }) {
                     <p style={{ margin:0, fontSize:'0.875rem' }}>Compiling report data…</p>
                   </div>
                 ) : (
-                  <ReportPreview type={selected} projectId={project}/>
+                  <ReportPreview type={selected} indicators={previewIndicators} budgetRows={budgetRows}/>
                 )}
               </div>
             </div>
@@ -239,7 +337,14 @@ export default function Reports({ user }) {
         </div>
       </div>
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @media print {
+          body * { visibility: hidden; }
+          .report-print-area, .report-print-area * { visibility: visible; }
+          .report-print-area { position: absolute; left: 0; top: 0; width: 100%; max-height: none; }
+        }
+      `}</style>
     </div>
   );
 }
