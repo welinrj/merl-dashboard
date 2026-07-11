@@ -18,6 +18,7 @@ import Analysis    from './pages/Analysis';
 import Reports     from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
+import LogoCloud from './components/LogoCloud';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
 
@@ -428,6 +429,15 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
             <ShieldCheck size={15} />
             <span>Authorised access only. Activity on this official Government of Vanuatu system is monitored and audited. Unauthorised use is prohibited.</span>
           </div>
+
+          {/* Stakeholder logo cloud (Efferd logo-cloud-2 block) */}
+          <div className="mt-6">
+            <div className="text-center text-[10px] font-bold tracking-[0.14em] uppercase text-gray-400 mb-3">
+              In partnership with
+            </div>
+            <LogoCloud />
+          </div>
+
           <p className="lg-foot">Vanuatu L&amp;D Fund Development Project · Built by Vanua Spatial Solutions</p>
         </div>
       </div>
