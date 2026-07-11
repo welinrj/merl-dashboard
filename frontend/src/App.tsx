@@ -429,15 +429,6 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
             <ShieldCheck size={15} />
             <span>Authorised access only. Activity on this official Government of Vanuatu system is monitored and audited. Unauthorised use is prohibited.</span>
           </div>
-
-          {/* Stakeholder logo cloud (Efferd logo-cloud-2 block) */}
-          <div className="mt-6">
-            <div className="text-center text-[10px] font-bold tracking-[0.14em] uppercase text-gray-400 mb-3">
-              In partnership with
-            </div>
-            <LogoCloud />
-          </div>
-
           <p className="lg-foot">Vanuatu L&amp;D Fund Development Project · Built by Vanua Spatial Solutions</p>
         </div>
       </div>
@@ -582,6 +573,11 @@ export default function App() {
 
   return (
     <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
+
+      {/* Stakeholder strip (Efferd logo-cloud-2 block) */}
+      <div style={{ flexShrink: 0 }}>
+        <LogoCloud />
+      </div>
 
       {/* Top navigation */}
       <header style={{
