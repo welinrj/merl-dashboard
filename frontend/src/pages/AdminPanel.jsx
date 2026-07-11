@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Tabs } from '@ark-ui/react/tabs';
 import { AUDIT_LOG } from '../mockData';
 import { supabase } from '../supabaseClient';
+import { tabListClass, tabTriggerClass } from '../components/ui/tabs-component';
 
 const DB_ROLES = [
   { id: 'administrator',       label: 'System Administrator', color: 'bg-red-100 text-red-700' },
@@ -31,20 +33,6 @@ const CATEGORIES = [
 const PROVINCES = ['Shefa', 'Sanma', 'Penama', 'Malampa', 'Torba', 'Tafea'];
 
 const STATUS_OPTIONS = ['active', 'completed', 'suspended'];
-
-// ── Shared sub-components ─────────────────────────────────────────────────────
-function TabButton({ label, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
-        active ? 'bg-green-700 text-white' : 'text-gray-600 hover:bg-gray-100'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
 
 // ── Users Tab ─────────────────────────────────────────────────────────────────
 function UsersTab() {
@@ -696,13 +684,16 @@ export default function AdminPanel({ user }) {
         </p>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-2 border-b border-gray-100 pb-1">
-        <TabButton label="Users"     active={tab === 'users'}    onClick={() => setTab('users')} />
-        <TabButton label="Projects"  active={tab === 'projects'} onClick={() => setTab('projects')} />
-        <TabButton label="Audit Log" active={tab === 'audit'}    onClick={() => setTab('audit')} />
-        <TabButton label="System"    active={tab === 'system'}   onClick={() => setTab('system')} />
-      </div>
+      {/* Tab bar — Ark UI Tabs with the shared pill style (components/ui) */}
+      <Tabs.Root value={tab} onValueChange={d => setTab(d.value)}>
+        <Tabs.List className={tabListClass}>
+          {[['users', 'Users'], ['projects', 'Projects'], ['audit', 'Audit Log'], ['system', 'System']].map(([value, label]) => (
+            <Tabs.Trigger key={value} value={value} className={tabTriggerClass}>
+              {label}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
+      </Tabs.Root>
 
       {tab === 'users'    && <UsersTab />}
       {tab === 'projects' && <ProjectsTab />}
