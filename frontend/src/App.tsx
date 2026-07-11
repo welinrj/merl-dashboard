@@ -18,6 +18,7 @@ import Analysis    from './pages/Analysis';
 import Reports     from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
+import LogoCloud from './components/LogoCloud';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
 
@@ -572,6 +573,11 @@ export default function App() {
 
   return (
     <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
+
+      {/* Stakeholder strip (Efferd logo-cloud-2 block) */}
+      <div style={{ flexShrink: 0 }}>
+        <LogoCloud />
+      </div>
 
       {/* Top navigation */}
       <header style={{
