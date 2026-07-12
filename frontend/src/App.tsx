@@ -18,6 +18,7 @@ import Analysis    from './pages/Analysis';
 import Reports     from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
+import { LogoCloud } from './components/logo-cloud';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
 
@@ -676,6 +677,11 @@ export default function App() {
           </NavLink>
         ))}
       </nav>
+
+        {/* Stakeholder logo band */}
+        <div style={{ flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--border)' }}>
+          <LogoCloud />
+        </div>
 
         <main style={{ flex: 1, overflowY: 'auto', background: 'var(--cream)' }} className="scrollbar-thin">
           <ErrorBoundary key={location.pathname}>
