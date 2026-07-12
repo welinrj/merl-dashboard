@@ -1,5 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // The portal is a light-only design. Class strategy (we never add a .dark
+  // class) keeps `dark:` variants from third-party/registry components from
+  // activating on devices whose OS is in dark mode, which flipped the tab
+  // tracks to dark slate against the light theme.
+  darkMode: 'class',
   content: [
     './index.html',
     './public/index.html',
