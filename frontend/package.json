@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@ark-ui/react": "^5.37.2",
     "@supabase/supabase-js": "^2.103.2",
     "@tanstack/react-query": "^5.24.0",
     "axios": "^1.6.7",

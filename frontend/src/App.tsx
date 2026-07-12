@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Tabs } from '@ark-ui/react/tabs';
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Database, ClipboardList,
   Activity, FileBarChart, Settings, LogOut,
@@ -19,8 +18,6 @@ import Analysis    from './pages/Analysis';
 import Reports     from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
-import LogoCloud from './components/LogoCloud';
-import { tabListClass, tabTriggerClass } from './components/ui/tabs-component';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
 
@@ -446,7 +443,6 @@ export default function App() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { i18n } = useTranslation();
   const location = useLocation();
-  const navigate = useNavigate();
 
   // ── Session restore ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -577,11 +573,6 @@ export default function App() {
   return (
     <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
 
-      {/* Stakeholder strip (Efferd logo-cloud-2 block) */}
-      <div style={{ flexShrink: 0 }}>
-        <LogoCloud />
-      </div>
-
       {/* Top navigation */}
       <header style={{
         flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--border)',
@@ -598,23 +589,13 @@ export default function App() {
           </div>
         </div>
 
-        {/* Center pill nav (desktop) — Ark UI Tabs (components/ui), route-controlled */}
-        <nav aria-label="Primary" style={{ margin: '0 auto' }}>
-          <Tabs.Root
-            value={visibleNav.find(n => location.pathname.startsWith(n.path))?.key ?? ''}
-            onValueChange={d => {
-              const item = visibleNav.find(n => n.key === d.value);
-              if (item) navigate(item.path);
-            }}
-          >
-            <Tabs.List className={`${tabListClass} topnav-links`}>
-              {visibleNav.map(({ key, label }) => (
-                <Tabs.Trigger key={key} value={key} className={tabTriggerClass}>
-                  {label}
-                </Tabs.Trigger>
-              ))}
-            </Tabs.List>
-          </Tabs.Root>
+        {/* Center pill nav (desktop) — text-only tabs, like the reference */}
+        <nav className="topnav-links" style={{ margin: '0 auto' }}>
+          {visibleNav.map(({ key, path, label }) => (
+            <NavLink key={key} to={path} className={({ isActive }) => `topnav-link${isActive ? ' active' : ''}`}>
+              {label}
+            </NavLink>
+          ))}
         </nav>
 
         {/* Right cluster */}

@@ -1,34 +1,32 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, CartesianGrid,
 } from 'recharts';
 import { PROJECTS, ALL_INDICATORS, DASHBOARD_SUMMARY } from '../mockData';
 import { supabase } from '../supabaseClient';
-import { FolderKanban, Target, Wallet, AlertTriangle, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { TrendingUp, AlertTriangle, ArrowRight } from 'lucide-react';
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
-const pct  = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+const pct  = (a, b) => b ? Math.round((a / b) * 100) : 0;
 const fmtM = n => (n / 1e6).toFixed(1) + 'M';
+const TRAFFIC     = { green:'#1a8c4e', amber:'#c97b00', red:'#c0392b' };
+const TRAFFIC_BG  = { green:'#d1fae5', amber:'#fef3c7', red:'#fee2e2' };
+const TRAFFIC_TXT = { green:'#065f46', amber:'#92400e', red:'#991b1b' };
+const TRAFFIC_LABEL = { green:'On Track', amber:'At Risk', red:'Off Track' };
 
-const TRAFFIC_LABEL = { green: 'On Track', amber: 'At Risk', red: 'Off Track' };
-const TRAFFIC_DOT   = { green: 'bg-emerald-500', amber: 'bg-amber-500', red: 'bg-red-500' };
-const TRAFFIC_CHIP  = {
-  green: 'bg-emerald-50 text-emerald-700',
-  amber: 'bg-amber-50 text-amber-700',
-  red:   'bg-red-50 text-red-700',
-};
-const TRAFFIC_BAR = { green: 'bg-emerald-500', amber: 'bg-amber-500', red: 'bg-red-500' };
-
+/* ── live data (v_indicator_status / v_domain_budget, migration 0003) ────── */
 const DOMAIN_META = {
-  governance: { label: 'Governance', short: 'GOV' },
-  financial:  { label: 'Financial',  short: 'FIN' },
-  community:  { label: 'Community',  short: 'COM' },
-  events:     { label: 'L&D Events', short: 'EVT' },
-  learning:   { label: 'Learning',   short: 'LRN' },
+  governance: { label:'Governance', color:'#1a8c4e', short:'GOV' },
+  financial:  { label:'Financial',  color:'#c97b00', short:'FIN' },
+  community:  { label:'Community',  color:'#2563eb', short:'COM' },
+  events:     { label:'L&D Events', color:'#c0392b', short:'EVT' },
+  learning:   { label:'Learning',   color:'#7c3aed', short:'LRN' },
 };
 
-// Traffic light from progress toward target (handles decreasing targets).
+// Traffic light from progress toward target (handles decreasing targets,
+// e.g. response time in days where target < baseline).
 function trafficFor(baseline, current, target) {
   const b = Number(baseline ?? 0), t = Number(target ?? 0);
   const c = current == null ? b : Number(current);
@@ -39,25 +37,27 @@ function trafficFor(baseline, current, target) {
   return 'red';
 }
 
-function qLabel(dateStr) {
-  const d = new Date(dateStr);
-  return `Q${Math.floor(d.getUTCMonth() / 3) + 1} ${d.getUTCFullYear()}`;
-}
-
-/* ── live data (v_indicator_status / v_domain_budget / v_indicator_trends) ── */
 function normaliseLive(indicatorRows, budgetRows) {
   const indicators = indicatorRows.map(r => {
-    const meta = DOMAIN_META[r.domain] ?? { label: r.domain };
+    const meta = DOMAIN_META[r.domain] ?? { label: r.domain, color:'#64748b' };
     const current = r.current_value == null ? Number(r.baseline_value ?? 0) : Number(r.current_value);
     return {
-      id: r.id, code: r.code, name: r.name,
+      id:       r.id,
+      code:     r.code,
+      name:     r.name,
       baseline: Number(r.baseline_value ?? 0),
       current,
-      target: Number(r.target_value ?? 0),
-      traffic: trafficFor(r.baseline_value, r.current_value, r.target_value),
+      target:   Number(r.target_value ?? 0),
+      traffic:  trafficFor(r.baseline_value, r.current_value, r.target_value),
       category: meta.label,
+      color:    meta.color,
     };
   });
+  const budgetData = budgetRows.map(b => ({
+    name:   DOMAIN_META[b.domain]?.short ?? b.domain,
+    Budget: Math.round(Number(b.budget_vuv ?? 0) / 1e6),
+    Spent:  Math.round(Number(b.spent_vuv ?? 0) / 1e6),
+  }));
   const green = indicators.filter(i => i.traffic === 'green').length;
   const amber = indicators.filter(i => i.traffic === 'amber').length;
   const red   = indicators.filter(i => i.traffic === 'red').length;
@@ -71,269 +71,438 @@ function normaliseLive(indicatorRows, budgetRows) {
     active_projects:  budgetRows.filter(b => Number(b.activities_active ?? 0) > 0).length,
     total_projects:   budgetRows.length,
   };
-  return { indicators, summary };
+  return { indicators, budgetData, summary };
 }
 
 function normaliseMock() {
   const indicators = ALL_INDICATORS.map(ind => {
     const proj = PROJECTS.find(pr => pr.code === ind.project_code);
-    return { ...ind, category: proj?.name?.split(' ')[1] ?? '—' };
+    return { ...ind, color: proj?.category_color ?? '#64748b' };
   });
-  return { indicators, summary: DASHBOARD_SUMMARY };
+  const budgetData = PROJECTS.map(p => ({
+    name:   p.code.split('-')[0],
+    Budget: Math.round(p.budget_vuv / 1e6),
+    Spent:  Math.round(p.spent_vuv  / 1e6),
+  }));
+  return { indicators, budgetData, summary: DASHBOARD_SUMMARY };
 }
 
-// Demo trend series shown when live trends are unavailable (offline preview).
-const MOCK_TREND = [
-  { period: 'Q1 2025', pct: 18 }, { period: 'Q2 2025', pct: 26 },
-  { period: 'Q3 2025', pct: 34 }, { period: 'Q4 2025', pct: 41 },
-  { period: 'Q1 2026', pct: 49 }, { period: 'Q2 2026', pct: 57 },
-];
+/* ── animated counter ───────────────────────────────────────────────────── */
+function useCountUp(target, duration = 1400) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    let raf;
+    const start = performance.now();
+    const tick = now => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(eased * target));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return val;
+}
 
-/* ── small pieces ───────────────────────────────────────────────────────── */
-function KpiCell({ label, value, chip, chipTone = 'indigo', icon: Icon, last }) {
-  const tones = {
-    indigo:  'bg-green-50 text-green-700',
-    emerald: 'bg-emerald-50 text-emerald-700',
-    amber:   'bg-amber-50 text-amber-700',
-    red:     'bg-red-50 text-red-700',
-  };
+/* ── particle canvas background ────────────────────────────────────────── */
+function ParticleCanvas({ color = 'rgba(180,255,200,0.5)' }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W = canvas.offsetWidth, H = canvas.offsetHeight;
+    canvas.width = W; canvas.height = H;
+
+    const N = 55;
+    const particles = Array.from({ length: N }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 2 + 0.5,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      o: Math.random() * 0.5 + 0.2,
+    }));
+
+    let raf;
+    const draw = () => {
+      ctx.clearRect(0, 0, W, H);
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = color.replace('0.5', String(p.o));
+        ctx.fill();
+      });
+      for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 90) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = color.replace('0.5', String(0.08 * (1 - dist / 90)));
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+
+    const onResize = () => {
+      W = canvas.offsetWidth; H = canvas.offsetHeight;
+      canvas.width = W; canvas.height = H;
+    };
+    window.addEventListener('resize', onResize);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', onResize); };
+  }, [color]);
+
   return (
-    <div className={`p-5 border-b xl:border-b-0 border-gray-200 ${last ? '' : 'sm:border-r'}`}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium text-gray-500">{label}</span>
-        {Icon && <Icon size={16} className="text-gray-300" />}
-      </div>
-      <div className="text-2xl font-semibold text-gray-900 tabular-nums leading-none">{value}</div>
-      {chip && (
-        <span className={`inline-flex items-center gap-1 mt-3 px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${tones[chipTone]}`}>
-          {chip}
-        </span>
-      )}
+    <canvas
+      ref={canvasRef}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+    />
+  );
+}
+
+/* ── floating orbs ──────────────────────────────────────────────────────── */
+function FloatingOrbs() {
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      <style>{`
+        @keyframes orbFloat0 { 0%,100%{transform:translateY(0) scale(1)}  50%{transform:translateY(-18px) scale(1.04)} }
+        @keyframes orbFloat1 { 0%,100%{transform:translateY(0) scale(1)}  50%{transform:translateY(-24px) scale(0.97)} }
+        @keyframes orbFloat2 { 0%,100%{transform:translateY(0) scale(1)}  50%{transform:translateY(-12px) scale(1.06)} }
+      `}</style>
+      {[
+        { w:180, h:180, left:'5%',  top:'10%', color:'rgba(74,171,130,0.13)', dur:7, anim:0 },
+        { w:120, h:120, left:'75%', top:'5%',  color:'rgba(212,168,67,0.10)', dur:9, anim:1 },
+        { w:220, h:220, left:'50%', top:'55%', color:'rgba(74,171,130,0.08)', dur:11, anim:2 },
+        { w:80,  h:80,  left:'88%', top:'70%', color:'rgba(212,168,67,0.12)', dur:6, anim:0 },
+        { w:140, h:140, left:'20%', top:'65%', color:'rgba(74,171,130,0.09)', dur:8, anim:1 },
+      ].map((o, i) => (
+        <div key={i} style={{
+          position:'absolute', width:o.w, height:o.h, left:o.left, top:o.top,
+          borderRadius:'50%',
+          background:`radial-gradient(circle, ${o.color} 0%, transparent 70%)`,
+          animation:`orbFloat${o.anim} ${o.dur}s ease-in-out infinite`,
+          filter:'blur(1px)',
+        }} />
+      ))}
     </div>
   );
 }
 
-const ChartTip = ({ active, payload, label }) => {
+/* ── 3D tilt card ────────────────────────────────────────────────────────── */
+function TiltCard({ children, style, className }) {
+  const ref = useRef(null);
+  const onMove = useCallback(e => {
+    const el = ref.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width  - 0.5;
+    const y = (e.clientY - r.top)  / r.height - 0.5;
+    el.style.transform = `perspective(900px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateZ(8px)`;
+    el.style.boxShadow = `${-x * 8}px ${y * 8}px 24px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)`;
+  }, []);
+  const onLeave = useCallback(() => {
+    const el = ref.current; if (!el) return;
+    el.style.transform = 'perspective(900px) rotateY(0deg) rotateX(0deg) translateZ(0)';
+    el.style.boxShadow = '';
+  }, []);
+  return (
+    <div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave} className={className}
+      style={{ transition:'transform 0.15s ease, box-shadow 0.15s ease', willChange:'transform', ...style }}>
+      {children}
+    </div>
+  );
+}
+
+/* ── KPI card ────────────────────────────────────────────────────────────── */
+function KpiCard({ label, value, sub, color = 'green', icon: Icon, animate = false }) {
+  const accent = color === 'gold' ? 'var(--gold-500)' : color === 'red' ? '#c0392b' : color === 'amber' ? '#c97b00' : 'var(--green-500)';
+  const numericVal = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.]/g, '')) || 0;
+  const counted = useCountUp(animate ? numericVal : 0, 1400);
+  const displayed = animate ? String(counted) : value;
+
+  return (
+    <TiltCard className="card" style={{ borderLeft:`3px solid ${accent}`, position:'relative', overflow:'hidden' }}>
+      <div style={{ position:'absolute', top:-20, right:-20, width:80, height:80, borderRadius:'50%',
+        background:`radial-gradient(circle, ${accent}22 0%, transparent 70%)`, pointerEvents:'none' }} />
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.5rem' }}>
+        <div className="section-label">{label}</div>
+        {Icon && <Icon size={16} style={{ color:accent, opacity:0.75 }} />}
+      </div>
+      <div style={{ fontFamily:'var(--font-display)', fontSize:'2rem', fontWeight:600, color:'var(--text-1)', lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
+        {displayed}
+      </div>
+      {sub && <div style={{ fontSize:'0.75rem', color:'var(--text-3)', marginTop:'0.375rem' }}>{sub}</div>}
+    </TiltCard>
+  );
+}
+
+/* ── traffic badge ───────────────────────────────────────────────────────── */
+function TrafficBadge({ status }) {
+  return (
+    <span style={{
+      display:'inline-flex', alignItems:'center', gap:'0.3rem',
+      background:TRAFFIC_BG[status], color:TRAFFIC_TXT[status],
+      borderRadius:9999, padding:'0.15rem 0.6rem',
+      fontSize:'0.6875rem', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase',
+    }}>
+      <span style={{ width:5, height:5, borderRadius:'50%', background:TRAFFIC[status], display:'inline-block' }}/>
+      {TRAFFIC_LABEL[status]}
+    </span>
+  );
+}
+
+/* ── chart tooltip ───────────────────────────────────────────────────────── */
+const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-md px-3 py-2 text-xs">
-      <div className="font-semibold text-gray-700 mb-0.5">{label}</div>
-      <div className="text-gray-500">
-        Achievement: <span className="font-semibold text-gray-900">{payload[0].value}%</span>
-      </div>
+    <div style={{ background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, padding:'0.625rem 0.875rem', boxShadow:'var(--shadow-md)', fontSize:'0.8125rem' }}>
+      <div style={{ fontWeight:700, color:'var(--text-2)', marginBottom:'0.25rem' }}>{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:'0.5rem', color:'var(--text-3)' }}>
+          <span style={{ width:8, height:8, borderRadius:'50%', background:p.fill||p.color }} />
+          {p.name}: <span style={{ fontWeight:600, color:'var(--text-1)' }}>{p.value}M VUV</span>
+        </div>
+      ))}
     </div>
   );
 };
 
-/* ══ Dashboard (Efferd dashboard-1 style: welcome header + KPI stats +
-      area chart + records table in a bordered three-column grid) ═══════════ */
+/* ── SVG progress ring ───────────────────────────────────────────────────── */
+function ProgressRing({ value, total, color, size = 64, stroke = 5 }) {
+  const p = pct(value, total);
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = (p / 100) * circ;
+  return (
+    <svg width={size} height={size} style={{ transform:'rotate(-90deg)' }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--green-50)" strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round"
+        style={{ transition:'stroke-dasharray 1s ease', filter:`drop-shadow(0 0 4px ${color}88)` }}
+      />
+      <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
+        style={{ fontSize:size*0.22, fontWeight:700, fill:'var(--text-1)', fontFamily:'var(--font-display)',
+          transform:'rotate(90deg)', transformOrigin:`${size/2}px ${size/2}px` }}>
+        {p}%
+      </text>
+    </svg>
+  );
+}
+
+function StatRing({ label, value, total, color }) {
+  return (
+    <TiltCard style={{ background:'var(--white)', border:'1px solid var(--border)', borderRadius:12, padding:'1rem',
+      display:'flex', flexDirection:'column', alignItems:'center', gap:'0.5rem' }}>
+      <ProgressRing value={value} total={total} color={color} />
+      <div style={{ fontSize:'0.75rem', color:'var(--text-3)', textAlign:'center', lineHeight:1.3 }}>{label}</div>
+      <div style={{ fontSize:'0.8125rem', fontWeight:700, color:'var(--text-1)' }}>{value} / {total}</div>
+    </TiltCard>
+  );
+}
+
+/* ══ Dashboard ═══════════════════════════════════════════════════════════════ */
 export default function Dashboard({ user }) {
-  const [live, setLive]     = useState(null);
-  const [trends, setTrends] = useState(null);
+  const [live, setLive] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [ind, bud, trd] = await Promise.all([
+      const [ind, bud] = await Promise.all([
         supabase.from('v_indicator_status').select('*').order('code'),
         supabase.from('v_domain_budget').select('*').order('domain'),
-        supabase.from('v_indicator_trends')
-          .select('value,target_value,reporting_period,verified')
-          .eq('verified', true).order('reporting_period'),
       ]);
       if (cancelled || ind.error || bud.error || !ind.data?.length) return;
       setLive(normaliseLive(ind.data, bud.data ?? []));
-      if (!trd.error && trd.data?.length) setTrends(trd.data);
     })();
     return () => { cancelled = true; };
   }, []);
 
-  const { indicators, summary: S } = live ?? normaliseMock();
-  const spentPct  = pct(S.total_spent_vuv, S.total_budget_vuv);
-  const firstName = user?.name?.split(' ')[0] ?? 'there';
+  const { indicators, budgetData, summary: S } = live ?? normaliseMock();
+  const spentPct = pct(S.total_spent_vuv, S.total_budget_vuv);
 
-  const trendData = useMemo(() => {
-    if (!trends) return MOCK_TREND;
-    const byPeriod = {};
-    for (const t of trends) {
-      const tgt = Number(t.target_value);
-      if (!tgt) continue;
-      (byPeriod[t.reporting_period] ??= { sum: 0, n: 0 });
-      byPeriod[t.reporting_period].sum += Math.min(100, Math.max(0, (Number(t.value) / tgt) * 100));
-      byPeriod[t.reporting_period].n += 1;
-    }
-    const rows = Object.keys(byPeriod).sort().map(k => ({
-      period: qLabel(k),
-      pct: Math.round(byPeriod[k].sum / byPeriod[k].n),
-    }));
-    return rows.length >= 2 ? rows : MOCK_TREND;
-  }, [trends]);
-
-  const statusRows = [
-    { key: 'green', count: S.indicators_green },
-    { key: 'amber', count: S.indicators_amber },
-    { key: 'red',   count: S.indicators_red },
-  ];
-
-  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const pieSrc = [
+    { name:'On Track',  value:S.indicators_green, color:'#1a8c4e' },
+    { name:'At Risk',   value:S.indicators_amber, color:'#c97b00' },
+    { name:'Off Track', value:S.indicators_red,   color:'#c0392b' },
+  ].filter(d => d.value > 0);
 
   return (
-    <div className="page-pad max-w-[1400px] animate-fade-up">
+    <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
 
-      {/* ── Welcome header ─────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back, {firstName}!</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Vanuatu Loss &amp; Damage Fund · MERL overview · {live ? 'Live data' : 'Sample data (offline)'}
-          </p>
+      {/* ── Hero header ─────────────────────────────────────────────── */}
+      <div style={{
+        position:'relative',
+        background:'linear-gradient(135deg, var(--green-900) 0%, var(--green-800) 55%, #1a5c3a 100%)',
+        borderRadius:16, padding:'2rem 2.5rem', marginBottom:'1.75rem',
+        overflow:'hidden', minHeight:110,
+      }}>
+        <ParticleCanvas />
+        <FloatingOrbs />
+        <div style={{ position:'relative', zIndex:1 }}>
+          <div style={{ fontSize:'0.6875rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(212,168,67,0.9)', marginBottom:'0.375rem' }}>
+            Vanuatu Loss &amp; Damage Fund Development Project
+          </div>
+          <h1 style={{ fontFamily:'var(--font-display)', fontSize:'1.875rem', fontWeight:600, color:'#ffffff', letterSpacing:'-0.025em', margin:0, lineHeight:1.2 }}>
+            MERL Dashboard
+          </h1>
+          <div style={{ fontSize:'0.8125rem', color:'rgba(255,255,255,0.5)', marginTop:'0.375rem' }}>
+            Overview · Funded by MFAT New Zealand · {live ? 'Live data' : 'Sample data (offline)'}
+          </div>
         </div>
-        <span className="text-xs font-medium text-gray-400 bg-white border border-gray-200 rounded-lg px-3 py-1.5">
-          {today}
-        </span>
       </div>
 
-      {/* ── Bordered grid ──────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+      {/* ── KPI row ──────────────────────────────────────────────────── */}
+      <div className="grid-kpi" style={{ marginBottom:'1.5rem' }}>
+        <KpiCard label="Active Components"   value={S.active_projects}                      sub={`of ${S.total_projects} total components`}                        color="green" icon={TrendingUp} animate />
+        <KpiCard label="Total Indicators"    value={S.total_indicators}                     sub={`${S.indicators_green} on track`}                                 color="green"               animate />
+        <KpiCard label="Budget (VUV)"        value={fmtM(S.total_budget_vuv)}               sub={`${spentPct}% utilised · ${fmtM(S.total_spent_vuv)} spent`}        color="gold"                         />
+        <KpiCard label="At Risk / Off Track" value={S.indicators_amber + S.indicators_red}  sub={`${S.indicators_amber} at risk · ${S.indicators_red} off track`}   color={S.indicators_red > 0 ? 'red' : 'amber'} icon={AlertTriangle} animate />
+      </div>
 
-        {/* KPI stats row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 xl:border-b border-gray-200">
-          <KpiCell
-            label="Active Components" value={S.active_projects} icon={FolderKanban}
-            chip={<><ArrowUpRight size={11} /> of {S.total_projects} total</>} chipTone="indigo"
-          />
-          <KpiCell
-            label="Total Indicators" value={S.total_indicators} icon={Target}
-            chip={`${S.indicators_green} on track`} chipTone="emerald"
-          />
-          <KpiCell
-            label="Budget (VUV)" value={fmtM(S.total_budget_vuv)} icon={Wallet}
-            chip={`${spentPct}% utilised`} chipTone="amber"
-          />
-          <KpiCell
-            label="At Risk / Off Track" value={S.indicators_amber + S.indicators_red} icon={AlertTriangle}
-            chip={`${S.indicators_amber} at risk · ${S.indicators_red} off track`}
-            chipTone={S.indicators_red > 0 ? 'red' : 'amber'} last
-          />
-        </div>
-
-        {/* Chart + status column */}
-        <div className="grid lg:grid-cols-3 border-b border-gray-200">
-          <div className="lg:col-span-2 p-5 border-b lg:border-b-0 lg:border-r border-gray-200">
-            <div className="mb-4">
-              <h2 className="text-sm font-semibold text-gray-900">Indicator Achievement</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Average progress toward targets across verified reports (%)</p>
-            </div>
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={trendData} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
-                <defs>
-                  <linearGradient id="achv" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"  stopColor="#4f46e5" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eef1f6" vertical={false} />
-                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ChartTip />} />
-                <Area type="monotone" dataKey="pct" stroke="#4f46e5" strokeWidth={2}
-                  fill="url(#achv)" dot={{ r: 2.5, fill: '#4f46e5' }} activeDot={{ r: 4.5 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="p-5 flex flex-col">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Indicator Status</h2>
-            <div className="space-y-3">
-              {statusRows.map(({ key, count }) => (
-                <div key={key}>
-                  <div className="flex items-center justify-between text-sm mb-1.5">
-                    <span className="flex items-center gap-2 text-gray-600">
-                      <span className={`w-2 h-2 rounded-full ${TRAFFIC_DOT[key]}`} />
-                      {TRAFFIC_LABEL[key]}
-                    </span>
-                    <span className="font-semibold text-gray-900 tabular-nums">{count}</span>
-                  </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${TRAFFIC_BAR[key]}`}
-                      style={{ width: `${pct(count, S.total_indicators)}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-auto pt-5 border-t border-gray-100">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                <span className="font-semibold text-gray-900 text-sm">Budget Utilisation</span>
-                <span className="font-semibold text-gray-900 tabular-nums">{spentPct}%</span>
+      {/* ── Charts ────────────────────────────────────────────────────── */}
+      <div style={{ display:'flex', flexDirection:'column', gap:'1rem', marginBottom:'1.5rem' }}>
+        {/* Budget bar chart */}
+        <div className="card">
+          <div className="section-label" style={{ marginBottom:'1rem' }}>Budget vs Expenditure by Component (VUV M)</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={budgetData} barGap={4} barSize={22}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--green-50)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize:11, fill:'var(--text-3)', fontFamily:'var(--font-ui)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize:10, fill:'var(--text-3)', fontFamily:'var(--font-ui)' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="Budget" fill="var(--green-100)" radius={[4,4,0,0]} name="Budget" />
+              <Bar dataKey="Spent"  fill="var(--green-600)" radius={[4,4,0,0]} name="Spent" />
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ display:'flex', gap:'1rem', marginTop:'0.5rem' }}>
+            {[['var(--green-100)','Budget'],['var(--green-600)','Spent']].map(([c,l]) => (
+              <div key={l} style={{ display:'flex', alignItems:'center', gap:'0.375rem', fontSize:'0.75rem', color:'var(--text-3)' }}>
+                <span style={{ width:10, height:10, borderRadius:2, background:c }}/>{l}
               </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full bg-green-600" style={{ width: `${spentPct}%` }} />
-              </div>
-              <div className="flex justify-between text-[11px] text-gray-400 mt-1.5 tabular-nums">
-                <span>VUV {fmtM(S.total_spent_vuv)} spent</span>
-                <span>VUV {fmtM(S.total_budget_vuv)}</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Recent indicators table */}
-        <div>
-          <div className="flex items-center justify-between p-5 pb-3">
+        {/* progress rings */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.75rem' }}>
+          <StatRing label="On Track"  value={S.indicators_green} total={S.total_indicators} color="#1a8c4e" />
+          <StatRing label="At Risk"   value={S.indicators_amber} total={S.total_indicators} color="#c97b00" />
+          <StatRing label="Off Track" value={S.indicators_red}   total={S.total_indicators} color="#c0392b" />
+        </div>
+      </div>
+
+      {/* ── Indicators table + donut ──────────────────────────────────── */}
+      <div className="grid-main-side" style={{ marginBottom:'1.5rem' }}>
+
+        <div className="card" style={{ padding:0, overflow:'hidden' }}>
+          <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">All Indicators</h2>
-              <p className="text-xs text-gray-500 mt-0.5">{indicators.length} indicators across {S.total_projects} programme components</p>
+              <div style={{ fontFamily:'var(--font-display)', fontSize:'1rem', fontWeight:600, color:'var(--text-1)' }}>
+                All Indicators — Current Status
+              </div>
+              <div style={{ fontSize:'0.75rem', color:'var(--text-3)', marginTop:2 }}>
+                {indicators.length} indicators across {S.total_projects} programme components
+              </div>
             </div>
-            <NavLink to="/analysis" className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 hover:text-green-900">
-              View Analysis <ArrowRight size={13} />
+            <NavLink to="/analysis" style={{ display:'flex', alignItems:'center', gap:'0.375rem', fontSize:'0.8125rem', fontWeight:600, color:'var(--green-700)', textDecoration:'none' }}>
+              View Analysis <ArrowRight size={14}/>
             </NavLink>
           </div>
-          <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead>
-                <tr className="text-left text-[11px] text-gray-400 font-semibold uppercase tracking-wide border-y border-gray-100 bg-gray-50/60">
-                  <th className="py-2.5 px-5">Indicator</th>
-                  <th className="py-2.5 pr-4">Domain</th>
-                  <th className="py-2.5 pr-4 text-right">Baseline</th>
-                  <th className="py-2.5 pr-4 text-right">Current</th>
-                  <th className="py-2.5 pr-4 text-right">Target</th>
-                  <th className="py-2.5 pr-4 text-right">Progress</th>
-                  <th className="py-2.5 pr-5">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {indicators.map(ind => {
-                  const p = pct(ind.current, ind.target);
-                  return (
-                    <tr key={ind.id} className="hover:bg-gray-50/70">
-                      <td className="py-3 px-5">
-                        <div className="font-medium text-gray-800">{ind.name}</div>
-                        <div className="font-mono text-[11px] text-gray-400">{ind.code}</div>
-                      </td>
-                      <td className="py-3 pr-4 text-gray-500">{ind.category}</td>
-                      <td className="py-3 pr-4 text-right text-gray-400 tabular-nums">{ind.baseline}</td>
-                      <td className="py-3 pr-4 text-right font-semibold text-gray-900 tabular-nums">{ind.current}</td>
-                      <td className="py-3 pr-4 text-right text-gray-400 tabular-nums">{ind.target}</td>
-                      <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2 justify-end">
-                          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${TRAFFIC_BAR[ind.traffic]}`} style={{ width: `${p}%` }} />
-                          </div>
-                          <span className="text-xs text-gray-400 tabular-nums w-8 text-right">{p}%</span>
+          <div style={{ overflowX:'auto' }} className="scrollbar-thin">
+          <table className="data-table" style={{ minWidth:640 }}>
+            <thead>
+              <tr>
+                <th>Indicator</th><th>Component</th>
+                <th style={{ textAlign:'right' }}>Baseline</th>
+                <th style={{ textAlign:'right' }}>Current</th>
+                <th style={{ textAlign:'right' }}>Target</th>
+                <th style={{ textAlign:'right' }}>Progress</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {indicators.map(ind => {
+                const p = pct(ind.current, ind.target);
+                return (
+                  <tr key={ind.id}>
+                    <td>
+                      <div style={{ fontWeight:500, color:'var(--text-1)', fontSize:'0.8125rem' }}>{ind.name}</div>
+                      <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--text-3)' }}>{ind.code}</div>
+                    </td>
+                    <td>
+                      <span style={{ background:`${ind.color}22`, color:ind.color, border:`1px solid ${ind.color}44`, borderRadius:9999, padding:'0.125rem 0.5rem', fontSize:'0.6875rem', fontWeight:700, letterSpacing:'0.04em' }}>
+                        {ind.category}
+                      </span>
+                    </td>
+                    <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', color:'var(--text-3)', fontSize:'0.8125rem' }}>{ind.baseline}</td>
+                    <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', fontWeight:700, color:'var(--text-1)', fontSize:'0.9375rem' }}>{ind.current}</td>
+                    <td style={{ textAlign:'right', fontFamily:'var(--font-mono)', color:'var(--text-3)', fontSize:'0.8125rem' }}>{ind.target}</td>
+                    <td style={{ textAlign:'right' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', justifyContent:'flex-end' }}>
+                        <div style={{ width:64, height:5, background:'var(--green-100)', borderRadius:9999, overflow:'hidden' }}>
+                          <div style={{ width:`${p}%`, height:'100%', background:TRAFFIC[ind.traffic], borderRadius:9999, boxShadow:`0 0 6px ${TRAFFIC[ind.traffic]}88` }}/>
                         </div>
-                      </td>
-                      <td className="py-3 pr-5">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold ${TRAFFIC_CHIP[ind.traffic]}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${TRAFFIC_DOT[ind.traffic]}`} />
-                          {TRAFFIC_LABEL[ind.traffic]}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', color:'var(--text-3)', minWidth:32, textAlign:'right' }}>{p}%</span>
+                      </div>
+                    </td>
+                    <td><TrafficBadge status={ind.traffic}/></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        {/* Donut + budget summary */}
+        <div className="card" style={{ display:'flex', flexDirection:'column' }}>
+          <div className="section-label" style={{ marginBottom:'0.75rem' }}>Indicator Status</div>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart>
+              <Pie data={pieSrc} cx="50%" cy="50%" innerRadius={46} outerRadius={70} dataKey="value" paddingAngle={4} stroke="none">
+                {pieSrc.map(e => (
+                  <Cell key={e.name} fill={e.color} style={{ filter:`drop-shadow(0 0 6px ${e.color}66)` }} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v, n) => [v, n]} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', marginTop:'0.5rem' }}>
+            {pieSrc.map(e => (
+              <div key={e.name} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.8125rem' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', color:'var(--text-2)' }}>
+                  <span style={{ width:8, height:8, borderRadius:'50%', background:e.color, boxShadow:`0 0 4px ${e.color}` }}/>
+                  {e.name}
+                </div>
+                <span style={{ fontFamily:'var(--font-mono)', fontWeight:600, color:'var(--text-1)', fontSize:'0.875rem' }}>{e.value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop:'auto', paddingTop:'1rem', borderTop:'1px solid var(--border)' }}>
+            <div className="section-label" style={{ marginBottom:'0.5rem' }}>Budget Utilisation</div>
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.75rem', color:'var(--text-3)', marginBottom:'0.35rem' }}>
+              <span>Spent</span>
+              <span style={{ fontWeight:700, color:'var(--text-1)' }}>{spentPct}%</span>
+            </div>
+            <div style={{ width:'100%', height:6, background:'var(--green-50)', borderRadius:9999, overflow:'hidden' }}>
+              <div style={{ width:`${spentPct}%`, height:'100%', background:'linear-gradient(90deg, var(--green-500), var(--green-400))', borderRadius:9999, boxShadow:'0 0 8px rgba(74,171,130,0.5)', transition:'width 1.2s ease' }}/>
+            </div>
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.6875rem', color:'var(--text-3)', marginTop:'0.25rem' }}>
+              <span>VUV {fmtM(S.total_spent_vuv)}</span>
+              <span>VUV {fmtM(S.total_budget_vuv)}</span>
+            </div>
           </div>
         </div>
       </div>
