@@ -22,8 +22,15 @@ const logos = [
 ];
 
 export function LogoCloud() {
+	// Edge fade applied inline: Tailwind v3 doesn't emit a `mask-[…]` utility,
+	// so the registry block's fade class would be a no-op here.
+	const fade =
+		"linear-gradient(to right, transparent, black 8%, black 92%, transparent)";
 	return (
-		<div className="mask-[linear-gradient(to_right,transparent,black,transparent)] overflow-hidden py-4">
+		<div
+			className="overflow-hidden py-4"
+			style={{ WebkitMaskImage: fade, maskImage: fade }}
+		>
 			<InfiniteSlider gap={56} reverse speed={80} speedOnHover={25}>
 				{logos.map((logo) => (
 					<img
