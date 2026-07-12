@@ -19,6 +19,10 @@ eggs/
 .eggs/
 lib/
 lib64/
+# The rule above (a Python build-artifact ignore) also matches the frontend's
+# shadcn source directory frontend/src/lib. Keep that tracked.
+!frontend/src/lib/
+!frontend/src/lib/**
 parts/
 sdist/
 var/
