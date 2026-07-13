@@ -710,14 +710,6 @@ export default function App() {
           </ErrorBoundary>
         </main>
 
-        {/* Traditional ni-Vanuatu ornament band (footer) */}
-        <div aria-hidden="true" style={{
-          flexShrink: 0, height: 26, background: 'var(--white)',
-          borderTop: '1px solid var(--border)',
-          backgroundImage: `url(${PATTERN_BAND})`, backgroundRepeat: 'repeat-x',
-          backgroundPosition: 'center', backgroundSize: 'auto 26px',
-        }} />
-
     </div>
   );
 }
