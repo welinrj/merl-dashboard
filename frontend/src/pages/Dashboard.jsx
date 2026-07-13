@@ -14,7 +14,7 @@ const TRAFFIC     = { green:'#1a8c4e', amber:'#d99a2b', red:'#b3402f' };
 const TRAFFIC_BG  = { green:'#dcece2', amber:'#f7ead0', red:'#f6ded8' };
 const TRAFFIC_TXT = { green:'#155e34', amber:'#8a6416', red:'#8a2e21' };
 const TRAFFIC_LABEL = { green:'On Track', amber:'At Risk', red:'Off Track' };
-const BANNER = `${import.meta.env.BASE_URL}tribal-banner.svg`;
+const BANNER = `${import.meta.env.BASE_URL}IMG_0874.jpeg`;
 
 /* ── live data (v_indicator_status / v_domain_budget, migration 0003) ────── */
 const DOMAIN_META = {
@@ -81,11 +81,12 @@ function BannerCard({ title, action, children, style }) {
   return (
     <div className="card" style={{ padding:0, overflow:'hidden', display:'flex', flexDirection:'column', ...style }}>
       <div style={{
-        height:60, display:'flex', alignItems:'center', justifyContent:'space-between',
+        height:64, display:'flex', alignItems:'center', justifyContent:'space-between',
         padding:'0 1.1rem', position:'relative',
-        backgroundImage:`url(${BANNER})`, backgroundRepeat:'repeat-x', backgroundSize:'auto 60px',
+        backgroundImage:`url(${BANNER})`, backgroundRepeat:'no-repeat',
+        backgroundSize:'cover', backgroundPosition:'center 22%',
       }}>
-        <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg, rgba(28,21,18,0.82), rgba(28,21,18,0.42))' }} />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg, rgba(18,13,10,0.9) 0%, rgba(18,13,10,0.6) 55%, rgba(18,13,10,0.34) 100%)' }} />
         <h3 style={{ position:'relative', zIndex:1, color:'#fff', fontFamily:'var(--font-display)', fontSize:'1.02rem', fontWeight:800, letterSpacing:'-0.01em', textShadow:'0 1px 4px rgba(0,0,0,0.45)', margin:0 }}>
           {title}
         </h3>
