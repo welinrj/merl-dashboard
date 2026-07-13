@@ -41,6 +41,12 @@ const LOGIN_BG = `${import.meta.env.BASE_URL}vanuatu-login-bg.svg`;
 // a safety net if the DoCC logo ever fails to load.
 const MFAT_LOGO = `${import.meta.env.BASE_URL}mfat-logo.png`;
 const DOCC_LOGO = `${import.meta.env.BASE_URL}docc-logo.png`;
+// Traditional ni-Vanuatu ornament (hand-drawn SVG): a woven-diamond / namele
+// chevron band for the header & footer, and a faint sandroing (sand-drawing)
+// motif tiled as a background watermark. Base-aware so they resolve under the
+// GitHub Pages project path.
+const PATTERN_BAND = `${import.meta.env.BASE_URL}pattern-band.svg`;
+const PATTERN_WATERMARK = `${import.meta.env.BASE_URL}pattern-watermark.svg`;
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const ROLES: Record<UserRole, string> = {
@@ -669,6 +675,14 @@ export default function App() {
         </div>
       </header>
 
+      {/* Traditional ni-Vanuatu ornament band (header) */}
+      <div aria-hidden="true" style={{
+        flexShrink: 0, height: 26, background: 'var(--white)',
+        borderBottom: '1px solid var(--border)',
+        backgroundImage: `url(${PATTERN_BAND})`, backgroundRepeat: 'repeat-x',
+        backgroundPosition: 'center', backgroundSize: 'auto 26px',
+      }} />
+
       {/* Mobile dropdown nav */}
       <nav className={`topnav-mobile${sidebarOpen ? ' open' : ''}`}>
         {visibleNav.map(({ key, path, label, Icon }) => (
@@ -683,7 +697,10 @@ export default function App() {
           <LogoCloud />
         </div>
 
-        <main style={{ flex: 1, overflowY: 'auto', background: 'var(--cream)' }} className="scrollbar-thin">
+        <main style={{
+          flex: 1, overflowY: 'auto', background: 'var(--cream)',
+          backgroundImage: `url(${PATTERN_WATERMARK})`, backgroundSize: '150px',
+        }} className="scrollbar-thin">
           <ErrorBoundary key={location.pathname}>
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
@@ -699,6 +716,14 @@ export default function App() {
             </Routes>
           </ErrorBoundary>
         </main>
+
+        {/* Traditional ni-Vanuatu ornament band (footer) */}
+        <div aria-hidden="true" style={{
+          flexShrink: 0, height: 26, background: 'var(--white)',
+          borderTop: '1px solid var(--border)',
+          backgroundImage: `url(${PATTERN_BAND})`, backgroundRepeat: 'repeat-x',
+          backgroundPosition: 'center', backgroundSize: 'auto 26px',
+        }} />
 
         {/* Partner / funder footer */}
         <footer style={{
