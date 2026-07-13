@@ -28,6 +28,7 @@ export type MFAStatus = 'required' | 'verified' | 'not_required';
 
 export type NavKey =
   | 'dashboard'
+  | 'framework'
   | 'registration'
   | 'projects'
   | 'datasets'
