@@ -697,7 +697,7 @@ export default function App() {
           <ErrorBoundary key={location.pathname}>
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
-              <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard /> : <Navigate to={defaultPath} replace />} />
               <Route path="/registration" element={allowed.includes('registration') ? <ProjectRegistration user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/results-framework" element={allowed.includes('registration') ? <ResultsFramework user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/projects"  element={allowed.includes('projects')  ? <Projects /> : <Navigate to={defaultPath} replace />} />

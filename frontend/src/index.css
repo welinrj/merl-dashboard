@@ -4,33 +4,33 @@
 
 /* ── Design Tokens ─────────────────────────────────────────────────────── */
 :root {
-  /* Clean light theme — indigo primary with colourful accent tiles.
-     Token names kept (--green-*) but now hold the primary indigo scale, so the
-     whole portal re-themes from one place. Positive/success stays green via the
-     hardcoded .badge-green + chart colours; negative red; savings/warning orange. */
-  --green-900: #1e1b4b;  /* indigo-950 — deep hero */
-  --green-800: #312e81;  /* indigo-900 */
-  --green-700: #4338ca;  /* indigo-700 */
-  --green-600: #4f46e5;  /* indigo-600 — primary */
-  --green-500: #6366f1;  /* indigo-500 */
-  --green-200: #c7d2fe;  /* indigo-200 */
-  --green-100: #e0e7ff;  /* indigo-100 */
-  --green-50:  #eef2ff;  /* indigo-50 */
-  --gold-500:  #f97316;  /* orange-500 */
-  --gold-400:  #fb923c;  /* orange-400 */
-  --gold-100:  #ffedd5;  /* orange-100 */
-  --red-700:   #b91c1c;
-  --red-600:   #dc2626;
-  --red-500:   #ef4444;
-  --red-100:   #fee2e2;
-  --red-50:    #fef2f2;
-  --ink:       #0f172a;  /* slate-900 */
-  --cream:     #eef1f6;  /* page background — cool light gray */
+  /* Ni-Vanuatu tribal theme — teal primary with gold + brick-red accents.
+     Token names kept (--green-*) but now hold the primary teal scale, so the
+     whole portal re-themes from one place. Positive/success stays true green via
+     the hardcoded chart/traffic colours; negative red; savings/warning gold. */
+  --green-900: #08302f;  /* deep teal — hero */
+  --green-800: #0b4443;
+  --green-700: #0c5b59;
+  --green-600: #0e6e6e;  /* primary teal */
+  --green-500: #12827f;
+  --green-200: #a7d3d0;
+  --green-100: #d3e8e6;
+  --green-50:  #eaf4f3;
+  --gold-500:  #e0a12a;  /* gold */
+  --gold-400:  #eab24a;
+  --gold-100:  #f7ead0;
+  --red-700:   #922c1f;
+  --red-600:   #b3402f;  /* brick red */
+  --red-500:   #c85440;
+  --red-100:   #f6ded8;
+  --red-50:    #fbf0ec;
+  --ink:       #1c1512;  /* warm charcoal */
+  --cream:     #f3f1ec;  /* page background — warm light */
   --white:     #ffffff;
-  --border:    #e7eaf1;
-  --text-1:    #0f172a;
-  --text-2:    #475569;
-  --text-3:    #94a3b8;
+  --border:    #e6e1d8;
+  --text-1:    #1c1512;
+  --text-2:    #5b5349;
+  --text-3:    #9a9186;
   --shadow-sm: 0 1px 2px rgba(16,24,40,0.05);
   --shadow-md: 0 4px 16px rgba(16,24,40,0.08);
   --shadow-lg: 0 16px 40px rgba(16,24,40,0.12);
@@ -224,10 +224,14 @@
 .grid-kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .grid-main-side { display: grid; grid-template-columns: 1fr 260px; gap: 1rem; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.grid-dash-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+.grid-dash-2 { display: grid; grid-template-columns: 1.7fr 1fr; gap: 1rem; }
 
 @media (max-width: 1024px) {
   .grid-kpi { grid-template-columns: repeat(2, 1fr); }
   .grid-main-side { grid-template-columns: 1fr; }
+  .grid-dash-3 { grid-template-columns: 1fr; }
+  .grid-dash-2 { grid-template-columns: 1fr; }
 }
 @media (max-width: 800px) {
   .grid-2 { grid-template-columns: 1fr; }
