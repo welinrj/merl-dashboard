@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="84" height="84" viewBox="0 0 84 84">
+  <!-- Sandroing-inspired continuous-line motif for a very subtle background
+       watermark. Four namele-fern petals around a centre, with small woven
+       diamonds at the corners so a repeated grid reads as a lattice.
+       currentColor + low opacity applied by the caller. -->
+  <g fill="none" stroke="#4f46e5" stroke-width="1.1" stroke-linejoin="round" opacity="0.06">
+    <path d="M42 42 Q 30 22 42 10 Q 54 22 42 42 Z"/>
+    <path d="M42 42 Q 30 62 42 74 Q 54 62 42 42 Z"/>
+    <path d="M42 42 Q 62 30 74 42 Q 62 54 42 42 Z"/>
+    <path d="M42 42 Q 22 30 10 42 Q 22 54 42 42 Z"/>
+    <circle cx="42" cy="42" r="3.2"/>
+    <!-- corner weave diamonds (shared across tiles) -->
+    <path d="M0 0 L6 0 L0 6 Z" opacity="0"/>
+    <path d="M0 42 L5 37 L10 42 L5 47 Z"/>
+    <path d="M84 42 L79 37 L74 42 L79 47 Z"/>
+    <path d="M42 0 L37 5 L42 10 L47 5 Z"/>
+    <path d="M42 84 L37 79 L42 74 L47 79 Z"/>
+  </g>
+</svg>
