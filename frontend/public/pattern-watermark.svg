@@ -3,7 +3,7 @@
        watermark. Four namele-fern petals around a centre, with small woven
        diamonds at the corners so a repeated grid reads as a lattice.
        currentColor + low opacity applied by the caller. -->
-  <g fill="none" stroke="#4f46e5" stroke-width="1.1" stroke-linejoin="round" opacity="0.06">
+  <g fill="none" stroke="#0e6e6e" stroke-width="1.1" stroke-linejoin="round" opacity="0.06">
     <path d="M42 42 Q 30 22 42 10 Q 54 22 42 42 Z"/>
     <path d="M42 42 Q 30 62 42 74 Q 54 62 42 42 Z"/>
     <path d="M42 42 Q 62 30 74 42 Q 62 54 42 42 Z"/>

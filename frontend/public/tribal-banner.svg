@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="72" viewBox="0 0 180 72">
+  <!-- Bold ni-Vanuatu / Melanesian-style banner band. Tiles horizontally.
+       Totem "eye" diamonds (teal/gold/red) flanked by zigzag columns and a
+       row of triangle "teeth", on a dark ground. -->
+  <defs>
+    <clipPath id="b"><rect width="180" height="72"/></clipPath>
+  </defs>
+  <g clip-path="url(#b)">
+    <rect width="180" height="72" fill="#1c1512"/>
+    <!-- teeth rows -->
+    <g fill="#e0a12a">
+      <path d="M0 0 L15 0 L7.5 11 Z"/><path d="M30 0 L45 0 L37.5 11 Z"/><path d="M60 0 L75 0 L67.5 11 Z"/><path d="M90 0 L105 0 L97.5 11 Z"/><path d="M120 0 L135 0 L127.5 11 Z"/><path d="M150 0 L165 0 L157.5 11 Z"/>
+    </g>
+    <g fill="#b3402f">
+      <path d="M15 0 L30 0 L22.5 11 Z"/><path d="M45 0 L60 0 L52.5 11 Z"/><path d="M75 0 L90 0 L82.5 11 Z"/><path d="M105 0 L120 0 L112.5 11 Z"/><path d="M135 0 L150 0 L142.5 11 Z"/><path d="M165 0 L180 0 L172.5 11 Z"/>
+    </g>
+    <g fill="#e0a12a">
+      <path d="M0 72 L15 72 L7.5 61 Z"/><path d="M30 72 L45 72 L37.5 61 Z"/><path d="M60 72 L75 72 L67.5 61 Z"/><path d="M90 72 L105 72 L97.5 61 Z"/><path d="M120 72 L135 72 L127.5 61 Z"/><path d="M150 72 L165 72 L157.5 61 Z"/>
+    </g>
+    <g fill="#0e6e6e">
+      <path d="M15 72 L30 72 L22.5 61 Z"/><path d="M45 72 L60 72 L52.5 61 Z"/><path d="M75 72 L90 72 L82.5 61 Z"/><path d="M105 72 L120 72 L112.5 61 Z"/><path d="M135 72 L150 72 L142.5 61 Z"/><path d="M165 72 L180 72 L172.5 61 Z"/>
+    </g>
+    <!-- zigzag columns between motifs -->
+    <g fill="none" stroke="#efe7db" stroke-width="2">
+      <path d="M45 16 L49 24 L45 32 L49 40 L45 48 L49 56" stroke="#efe7db"/>
+      <path d="M135 16 L131 24 L135 32 L131 40 L135 48 L131 56" stroke="#efe7db"/>
+    </g>
+    <!-- totem eye A (x=90) -->
+    <g transform="translate(90,36)">
+      <path d="M0 -26 L22 0 L0 26 L-22 0 Z" fill="#0e6e6e"/>
+      <path d="M0 -18 L15 0 L0 18 L-15 0 Z" fill="#e0a12a"/>
+      <path d="M0 -10 L8 0 L0 10 L-8 0 Z" fill="#b3402f"/>
+      <circle r="3.4" fill="#f4efe6"/>
+    </g>
+    <!-- totem eye B (x=0/180 edge) -->
+    <g transform="translate(0,36)">
+      <path d="M0 -26 L22 0 L0 26 L-22 0 Z" fill="#b3402f"/>
+      <path d="M0 -18 L15 0 L0 18 L-15 0 Z" fill="#0e6e6e"/>
+      <path d="M0 -10 L8 0 L0 10 L-8 0 Z" fill="#e0a12a"/>
+      <circle r="3.4" fill="#f4efe6"/>
+    </g>
+    <g transform="translate(180,36)">
+      <path d="M0 -26 L22 0 L0 26 L-22 0 Z" fill="#b3402f"/>
+      <path d="M0 -18 L15 0 L0 18 L-15 0 Z" fill="#0e6e6e"/>
+      <path d="M0 -10 L8 0 L0 10 L-8 0 Z" fill="#e0a12a"/>
+      <circle r="3.4" fill="#f4efe6"/>
+    </g>
+    <!-- small chevrons flanking centre eye -->
+    <g fill="none" stroke="#efe7db" stroke-width="2.4" stroke-linecap="round">
+      <path d="M60 30 l7 6 l-7 6"/><path d="M120 30 l-7 6 l7 6"/>
+    </g>
+  </g>
+</svg>
