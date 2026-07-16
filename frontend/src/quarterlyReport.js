@@ -44,7 +44,7 @@ const THEME_CATEGORY = {
   Finance: 'Financial', Knowledge: 'Operational', 'Cross-cutting': 'Operational',
 };
 
-export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [] } = {}) {
+export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [], reports = [] } = {}) {
   const p = parsePeriod(period);
   const acts = ACTIVITIES;
   const S = PLAN_SUMMARY;
@@ -232,6 +232,9 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     photos: photoDocs.length
       ? `${photoDocs.length} photograph${photoDocs.length > 1 ? 's' : ''} document field implementation across ${photoActivityCount || 1} activit${(photoActivityCount || 1) > 1 ? 'ies' : 'y'} this period.`
       : '',
+    reports: reportDocs.length
+      ? `${reportDocs.length} narrative report${reportDocs.length > 1 ? 's' : ''} were uploaded across ${reportActivityCount || 1} activit${(reportActivityCount || 1) > 1 ? 'ies' : 'y'}; automatic summaries appear below.`
+      : '',
   };
 
   /* ── Photo documentation (uploaded against activities in the Framework tab) */
@@ -247,6 +250,18 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     }));
   const photoActivityCount = new Set(photoDocs.map(p => p.activity).filter(Boolean)).size;
 
+  /* ── Activity report summaries (uploaded on the Framework tab) ─────────── */
+  const reportDocs = (reports || [])
+    .filter(r => r && (r.summary || r.fileName))
+    .map((r, i) => ({
+      id: r.id || `report-${i}`,
+      activity: r.activity || '',
+      fileName: r.fileName || 'Report',
+      kind: r.kind || '',
+      summary: (r.summary && r.summary.trim()) || 'No text preview available.',
+    }));
+  const reportActivityCount = new Set(reportDocs.map(r => r.activity).filter(Boolean)).size;
+
   /* ── Supporting attachments / annexes ─────────────────────────────────── */
   const attachments = [
     { ref: 'Annex A', title: 'DoCC Strategic Results Framework 2025–2030', note: `Source register for all ${total} activities, ${S.focus_areas} focus areas and ${S.indicators} output indicators.` },
@@ -259,6 +274,13 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
       ref: 'Annex E',
       title: 'Photo documentation',
       note: `${photoDocs.length} field photograph${photoDocs.length > 1 ? 's' : ''} across ${photoActivityCount || 1} activit${(photoActivityCount || 1) > 1 ? 'ies' : 'y'} (Photo Documentation section).`,
+    });
+  }
+  if (reportDocs.length) {
+    attachments.push({
+      ref: `Annex ${photoDocs.length ? 'F' : 'E'}`,
+      title: 'Activity reports',
+      note: `${reportDocs.length} narrative report${reportDocs.length > 1 ? 's' : ''} across ${reportActivityCount || 1} activit${(reportActivityCount || 1) > 1 ? 'ies' : 'y'}, summarised in the Activity Reports section.`,
     });
   }
 
@@ -284,6 +306,7 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     nextSteps,
     figures,
     photos: photoDocs,
+    reports: reportDocs,
     summaries,
     attachments,
   };

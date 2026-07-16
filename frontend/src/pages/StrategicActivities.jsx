@@ -1,13 +1,16 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, Search, AlertCircle, Columns3, ImagePlus, Loader2, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Search, AlertCircle, Columns3, ImagePlus, Loader2, Upload, FileText, Download } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
+import { processReportFile, reportKind, ACCEPTED_REPORT_EXT, REPORT_KIND_LABEL } from '../reportProcessing';
 import { ACTIVITIES as EMBEDDED } from '../strategicPlan';
 
 const BANNER = `${import.meta.env.BASE_URL}IMG_0874.jpeg`;
 const PHOTO_BUCKET = 'activity-photos';
+const REPORT_BUCKET = 'activity-reports';
 const MAX_PHOTO_MB = 10;
+const MAX_REPORT_MB = 25;
 const photoUrl = (path) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '';
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const THEMES = ['Adaptation', 'Mitigation', 'Governance', 'Finance', 'Knowledge', 'Cross-cutting'];
@@ -42,6 +45,7 @@ export default function StrategicActivities({ user }) {
   const [rows, setRows] = useState([]);
   const [cols, setCols] = useState([]);          // custom column definitions
   const [photos, setPhotos] = useState({});      // activity_id -> [photo rows]
+  const [reportCounts, setReportCounts] = useState({}); // activity_id -> count
   const [live, setLive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
@@ -50,6 +54,7 @@ export default function StrategicActivities({ user }) {
   const [modal, setModal] = useState(null);      // activity add/edit
   const [colsOpen, setColsOpen] = useState(false);
   const [photoModal, setPhotoModal] = useState(null); // { id, name } — manage photos
+  const [reportModal, setReportModal] = useState(null); // { id, name } — manage reports
   const [saving, setSaving] = useState(false);
 
   const loadPhotos = useCallback(async () => {
@@ -61,6 +66,14 @@ export default function StrategicActivities({ user }) {
     setPhotos(map);
   }, []);
 
+  const loadReportCounts = useCallback(async () => {
+    const { data, error } = await supabase.from('v_srf_activity_reports').select('activity_id');
+    if (error || !data) { setReportCounts({}); return; }
+    const map = {};
+    data.forEach(r => { map[r.activity_id] = (map[r.activity_id] || 0) + 1; });
+    setReportCounts(map);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [act, col] = await Promise.all([
@@ -69,17 +82,17 @@ export default function StrategicActivities({ user }) {
     ]);
     if (!act.error && act.data && act.data.length) {
       setRows(act.data); setCols(col.error ? [] : (col.data ?? [])); setLive(true);
-      loadPhotos();
+      loadPhotos(); loadReportCounts();
     } else {
       setRows(EMBEDDED.map((a, i) => ({
         id: `embed-${i}`, code:a.code, name:a.name, theme:a.theme, focus_area:a.focusArea,
         indicator:a.indicator, budget_vuv:a.budget, status:MAP[a.status] ?? 'unrated',
         progress:a.progress, risk:a.risk, target_2030:a.target2030, custom:{},
       })));
-      setCols([]); setPhotos({}); setLive(false);
+      setCols([]); setPhotos({}); setReportCounts({}); setLive(false);
     }
     setLoading(false);
-  }, [loadPhotos]);
+  }, [loadPhotos, loadReportCounts]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -228,6 +241,12 @@ export default function StrategicActivities({ user }) {
                           <ImagePlus size={12} />{photos[r.id].length}
                         </span>
                       )}
+                      {live && reportCounts[r.id] > 0 && (
+                        <span title={`${reportCounts[r.id]} report${reportCounts[r.id] > 1 ? 's' : ''}`}
+                          style={{ display:'inline-flex', alignItems:'center', gap:'0.2rem', fontSize:'0.65rem', fontWeight:700, color:'var(--gold-600, #8a6416)' }}>
+                          <FileText size={12} />{reportCounts[r.id]}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td style={{ fontSize:'0.78rem', color:'var(--text-2)' }}>{r.theme}</td>
@@ -247,6 +266,7 @@ export default function StrategicActivities({ user }) {
                   ))}
                   {canEdit && live && (
                     <td style={{ whiteSpace:'nowrap' }}>
+                      <button onClick={() => setReportModal({ id:r.id, name:r.name })} title="Reports" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:4 }}><FileText size={15} /></button>
                       <button onClick={() => setPhotoModal({ id:r.id, name:r.name })} title="Photos" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:4 }}><ImagePlus size={15} /></button>
                       <button onClick={() => openEdit(r)} title="Edit" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:4 }}><Pencil size={15} /></button>
                       <button onClick={() => remove(r)} title="Delete" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--red-600)', padding:4 }}><Trash2 size={15} /></button>
@@ -280,6 +300,169 @@ export default function StrategicActivities({ user }) {
           onChanged={loadPhotos}
         />
       )}
+      {reportModal && (
+        <ReportsModal
+          activity={reportModal}
+          onClose={() => setReportModal(null)}
+          onChanged={() => { loadReportCounts(); loadPhotos(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Activity reports modal ──────────────────────────────────────────────── */
+function ReportsModal({ activity, onClose, onChanged }) {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('v_srf_activity_reports').select('*')
+      .eq('activity_id', activity.id).order('created_at', { ascending: false });
+    setReports(error ? [] : (data ?? []));
+    setLoading(false);
+  }, [activity.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const upload = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setBusy(true);
+    let ok = 0;
+    try {
+      for (const file of files) {
+        const kind = reportKind(file);
+        if (!['docx', 'doc', 'pdf', 'xlsx'].includes(kind)) { toast.error(`${file.name}: only Word, PDF and Excel files are accepted.`); continue; }
+        if (file.size > MAX_REPORT_MB * 1024 * 1024) { toast.error(`${file.name} exceeds ${MAX_REPORT_MB}MB.`); continue; }
+
+        // 1. store the report file (private bucket)
+        setProgress(`Uploading ${file.name}…`);
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${activity.id}/${Date.now()}_${safeName}`;
+        const up = await supabase.storage.from(REPORT_BUCKET).upload(path, file, { upsert: false, contentType: file.type || undefined });
+        if (up.error) { toast.error(up.error.message || `Upload of ${file.name} failed.`); continue; }
+
+        // 2. extract summary + embedded photos in the browser
+        setProgress(`Reading ${file.name}…`);
+        let processed = { summary: null, wordCount: null, images: [] };
+        try { processed = await processReportFile(file); } catch { /* keep defaults */ }
+
+        // 3. save report metadata
+        const ins = await supabase.rpc('add_srf_activity_report', {
+          p_activity_id: activity.id, p_storage_path: path, p_file_name: file.name,
+          p_file_type: kind, p_file_size: file.size, p_summary: processed.summary,
+          p_word_count: processed.wordCount, p_photo_count: processed.images.length,
+        });
+        if (ins.error) {
+          await supabase.storage.from(REPORT_BUCKET).remove([path]);
+          toast.error(ins.error.message || 'Could not save report.');
+          continue;
+        }
+        const reportId = ins.data?.id;
+
+        // 4. push any extracted photos into the gallery
+        if (reportId && processed.images.length) {
+          setProgress(`Saving ${processed.images.length} photo(s) from ${file.name}…`);
+          for (let i = 0; i < processed.images.length; i++) {
+            const img = processed.images[i];
+            const ipath = `${activity.id}/report/${reportId}/${i + 1}.${img.ext}`;
+            const iup = await supabase.storage.from(PHOTO_BUCKET).upload(ipath, img.blob, { upsert: true, contentType: img.blob.type || `image/${img.ext}` });
+            if (iup.error) continue;
+            await supabase.rpc('add_srf_report_photo', {
+              p_activity_id: activity.id, p_report_id: reportId, p_storage_path: ipath,
+              p_caption: `${file.name} — photo ${i + 1}`,
+            });
+          }
+        }
+        ok += 1;
+      }
+      if (ok > 0) { toast.success(`${ok} report${ok > 1 ? 's' : ''} uploaded.`); onChanged(); load(); }
+    } finally {
+      setBusy(false); setProgress('');
+    }
+  };
+
+  const download = async (r) => {
+    const { data, error } = await supabase.storage.from(REPORT_BUCKET).createSignedUrl(r.storage_path, 120);
+    if (error || !data?.signedUrl) { toast.error('Could not open the file.'); return; }
+    const a = document.createElement('a');
+    a.href = data.signedUrl; a.download = r.file_name; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  const remove = async (r) => {
+    if (!(await confirmDialog({ title: 'Delete report', message: `Delete "${r.file_name}"? Any photos taken from it will also be removed. This cannot be undone.`, confirmLabel: 'Delete' }))) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc('delete_srf_activity_report', { p_id: r.id });
+    if (error) { setBusy(false); toast.error(error.message || 'Delete failed.'); return; }
+    const paths = Array.isArray(data) ? data : [];
+    const reportPaths = paths.filter(p => p === r.storage_path);
+    const photoPaths = paths.filter(p => p !== r.storage_path);
+    if (reportPaths.length) await supabase.storage.from(REPORT_BUCKET).remove(reportPaths);
+    if (photoPaths.length) await supabase.storage.from(PHOTO_BUCKET).remove(photoPaths);
+    setBusy(false); toast.success('Report deleted.'); onChanged(); load();
+  };
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:60, background:'rgba(18,13,10,0.45)', display:'flex', alignItems:'flex-start', justifyContent:'center', overflowY:'auto', padding:'3rem 1rem' }} onClick={() => !busy && onClose()}>
+      <div onClick={e => e.stopPropagation()} className="card" style={{ width:'100%', maxWidth:640, padding:0, overflow:'hidden' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'1rem', padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)' }}>
+          <div>
+            <div style={{ fontFamily:'var(--font-display)', fontWeight:800, fontSize:'1.05rem' }}>Activity reports</div>
+            <div style={{ fontSize:'0.78rem', color:'var(--text-3)', marginTop:'0.15rem' }}>{activity.name}</div>
+          </div>
+          <button type="button" onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding:'1.1rem 1.25rem', display:'flex', flexDirection:'column', gap:'0.9rem' }}>
+          <label style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'0.4rem', border:'1.5px dashed var(--border)', borderRadius:10, padding:'1.1rem', cursor: busy ? 'default' : 'pointer', color:'var(--text-3)', background:'var(--green-50, #f3f7f4)' }}>
+            {busy ? <Loader2 size={20} style={{ animation:'spin 1s linear infinite' }} /> : <Upload size={20} />}
+            <span style={{ fontSize:'0.82rem', fontWeight:700, color:'var(--text-2)' }}>{busy ? (progress || 'Working…') : 'Click to upload reports'}</span>
+            <span style={{ fontSize:'0.7rem', textAlign:'center' }}>Word, PDF or Excel · up to {MAX_REPORT_MB}MB · summarised automatically; photos inside are added to the gallery</span>
+            <input type="file" accept={ACCEPTED_REPORT_EXT} multiple disabled={busy} style={{ display:'none' }}
+              onChange={e => { upload(e.target.files); e.target.value = ''; }} />
+          </label>
+
+          {loading ? (
+            <div style={{ fontSize:'0.85rem', color:'var(--text-3)', textAlign:'center', padding:'0.5rem 0' }}>Loading…</div>
+          ) : reports.length === 0 ? (
+            <div style={{ fontSize:'0.85rem', color:'var(--text-3)', textAlign:'center', padding:'0.5rem 0' }}>No reports yet.</div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:'0.7rem' }}>
+              {reports.map(r => (
+                <div key={r.id} style={{ border:'1px solid var(--border)', borderRadius:10, padding:'0.7rem 0.8rem' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                    <FileText size={16} style={{ color:'var(--gold-600, #8a6416)', flexShrink:0 }} />
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:'0.8rem', fontWeight:700, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.file_name}</div>
+                      <div style={{ fontSize:'0.68rem', color:'var(--text-3)' }}>
+                        {REPORT_KIND_LABEL[r.file_type] || 'Document'}
+                        {r.photo_count > 0 && ` · ${r.photo_count} photo${r.photo_count > 1 ? 's' : ''} → gallery`}
+                        {r.uploaded_by && ` · ${r.uploaded_by}`}
+                      </div>
+                    </div>
+                    <button onClick={() => download(r)} title="Download" style={{ background:'none', border:'1px solid var(--border)', borderRadius:6, padding:'0.3rem 0.45rem', cursor:'pointer', color:'var(--text-2)', display:'flex' }}><Download size={14} /></button>
+                    <button onClick={() => remove(r)} disabled={busy} title="Delete" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--red-600, #b3402f)', padding:4, display:'flex' }}><Trash2 size={15} /></button>
+                  </div>
+                  {r.summary && (
+                    <div style={{ fontSize:'0.72rem', color:'var(--text-2)', marginTop:'0.5rem', lineHeight:1.5, whiteSpace:'pre-line', maxHeight:96, overflow:'auto' }} className="scrollbar-thin">{r.summary}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display:'flex', justifyContent:'flex-end', padding:'1rem 1.25rem', borderTop:'1px solid var(--border)' }}>
+          <button type="button" onClick={onClose} className="btn-primary" style={{ padding:'0.5rem 1.1rem', borderRadius:8, border:'none', cursor:'pointer', fontWeight:700 }}>Done</button>
+        </div>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

@@ -52,7 +52,7 @@ const SRF_TO_KEY = { on_track:'green', at_risk:'amber', no_progress:'red', unrat
 const REPORT_TYPES = [
   { id:'quarterly', label:'Quarterly Progress Report', icon:'📅',
     desc:'Auto-populated DoCC quarterly report — accomplishments, budget utilisation, challenges, BTOR, lessons, and next steps. Exports to Word.',
-    sections:['Executive Summary','Key Achievements','Introduction','Activity Overview','Quarterly Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps','Photo Documentation'] },
+    sections:['Executive Summary','Key Achievements','Introduction','Activity Overview','Quarterly Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps','Activity Reports','Photo Documentation'] },
   { id:'annual',    label:'Annual Results Report', icon:'📆',
     desc:'Year-end outcomes and results achievement against the RBM framework.',
     sections:['Year Highlights','Outcomes Assessment','Output Delivery','Indicator Dashboard','Financial Summary','Lessons Learned'] },
@@ -179,6 +179,7 @@ function exportExcel({ type, projectLabel, period, indicators, budgetRows }) {
 export default function Reports() {
   const [live, setLive]         = useState(null);
   const [photos, setPhotos]     = useState([]);
+  const [activityReports, setActivityReports] = useState([]);
   const [selected, setSelected] = useState(REPORT_TYPES[0]);
   const [project, setProject]   = useState('');
   const [period, setPeriod]     = useState('Q1 2026');
@@ -205,26 +206,35 @@ export default function Reports() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [acts, phs] = await Promise.all([
+      const [acts, phs, reps] = await Promise.all([
         supabase.from('v_srf_activities').select('id,name,code,theme,status'),
         supabase.from('v_srf_activity_photos').select('*').order('sort_order'),
+        supabase.from('v_srf_activity_reports').select('*').order('created_at', { ascending: false }),
       ]);
-      if (cancelled || acts.error || phs.error || !phs.data?.length) return;
+      if (cancelled || acts.error) return;
       const byId = {};
       (acts.data ?? []).forEach(a => { byId[a.id] = a; });
-      const out = phs.data.map(p => {
-        const a = byId[p.activity_id] || {};
-        return {
-          id: p.id,
-          url: supabase.storage.from('activity-photos').getPublicUrl(p.storage_path).data?.publicUrl || '',
-          caption: p.caption || '',
-          activity: a.name || '',
-          code: a.code || '',
-          theme: a.theme || '',
-          statusKey: SRF_TO_KEY[a.status] || 'none',
-        };
-      }).filter(p => p.url);
-      setPhotos(out);
+      if (!phs.error && phs.data?.length) {
+        const out = phs.data.map(p => {
+          const a = byId[p.activity_id] || {};
+          return {
+            id: p.id,
+            url: supabase.storage.from('activity-photos').getPublicUrl(p.storage_path).data?.publicUrl || '',
+            caption: p.caption || '',
+            activity: a.name || '',
+            code: a.code || '',
+            theme: a.theme || '',
+            statusKey: SRF_TO_KEY[a.status] || 'none',
+          };
+        }).filter(p => p.url);
+        setPhotos(out);
+      }
+      if (!reps.error && reps.data?.length) {
+        setActivityReports(reps.data.map(r => {
+          const a = byId[r.activity_id] || {};
+          return { id: r.id, activity: a.name || '', fileName: r.file_name, kind: r.file_type, summary: r.summary || '' };
+        }));
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -240,9 +250,9 @@ export default function Reports() {
   // Assemble the quarterly report object (auto-populated) for preview + Word.
   const quarterlyReport = useMemo(
     () => (selected.id === 'quarterly'
-      ? buildQuarterlyReport({ period, live: live ?? undefined, photos })
+      ? buildQuarterlyReport({ period, live: live ?? undefined, photos, reports: activityReports })
       : null),
-    [selected.id, period, live, photos],
+    [selected.id, period, live, photos, activityReports],
   );
 
   const [wordState, setWordState] = useState('idle'); // idle | working
