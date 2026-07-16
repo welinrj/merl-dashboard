@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import { confirmDialog } from '../lib/confirm';
 
 const DB_ROLES = [
   { id: 'administrator',       label: 'System Administrator', color: 'bg-red-100 text-red-700' },
@@ -94,7 +95,7 @@ function UsersTab() {
   };
 
   const removeUser = async (u) => {
-    if (!window.confirm(`Permanently delete ${u.full_name}?\n\nThis cannot be undone. To preserve the audit trail, use Deactivate instead.`)) return;
+    if (!(await confirmDialog({ title:'Delete user', message:`Permanently delete ${u.full_name}?\n\nThis cannot be undone. To preserve the audit trail, use Deactivate instead.`, confirmLabel:'Delete' }))) return;
     setBusy(true); setErr('');
     const { error } = await supabase.rpc('admin_delete_user', { p_id: u.id });
     setBusy(false);
