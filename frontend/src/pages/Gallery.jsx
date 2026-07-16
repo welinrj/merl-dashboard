@@ -2,19 +2,24 @@
 // Strategic Results Framework activities: both manually uploaded photos and
 // photos automatically extracted from uploaded activity reports.
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, Images, ImageOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, Images, ImageOff, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
+import { confirmDialog } from '../lib/confirm';
 
 const PHOTO_BUCKET = 'activity-photos';
+const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const photoUrl = (path) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '';
 const AUTO_MS = 5000;
 
-export default function Gallery() {
+export default function Gallery({ user }) {
+  const canEdit = !!user && EDITOR_ROLES.includes(user.role);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [fSource, setFSource] = useState('all'); // all | manual | report
+  const [busy, setBusy] = useState(false);
   const timer = useRef(null);
 
   useEffect(() => {
@@ -77,6 +82,47 @@ export default function Gallery() {
     report: items.filter(p => p.source === 'report').length,
   }), [items]);
 
+  const remove = useCallback(async (photo) => {
+    if (!photo || busy) return;
+    const ok = await confirmDialog({
+      title: 'Delete photo',
+      message: photo.source === 'report'
+        ? 'Remove this photo (extracted from a report) from the gallery? This cannot be undone.'
+        : 'Delete this photo? This cannot be undone.',
+      confirmLabel: 'Delete',
+    });
+    if (!ok) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc('delete_srf_activity_photo', { p_id: photo.id });
+    if (error) { setBusy(false); toast.error(error.message || 'Delete failed.'); return; }
+    if (data) await supabase.storage.from(PHOTO_BUCKET).remove([data]);
+    setItems(prev => prev.filter(x => x.id !== photo.id));
+    setBusy(false);
+    toast.success('Photo deleted.');
+  }, [busy]);
+
+  const bulkRemoveReports = useCallback(async () => {
+    const targets = items.filter(x => x.source === 'report');
+    if (!targets.length || busy) return;
+    const ok = await confirmDialog({
+      title: 'Remove report photos',
+      message: `Remove all ${targets.length} photo${targets.length > 1 ? 's' : ''} extracted from reports? This cannot be undone.`,
+      confirmLabel: 'Remove all',
+    });
+    if (!ok) return;
+    setBusy(true);
+    const paths = [];
+    for (const t of targets) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data } = await supabase.rpc('delete_srf_activity_photo', { p_id: t.id });
+      if (data) paths.push(data);
+    }
+    if (paths.length) await supabase.storage.from(PHOTO_BUCKET).remove(paths);
+    setItems(prev => prev.filter(x => x.source !== 'report'));
+    setBusy(false);
+    toast.success('Report photos removed.');
+  }, [items, busy]);
+
   return (
     <div style={{ maxWidth:1100 }} className="animate-fade-up page-pad">
       <h1 style={{ fontFamily:'var(--font-display)', fontSize:'1.6rem', fontWeight:800, letterSpacing:'-0.02em', color:'var(--text-1)', margin:'0 0 0.25rem' }}>
@@ -98,6 +144,12 @@ export default function Gallery() {
             {label} <span style={{ opacity:0.7 }}>({counts[k]})</span>
           </button>
         ))}
+        {canEdit && counts.report > 0 && (
+          <button onClick={bulkRemoveReports} disabled={busy}
+            style={{ marginLeft:'auto', display:'inline-flex', alignItems:'center', gap:'0.35rem', padding:'0.35rem 0.8rem', borderRadius:9999, cursor: busy ? 'default' : 'pointer', fontSize:'0.78rem', fontWeight:700, border:'1px solid var(--red-600, #b3402f)', background:'var(--white)', color:'var(--red-600, #b3402f)' }}>
+            <Trash2 size={13} /> Remove all {counts.report} from reports
+          </button>
+        )}
       </div>
 
       <div className="card" style={{ padding:0, overflow:'hidden' }}>
@@ -137,6 +189,12 @@ export default function Gallery() {
                     {playing ? <Pause size={15} /> : <Play size={15} />}
                   </button>
                 )}
+                {canEdit && (
+                  <button onClick={() => remove(cur)} disabled={busy} aria-label="Delete photo" title="Delete this photo"
+                    style={{ background:'rgba(179,64,47,0.92)', border:'none', borderRadius:9999, color:'#fff', width:30, height:30, cursor: busy ? 'default' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.35)' }}>
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </div>
 
               <div style={{ position:'absolute', left:0, right:0, bottom:0, padding:'1.5rem 1rem 0.8rem', background:'linear-gradient(transparent, rgba(18,13,10,0.8))', color:'#fff' }}>
@@ -166,7 +224,7 @@ export default function Gallery() {
       </div>
 
       <div style={{ display:'flex', gap:'0.4rem', alignItems:'center', marginTop:'0.9rem', fontSize:'0.78rem', color:'var(--text-3)' }}>
-        <Images size={14} /> Use the arrows or ← → keys to navigate; space bar to pause. Photos come from the Framework tab (uploaded directly or pulled from activity reports).
+        <Images size={14} /> Use the arrows or ← → keys to navigate; space bar to pause. Photos come from the Framework tab (uploaded directly or pulled from activity reports).{canEdit && ' Editors can delete a photo with the trash button, or clear all report-sourced photos at once.'}
       </div>
     </div>
   );
