@@ -6,6 +6,7 @@ import {
   Network, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Loader2, AlertCircle, X,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { confirmDialog } from '../lib/confirm';
 import {
   CLIMATE_THEME, EXPECTED_OUTCOME, ACTIVITY_STATUS, FREQUENCY, LINKED_LEVEL, labelOf,
 } from '../constants/formOptions';
@@ -115,7 +116,7 @@ export default function ResultsFramework({ user }) {
   };
 
   const remove = async (level, record) => {
-    if (!window.confirm(t('resultsFramework.confirmDelete'))) return;
+    if (!(await confirmDialog({ title:t('resultsFramework.confirmDeleteTitle', 'Confirm deletion'), message:t('resultsFramework.confirmDelete'), confirmLabel:t('common.delete', 'Delete') }))) return;
     const map = {
       objective: 'delete_objective', outcome: 'delete_outcome', output: 'delete_output',
       activity: 'delete_project_activity', indicator: 'delete_project_indicator',

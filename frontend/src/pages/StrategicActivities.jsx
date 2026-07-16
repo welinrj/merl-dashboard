@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, X, Search, AlertCircle, Columns3, ImagePlus, Loader2, Upload } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { confirmDialog } from '../lib/confirm';
 import { ACTIVITIES as EMBEDDED } from '../strategicPlan';
 
 const BANNER = `${import.meta.env.BASE_URL}IMG_0874.jpeg`;
@@ -137,7 +138,7 @@ export default function StrategicActivities({ user }) {
   };
 
   const remove = async (r) => {
-    if (!window.confirm(`Delete activity "${r.name}"? This cannot be undone.`)) return;
+    if (!(await confirmDialog({ title:'Delete activity', message:`Delete activity "${r.name}"? This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_srf_activity', { p_id: r.id });
     if (error) { toast.error(error.message || 'Delete failed.'); return; }
     toast.success('Activity deleted.'); load();
@@ -326,7 +327,7 @@ function PhotosModal({ activity, photos, user, onClose, onChanged }) {
   };
 
   const remove = async (p) => {
-    if (!window.confirm('Delete this photo? This cannot be undone.')) return;
+    if (!(await confirmDialog({ title:'Delete photo', message:'Delete this photo? This cannot be undone.', confirmLabel:'Delete' }))) return;
     setBusy(true);
     const { data, error } = await supabase.rpc('delete_srf_activity_photo', { p_id: p.id });
     if (error) { setBusy(false); toast.error(error.message || 'Delete failed.'); return; }
@@ -488,7 +489,7 @@ function ColumnsModal({ cols, onClose, onChanged }) {
   };
 
   const del = async (c) => {
-    if (!window.confirm(`Delete column "${c.label}"? Its values will be removed from all activities.`)) return;
+    if (!(await confirmDialog({ title:'Delete column', message:`Delete column "${c.label}"? Its values will be removed from all activities.`, confirmLabel:'Delete' }))) return;
     setBusy(true);
     const { error } = await supabase.rpc('delete_srf_column', { p_id: c.id });
     setBusy(false);
