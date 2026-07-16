@@ -32,7 +32,6 @@ export type NavKey =
   | 'gallery'
   | 'registration'
   | 'projects'
-  | 'datasets'
   | 'analysis'
   | 'reports'
   | 'admin';
