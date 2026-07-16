@@ -292,6 +292,7 @@ function PhotosModal({ activity, photos, user, onClose, onChanged }) {
     const files = Array.from(fileList || []);
     if (!files.length) return;
     setBusy(true);
+    let ok = 0;
     try {
       for (const file of files) {
         if (!file.type.startsWith('image/')) { toast.error(`${file.name} is not an image.`); continue; }
@@ -306,10 +307,11 @@ function PhotosModal({ activity, photos, user, onClose, onChanged }) {
         if (rpc.error) {
           await supabase.storage.from(PHOTO_BUCKET).remove([path]); // roll back orphaned object
           toast.error(rpc.error.message || 'Could not save photo.');
+          continue;
         }
+        ok += 1;
       }
-      toast.success('Photos uploaded.');
-      onChanged();
+      if (ok > 0) { toast.success(`${ok} photo${ok > 1 ? 's' : ''} uploaded.`); onChanged(); }
     } finally {
       setBusy(false);
     }
