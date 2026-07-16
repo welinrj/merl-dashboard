@@ -3,6 +3,7 @@
 // "Quarter N Report" template layout. Everything is auto-populated — see
 // buildQuarterlyReport() below for the mapping of each section to its source.
 import { ACTIVITIES, PLAN_SUMMARY } from './strategicPlan';
+import { C, THEME_COL } from './reportCharts';
 
 // Traffic status → template output wording + colour key.
 export const STATUS_OUTPUT = {
@@ -169,6 +170,75 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null } = {}) {
     target: a.target2030 != null ? `${Math.round(a.target2030 * 100)}% by 2030` : '—',
   }));
 
+  /* ── Figures (charts) — one SVG source, rendered in preview + Word ─────── */
+  const topTheme = activityOverview[0] || { theme: '—', total: 0 };
+  const budgetThemeBars = activityOverview
+    .filter(t => t.budget > 0)
+    .sort((a, b) => b.budget - a.budget)
+    .map(t => ({ label: t.theme, value: Math.round(t.budget / 1e6), display: Math.round(t.budget / 1e6), color: THEME_COL[t.theme] || C.green }));
+  const topBudget = budgetThemeBars[0] || { label: '—', value: 0 };
+
+  const figures = [
+    {
+      id: 'fig1', num: 1, kind: 'donut', section: 'overview',
+      title: 'Delivery Status',
+      caption: `Figure 1. Delivery status across all ${total} activities.`,
+      summary: `${st.green} of ${total} activities (${onTrackPct}%) are completed or on track; ${st.amber} remain ongoing and ${st.red} are delayed, with ${st.none} not yet started.`,
+      data: {
+        segments: [
+          { label: 'Completed / on track', value: st.green, color: C.green },
+          { label: 'Ongoing', value: st.amber, color: C.amber },
+          { label: 'Delayed', value: st.red, color: C.red },
+          { label: 'Not started', value: st.none, color: C.none },
+        ],
+        centerLabel: `${onTrackPct}%`, centerSub: 'on track',
+      },
+    },
+    {
+      id: 'fig2', num: 2, kind: 'themeStatus', section: 'overview',
+      title: 'Activities by Theme and Status',
+      caption: 'Figure 2. Activity count by strategic theme, segmented by delivery status.',
+      summary: `${topTheme.theme} carries the most activities (${topTheme.total}). Bars are segmented green (on track), amber (ongoing) and red (delayed); the trailing number is each theme's total.`,
+      data: { rows: activityOverview },
+    },
+    {
+      id: 'fig3', num: 3, kind: 'valueBars', section: 'budget',
+      title: 'Budget Allocation by Theme',
+      caption: 'Figure 3. Planned budget allocation by strategic theme (VUV, millions).',
+      summary: `${topBudget.label} holds the largest planned allocation (VUV ${topBudget.value}M) of the ${fmtVUV(S.total_budget_vuv)} committed across ${S.themes} themes.`,
+      data: { bars: budgetThemeBars, unit: 'M' },
+    },
+    {
+      id: 'fig4', num: 4, kind: 'plannedActual', section: 'budget',
+      title: 'Planned vs Actual Expenditure',
+      caption: 'Figure 4. Planned allocation versus actual expenditure by component.',
+      summary: budgetTotals.actual > 0
+        ? `Overall utilisation stands at ${budgetTotals.pctUtil}% (${fmtVUV(budgetTotals.actual)} of ${fmtVUV(budgetTotals.planned)}).`
+        : `Planned allocations total ${fmtVUV(budgetTotals.planned)}; actual expenditure will populate from the finance data source once connected.`,
+      data: { rows: budgetRows },
+    },
+  ];
+
+  /* ── Per-table interpretive summaries (make the report read human-authored) */
+  const summaries = {
+    activityOverview: `Across ${S.themes} themes, ${st.green} of ${total} activities are on track and ${st.red} are delayed. ${topTheme.theme} is the largest workstream with ${topTheme.total} activities.`,
+    accomplishments: `Of ${total} activities, ${st.green} are completed or on track (${onTrackPct}%), ${st.amber} are ongoing, ${st.red} are delayed, and ${st.none} are not yet started.`,
+    budget: budgetTotals.actual > 0
+      ? `Total planned ${fmtVUV(budgetTotals.planned)} against actual ${fmtVUV(budgetTotals.actual)} — ${budgetTotals.pctUtil}% utilised, leaving a variance of ${fmtVUV(budgetTotals.variance)}.`
+      : `Total planned budget of ${fmtVUV(budgetTotals.planned)} across ${budgetRows.length} components; expenditure tracking begins once finance data is connected.`,
+    challenges: `${challengeRows.length} activity-level risks were logged this quarter, concentrated in delayed and at-risk activities and mitigated through adaptive scheduling and reprioritisation.`,
+    btor: `${btor.length} completed activities are documented below as back-to-office field records for the quarter.`,
+    nextSteps: `${nextSteps.length} at-risk and delayed activities are prioritised for acceleration in ${nextQuarter}.`,
+  };
+
+  /* ── Supporting attachments / annexes ─────────────────────────────────── */
+  const attachments = [
+    { ref: 'Annex A', title: 'DoCC Strategic Results Framework 2025–2030', note: `Source register for all ${total} activities, ${S.focus_areas} focus areas and ${S.indicators} output indicators.` },
+    { ref: 'Annex B', title: 'Activity status register', note: `Traffic-light delivery status for every activity (Section 5 — Quarterly Accomplishment).` },
+    { ref: 'Annex C', title: 'Budget allocation ledger', note: `Planned allocations totalling ${fmtVUV(S.total_budget_vuv)} across ${S.themes} themes (Section 6 — Budget Utilisation).` },
+    { ref: 'Annex D', title: 'Output indicator evidence', note: `${S.indicators} output indicators with baselines and 2030 targets underpinning the accomplishment table.` },
+  ];
+
   return {
     meta: {
       title: `Quarter ${p.quarter ? p.quarter.slice(1) : ''} Report of ${p.year}`.replace('Quarter  Report', 'Progress Report'),
@@ -189,5 +259,8 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null } = {}) {
     btor,
     lessons,
     nextSteps,
+    figures,
+    summaries,
+    attachments,
   };
 }

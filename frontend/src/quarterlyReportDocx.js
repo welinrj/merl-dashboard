@@ -3,13 +3,15 @@
 // imported — the library only loads when a user exports to Word.
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
-  Table, TableRow, TableCell, WidthType, BorderStyle,
+  Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun,
 } from 'docx';
-import { fmtVUV, STATUS_KEY_LABEL } from './quarterlyReport';
+import { STATUS_KEY_LABEL } from './quarterlyReport';
+import { renderFigureSvg, svgToPngBytes, svgDims } from './reportCharts';
 
 const GREEN = '0E6E6E';
 const INK   = '1A1712';
 const MUTED = '6B6258';
+const ZEBRA = 'F1F6F1';
 const STATUS_FILL = { green: 'DCECE2', amber: 'F7EAD0', red: 'F6DED8', none: 'ECE9E3' };
 
 const para = (text, opts = {}) => new Paragraph({
@@ -51,15 +53,58 @@ function table(headers, rows, widths) {
     borders,
     rows: [
       new TableRow({ tableHeader: true, children: headers.map(h => cell(h, { header: true })) }),
-      ...rows.map(r => new TableRow({ children: r.map(c =>
-        (c && typeof c === 'object' && 'text' in c) ? cell(c.text, c) : cell(c)) })),
+      // Zebra striping on odd body rows so tables read as human-authored.
+      ...rows.map((r, i) => new TableRow({ children: r.map(c => {
+        const z = i % 2 ? ZEBRA : undefined;
+        return (c && typeof c === 'object' && 'text' in c)
+          ? cell(c.text, { fill: z, ...c })
+          : cell(c, { fill: z });
+      }) })),
     ],
   });
+}
+
+// Shaded "Summary" callout paragraph placed under a table or figure.
+const summaryPara = text => new Paragraph({
+  spacing: { before: 60, after: 160 },
+  shading: { fill: 'EAF3EC' },
+  children: [
+    new TextRun({ text: 'Summary  ', bold: true, size: 15, color: GREEN }),
+    new TextRun({ text, size: 18, color: INK, italics: true }),
+  ],
+});
+
+// Figure block: embedded chart image + caption + one-line interpretation.
+function figureParagraphs(fig, png) {
+  const maxW = 520;
+  const scale = png.width > maxW ? maxW / png.width : 1;
+  return [
+    new Paragraph({
+      spacing: { before: 80, after: 20 }, alignment: AlignmentType.LEFT,
+      children: [new ImageRun({ data: png.bytes, transformation: { width: Math.round(png.width * scale), height: Math.round(png.height * scale) } })],
+    }),
+    new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: fig.caption, bold: true, size: 15, color: MUTED })] }),
+    new Paragraph({ spacing: { after: 160 }, children: [new TextRun({ text: fig.summary, size: 16, color: MUTED, italics: true })] }),
+  ];
 }
 
 export async function buildQuarterlyDocxBlob(report) {
   const { meta } = report;
   const children = [];
+
+  // Pre-rasterise every figure's SVG to PNG bytes (async, browser canvas).
+  const pngById = {};
+  for (const fig of (report.figures || [])) {
+    const svg = renderFigureSvg(fig);
+    const { width, height } = svgDims(svg);
+    try {
+      const bytes = await svgToPngBytes(svg, width, height, 2);
+      pngById[fig.id] = { bytes, width, height };
+    } catch { /* skip a figure that fails to rasterise rather than fail export */ }
+  }
+  const figuresFor = section => (report.figures || [])
+    .filter(f => f.section === section && pngById[f.id])
+    .flatMap(f => figureParagraphs(f, pngById[f.id]));
 
   // ── Cover ──
   children.push(new Paragraph({
@@ -109,6 +154,8 @@ export async function buildQuarterlyDocxBlob(report) {
     ]),
     [2600, 1100, 1100, 1100, 1100, 2000],
   ));
+  children.push(summaryPara(report.summaries.activityOverview));
+  figuresFor('overview').forEach(pp => children.push(pp));
 
   // ── Quarterly accomplishment ──
   children.push(heading(`${report.meta.period} — Progress Towards Quarterly Accomplishment`));
@@ -121,6 +168,7 @@ export async function buildQuarterlyDocxBlob(report) {
     [1800, 3400, 2200, 1600, 1600],
   ));
   children.push(para('Progress Status:  🟢 Completed / On track   🟡 Ongoing   🔴 Delayed', { size: 16, color: MUTED }));
+  children.push(summaryPara(report.summaries.accomplishments));
 
   // ── Budget utilisation ──
   children.push(subheading('💰 Budget Utilisation'));
@@ -146,6 +194,8 @@ export async function buildQuarterlyDocxBlob(report) {
   if (!report.budget.live) {
     children.push(para('Note: planned budgets shown by theme; actual expenditure will populate from the finance data source when connected.', { size: 15, color: MUTED, italics: true }));
   }
+  children.push(summaryPara(report.summaries.budget));
+  figuresFor('budget').forEach(pp => children.push(pp));
 
   // ── Challenges ──
   children.push(heading('Challenges and Limitations'));
@@ -156,6 +206,7 @@ export async function buildQuarterlyDocxBlob(report) {
       report.challenges.rows.map(c => [c.category, c.description, c.impact, c.mitigation, c.quantitative]),
       [1500, 3000, 2000, 2600, 1900],
     ));
+    children.push(summaryPara(report.summaries.challenges));
   }
 
   // ── Activities conducted [BTOR] ──
@@ -165,6 +216,7 @@ export async function buildQuarterlyDocxBlob(report) {
     report.btor.map(b => [b.date, b.activity, b.location, b.officer, b.output]),
     [1200, 3600, 1900, 1900, 2400],
   ));
+  children.push(summaryPara(report.summaries.btor));
 
   // ── Lessons learned ──
   children.push(subheading('💡 Lessons Learned'));
@@ -180,6 +232,19 @@ export async function buildQuarterlyDocxBlob(report) {
     ['Plan Activity', 'Expected Outcome', 'Timeline', 'Lead Officer', 'Target / Metric'],
     report.nextSteps.map(n => [n.activity, n.outcome, n.timeline, n.lead, n.target]),
     [3400, 3200, 1500, 1400, 1500],
+  ));
+  children.push(summaryPara(report.summaries.nextSteps));
+
+  // ── Supporting attachments ──
+  children.push(heading('📎 Supporting Attachments'));
+  children.push(para('The following annexes and figures support the findings in this report. Figures 1–4 are embedded inline in the relevant sections above.', { size: 20 }));
+  children.push(table(
+    ['Reference', 'Attachment', 'Description'],
+    [
+      ...report.attachments.map(a => [{ text: a.ref, bold: true }, a.title, a.note]),
+      ...(report.figures || []).map(f => [{ text: `Figure ${f.num}`, bold: true }, f.title, f.summary]),
+    ],
+    [1600, 3600, 4800],
   ));
 
   // ── Footer ──
