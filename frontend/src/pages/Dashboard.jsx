@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
-import { ArrowRight, X } from 'lucide-react';
+import { ArrowRight, X, ChevronDown } from 'lucide-react';
 import { STRATEGIC_THEMES, ACTIVITIES, PLAN_SUMMARY as S } from '../strategicPlan';
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
@@ -23,8 +23,9 @@ const BANNER = `${import.meta.env.BASE_URL}IMG_0874.jpeg`;
 
 /* ── filter metadata ───────────────────────────────────────────────────────
    Filters let users narrow the dashboard by Theme, Focus Area and Status.
-   When one or more filters are active, every KPI/chart/list is recomputed
-   from the matching activities; otherwise the overall PLAN_SUMMARY is shown. */
+   Each dimension is multi-select (one or more values), and dimensions combine
+   with AND. When any filter is active, every KPI/chart/list is recomputed from
+   the matching activities; otherwise the overall PLAN_SUMMARY is shown. */
 const THEME_OPTIONS  = STRATEGIC_THEMES.map(t => t.name);
 const FOCUS_BY_THEME = Object.fromEntries(
   STRATEGIC_THEMES.map(t => [t.name, t.focusAreas.map(f => f.name)]),
@@ -73,24 +74,74 @@ function deriveView(acts) {
   };
 }
 
-function FilterSelect({ label, value, onChange, options }) {
+/* Multi-select dropdown: each filter dimension accepts one or more values.
+   `selected` is an array of values; toggling a checkbox adds/removes it. */
+function MultiSelect({ label, selected, onToggle, options, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const active = selected.length > 0;
+  const summary = !active
+    ? placeholder
+    : selected.length === 1
+      ? (options.find(o => o.value === selected[0])?.label ?? `${selected.length} selected`)
+      : `${selected.length} selected`;
   return (
-    <label style={{ display:'flex', flexDirection:'column', gap:'0.2rem', minWidth:0 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:'0.2rem', minWidth:0, position:'relative' }}>
       <span style={{ fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)' }}>{label}</span>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
         style={{
+          display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.4rem',
           padding:'0.4rem 0.55rem', borderRadius:8,
-          border:`1px solid ${value ? 'var(--green-600)' : 'var(--border)'}`,
-          background:'var(--white)', color:'var(--text-1)', fontSize:'0.8rem',
-          fontWeight:600, minWidth:150, maxWidth:220, cursor:'pointer',
-          outline:'none',
+          border:`1px solid ${active ? 'var(--green-600)' : 'var(--border)'}`,
+          background:'var(--white)', color:active ? 'var(--text-1)' : 'var(--text-2)',
+          fontSize:'0.8rem', fontWeight:600, minWidth:150, maxWidth:220, cursor:'pointer',
+          textAlign:'left', whiteSpace:'nowrap', overflow:'hidden',
         }}
       >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </label>
+        <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{summary}</span>
+        <ChevronDown size={14} style={{ flexShrink:0, transform:open ? 'rotate(180deg)' : 'none', transition:'transform 0.15s' }} />
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position:'fixed', inset:0, zIndex:20 }} />
+          <div
+            className="scrollbar-thin"
+            style={{
+              position:'absolute', top:'100%', left:0, marginTop:4, zIndex:21,
+              minWidth:'100%', maxWidth:280, maxHeight:260, overflowY:'auto',
+              background:'var(--white)', border:'1px solid var(--border)', borderRadius:8,
+              boxShadow:'var(--shadow-md)', padding:'0.3rem',
+            }}
+          >
+            {options.length === 0 && (
+              <div style={{ padding:'0.4rem 0.5rem', fontSize:'0.78rem', color:'var(--text-3)' }}>No options</div>
+            )}
+            {options.map(o => {
+              const checked = selected.includes(o.value);
+              return (
+                <label
+                  key={o.value}
+                  style={{
+                    display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.35rem 0.45rem',
+                    borderRadius:6, cursor:'pointer', fontSize:'0.8rem',
+                    color:'var(--text-1)', background:checked ? 'var(--green-50)' : 'transparent',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggle(o.value)}
+                    style={{ accentColor:'var(--green-600)', cursor:'pointer', flexShrink:0 }}
+                  />
+                  <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -169,23 +220,29 @@ const BudgetTooltip = ({ active, payload, label }) => {
 
 /* ══ Dashboard — DoCC Strategic Plan 2025–2030 ═══════════════════════════════ */
 export default function Dashboard() {
-  const [theme, setTheme] = useState('');
-  const [focusArea, setFocusArea] = useState('');
-  const [status, setStatus] = useState('');
+  // Each filter dimension holds an array of selected values (multi-select).
+  const [themes, setThemes] = useState([]);
+  const [focusAreas, setFocusAreas] = useState([]);
+  const [statuses, setStatuses] = useState([]);
 
-  const isFiltered = !!(theme || focusArea || status);
+  const isFiltered = themes.length > 0 || focusAreas.length > 0 || statuses.length > 0;
 
-  // Focus-area options narrow to the selected theme, if any.
-  const focusOptions = theme ? (FOCUS_BY_THEME[theme] || []) : ALL_FOCUS;
+  // Focus-area options narrow to the selected themes (union), if any.
+  const focusOptions = useMemo(
+    () => (themes.length
+      ? [...new Set(themes.flatMap(t => FOCUS_BY_THEME[t] || []))]
+      : ALL_FOCUS),
+    [themes],
+  );
 
   const filtered = useMemo(
     () => (isFiltered
       ? ACTIVITIES.filter(a =>
-          (!theme || a.theme === theme) &&
-          (!focusArea || a.focusArea === focusArea) &&
-          (!status || a.status === status))
+          (themes.length === 0 || themes.includes(a.theme)) &&
+          (focusAreas.length === 0 || focusAreas.includes(a.focusArea)) &&
+          (statuses.length === 0 || statuses.includes(a.status)))
       : ACTIVITIES),
-    [isFiltered, theme, focusArea, status],
+    [isFiltered, themes, focusAreas, statuses],
   );
 
   // When filtered, recompute the summary; otherwise use the overall figures.
@@ -199,8 +256,20 @@ export default function Dashboard() {
   const attention = filtered.filter(a => a.status === 'red').slice(0, 5);
   const budgetData = view.budget_by_focus;
 
-  const handleTheme = v => { setTheme(v); setFocusArea(''); };
-  const clearFilters = () => { setTheme(''); setFocusArea(''); setStatus(''); };
+  const toggle = (setter, value) =>
+    setter(prev => (prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]));
+
+  // Toggling a theme also drops any selected focus areas outside the new set.
+  const toggleTheme = value => {
+    const next = themes.includes(value) ? themes.filter(v => v !== value) : [...themes, value];
+    setThemes(next);
+    if (next.length) {
+      const allowed = new Set(next.flatMap(t => FOCUS_BY_THEME[t] || []));
+      setFocusAreas(prev => prev.filter(f => allowed.has(f)));
+    }
+  };
+
+  const clearFilters = () => { setThemes([]); setFocusAreas([]); setStatuses([]); };
 
   return (
     <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
@@ -214,17 +283,20 @@ export default function Dashboard() {
 
       {/* Filter bar */}
       <div className="card" style={{ padding:'0.85rem 1rem', marginBottom:'1rem', display:'flex', gap:'0.9rem', alignItems:'flex-end', flexWrap:'wrap' }}>
-        <FilterSelect
-          label="Theme" value={theme} onChange={handleTheme}
-          options={[{ value:'', label:'All themes' }, ...THEME_OPTIONS.map(t => ({ value:t, label:t }))]}
+        <MultiSelect
+          label="Theme" placeholder="All themes"
+          selected={themes} onToggle={toggleTheme}
+          options={THEME_OPTIONS.map(t => ({ value:t, label:t }))}
         />
-        <FilterSelect
-          label="Focus Area" value={focusArea} onChange={setFocusArea}
-          options={[{ value:'', label:'All focus areas' }, ...focusOptions.map(f => ({ value:f, label:f }))]}
+        <MultiSelect
+          label="Focus Area" placeholder="All focus areas"
+          selected={focusAreas} onToggle={v => toggle(setFocusAreas, v)}
+          options={focusOptions.map(f => ({ value:f, label:f }))}
         />
-        <FilterSelect
-          label="Status" value={status} onChange={setStatus}
-          options={[{ value:'', label:'All statuses' }, ...STATUS_OPTIONS]}
+        <MultiSelect
+          label="Status" placeholder="All statuses"
+          selected={statuses} onToggle={v => toggle(setStatuses, v)}
+          options={STATUS_OPTIONS}
         />
         <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'0.75rem' }}>
           <span style={{ fontSize:'0.75rem', fontWeight:600, color:isFiltered ? 'var(--green-600)' : 'var(--text-3)' }}>
