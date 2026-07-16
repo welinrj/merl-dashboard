@@ -216,7 +216,7 @@ export async function buildQuarterlyDocxBlob(report) {
   figuresFor('overview').forEach(pp => children.push(pp));
 
   // ── Quarterly accomplishment ──
-  children.push(heading(`${report.meta.period} — Progress Towards Quarterly Accomplishment`));
+  children.push(heading(`${report.meta.period} — Progress & Accomplishment`));
   children.push(table(
     ['Strategic Priority', 'Activity / Programme', 'Building Block', 'Partner', 'Output Status'],
     report.accomplishments.map(a => [
