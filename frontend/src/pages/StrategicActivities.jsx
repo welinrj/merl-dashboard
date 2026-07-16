@@ -365,9 +365,9 @@ function PhotosModal({ activity, photos, user, onClose, onChanged }) {
                   <div style={{ position:'relative', aspectRatio:'4 / 3', background:'#ece9e3' }}>
                     <img src={photoUrl(p.storage_path)} alt={p.caption || 'Activity photo'} loading="lazy"
                       style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-                    <button onClick={() => remove(p)} disabled={busy} title="Delete photo"
-                      style={{ position:'absolute', top:6, right:6, background:'rgba(18,13,10,0.6)', border:'none', borderRadius:6, cursor:'pointer', color:'#fff', padding:4, display:'flex' }}>
-                      <Trash2 size={14} />
+                    <button onClick={() => remove(p)} disabled={busy} title="Delete photo" aria-label="Delete photo"
+                      style={{ position:'absolute', top:8, right:8, background:'rgba(179,64,47,0.92)', border:'none', borderRadius:8, cursor:'pointer', color:'#fff', padding:'0.4rem', display:'flex', boxShadow:'0 1px 4px rgba(0,0,0,0.35)' }}>
+                      <Trash2 size={16} />
                     </button>
                   </div>
                   <input className="field-input" placeholder="Add a caption…" style={{ border:'none', borderTop:'1px solid var(--border)', borderRadius:0, fontSize:'0.72rem' }}
@@ -375,6 +375,10 @@ function PhotosModal({ activity, photos, user, onClose, onChanged }) {
                     onChange={e => setCaptions(s => ({ ...s, [p.id]: e.target.value }))}
                     onBlur={() => saveCaption(p)}
                     onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+                  <button onClick={() => remove(p)} disabled={busy}
+                    style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'0.35rem', width:'100%', border:'none', borderTop:'1px solid var(--border)', background:'var(--white)', color:'var(--red-600, #b3402f)', padding:'0.45rem', cursor: busy ? 'default' : 'pointer', fontSize:'0.72rem', fontWeight:700 }}>
+                    <Trash2 size={13} /> Delete
+                  </button>
                 </div>
               ))}
             </div>
