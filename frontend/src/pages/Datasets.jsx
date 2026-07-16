@@ -5,7 +5,6 @@ import {
   CheckCircle, AlertCircle, Clock, RefreshCw, Download,
   ThumbsUp, ThumbsDown, X, MessageSquare,
 } from 'lucide-react';
-import { PROJECTS } from '../mockData';
 import { supabase } from '../supabaseClient';
 
 /* ── constants ──────────────────────────────────────────────────────────── */
@@ -97,10 +96,15 @@ function UploadZone({ onUpload, uploading }) {
 }
 
 /* ── upload form (project selector + zone) ──────────────────────────────── */
-function UploadPanel({ user, onSuccess }) {
-  const [selectedProject, setSelectedProject] = useState(PROJECTS[0]?.code || '');
+function UploadPanel({ user, onSuccess, projects }) {
+  const [selectedProject, setSelectedProject] = useState('');
   const [uploading, setUploading]             = useState(false);
   const [results, setResults]                 = useState([]);   // [{name, ok, error}]
+
+  // Default to the first real project once the list loads.
+  useEffect(() => {
+    if (!selectedProject && projects.length) setSelectedProject(projects[0].code);
+  }, [projects, selectedProject]);
 
   const handleUpload = async files => {
     setUploading(true);
@@ -164,7 +168,8 @@ function UploadPanel({ user, onSuccess }) {
           className="field-input"
           style={{ width: '100%', maxWidth: 400 }}
         >
-          {PROJECTS.map(p => (
+          {projects.length === 0 && <option value="">No projects registered yet</option>}
+          {projects.map(p => (
             <option key={p.code} value={p.code}>{p.name} ({p.code})</option>
           ))}
         </select>
@@ -218,7 +223,14 @@ export default function Datasets({ user }) {
   const [typeF, setTypeF]   = useState('All');
   const [reviewing, setReviewing] = useState(null); // dataset being rejected
   const [actionLoading, setActionLoading] = useState(null); // id of row being actioned
+  const [projects, setProjects] = useState([]);     // real registered projects
   const pollRef             = useRef(null);
+
+  // ── fetch registered projects (for the upload + filter selectors) ─────
+  useEffect(() => {
+    supabase.from('v_projects').select('code, name').order('code')
+      .then(({ data }) => setProjects(data || []));
+  }, []);
 
   const canReview = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_DOCC_SENIOR';
 
@@ -330,7 +342,7 @@ export default function Datasets({ user }) {
       </div>
 
       {/* Upload panel */}
-      <UploadPanel user={user} onSuccess={fetchDatasets} />
+      <UploadPanel user={user} onSuccess={fetchDatasets} projects={projects} />
 
       {/* Filters */}
       <div className="card" style={{ marginBottom: '1rem', padding: '0.875rem 1.25rem' }}>
@@ -346,7 +358,7 @@ export default function Datasets({ user }) {
           </div>
           <select value={projF} onChange={e => setProjF(e.target.value)} className="field-input" style={{ width: 'auto' }}>
             <option value="All">All Components</option>
-            {PROJECTS.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}
+            {projects.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}
           </select>
           <select value={typeF} onChange={e => setTypeF(e.target.value)} className="field-input" style={{ width: 'auto' }}>
             {['All', 'csv', 'xlsx', 'geojson', 'json', 'pdf', 'jpg', 'png'].map(t => (
@@ -404,7 +416,6 @@ export default function Datasets({ user }) {
                 </td>
               </tr>
             ) : filtered.map(d => {
-              const proj = PROJECTS.find(p => p.code === d.project_code);
               const Icon = TYPE_ICON[d.type] || FileText;
               const S    = STATUS_CFG[d.status] || STATUS_CFG.pending;
               const SI   = S.icon;
@@ -426,9 +437,9 @@ export default function Datasets({ user }) {
                     </div>
                   </td>
                   <td>
-                    {proj && (
-                      <span style={{ background: proj.category_color + '18', color: proj.category_color, border: `1px solid ${proj.category_color}33`, borderRadius: 4, padding: '0.1rem 0.5rem', fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                        {proj.category}
+                    {d.project_code && (
+                      <span style={{ background: 'var(--green-50)', color: 'var(--green-700)', border: '1px solid var(--green-100)', borderRadius: 4, padding: '0.1rem 0.5rem', fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        {d.project_code}
                       </span>
                     )}
                   </td>

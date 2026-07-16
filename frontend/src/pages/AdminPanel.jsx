@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AUDIT_LOG } from '../mockData';
 import { supabase } from '../supabaseClient';
 
 const DB_ROLES = [
@@ -607,29 +606,11 @@ function AuditTab() {
   return (
     <div className="space-y-4">
       <h2 className="text-base font-bold text-gray-800">Audit Log</h2>
-      <div className="overflow-x-auto">
-      <table className="w-full text-sm min-w-[560px]">
-        <thead>
-          <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
-            <th className="pb-2 pr-4">Timestamp</th>
-            <th className="pb-2 pr-4">User</th>
-            <th className="pb-2 pr-4">Action</th>
-            <th className="pb-2">Resource</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {AUDIT_LOG.map(entry => (
-            <tr key={entry.id} className="hover:bg-gray-50">
-              <td className="py-2.5 pr-4 text-xs text-gray-400 whitespace-nowrap">
-                {new Date(entry.timestamp).toLocaleString()}
-              </td>
-              <td className="py-2.5 pr-4 font-medium text-gray-700">{entry.user}</td>
-              <td className="py-2.5 pr-4 text-gray-600">{entry.action}</td>
-              <td className="py-2.5 text-gray-500">{entry.resource}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
+        <p className="text-sm font-medium text-gray-500">No audit entries yet</p>
+        <p className="mt-1 text-xs text-gray-400">
+          Administrative actions will be recorded here once audit logging is enabled.
+        </p>
       </div>
     </div>
   );
