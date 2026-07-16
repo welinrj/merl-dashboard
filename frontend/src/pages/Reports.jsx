@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
-import { FileBarChart, Download, Printer, Loader2, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { FileBarChart, Download, Printer, Loader2, CheckCircle, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
+import { buildQuarterlyReport } from '../quarterlyReport';
+import QuarterlyReportPreview from '../components/QuarterlyReportPreview';
 
 const pct = (a,b) => b ? Math.round((a/b)*100) : 0;
 const TRAFFIC = { green:'#1a8c4e', amber:'#c97b00', red:'#c0392b' };
@@ -46,8 +48,8 @@ const EMPTY_DATA = { projects: [], indicators: [], budgetRows: [] };
 
 const REPORT_TYPES = [
   { id:'quarterly', label:'Quarterly Progress Report', icon:'📅',
-    desc:'Activity outputs, indicators, and budget utilisation against quarterly targets.',
-    sections:['Executive Summary','Indicator Status','Activity Progress','Budget Utilisation','Issues & Risks','Next Quarter Priorities'] },
+    desc:'Auto-populated DoCC quarterly report — accomplishments, budget utilisation, challenges, BTOR, lessons, and next steps. Exports to Word.',
+    sections:['Executive Summary','Key Achievements','Introduction','Activity Overview','Quarterly Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps'] },
   { id:'annual',    label:'Annual Results Report', icon:'📆',
     desc:'Year-end outcomes and results achievement against the RBM framework.',
     sections:['Year Highlights','Outcomes Assessment','Output Delivery','Indicator Dashboard','Financial Summary','Lessons Learned'] },
@@ -201,6 +203,34 @@ export default function Reports() {
     ? indicators.filter(i => i.project_code === project)
     : indicators.slice(0, 8);
 
+  // Assemble the quarterly report object (auto-populated) for preview + Word.
+  const quarterlyReport = useMemo(
+    () => (selected.id === 'quarterly'
+      ? buildQuarterlyReport({ period, live: live ?? undefined })
+      : null),
+    [selected.id, period, live],
+  );
+
+  const [wordState, setWordState] = useState('idle'); // idle | working
+  const exportWord = async () => {
+    if (!quarterlyReport) return;
+    setWordState('working');
+    try {
+      const { buildQuarterlyDocxBlob } = await import('../quarterlyReportDocx');
+      const blob = await buildQuarterlyDocxBlob(quarterlyReport);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${quarterlyReport.meta.title.replace(/[^\w]+/g, '_')}_${period.replace(/\s+/g, '_')}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally {
+      setWordState('idle');
+    }
+  };
+
   const generate = () => {
     setState('generating');
     setTimeout(() => setState('ready'), 900);
@@ -284,6 +314,15 @@ export default function Reports() {
               </button>
               {state==='ready' && (
                 <>
+                  {selected.id === 'quarterly' && (
+                    <button
+                      onClick={exportWord} disabled={wordState==='working'}
+                      className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
+                      {wordState==='working'
+                        ? <><Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> Word…</>
+                        : <><FileText size={14}/> Word</>}
+                    </button>
+                  )}
                   <button
                     onClick={() => exportExcel({ type: selected, projectLabel, period, indicators: previewIndicators, budgetRows })}
                     className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
@@ -318,6 +357,8 @@ export default function Reports() {
                     <Loader2 size={24} style={{ margin:'0 auto 0.75rem', animation:'spin 1s linear infinite', display:'block' }}/>
                     <p style={{ margin:0, fontSize:'0.875rem' }}>Compiling report data…</p>
                   </div>
+                ) : selected.id === 'quarterly' && quarterlyReport ? (
+                  <QuarterlyReportPreview report={quarterlyReport}/>
                 ) : (
                   <ReportPreview type={selected} indicators={previewIndicators} budgetRows={budgetRows}/>
                 )}
