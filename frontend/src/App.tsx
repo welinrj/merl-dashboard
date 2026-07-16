@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, FolderOpen, Database, ClipboardList,
+  LayoutDashboard, Database,
   Activity, FileBarChart, Settings, LogOut, Target,
   ChevronRight, ChevronDown, Bell, Menu, Eye, EyeOff, AlertCircle, ShieldCheck,
   Mail, Lock,
@@ -11,9 +11,6 @@ import { useTranslation } from 'react-i18next';
 
 import Dashboard   from './pages/Dashboard';
 import StrategicActivities from './pages/StrategicActivities';
-import ProjectRegistration from './pages/ProjectRegistration';
-import ResultsFramework    from './pages/ResultsFramework';
-import Projects    from './pages/Projects';
 import Datasets    from './pages/Datasets';
 import Analysis    from './pages/Analysis';
 import Reports     from './pages/Reports';
@@ -72,18 +69,16 @@ async function loadProfile(): Promise<AppUser | null> {
 
 // ── Tab access map ────────────────────────────────────────────────────────────
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['dashboard', 'framework', 'registration', 'projects', 'datasets', 'analysis', 'reports', 'admin'],
-  ROLE_DOCC_SENIOR:  ['dashboard', 'framework', 'registration', 'projects', 'datasets', 'analysis', 'reports'],
-  ROLE_DOCC_MEO:     ['dashboard', 'framework', 'registration', 'projects', 'datasets', 'analysis', 'reports'],
-  ROLE_PROJ_MANAGER: ['dashboard', 'framework', 'registration', 'projects', 'datasets', 'analysis', 'reports'],
+  ROLE_ADMIN:        ['dashboard', 'framework', 'datasets', 'analysis', 'reports', 'admin'],
+  ROLE_DOCC_SENIOR:  ['dashboard', 'framework', 'datasets', 'analysis', 'reports'],
+  ROLE_DOCC_MEO:     ['dashboard', 'framework', 'datasets', 'analysis', 'reports'],
+  ROLE_PROJ_MANAGER: ['dashboard', 'framework', 'datasets', 'analysis', 'reports'],
   ROLE_FIELD_STAFF:  ['datasets', 'analysis'],
 };
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard',    path: '/dashboard',    label: 'Dashboard',      Icon: LayoutDashboard },
   { key: 'framework',    path: '/framework',    label: 'Framework',      Icon: Target          },
-  { key: 'registration', path: '/registration', label: 'Registration',   Icon: ClipboardList   },
-  { key: 'projects',     path: '/projects',     label: 'L&D Components', Icon: FolderOpen      },
   { key: 'datasets',     path: '/datasets',     label: 'Datasets',       Icon: Database        },
   { key: 'analysis',     path: '/analysis',     label: 'Analysis',       Icon: Activity        },
   { key: 'reports',      path: '/reports',      label: 'Reports',        Icon: FileBarChart    },
@@ -701,9 +696,6 @@ export default function App() {
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard /> : <Navigate to={defaultPath} replace />} />
               <Route path="/framework" element={allowed.includes('framework') ? <StrategicActivities user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/registration" element={allowed.includes('registration') ? <ProjectRegistration user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/results-framework" element={allowed.includes('registration') ? <ResultsFramework user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/projects"  element={allowed.includes('projects')  ? <Projects /> : <Navigate to={defaultPath} replace />} />
               <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets  user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis /> : <Navigate to={defaultPath} replace />} />
               <Route path="/reports"   element={allowed.includes('reports')   ? <Reports /> : <Navigate to={defaultPath} replace />} />
