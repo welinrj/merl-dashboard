@@ -46,10 +46,13 @@ function normaliseLive(projectRows, indicatorRows, budgetRows) {
 
 const EMPTY_DATA = { projects: [], indicators: [], budgetRows: [] };
 
+// SRF activity status → report traffic-light key.
+const SRF_TO_KEY = { on_track:'green', at_risk:'amber', no_progress:'red', unrated:'none' };
+
 const REPORT_TYPES = [
   { id:'quarterly', label:'Quarterly Progress Report', icon:'📅',
     desc:'Auto-populated DoCC quarterly report — accomplishments, budget utilisation, challenges, BTOR, lessons, and next steps. Exports to Word.',
-    sections:['Executive Summary','Key Achievements','Introduction','Activity Overview','Quarterly Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps'] },
+    sections:['Executive Summary','Key Achievements','Introduction','Activity Overview','Quarterly Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps','Photo Documentation'] },
   { id:'annual',    label:'Annual Results Report', icon:'📆',
     desc:'Year-end outcomes and results achievement against the RBM framework.',
     sections:['Year Highlights','Outcomes Assessment','Output Delivery','Indicator Dashboard','Financial Summary','Lessons Learned'] },
@@ -175,6 +178,7 @@ function exportExcel({ type, projectLabel, period, indicators, budgetRows }) {
 
 export default function Reports() {
   const [live, setLive]         = useState(null);
+  const [photos, setPhotos]     = useState([]);
   const [selected, setSelected] = useState(REPORT_TYPES[0]);
   const [project, setProject]   = useState('');
   const [period, setPeriod]     = useState('Q1 2026');
@@ -195,6 +199,36 @@ export default function Reports() {
     return () => { cancelled = true; };
   }, []);
 
+  // Activity photos (uploaded on the Framework tab) for the Photo Documentation
+  // section. Fetched independently so photos appear even when live indicator
+  // data is unavailable.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [acts, phs] = await Promise.all([
+        supabase.from('v_srf_activities').select('id,name,code,theme,status'),
+        supabase.from('v_srf_activity_photos').select('*').order('sort_order'),
+      ]);
+      if (cancelled || acts.error || phs.error || !phs.data?.length) return;
+      const byId = {};
+      (acts.data ?? []).forEach(a => { byId[a.id] = a; });
+      const out = phs.data.map(p => {
+        const a = byId[p.activity_id] || {};
+        return {
+          id: p.id,
+          url: supabase.storage.from('activity-photos').getPublicUrl(p.storage_path).data?.publicUrl || '',
+          caption: p.caption || '',
+          activity: a.name || '',
+          code: a.code || '',
+          theme: a.theme || '',
+          statusKey: SRF_TO_KEY[a.status] || 'none',
+        };
+      }).filter(p => p.url);
+      setPhotos(out);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const { projects, indicators, budgetRows } = live ?? EMPTY_DATA;
 
   // Only narrows the indicator set when the underlying rows actually carry a
@@ -206,9 +240,9 @@ export default function Reports() {
   // Assemble the quarterly report object (auto-populated) for preview + Word.
   const quarterlyReport = useMemo(
     () => (selected.id === 'quarterly'
-      ? buildQuarterlyReport({ period, live: live ?? undefined })
+      ? buildQuarterlyReport({ period, live: live ?? undefined, photos })
       : null),
-    [selected.id, period, live],
+    [selected.id, period, live, photos],
   );
 
   const [wordState, setWordState] = useState('idle'); // idle | working

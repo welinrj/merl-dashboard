@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, Search, AlertCircle, Columns3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Search, AlertCircle, Columns3, ImagePlus, Loader2, Upload } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { ACTIVITIES as EMBEDDED } from '../strategicPlan';
 
 const BANNER = `${import.meta.env.BASE_URL}IMG_0874.jpeg`;
+const PHOTO_BUCKET = 'activity-photos';
+const MAX_PHOTO_MB = 10;
+const photoUrl = (path) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '';
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const THEMES = ['Adaptation', 'Mitigation', 'Governance', 'Finance', 'Knowledge', 'Cross-cutting'];
 const STATUS = {
@@ -37,6 +40,7 @@ export default function StrategicActivities({ user }) {
   const canEdit = !!user && EDITOR_ROLES.includes(user.role);
   const [rows, setRows] = useState([]);
   const [cols, setCols] = useState([]);          // custom column definitions
+  const [photos, setPhotos] = useState({});      // activity_id -> [photo rows]
   const [live, setLive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
@@ -44,7 +48,17 @@ export default function StrategicActivities({ user }) {
   const [fStatus, setFStatus] = useState('all');
   const [modal, setModal] = useState(null);      // activity add/edit
   const [colsOpen, setColsOpen] = useState(false);
+  const [photoModal, setPhotoModal] = useState(null); // { id, name } — manage photos
   const [saving, setSaving] = useState(false);
+
+  const loadPhotos = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('v_srf_activity_photos').select('*').order('sort_order');
+    if (error || !data) { setPhotos({}); return; }
+    const map = {};
+    data.forEach(p => { (map[p.activity_id] ||= []).push(p); });
+    setPhotos(map);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,16 +68,17 @@ export default function StrategicActivities({ user }) {
     ]);
     if (!act.error && act.data && act.data.length) {
       setRows(act.data); setCols(col.error ? [] : (col.data ?? [])); setLive(true);
+      loadPhotos();
     } else {
       setRows(EMBEDDED.map((a, i) => ({
         id: `embed-${i}`, code:a.code, name:a.name, theme:a.theme, focus_area:a.focusArea,
         indicator:a.indicator, budget_vuv:a.budget, status:MAP[a.status] ?? 'unrated',
         progress:a.progress, risk:a.risk, target_2030:a.target2030, custom:{},
       })));
-      setCols([]); setLive(false);
+      setCols([]); setPhotos({}); setLive(false);
     }
     setLoading(false);
-  }, []);
+  }, [loadPhotos]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -110,7 +125,9 @@ export default function StrategicActivities({ user }) {
     }
     setSaving(false);
     toast.success(modal.editingId ? 'Activity updated.' : 'Activity added.');
+    const created = !modal.editingId && id ? { id, name: f.name.trim() } : null;
     setModal(null); load();
+    if (created) setPhotoModal(created); // let the user attach photos to the new activity right away
   };
 
   const changeStatus = async (r, status) => {
@@ -202,7 +219,15 @@ export default function StrategicActivities({ user }) {
                 <tr key={r.id}>
                   <td style={{ maxWidth:300 }}>
                     <div style={{ fontWeight:600, color:'var(--text-1)', fontSize:'0.8125rem' }}>{r.name}</div>
-                    {r.code && <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--text-3)' }}>{r.code}</div>}
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                      {r.code && <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--text-3)' }}>{r.code}</span>}
+                      {live && photos[r.id]?.length > 0 && (
+                        <span title={`${photos[r.id].length} photo${photos[r.id].length > 1 ? 's' : ''}`}
+                          style={{ display:'inline-flex', alignItems:'center', gap:'0.2rem', fontSize:'0.65rem', fontWeight:700, color:'var(--green-700, #155e34)' }}>
+                          <ImagePlus size={12} />{photos[r.id].length}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ fontSize:'0.78rem', color:'var(--text-2)' }}>{r.theme}</td>
                   <td style={{ fontSize:'0.75rem', color:'var(--text-2)', maxWidth:150 }}>{r.focus_area}</td>
@@ -221,6 +246,7 @@ export default function StrategicActivities({ user }) {
                   ))}
                   {canEdit && live && (
                     <td style={{ whiteSpace:'nowrap' }}>
+                      <button onClick={() => setPhotoModal({ id:r.id, name:r.name })} title="Photos" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:4 }}><ImagePlus size={15} /></button>
                       <button onClick={() => openEdit(r)} title="Edit" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:4 }}><Pencil size={15} /></button>
                       <button onClick={() => remove(r)} title="Delete" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--red-600)', padding:4 }}><Trash2 size={15} /></button>
                     </td>
@@ -244,6 +270,120 @@ export default function StrategicActivities({ user }) {
       {colsOpen && (
         <ColumnsModal cols={cols} onClose={() => setColsOpen(false)} onChanged={load} />
       )}
+      {photoModal && (
+        <PhotosModal
+          activity={photoModal}
+          photos={photos[photoModal.id] ?? []}
+          user={user}
+          onClose={() => setPhotoModal(null)}
+          onChanged={loadPhotos}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Activity photos modal ───────────────────────────────────────────────── */
+function PhotosModal({ activity, photos, user, onClose, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  const [captions, setCaptions] = useState({});   // photo id -> draft caption
+
+  const upload = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setBusy(true);
+    try {
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) { toast.error(`${file.name} is not an image.`); continue; }
+        if (file.size > MAX_PHOTO_MB * 1024 * 1024) { toast.error(`${file.name} exceeds ${MAX_PHOTO_MB}MB.`); continue; }
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${activity.id}/${Date.now()}_${safeName}`;
+        const up = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, { upsert: false, contentType: file.type });
+        if (up.error) { toast.error(up.error.message || `Upload of ${file.name} failed.`); continue; }
+        const rpc = await supabase.rpc('add_srf_activity_photo', {
+          p_activity_id: activity.id, p_storage_path: path, p_caption: null,
+        });
+        if (rpc.error) {
+          await supabase.storage.from(PHOTO_BUCKET).remove([path]); // roll back orphaned object
+          toast.error(rpc.error.message || 'Could not save photo.');
+        }
+      }
+      toast.success('Photos uploaded.');
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveCaption = async (p) => {
+    const draft = captions[p.id];
+    if (draft === undefined || draft === (p.caption ?? '')) return;
+    const { error } = await supabase.rpc('update_srf_activity_photo', { p_id: p.id, p_caption: draft });
+    if (error) { toast.error(error.message || 'Could not save caption.'); return; }
+    toast.success('Caption saved.'); onChanged();
+  };
+
+  const remove = async (p) => {
+    if (!window.confirm('Delete this photo? This cannot be undone.')) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc('delete_srf_activity_photo', { p_id: p.id });
+    if (error) { setBusy(false); toast.error(error.message || 'Delete failed.'); return; }
+    if (data) await supabase.storage.from(PHOTO_BUCKET).remove([data]);
+    setBusy(false); toast.success('Photo deleted.'); onChanged();
+  };
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:60, background:'rgba(18,13,10,0.45)', display:'flex', alignItems:'flex-start', justifyContent:'center', overflowY:'auto', padding:'3rem 1rem' }} onClick={() => !busy && onClose()}>
+      <div onClick={e => e.stopPropagation()} className="card" style={{ width:'100%', maxWidth:620, padding:0, overflow:'hidden' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'1rem', padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)' }}>
+          <div>
+            <div style={{ fontFamily:'var(--font-display)', fontWeight:800, fontSize:'1.05rem' }}>Activity photos</div>
+            <div style={{ fontSize:'0.78rem', color:'var(--text-3)', marginTop:'0.15rem' }}>{activity.name}</div>
+          </div>
+          <button type="button" onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding:'1.1rem 1.25rem', display:'flex', flexDirection:'column', gap:'0.9rem' }}>
+          <label style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'0.4rem', border:'1.5px dashed var(--border)', borderRadius:10, padding:'1.1rem', cursor: busy ? 'default' : 'pointer', color:'var(--text-3)', background:'var(--green-50, #f3f7f4)' }}>
+            {busy ? <Loader2 size={20} style={{ animation:'spin 1s linear infinite' }} /> : <Upload size={20} />}
+            <span style={{ fontSize:'0.82rem', fontWeight:700, color:'var(--text-2)' }}>
+              {busy ? 'Uploading…' : 'Click to upload photos'}
+            </span>
+            <span style={{ fontSize:'0.7rem' }}>JPG, PNG or WebP · up to {MAX_PHOTO_MB}MB each · these appear in generated reports</span>
+            <input type="file" accept="image/*" multiple disabled={busy} style={{ display:'none' }}
+              onChange={e => { upload(e.target.files); e.target.value = ''; }} />
+          </label>
+
+          {photos.length === 0 ? (
+            <div style={{ fontSize:'0.85rem', color:'var(--text-3)', textAlign:'center', padding:'0.5rem 0' }}>No photos yet.</div>
+          ) : (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:'0.8rem' }}>
+              {photos.map(p => (
+                <div key={p.id} style={{ border:'1px solid var(--border)', borderRadius:10, overflow:'hidden', background:'var(--white)' }}>
+                  <div style={{ position:'relative', aspectRatio:'4 / 3', background:'#ece9e3' }}>
+                    <img src={photoUrl(p.storage_path)} alt={p.caption || 'Activity photo'} loading="lazy"
+                      style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                    <button onClick={() => remove(p)} disabled={busy} title="Delete photo"
+                      style={{ position:'absolute', top:6, right:6, background:'rgba(18,13,10,0.6)', border:'none', borderRadius:6, cursor:'pointer', color:'#fff', padding:4, display:'flex' }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <input className="field-input" placeholder="Add a caption…" style={{ border:'none', borderTop:'1px solid var(--border)', borderRadius:0, fontSize:'0.72rem' }}
+                    value={captions[p.id] ?? p.caption ?? ''}
+                    onChange={e => setCaptions(s => ({ ...s, [p.id]: e.target.value }))}
+                    onBlur={() => saveCaption(p)}
+                    onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display:'flex', justifyContent:'flex-end', padding:'1rem 1.25rem', borderTop:'1px solid var(--border)' }}>
+          <button type="button" onClick={onClose} className="btn-primary" style={{ padding:'0.5rem 1.1rem', borderRadius:8, border:'none', cursor:'pointer', fontWeight:700 }}>Done</button>
+        </div>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
