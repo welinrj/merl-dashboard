@@ -44,7 +44,7 @@ const THEME_CATEGORY = {
   Finance: 'Financial', Knowledge: 'Operational', 'Cross-cutting': 'Operational',
 };
 
-export function buildQuarterlyReport({ period = 'Q1 2026', live = null } = {}) {
+export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [] } = {}) {
   const p = parsePeriod(period);
   const acts = ACTIVITIES;
   const S = PLAN_SUMMARY;
@@ -229,7 +229,23 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null } = {}) {
     challenges: `${challengeRows.length} activity-level risks were logged this quarter, concentrated in delayed and at-risk activities and mitigated through adaptive scheduling and reprioritisation.`,
     btor: `${btor.length} completed activities are documented below as back-to-office field records for the quarter.`,
     nextSteps: `${nextSteps.length} at-risk and delayed activities are prioritised for acceleration in ${nextQuarter}.`,
+    photos: photoDocs.length
+      ? `${photoDocs.length} photograph${photoDocs.length > 1 ? 's' : ''} document field implementation across ${photoActivityCount || 1} activit${(photoActivityCount || 1) > 1 ? 'ies' : 'y'} this period.`
+      : '',
   };
+
+  /* ── Photo documentation (uploaded against activities in the Framework tab) */
+  const photoDocs = (photos || [])
+    .filter(p => p && p.url)
+    .map((p, i) => ({
+      id: p.id || `photo-${i}`,
+      url: p.url,
+      caption: (p.caption && p.caption.trim()) || p.activity || 'Activity photograph',
+      activity: p.activity || '',
+      theme: p.theme || '',
+      statusKey: p.statusKey || 'none',
+    }));
+  const photoActivityCount = new Set(photoDocs.map(p => p.activity).filter(Boolean)).size;
 
   /* ── Supporting attachments / annexes ─────────────────────────────────── */
   const attachments = [
@@ -238,6 +254,13 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null } = {}) {
     { ref: 'Annex C', title: 'Budget allocation ledger', note: `Planned allocations totalling ${fmtVUV(S.total_budget_vuv)} across ${S.themes} themes (Section 6 — Budget Utilisation).` },
     { ref: 'Annex D', title: 'Output indicator evidence', note: `${S.indicators} output indicators with baselines and 2030 targets underpinning the accomplishment table.` },
   ];
+  if (photoDocs.length) {
+    attachments.push({
+      ref: 'Annex E',
+      title: 'Photo documentation',
+      note: `${photoDocs.length} field photograph${photoDocs.length > 1 ? 's' : ''} across ${photoActivityCount || 1} activit${(photoActivityCount || 1) > 1 ? 'ies' : 'y'} (Photo Documentation section).`,
+    });
+  }
 
   return {
     meta: {
@@ -260,6 +283,7 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null } = {}) {
     lessons,
     nextSteps,
     figures,
+    photos: photoDocs,
     summaries,
     attachments,
   };

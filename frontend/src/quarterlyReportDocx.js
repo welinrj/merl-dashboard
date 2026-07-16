@@ -74,6 +74,57 @@ const summaryPara = text => new Paragraph({
   ],
 });
 
+// Load a photo URL into PNG bytes + scaled dimensions for embedding in the
+// document. Re-encodes through a canvas so large uploads are downsized and the
+// format is one Word accepts. Returns null on failure (CORS / network / decode)
+// so a bad photo is skipped rather than failing the whole export.
+async function loadPhotoPng(url, maxW = 460) {
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = url;
+    });
+    const nw = img.naturalWidth || maxW;
+    const nh = img.naturalHeight || Math.round(maxW * 0.75);
+    const scale = nw > maxW ? maxW / nw : 1;
+    const w = Math.max(1, Math.round(nw * scale));
+    const h = Math.max(1, Math.round(nh * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const bytes = await new Promise((res, rej) => canvas.toBlob(
+      b => b ? b.arrayBuffer().then(ab => res(new Uint8Array(ab))).catch(rej) : rej(new Error('toBlob failed')),
+      'image/png',
+    ));
+    return { bytes, width: w, height: h };
+  } catch {
+    return null;
+  }
+}
+
+// Photo block: embedded photograph + caption + activity reference.
+function photoParagraphs(photo, png) {
+  const out = [
+    new Paragraph({
+      spacing: { before: 80, after: 20 }, alignment: AlignmentType.LEFT,
+      children: [new ImageRun({ data: png.bytes, transformation: { width: png.width, height: png.height } })],
+    }),
+    new Paragraph({ spacing: { after: photo.activity && photo.activity !== photo.caption ? 20 : 160 },
+      children: [new TextRun({ text: photo.caption, bold: true, size: 16, color: MUTED })] }),
+  ];
+  if (photo.activity && photo.activity !== photo.caption) {
+    out.push(new Paragraph({ spacing: { after: 160 },
+      children: [new TextRun({ text: photo.activity, size: 15, color: MUTED, italics: true })] }));
+  }
+  return out;
+}
+
 // Figure block: embedded chart image + caption + one-line interpretation.
 function figureParagraphs(fig, png) {
   const maxW = 520;
@@ -105,6 +156,13 @@ export async function buildQuarterlyDocxBlob(report) {
   const figuresFor = section => (report.figures || [])
     .filter(f => f.section === section && pngById[f.id])
     .flatMap(f => figureParagraphs(f, pngById[f.id]));
+
+  // Pre-load activity photos (async fetch + canvas re-encode); failures skipped.
+  const photoPngs = [];
+  for (const photo of (report.photos || [])) {
+    const png = await loadPhotoPng(photo.url);
+    if (png) photoPngs.push({ photo, png });
+  }
 
   // ── Cover ──
   children.push(new Paragraph({
@@ -234,6 +292,14 @@ export async function buildQuarterlyDocxBlob(report) {
     [3400, 3200, 1500, 1400, 1500],
   ));
   children.push(summaryPara(report.summaries.nextSteps));
+
+  // ── Photo documentation ──
+  if (photoPngs.length) {
+    children.push(heading('📷 Photo Documentation'));
+    children.push(para('Field photographs uploaded against Strategic Results Framework activities during this reporting period.', { size: 20 }));
+    photoPngs.forEach(({ photo, png }) => photoParagraphs(photo, png).forEach(pp => children.push(pp)));
+    if (report.summaries.photos) children.push(summaryPara(report.summaries.photos));
+  }
 
   // ── Supporting attachments ──
   children.push(heading('📎 Supporting Attachments'));

@@ -270,7 +270,31 @@ export default function QuarterlyReportPreview({ report }) {
           <Summary>{report.summaries.nextSteps}</Summary>
         </Section>
 
-        <Section n={11} title="📎 Supporting Attachments">
+        {report.photos?.length > 0 && (
+          <Section n={11} title="📷 Photo Documentation">
+            <p style={{ margin:'0 0 0.7rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
+              Field photographs uploaded against Strategic Results Framework activities during this reporting period.
+            </p>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'0.9rem' }}>
+              {report.photos.map((ph, i) => (
+                <figure key={ph.id ?? i} style={{ margin:0, border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', background:'var(--white)' }}>
+                  <div style={{ aspectRatio:'4 / 3', background:'#ece9e3' }}>
+                    <img src={ph.url} alt={ph.caption} loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                  </div>
+                  <figcaption style={{ padding:'0.45rem 0.6rem' }}>
+                    <div style={{ fontSize:'0.72rem', color:'var(--text-1)', lineHeight:1.4 }}>{ph.caption}</div>
+                    {ph.activity && ph.activity !== ph.caption && (
+                      <div style={{ fontSize:'0.66rem', color:'var(--text-3)', marginTop:'0.15rem' }}>{ph.activity}</div>
+                    )}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+            <Summary>{report.summaries.photos}</Summary>
+          </Section>
+        )}
+
+        <Section n={report.photos?.length > 0 ? 12 : 11} title="📎 Supporting Attachments">
           <p style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
             The following annexes and figures support the findings in this report. Figures 1–4 appear inline in the relevant sections above.
           </p>
