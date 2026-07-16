@@ -1,8 +1,9 @@
+import { useState, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, X } from 'lucide-react';
 import { STRATEGIC_THEMES, ACTIVITIES, PLAN_SUMMARY as S } from '../strategicPlan';
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
@@ -19,6 +20,79 @@ const THEME_COL    = {
   Finance:'#158a7a', Knowledge:'#9a6d3b', 'Cross-cutting':'#5c6b8a',
 };
 const BANNER = `${import.meta.env.BASE_URL}IMG_0874.jpeg`;
+
+/* ── filter metadata ───────────────────────────────────────────────────────
+   Filters let users narrow the dashboard by Theme, Focus Area and Status.
+   When one or more filters are active, every KPI/chart/list is recomputed
+   from the matching activities; otherwise the overall PLAN_SUMMARY is shown. */
+const THEME_OPTIONS  = STRATEGIC_THEMES.map(t => t.name);
+const FOCUS_BY_THEME = Object.fromEntries(
+  STRATEGIC_THEMES.map(t => [t.name, t.focusAreas.map(f => f.name)]),
+);
+const ALL_FOCUS = [...new Set(ACTIVITIES.map(a => a.focusArea))];
+const STATUS_OPTIONS = [
+  { value:'green', label:'On Track' },
+  { value:'amber', label:'At Risk' },
+  { value:'red',   label:'No Progress' },
+  { value:'none',  label:'Unrated' },
+];
+
+/* Recompute the summary object (same shape as PLAN_SUMMARY) from a set of
+   activities, so filtered views drive every KPI on the page. */
+function deriveView(acts) {
+  const status = { green:0, amber:0, red:0, none:0 };
+  const themes = new Set(), focusAreas = new Set(), focusTheme = {}, focusBudget = {};
+  let indicators = 0, total_budget_vuv = 0;
+  for (const a of acts) {
+    status[a.status] = (status[a.status] || 0) + 1;
+    themes.add(a.theme);
+    focusAreas.add(a.focusArea);
+    if (a.indicator) indicators += 1;
+    total_budget_vuv += a.budget || 0;
+    focusBudget[a.focusArea] = (focusBudget[a.focusArea] || 0) + (a.budget || 0);
+    focusTheme[a.focusArea]  = a.theme;
+  }
+  const budget_by_focus = Object.entries(focusBudget)
+    .filter(([, b]) => b > 0)
+    .map(([name, b]) => ({
+      name: name.length > 23 ? name.slice(0, 23) : name,
+      fullName: name,
+      budget: Math.round(b / 1e6),
+      theme: focusTheme[name],
+    }))
+    .sort((a, b) => b.budget - a.budget)
+    .slice(0, 9);
+  return {
+    themes: themes.size,
+    focus_areas: focusAreas.size,
+    activities: acts.length,
+    indicators,
+    total_budget_vuv,
+    status,
+    budget_by_focus,
+  };
+}
+
+function FilterSelect({ label, value, onChange, options }) {
+  return (
+    <label style={{ display:'flex', flexDirection:'column', gap:'0.2rem', minWidth:0 }}>
+      <span style={{ fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)' }}>{label}</span>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          padding:'0.4rem 0.55rem', borderRadius:8,
+          border:`1px solid ${value ? 'var(--green-600)' : 'var(--border)'}`,
+          background:'var(--white)', color:'var(--text-1)', fontSize:'0.8rem',
+          fontWeight:600, minWidth:150, maxWidth:220, cursor:'pointer',
+          outline:'none',
+        }}
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
+  );
+}
 
 /* ── tribal-banner card ──────────────────────────────────────────────────── */
 function BannerCard({ title, action, children, style }) {
@@ -95,10 +169,38 @@ const BudgetTooltip = ({ active, payload, label }) => {
 
 /* ══ Dashboard — DoCC Strategic Plan 2025–2030 ═══════════════════════════════ */
 export default function Dashboard() {
-  const st = S.status;
-  const onTrackPct = pct(st.green || 0, S.activities);
-  const attention = ACTIVITIES.filter(a => a.status === 'red').slice(0, 5);
-  const budgetData = S.budget_by_focus;
+  const [theme, setTheme] = useState('');
+  const [focusArea, setFocusArea] = useState('');
+  const [status, setStatus] = useState('');
+
+  const isFiltered = !!(theme || focusArea || status);
+
+  // Focus-area options narrow to the selected theme, if any.
+  const focusOptions = theme ? (FOCUS_BY_THEME[theme] || []) : ALL_FOCUS;
+
+  const filtered = useMemo(
+    () => (isFiltered
+      ? ACTIVITIES.filter(a =>
+          (!theme || a.theme === theme) &&
+          (!focusArea || a.focusArea === focusArea) &&
+          (!status || a.status === status))
+      : ACTIVITIES),
+    [isFiltered, theme, focusArea, status],
+  );
+
+  // When filtered, recompute the summary; otherwise use the overall figures.
+  const view = useMemo(
+    () => (isFiltered ? deriveView(filtered) : S),
+    [isFiltered, filtered],
+  );
+
+  const st = view.status;
+  const onTrackPct = pct(st.green || 0, view.activities);
+  const attention = filtered.filter(a => a.status === 'red').slice(0, 5);
+  const budgetData = view.budget_by_focus;
+
+  const handleTheme = v => { setTheme(v); setFocusArea(''); };
+  const clearFilters = () => { setTheme(''); setFocusArea(''); setStatus(''); };
 
   return (
     <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
@@ -110,22 +212,53 @@ export default function Dashboard() {
         DoCC Strategic Results Framework 2025–2030 · Government of Vanuatu
       </div>
 
+      {/* Filter bar */}
+      <div className="card" style={{ padding:'0.85rem 1rem', marginBottom:'1rem', display:'flex', gap:'0.9rem', alignItems:'flex-end', flexWrap:'wrap' }}>
+        <FilterSelect
+          label="Theme" value={theme} onChange={handleTheme}
+          options={[{ value:'', label:'All themes' }, ...THEME_OPTIONS.map(t => ({ value:t, label:t }))]}
+        />
+        <FilterSelect
+          label="Focus Area" value={focusArea} onChange={setFocusArea}
+          options={[{ value:'', label:'All focus areas' }, ...focusOptions.map(f => ({ value:f, label:f }))]}
+        />
+        <FilterSelect
+          label="Status" value={status} onChange={setStatus}
+          options={[{ value:'', label:'All statuses' }, ...STATUS_OPTIONS]}
+        />
+        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'0.75rem' }}>
+          <span style={{ fontSize:'0.75rem', fontWeight:600, color:isFiltered ? 'var(--green-600)' : 'var(--text-3)' }}>
+            {isFiltered
+              ? `Filtered · ${filtered.length} of ${S.activities} activities`
+              : `Showing all ${S.activities} activities`}
+          </span>
+          {isFiltered && (
+            <button
+              onClick={clearFilters}
+              style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', background:'var(--green-50)', color:'var(--green-600)', border:'1px solid var(--border)', borderRadius:9999, padding:'0.3rem 0.7rem', fontSize:'0.75rem', fontWeight:700, cursor:'pointer' }}
+            >
+              <X size={13} /> Clear
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Row 1 — three banner cards */}
       <div className="grid-dash-3" style={{ marginBottom:'1rem' }}>
         <BannerCard title="Strategic Framework">
           <div style={{ display:'flex', gap:'0.75rem' }}>
-            <Kpi label="Themes" value={S.themes} tone="teal" />
-            <Kpi label="Focus Areas" value={S.focus_areas} tone="gold" />
-            <Kpi label="Activities" value={S.activities} tone="teal" />
+            <Kpi label="Themes" value={view.themes} tone="teal" />
+            <Kpi label="Focus Areas" value={view.focus_areas} tone="gold" />
+            <Kpi label="Activities" value={view.activities} tone="teal" />
           </div>
           <div style={{ marginTop:'auto', paddingTop:'0.9rem', fontSize:'0.78rem', color:'var(--text-3)' }}>
-            {S.themes} strategic priorities · {S.indicators} output indicators tracked
+            {view.themes} strategic {view.themes === 1 ? 'priority' : 'priorities'} · {view.indicators} output indicators tracked
           </div>
         </BannerCard>
 
         <BannerCard title="Budget & Delivery">
           <div style={{ display:'flex', gap:'0.75rem' }}>
-            <Kpi label="Total Budget (VUV)" value={fmtVUV(S.total_budget_vuv)} tone="teal" />
+            <Kpi label="Total Budget (VUV)" value={fmtVUV(view.total_budget_vuv)} tone="teal" />
             <Kpi label="On Track" value={`${onTrackPct}%`} tone="gold" />
           </div>
           <div style={{ marginTop:'auto', paddingTop:'0.9rem', fontSize:'0.78rem', color:'var(--text-3)' }}>
@@ -185,7 +318,7 @@ export default function Dashboard() {
               <div style={{ fontSize:'0.7rem', color:'var(--text-3)' }}>No Progress</div>
             </div>
             <div style={{ textAlign:'center' }}>
-              <div style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', fontWeight:800, color:'var(--gold-500)' }}>{fmtVUV(S.total_budget_vuv)}</div>
+              <div style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', fontWeight:800, color:'var(--gold-500)' }}>{fmtVUV(view.total_budget_vuv)}</div>
               <div style={{ fontSize:'0.7rem', color:'var(--text-3)' }}>VUV Budget</div>
             </div>
           </div>
@@ -203,7 +336,14 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {ACTIVITIES.map((a, i) => (
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ textAlign:'center', padding:'1.5rem', color:'var(--text-3)', fontSize:'0.85rem' }}>
+                  No activities match the selected filters.
+                </td>
+              </tr>
+            )}
+            {filtered.map((a, i) => (
               <tr key={i}>
                 <td style={{ maxWidth:280 }}>
                   <div style={{ fontWeight:600, color:'var(--text-1)', fontSize:'0.8125rem' }}>{a.name}</div>
