@@ -1,6 +1,34 @@
 // In-app preview of the DoCC Quarterly Progress Report, matching the official
 // template layout. Consumes the object from buildQuarterlyReport().
 import { fmtVUV, STATUS_KEY_LABEL } from '../quarterlyReport';
+import { renderFigureSvg } from '../reportCharts';
+
+// Subtle zebra striping so tables read as human-authored rather than a raw dump.
+const zebra = i => (i % 2 ? { background:'var(--green-50)' } : undefined);
+
+// A figure: inline chart + caption + one-line interpretation.
+function Figure({ fig }) {
+  return (
+    <figure style={{ margin:'0.75rem 0 1rem', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', background:'var(--white)' }}>
+      <div style={{ padding:'0.75rem 0.9rem 0.25rem', overflowX:'auto' }} className="scrollbar-thin"
+        dangerouslySetInnerHTML={{ __html: renderFigureSvg(fig) }} />
+      <figcaption style={{ padding:'0.4rem 0.9rem 0.75rem' }}>
+        <div style={{ fontSize:'0.7rem', fontWeight:700, color:'var(--text-2)' }}>{fig.caption}</div>
+        <div style={{ fontSize:'0.72rem', color:'var(--text-3)', marginTop:'0.2rem', lineHeight:1.5 }}>{fig.summary}</div>
+      </figcaption>
+    </figure>
+  );
+}
+
+// Interpretive callout placed under each data table.
+function Summary({ children }) {
+  return (
+    <div style={{ display:'flex', gap:'0.5rem', marginTop:'0.6rem', padding:'0.55rem 0.75rem', background:'var(--green-50)', borderLeft:'3px solid var(--green-600)', borderRadius:'0 6px 6px 0' }}>
+      <span style={{ fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.04em', textTransform:'uppercase', color:'var(--green-700)', flexShrink:0, paddingTop:'0.05rem' }}>Summary</span>
+      <span style={{ fontSize:'0.74rem', color:'var(--text-2)', lineHeight:1.5 }}>{children}</span>
+    </div>
+  );
+}
 
 const STATUS_COL = { green:'#1a8c4e', amber:'#d99a2b', red:'#b3402f', none:'#9a9186' };
 const STATUS_BG  = { green:'#dcece2', amber:'#f7ead0', red:'#f6ded8', none:'#ece9e3' };
@@ -37,6 +65,7 @@ const TableWrap = ({ children }) => (
 
 export default function QuarterlyReportPreview({ report }) {
   const { meta, stats } = report;
+  const figFor = section => (report.figures || []).filter(f => f.section === section);
   return (
     <div className="report-print-area" style={{ fontFamily:'var(--font-ui)', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
       {/* Cover header */}
@@ -98,8 +127,8 @@ export default function QuarterlyReportPreview({ report }) {
           <TableWrap>
             <thead><tr>{['Strategic Theme','Activities','On Track','Ongoing','Delayed','Budget (VUV)'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
-              {report.activityOverview.map(t => (
-                <tr key={t.theme}>
+              {report.activityOverview.map((t, i) => (
+                <tr key={t.theme} style={zebra(i)}>
                   <td style={td}>{t.theme}</td>
                   <td style={numTd}>{t.total}</td>
                   <td style={numTd}>{t.green}</td>
@@ -110,6 +139,8 @@ export default function QuarterlyReportPreview({ report }) {
               ))}
             </tbody>
           </TableWrap>
+          <Summary>{report.summaries.activityOverview}</Summary>
+          {figFor('overview').map(f => <Figure key={f.id} fig={f} />)}
         </Section>
 
         <Section n={5} title={`${meta.period} — Progress Towards Quarterly Accomplishment`}>
@@ -117,7 +148,7 @@ export default function QuarterlyReportPreview({ report }) {
             <thead><tr>{['Strategic Priority','Activity / Programme','Building Block','Partner','Output Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {report.accomplishments.map((a, i) => (
-                <tr key={i}>
+                <tr key={i} style={zebra(i)}>
                   <td style={{ ...td, whiteSpace:'nowrap' }}>{a.priority}</td>
                   <td style={td}>{a.activity}</td>
                   <td style={td}>{a.buildingBlock}</td>
@@ -128,6 +159,7 @@ export default function QuarterlyReportPreview({ report }) {
             </tbody>
           </TableWrap>
           <div style={{ fontSize:'0.68rem', color:'var(--text-3)', marginTop:'0.4rem' }}>Progress Status: 🟢 Completed / On track · 🟡 Ongoing · 🔴 Delayed</div>
+          <Summary>{report.summaries.accomplishments}</Summary>
         </Section>
 
         <Section n={6} title="💰 Budget Utilisation">
@@ -135,7 +167,7 @@ export default function QuarterlyReportPreview({ report }) {
             <thead><tr>{['Component','Planned (VUV)','Actual (VUV)','Variance','% Utilised','Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {report.budget.rows.map((r, i) => (
-                <tr key={i}>
+                <tr key={i} style={zebra(i)}>
                   <td style={td}>{r.component}</td>
                   <td style={numTd}>{r.planned.toLocaleString('en-US')}</td>
                   <td style={numTd}>{r.actual.toLocaleString('en-US')}</td>
@@ -159,6 +191,8 @@ export default function QuarterlyReportPreview({ report }) {
               Planned budgets shown by theme; actual expenditure populates from the finance data source when connected.
             </div>
           )}
+          <Summary>{report.summaries.budget}</Summary>
+          {figFor('budget').map(f => <Figure key={f.id} fig={f} />)}
         </Section>
 
         <Section n={7} title="Challenges and Limitations">
@@ -170,7 +204,7 @@ export default function QuarterlyReportPreview({ report }) {
               <thead><tr>{['Category','Description','Impact','Mitigation Action','Quantitative Impact'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
               <tbody>
                 {report.challenges.rows.map((c, i) => (
-                  <tr key={i}>
+                  <tr key={i} style={zebra(i)}>
                     <td style={{ ...td, whiteSpace:'nowrap' }}>{c.category}</td>
                     <td style={td}>{c.description}</td>
                     <td style={td}>{c.impact}</td>
@@ -181,6 +215,7 @@ export default function QuarterlyReportPreview({ report }) {
               </tbody>
             </TableWrap>
           )}
+          <Summary>{report.summaries.challenges}</Summary>
         </Section>
 
         <Section n={8} title="📌 Activities Conducted [BTOR]">
@@ -188,7 +223,7 @@ export default function QuarterlyReportPreview({ report }) {
             <thead><tr>{['Period','Activity','Location','Responsible Officer','Output / Result'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {report.btor.map((b, i) => (
-                <tr key={i}>
+                <tr key={i} style={zebra(i)}>
                   <td style={{ ...td, whiteSpace:'nowrap' }}>{b.date}</td>
                   <td style={td}>{b.activity}</td>
                   <td style={td}>{b.location}</td>
@@ -198,6 +233,7 @@ export default function QuarterlyReportPreview({ report }) {
               ))}
             </tbody>
           </TableWrap>
+          <Summary>{report.summaries.btor}</Summary>
         </Section>
 
         <Section n={9} title="💡 Lessons Learned">
@@ -205,7 +241,7 @@ export default function QuarterlyReportPreview({ report }) {
             <thead><tr>{['Lesson','Improvement Action','Responsible Unit','Quantitative Measure'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {report.lessons.map((l, i) => (
-                <tr key={i}>
+                <tr key={i} style={zebra(i)}>
                   <td style={td}>{l.lesson}</td>
                   <td style={td}>{l.improvement}</td>
                   <td style={td}>{l.unit}</td>
@@ -221,12 +257,38 @@ export default function QuarterlyReportPreview({ report }) {
             <thead><tr>{['Plan Activity','Expected Outcome','Timeline','Lead Officer','Target / Metric'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {report.nextSteps.map((n, i) => (
-                <tr key={i}>
+                <tr key={i} style={zebra(i)}>
                   <td style={td}>{n.activity}</td>
                   <td style={td}>{n.outcome}</td>
                   <td style={{ ...td, whiteSpace:'nowrap' }}>{n.timeline}</td>
                   <td style={td}>{n.lead}</td>
                   <td style={td}>{n.target}</td>
+                </tr>
+              ))}
+            </tbody>
+          </TableWrap>
+          <Summary>{report.summaries.nextSteps}</Summary>
+        </Section>
+
+        <Section n={11} title="📎 Supporting Attachments">
+          <p style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
+            The following annexes and figures support the findings in this report. Figures 1–4 appear inline in the relevant sections above.
+          </p>
+          <TableWrap>
+            <thead><tr>{['Reference','Attachment','Description'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {report.attachments.map((att, i) => (
+                <tr key={att.ref} style={zebra(i)}>
+                  <td style={{ ...td, whiteSpace:'nowrap', fontWeight:700 }}>{att.ref}</td>
+                  <td style={td}>{att.title}</td>
+                  <td style={td}>{att.note}</td>
+                </tr>
+              ))}
+              {(report.figures || []).map((f, i) => (
+                <tr key={f.id} style={zebra(report.attachments.length + i)}>
+                  <td style={{ ...td, whiteSpace:'nowrap', fontWeight:700 }}>Figure {f.num}</td>
+                  <td style={td}>{f.title}</td>
+                  <td style={td}>{f.summary}</td>
                 </tr>
               ))}
             </tbody>
