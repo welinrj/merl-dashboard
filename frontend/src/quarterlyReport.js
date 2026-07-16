@@ -23,19 +23,41 @@ export const fmtVUV = n => {
   return 'VUV ' + v.toLocaleString('en-US');
 };
 
-// "Q1 2026" → { quarter:'Q1', year:'2026', months:'January–March 2026' }.
+// Parses a reporting period string into a framing used across the report.
+// Handles quarters ("Q1 2026"), half-years ("H1 2026"), months ("July 2026")
+// and whole years ("2025 Annual").
 const Q_MONTHS = {
   Q1: 'January–March', Q2: 'April–June', Q3: 'July–September', Q4: 'October–December',
 };
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
 function parsePeriod(period) {
-  const m = /^(Q[1-4])\s+(\d{4})$/.exec(period || '');
-  if (!m) {
-    // Annual / other periods fall back to a whole-year framing.
-    const y = (/(\d{4})/.exec(period || '') || [])[1] || String(new Date().getFullYear());
-    return { quarter: '', year: y, label: period || y, months: `January–December ${y}` };
+  const s = (period || '').trim();
+  let m = /^(Q[1-4])\s+(\d{4})$/.exec(s);
+  if (m) { const [, quarter, year] = m; return { unit: 'quarter', quarter, year, label: s, months: `${Q_MONTHS[quarter]} ${year}` }; }
+  m = /^H([12])\s+(\d{4})$/.exec(s);
+  if (m) { const [, h, year] = m; return { unit: 'half', quarter: '', year, label: s, months: `${h === '1' ? 'January–June' : 'July–December'} ${year}` }; }
+  m = /^([A-Za-z]+)\s+(\d{4})$/.exec(s);
+  if (m) {
+    const name = MONTH_NAMES.find(mn => mn.toLowerCase() === m[1].toLowerCase());
+    if (name) return { unit: 'month', quarter: '', year: m[2], label: `${name} ${m[2]}`, months: `${name} ${m[2]}` };
   }
-  const [, quarter, year] = m;
-  return { quarter, year, label: period, months: `${Q_MONTHS[quarter]} ${year}` };
+  // Annual / other periods fall back to a whole-year framing.
+  const y = (/(\d{4})/.exec(s) || [])[1] || String(new Date().getFullYear());
+  return { unit: 'year', quarter: '', year: y, label: s || y, months: `January–December ${y}` };
+}
+
+// Report title per report kind.
+function reportTitle(kind, p) {
+  switch (kind) {
+    case 'btor':     return `Back to Office Report — ${p.label}`;
+    case 'monthly':  return `Monthly Progress Report — ${p.label}`;
+    case 'halfyear': return `Half-Year Progress Report — ${p.label}`;
+    case 'annual':   return `Annual Progress Report ${p.year}`;
+    case 'quarterly':
+    default:
+      return `Quarter ${p.quarter ? p.quarter.slice(1) : ''} Report of ${p.year}`.replace('Quarter  Report', 'Progress Report');
+  }
 }
 
 // A concise, well-formed title-case category for a challenge, from a theme.
@@ -44,7 +66,7 @@ const THEME_CATEGORY = {
   Finance: 'Financial', Knowledge: 'Operational', 'Cross-cutting': 'Operational',
 };
 
-export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [], reports = [] } = {}) {
+export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [], reports = [], kind = 'quarterly' } = {}) {
   const p = parsePeriod(period);
   const acts = ACTIVITIES;
   const S = PLAN_SUMMARY;
@@ -60,10 +82,16 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
   const quarterWord  = p.quarter
     ? ({ Q1: 'first', Q2: 'second', Q3: 'third', Q4: 'fourth' }[p.quarter])
     : '';
+  // A natural phrase for the reporting period, correct for every report kind.
+  const periodPhrase =
+    p.unit === 'quarter' ? `the ${quarterWord} quarter of ${p.year}` :
+    p.unit === 'half'    ? `the ${p.label.startsWith('H1') ? 'first' : 'second'} half of ${p.year}` :
+    p.unit === 'month'   ? p.label :
+    p.year;
 
   /* ── Executive summary (narrative from the numbers) ───────────────────── */
   const executiveSummary = [
-    `During the ${quarterWord ? quarterWord + ' quarter' : 'period'} of ${p.year} (${p.months}), the Department of Climate Change (DoCC) advanced implementation of ${total} activities across ${S.themes} strategic themes and ${S.focus_areas} focus areas under the DoCC Strategic Results Framework 2025–2030.`,
+    `During ${periodPhrase} (${p.months}), the Department of Climate Change (DoCC) advanced implementation of ${total} activities across ${S.themes} strategic themes and ${S.focus_areas} focus areas under the DoCC Strategic Results Framework 2025–2030.`,
     `Of these, ${st.green} activities (${onTrackPct}%) are completed or on track, ${st.amber} are ongoing, and ${st.red} experienced delays. A total planned budget of ${fmtVUV(S.total_budget_vuv)} is being managed across the framework, delivered through strong collaboration with government stakeholders, development partners, line agencies, civil society organisations, and the private sector.`,
     `Despite challenges including the phased return of staff after the holiday period and disruption from extreme weather events, the Department maintained continuity of operations through adaptive management and prioritisation of critical activities to strengthen national climate resilience.`,
   ];
@@ -78,7 +106,7 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
   /* ── Introduction (institutional framing) ─────────────────────────────── */
   const introduction = [
     `The Department of Climate Change is a key government institution mandated to address the urgent and complex challenges posed by climate change. Its primary focus is on mitigation, adaptation, and resilience-building to ensure that Vanuatu remains prepared for the adverse impacts of climate change on the environment, society, and economy.`,
-    `During the ${quarterWord || 'reporting'} quarter of ${p.year}, the Department implemented a range of initiatives to enhance climate literacy, strengthen policy direction, deepen community engagement, and advance sectoral research — reaffirming its commitment to reducing climate risks and ensuring Vanuatu's communities and ecosystems are better equipped to withstand current and future climate challenges.`,
+    `During ${periodPhrase}, the Department implemented a range of initiatives to enhance climate literacy, strengthen policy direction, deepen community engagement, and advance sectoral research — reaffirming its commitment to reducing climate risks and ensuring Vanuatu's communities and ecosystems are better equipped to withstand current and future climate challenges.`,
   ];
 
   /* ── Activity overview (counts by theme) ──────────────────────────────── */
@@ -286,7 +314,7 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
 
   return {
     meta: {
-      title: `Quarter ${p.quarter ? p.quarter.slice(1) : ''} Report of ${p.year}`.replace('Quarter  Report', 'Progress Report'),
+      title: reportTitle(kind, p),
       subtitle: 'Department of Climate Change · Ministry of Climate Change and Adaptation',
       period: quarterLabel,
       months: p.months,

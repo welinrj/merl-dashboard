@@ -148,7 +148,7 @@ export default function QuarterlyReportPreview({ report }) {
           {figFor('overview').map(f => <Figure key={f.id} fig={f} />)}
         </Section>
 
-        <Section n={5} title={`${meta.period} — Progress Towards Quarterly Accomplishment`}>
+        <Section n={5} title={`${meta.period} — Progress & Accomplishment`}>
           <TableWrap>
             <thead><tr>{['Strategic Priority','Activity / Programme','Building Block','Partner','Output Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>

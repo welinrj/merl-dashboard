@@ -49,25 +49,60 @@ const EMPTY_DATA = { projects: [], indicators: [], budgetRows: [] };
 // SRF activity status → report traffic-light key.
 const SRF_TO_KEY = { on_track:'green', at_risk:'amber', no_progress:'red', unrated:'none' };
 
+// All report types are auto-populated from the Strategic Results Framework and
+// share the same section set; they differ only in title and reporting period.
+const REPORT_SECTIONS = ['Executive Summary','Key Achievements','Introduction','Activity Overview','Progress & Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps','Activity Reports','Photo Documentation'];
+
 const REPORT_TYPES = [
-  { id:'quarterly', label:'Quarterly Progress Report', icon:'📅',
-    desc:'Auto-populated DoCC quarterly report — accomplishments, budget utilisation, challenges, BTOR, lessons, and next steps. Exports to Word.',
-    sections:['Executive Summary','Key Achievements','Introduction','Activity Overview','Quarterly Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps','Activity Reports','Photo Documentation'] },
-  { id:'annual',    label:'Annual Results Report', icon:'📆',
-    desc:'Year-end outcomes and results achievement against the RBM framework.',
-    sections:['Year Highlights','Outcomes Assessment','Output Delivery','Indicator Dashboard','Financial Summary','Lessons Learned'] },
-  { id:'midterm',   label:'Mid-Term Review', icon:'🔍',
-    desc:'Independent assessment of project relevance, effectiveness, and efficiency at the midpoint.',
-    sections:['Scope & Methodology','Relevance','Effectiveness','Efficiency','Sustainability','GEDSI Analysis','Recommendations'] },
-  { id:'endline',   label:'End-of-Project Evaluation', icon:'✅',
-    desc:'Final summative evaluation covering all OECD-DAC criteria and theory of change.',
-    sections:['Findings by DAC Criteria','Results Against Theory of Change','Beneficiary Perspectives','Value for Money','Final Recommendations'] },
-  { id:'adhoc',     label:'Ad-Hoc Indicator Status', icon:'📊',
-    desc:'On-demand snapshot of selected indicators with traffic-light ratings and notes.',
-    sections:['Selected Indicators','Traffic Light Status','Data Quality Notes','Contextual Analysis'] },
+  { id:'btor',      label:'Back to Office Report', icon:'📌',
+    desc:'Field/mission report of activities conducted, outputs and follow-up actions for the period.',
+    sections:REPORT_SECTIONS },
+  { id:'monthly',   label:'Monthly Report', icon:'🗓️',
+    desc:'Auto-populated monthly progress across all activities — accomplishments, budget, challenges and next steps.',
+    sections:REPORT_SECTIONS },
+  { id:'quarterly', label:'Quarterly Report', icon:'📅',
+    desc:'Auto-populated DoCC quarterly report — accomplishments, budget utilisation, challenges, BTOR, lessons, and next steps.',
+    sections:REPORT_SECTIONS },
+  { id:'halfyear',  label:'Half-Year Report', icon:'📆',
+    desc:'Six-monthly progress consolidation against the Strategic Results Framework.',
+    sections:REPORT_SECTIONS },
+  { id:'annual',    label:'Annual Report', icon:'📚',
+    desc:'Year-end progress and results achievement across all themes and focus areas.',
+    sections:REPORT_SECTIONS },
 ];
 
-const PERIODS = ['Q1 2026','Q4 2025','Q3 2025','Q2 2025','2025 Annual','2024 Annual'];
+// Reporting-period options per report kind, generated relative to today.
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function recentMonths(n = 12) {
+  const out = []; const d = new Date(); d.setDate(1);
+  for (let i = 0; i < n; i++) { out.push(`${MONTHS[d.getMonth()]} ${d.getFullYear()}`); d.setMonth(d.getMonth() - 1); }
+  return out;
+}
+function recentQuarters(n = 8) {
+  const out = []; const now = new Date(); let y = now.getFullYear(); let q = Math.floor(now.getMonth() / 3) + 1;
+  for (let i = 0; i < n; i++) { out.push(`Q${q} ${y}`); q--; if (q < 1) { q = 4; y--; } }
+  return out;
+}
+function recentHalves(n = 4) {
+  const out = []; const now = new Date(); let y = now.getFullYear(); let h = now.getMonth() < 6 ? 1 : 2;
+  for (let i = 0; i < n; i++) { out.push(`H${h} ${y}`); h--; if (h < 1) { h = 2; y--; } }
+  return out;
+}
+function recentYears(n = 4) {
+  const out = []; const y = new Date().getFullYear();
+  for (let i = 0; i < n; i++) out.push(`${y - i} Annual`);
+  return out;
+}
+function periodsFor(id) {
+  switch (id) {
+    case 'monthly':   return recentMonths();
+    case 'btor':      return recentMonths();
+    case 'halfyear':  return recentHalves();
+    case 'annual':    return recentYears();
+    case 'quarterly':
+    default:          return recentQuarters();
+  }
+}
 
 function ReportPreview({ type, indicators, budgetRows }) {
   const now = new Date().toLocaleDateString('en-VU', { year:'numeric', month:'long', day:'numeric' });
@@ -182,7 +217,7 @@ export default function Reports() {
   const [activityReports, setActivityReports] = useState([]);
   const [selected, setSelected] = useState(REPORT_TYPES[0]);
   const [project, setProject]   = useState('');
-  const [period, setPeriod]     = useState('Q1 2026');
+  const [period, setPeriod]     = useState(() => periodsFor(REPORT_TYPES[0].id)[0]);
   const [state, setState]       = useState('idle'); // idle | generating | ready
 
   useEffect(() => {
@@ -249,9 +284,7 @@ export default function Reports() {
 
   // Assemble the quarterly report object (auto-populated) for preview + Word.
   const quarterlyReport = useMemo(
-    () => (selected.id === 'quarterly'
-      ? buildQuarterlyReport({ period, live: live ?? undefined, photos, reports: activityReports })
-      : null),
+    () => buildQuarterlyReport({ period, live: live ?? undefined, photos, reports: activityReports, kind: selected.id }),
     [selected.id, period, live, photos, activityReports],
   );
 
@@ -300,7 +333,7 @@ export default function Reports() {
         <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
           <div className="section-label" style={{ marginBottom:'0.5rem' }}>Report Type</div>
           {REPORT_TYPES.map(rt => (
-            <button key={rt.id} onClick={() => { setSelected(rt); setState('idle'); }}
+            <button key={rt.id} onClick={() => { setSelected(rt); setPeriod(periodsFor(rt.id)[0]); setState('idle'); }}
               style={{
                 textAlign:'left', padding:'0.875rem 1rem', borderRadius:8, cursor:'pointer',
                 border:'1.5px solid', transition:'all 0.15s',
@@ -336,7 +369,7 @@ export default function Reports() {
               <div>
                 <label className="field-label">Reporting Period</label>
                 <select value={period} onChange={e=>setPeriod(e.target.value)} className="field-input">
-                  {PERIODS.map(p => <option key={p}>{p}</option>)}
+                  {periodsFor(selected.id).map(p => <option key={p}>{p}</option>)}
                 </select>
               </div>
             </div>
@@ -358,15 +391,13 @@ export default function Reports() {
               </button>
               {state==='ready' && (
                 <>
-                  {selected.id === 'quarterly' && (
-                    <button
-                      onClick={exportWord} disabled={wordState==='working'}
-                      className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
-                      {wordState==='working'
-                        ? <><Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> Word…</>
-                        : <><FileText size={14}/> Word</>}
-                    </button>
-                  )}
+                  <button
+                    onClick={exportWord} disabled={wordState==='working'}
+                    className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
+                    {wordState==='working'
+                      ? <><Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> Word…</>
+                      : <><FileText size={14}/> Word</>}
+                  </button>
                   <button
                     onClick={() => exportExcel({ type: selected, projectLabel, period, indicators: previewIndicators, budgetRows })}
                     className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
@@ -401,7 +432,7 @@ export default function Reports() {
                     <Loader2 size={24} style={{ margin:'0 auto 0.75rem', animation:'spin 1s linear infinite', display:'block' }}/>
                     <p style={{ margin:0, fontSize:'0.875rem' }}>Compiling report data…</p>
                   </div>
-                ) : selected.id === 'quarterly' && quarterlyReport ? (
+                ) : quarterlyReport ? (
                   <QuarterlyReportPreview report={quarterlyReport}/>
                 ) : (
                   <ReportPreview type={selected} indicators={previewIndicators} budgetRows={budgetRows}/>
