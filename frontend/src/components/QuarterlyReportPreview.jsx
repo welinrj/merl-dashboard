@@ -66,6 +66,11 @@ const TableWrap = ({ children }) => (
 export default function QuarterlyReportPreview({ report }) {
   const { meta, stats } = report;
   const figFor = section => (report.figures || []).filter(f => f.section === section);
+  const hasReports = report.reports?.length > 0;
+  const hasPhotos = report.photos?.length > 0;
+  const reportsN = 11;
+  const photosN = 11 + (hasReports ? 1 : 0);
+  const attachN = 11 + (hasReports ? 1 : 0) + (hasPhotos ? 1 : 0);
   return (
     <div className="report-print-area" style={{ fontFamily:'var(--font-ui)', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
       {/* Cover header */}
@@ -270,8 +275,26 @@ export default function QuarterlyReportPreview({ report }) {
           <Summary>{report.summaries.nextSteps}</Summary>
         </Section>
 
-        {report.photos?.length > 0 && (
-          <Section n={11} title="📷 Photo Documentation">
+        {hasReports && (
+          <Section n={reportsN} title="📄 Activity Reports">
+            <p style={{ margin:'0 0 0.7rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
+              Automatic summaries of narrative reports uploaded against activities this period.
+            </p>
+            <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem' }}>
+              {report.reports.map((r, idx) => (
+                <div key={r.id ?? idx} style={{ border:'1px solid var(--border)', borderRadius:8, padding:'0.6rem 0.75rem', background:'var(--white)' }}>
+                  <div style={{ fontSize:'0.75rem', fontWeight:700, color:'var(--text-1)' }}>{r.fileName}</div>
+                  {r.activity && <div style={{ fontSize:'0.68rem', color:'var(--text-3)', marginBottom:'0.25rem' }}>{r.activity}</div>}
+                  <div style={{ fontSize:'0.73rem', color:'var(--text-2)', lineHeight:1.5, whiteSpace:'pre-line' }}>{r.summary}</div>
+                </div>
+              ))}
+            </div>
+            <Summary>{report.summaries.reports}</Summary>
+          </Section>
+        )}
+
+        {hasPhotos && (
+          <Section n={photosN} title="📷 Photo Documentation">
             <p style={{ margin:'0 0 0.7rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
               Field photographs uploaded against Strategic Results Framework activities during this reporting period.
             </p>
@@ -294,7 +317,7 @@ export default function QuarterlyReportPreview({ report }) {
           </Section>
         )}
 
-        <Section n={report.photos?.length > 0 ? 12 : 11} title="📎 Supporting Attachments">
+        <Section n={attachN} title="📎 Supporting Attachments">
           <p style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
             The following annexes and figures support the findings in this report. Figures 1–4 appear inline in the relevant sections above.
           </p>

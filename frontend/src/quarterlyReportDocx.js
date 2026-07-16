@@ -293,6 +293,23 @@ export async function buildQuarterlyDocxBlob(report) {
   ));
   children.push(summaryPara(report.summaries.nextSteps));
 
+  // ── Activity reports ──
+  if ((report.reports || []).length) {
+    children.push(heading('📄 Activity Reports'));
+    children.push(para('Automatic summaries of narrative reports uploaded against activities this period.', { size: 20 }));
+    report.reports.forEach(r => {
+      children.push(new Paragraph({
+        spacing: { before: 80, after: 20 },
+        children: [
+          new TextRun({ text: r.fileName, bold: true, size: 19, color: INK }),
+          ...(r.activity ? [new TextRun({ text: `  — ${r.activity}`, size: 16, color: MUTED })] : []),
+        ],
+      }));
+      children.push(para(r.summary, { size: 18, color: MUTED }));
+    });
+    if (report.summaries.reports) children.push(summaryPara(report.summaries.reports));
+  }
+
   // ── Photo documentation ──
   if (photoPngs.length) {
     children.push(heading('📷 Photo Documentation'));
