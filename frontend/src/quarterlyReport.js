@@ -219,24 +219,6 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     },
   ];
 
-  /* ── Per-table interpretive summaries (make the report read human-authored) */
-  const summaries = {
-    activityOverview: `Across ${S.themes} themes, ${st.green} of ${total} activities are on track and ${st.red} are delayed. ${topTheme.theme} is the largest workstream with ${topTheme.total} activities.`,
-    accomplishments: `Of ${total} activities, ${st.green} are completed or on track (${onTrackPct}%), ${st.amber} are ongoing, ${st.red} are delayed, and ${st.none} are not yet started.`,
-    budget: budgetTotals.actual > 0
-      ? `Total planned ${fmtVUV(budgetTotals.planned)} against actual ${fmtVUV(budgetTotals.actual)} — ${budgetTotals.pctUtil}% utilised, leaving a variance of ${fmtVUV(budgetTotals.variance)}.`
-      : `Total planned budget of ${fmtVUV(budgetTotals.planned)} across ${budgetRows.length} components; expenditure tracking begins once finance data is connected.`,
-    challenges: `${challengeRows.length} activity-level risks were logged this quarter, concentrated in delayed and at-risk activities and mitigated through adaptive scheduling and reprioritisation.`,
-    btor: `${btor.length} completed activities are documented below as back-to-office field records for the quarter.`,
-    nextSteps: `${nextSteps.length} at-risk and delayed activities are prioritised for acceleration in ${nextQuarter}.`,
-    photos: photoDocs.length
-      ? `${photoDocs.length} photograph${photoDocs.length > 1 ? 's' : ''} document field implementation across ${photoActivityCount || 1} activit${(photoActivityCount || 1) > 1 ? 'ies' : 'y'} this period.`
-      : '',
-    reports: reportDocs.length
-      ? `${reportDocs.length} narrative report${reportDocs.length > 1 ? 's' : ''} were uploaded across ${reportActivityCount || 1} activit${(reportActivityCount || 1) > 1 ? 'ies' : 'y'}; automatic summaries appear below.`
-      : '',
-  };
-
   /* ── Photo documentation (uploaded against activities in the Framework tab) */
   const photoDocs = (photos || [])
     .filter(p => p && p.url)
@@ -261,6 +243,24 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
       summary: (r.summary && r.summary.trim()) || 'No text preview available.',
     }));
   const reportActivityCount = new Set(reportDocs.map(r => r.activity).filter(Boolean)).size;
+
+  /* ── Per-table interpretive summaries (make the report read human-authored) */
+  const summaries = {
+    activityOverview: `Across ${S.themes} themes, ${st.green} of ${total} activities are on track and ${st.red} are delayed. ${topTheme.theme} is the largest workstream with ${topTheme.total} activities.`,
+    accomplishments: `Of ${total} activities, ${st.green} are completed or on track (${onTrackPct}%), ${st.amber} are ongoing, ${st.red} are delayed, and ${st.none} are not yet started.`,
+    budget: budgetTotals.actual > 0
+      ? `Total planned ${fmtVUV(budgetTotals.planned)} against actual ${fmtVUV(budgetTotals.actual)} — ${budgetTotals.pctUtil}% utilised, leaving a variance of ${fmtVUV(budgetTotals.variance)}.`
+      : `Total planned budget of ${fmtVUV(budgetTotals.planned)} across ${budgetRows.length} components; expenditure tracking begins once finance data is connected.`,
+    challenges: `${challengeRows.length} activity-level risks were logged this quarter, concentrated in delayed and at-risk activities and mitigated through adaptive scheduling and reprioritisation.`,
+    btor: `${btor.length} completed activities are documented below as back-to-office field records for the quarter.`,
+    nextSteps: `${nextSteps.length} at-risk and delayed activities are prioritised for acceleration in ${nextQuarter}.`,
+    photos: photoDocs.length
+      ? `${photoDocs.length} photograph${photoDocs.length > 1 ? 's' : ''} document field implementation across ${photoActivityCount || 1} activit${(photoActivityCount || 1) > 1 ? 'ies' : 'y'} this period.`
+      : '',
+    reports: reportDocs.length
+      ? `${reportDocs.length} narrative report${reportDocs.length > 1 ? 's' : ''} were uploaded across ${reportActivityCount || 1} activit${(reportActivityCount || 1) > 1 ? 'ies' : 'y'}; automatic summaries appear below.`
+      : '',
+  };
 
   /* ── Supporting attachments / annexes ─────────────────────────────────── */
   const attachments = [
