@@ -30,6 +30,7 @@ export type NavKey =
   | 'dashboard'
   | 'framework'
   | 'gallery'
+  | 'files'
   | 'registration'
   | 'projects'
   | 'analysis'

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
+  LayoutDashboard, FolderOpen,
   Activity, FileBarChart, Settings, LogOut, Target, Images,
   ChevronRight, ChevronDown, Bell, Menu, Eye, EyeOff, AlertCircle, ShieldCheck,
   Mail, Lock,
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import Dashboard   from './pages/Dashboard';
 import StrategicActivities from './pages/StrategicActivities';
 import Gallery     from './pages/Gallery';
+import ProjectFiles from './pages/ProjectFiles';
 import Analysis    from './pages/Analysis';
 import Reports     from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
@@ -69,17 +70,18 @@ async function loadProfile(): Promise<AppUser | null> {
 
 // ── Tab access map ────────────────────────────────────────────────────────────
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['dashboard', 'framework', 'gallery', 'analysis', 'reports', 'admin'],
-  ROLE_DOCC_SENIOR:  ['dashboard', 'framework', 'gallery', 'analysis', 'reports'],
-  ROLE_DOCC_MEO:     ['dashboard', 'framework', 'gallery', 'analysis', 'reports'],
-  ROLE_PROJ_MANAGER: ['dashboard', 'framework', 'gallery', 'analysis', 'reports'],
-  ROLE_FIELD_STAFF:  ['gallery', 'analysis'],
+  ROLE_ADMIN:        ['dashboard', 'framework', 'gallery', 'files', 'analysis', 'reports', 'admin'],
+  ROLE_DOCC_SENIOR:  ['dashboard', 'framework', 'gallery', 'files', 'analysis', 'reports'],
+  ROLE_DOCC_MEO:     ['dashboard', 'framework', 'gallery', 'files', 'analysis', 'reports'],
+  ROLE_PROJ_MANAGER: ['dashboard', 'framework', 'gallery', 'files', 'analysis', 'reports'],
+  ROLE_FIELD_STAFF:  ['gallery', 'files', 'analysis'],
 };
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard',    path: '/dashboard',    label: 'Dashboard',      Icon: LayoutDashboard },
   { key: 'framework',    path: '/framework',    label: 'Framework',      Icon: Target          },
   { key: 'gallery',      path: '/gallery',      label: 'Gallery',        Icon: Images          },
+  { key: 'files',        path: '/files',        label: 'Project Files',  Icon: FolderOpen      },
   { key: 'analysis',     path: '/analysis',     label: 'Analysis',       Icon: Activity        },
   { key: 'reports',      path: '/reports',      label: 'Reports',        Icon: FileBarChart    },
   { key: 'admin',        path: '/admin',        label: 'Administration', Icon: Settings        },
@@ -697,6 +699,7 @@ export default function App() {
               <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard /> : <Navigate to={defaultPath} replace />} />
               <Route path="/framework" element={allowed.includes('framework') ? <StrategicActivities user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/gallery"   element={allowed.includes('gallery')   ? <Gallery user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/files"     element={allowed.includes('files')     ? <ProjectFiles user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis /> : <Navigate to={defaultPath} replace />} />
               <Route path="/reports"   element={allowed.includes('reports')   ? <Reports /> : <Navigate to={defaultPath} replace />} />
               <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
