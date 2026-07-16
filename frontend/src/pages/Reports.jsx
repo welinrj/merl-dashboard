@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileBarChart, Download, Printer, Loader2, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { PROJECTS, ALL_INDICATORS } from '../mockData';
 import { supabase } from '../supabaseClient';
 
 const pct = (a,b) => b ? Math.round((a/b)*100) : 0;
@@ -43,16 +42,7 @@ function normaliseLive(projectRows, indicatorRows, budgetRows) {
   return { projects, indicators, budgetRows: budgetRowsOut };
 }
 
-function normaliseMock() {
-  const projects = PROJECTS.map(p => ({
-    code: p.code, name: p.name, category: p.category,
-    budget_vuv: p.budget_vuv, spent_vuv: p.spent_vuv,
-  }));
-  const budgetRows = PROJECTS.map(p => ({
-    label: p.category, budget_vuv: p.budget_vuv, spent_vuv: p.spent_vuv,
-  }));
-  return { projects, indicators: ALL_INDICATORS, budgetRows };
-}
+const EMPTY_DATA = { projects: [], indicators: [], budgetRows: [] };
 
 const REPORT_TYPES = [
   { id:'quarterly', label:'Quarterly Progress Report', icon:'📅',
@@ -203,7 +193,7 @@ export default function Reports() {
     return () => { cancelled = true; };
   }, []);
 
-  const { projects, indicators, budgetRows } = live ?? normaliseMock();
+  const { projects, indicators, budgetRows } = live ?? EMPTY_DATA;
 
   // Only narrows the indicator set when the underlying rows actually carry a
   // project_code (true for the demo data; live indicators are domain-scoped).
