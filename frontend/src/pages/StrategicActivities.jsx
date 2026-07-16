@@ -423,7 +423,7 @@ function ReportsModal({ activity, onClose, onChanged }) {
           <label style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'0.4rem', border:'1.5px dashed var(--border)', borderRadius:10, padding:'1.1rem', cursor: busy ? 'default' : 'pointer', color:'var(--text-3)', background:'var(--green-50, #f3f7f4)' }}>
             {busy ? <Loader2 size={20} style={{ animation:'spin 1s linear infinite' }} /> : <Upload size={20} />}
             <span style={{ fontSize:'0.82rem', fontWeight:700, color:'var(--text-2)' }}>{busy ? (progress || 'Working…') : 'Click to upload reports'}</span>
-            <span style={{ fontSize:'0.7rem', textAlign:'center' }}>Word, PDF or Excel · up to {MAX_REPORT_MB}MB · summarised automatically; photos inside are added to the gallery</span>
+            <span style={{ fontSize:'0.7rem', textAlign:'center' }}>Word, PDF or Excel · up to {MAX_REPORT_MB}MB · summarised automatically; photographs inside are added to the gallery (logos and graphics are skipped)</span>
             <input type="file" accept={ACCEPTED_REPORT_EXT} multiple disabled={busy} style={{ display:'none' }}
               onChange={e => { upload(e.target.files); e.target.value = ''; }} />
           </label>
