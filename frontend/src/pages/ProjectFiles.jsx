@@ -4,8 +4,9 @@
 // for a summary, timestamps and logs the submission, and files it under the
 // project name in the private project-documents store.
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Upload, Loader2, Download, Trash2, FileText, Search, ChevronDown, ChevronRight, FolderOpen, Check, Minus, GaugeCircle } from 'lucide-react';
+import { Upload, Loader2, Download, Trash2, FileText, Search, ChevronDown, ChevronRight, FolderOpen, Check, Minus, GaugeCircle, ArrowRight } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 import { processReportFile, reportKind, ACCEPTED_REPORT_EXT, REPORT_KIND_LABEL } from '../reportProcessing';
@@ -67,6 +68,7 @@ export default function ProjectFiles({ user }) {
   const canEdit = !!user && EDITOR_ROLES.includes(user.role);
   const [docs, setDocs] = useState([]);
   const [projects, setProjects] = useState([]); // for name suggestions
+  const [profiles, setProfiles] = useState([]); // project KPI dashboards
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
@@ -78,14 +80,25 @@ export default function ProjectFiles({ user }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [d, p] = await Promise.all([
+    const [d, p, pr] = await Promise.all([
       supabase.from('v_project_documents').select('*').order('created_at', { ascending: false }),
       supabase.from('v_projects').select('code,name').order('code'),
+      supabase.from('v_project_profiles').select('code,name,acronym').order('name'),
     ]);
     setDocs(d.error ? [] : (d.data ?? []));
     setProjects(p.error ? [] : (p.data ?? []));
+    setProfiles(pr.error ? [] : (pr.data ?? []));
     setLoading(false);
   }, []);
+
+  // Match a document group's project name to a KPI-dashboard profile.
+  const profileFor = useCallback((projectName) => {
+    const n = (projectName || '').trim().toLowerCase();
+    return profiles.find(pr =>
+      (pr.code || '').toLowerCase() === n ||
+      (pr.acronym || '').toLowerCase() === n ||
+      (pr.name || '').toLowerCase() === n) || null;
+  }, [profiles]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -246,6 +259,24 @@ export default function ProjectFiles({ user }) {
         </div>
       </form>
 
+      {/* ── Project dashboards ──────────────────────────────────────────── */}
+      {profiles.length > 0 && (
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
+            <GaugeCircle size={17} style={{ color: 'var(--green-700, #155e34)' }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1rem' }}>Project dashboards</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+            {profiles.map(pr => (
+              <Link key={pr.code} to={`/project/${encodeURIComponent(pr.code)}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 0.9rem', borderRadius: 10, border: '1px solid var(--green-600)', background: 'var(--green-50, #dcece2)', color: 'var(--green-700, #155e34)', fontWeight: 700, fontSize: '0.82rem', textDecoration: 'none' }}>
+                {pr.acronym || pr.code} — KPIs <ArrowRight size={14} />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Documentation KPIs ──────────────────────────────────────────── */}
       {!loading && kpi.projectCount > 0 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.5rem' }}>
@@ -327,14 +358,23 @@ export default function ProjectFiles({ user }) {
             {groups.map(([project, list]) => {
               const collapsed = open[project] === false ? false : open[project]; // undefined => expanded
               const isCollapsed = collapsed === true;
+              const prof = profileFor(project);
               return (
                 <div key={project} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <button onClick={() => setOpen(o => ({ ...o, [project]: !isCollapsed }))}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1.1rem', background: 'var(--green-50, #f3f7f4)', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-                    <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-1)' }}>{project}</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.25rem' }}>{list.length} document{list.length > 1 ? 's' : ''}</span>
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', background: 'var(--green-50, #f3f7f4)' }}>
+                    <button onClick={() => setOpen(o => ({ ...o, [project]: !isCollapsed }))}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1.1rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                      {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-1)' }}>{project}</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.25rem' }}>{list.length} document{list.length > 1 ? 's' : ''}</span>
+                    </button>
+                    {prof && (
+                      <Link to={`/project/${encodeURIComponent(prof.code)}`}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.7rem', marginRight: '0.8rem', borderRadius: 8, border: '1px solid var(--green-600)', color: 'var(--green-700, #155e34)', fontWeight: 700, fontSize: '0.72rem', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                        <GaugeCircle size={13} /> KPI dashboard
+                      </Link>
+                    )}
+                  </div>
                   {!isCollapsed && (
                     <div>
                       {list.map(d => {
