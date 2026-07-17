@@ -8,10 +8,27 @@
 import { useEffect, useState, useCallback, Fragment } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, GaugeCircle, Building2, CalendarDays, Wallet, ShieldCheck, X, Plus, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { ArrowLeft, GaugeCircle, Building2, CalendarDays, Wallet, ShieldCheck, X, Plus, ChevronDown, ChevronRight, Loader2, Coins, Banknote, TrendingUp, Sparkles } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
+
+// A small, professional accent palette (teal-forward, matching the portal).
+const ACCENTS = {
+  teal:  { c: '#0e6e6e', bg: '#e3f0ef' },
+  ocean: { c: '#2a6f97', bg: '#e4eef4' },
+  gold:  { c: '#b9791a', bg: '#f7ecd6' },
+  plum:  { c: '#7c5a8c', bg: '#efe8f3' },
+  green: { c: '#1a8c4e', bg: '#dff0e6' },
+  red:   { c: '#b3402f', bg: '#f6ded8' },
+};
+const HILITE_ACCENTS = [ACCENTS.green, ACCENTS.ocean, ACCENTS.gold, ACCENTS.plum];
+const riskAccent = (r) => {
+  const s = String(r || '').toLowerCase();
+  if (s.includes('high')) return ACCENTS.red;
+  if (s.includes('medium') || s.includes('moderate') || s.includes('substantial')) return ACCENTS.gold;
+  return ACCENTS.green;
+};
 
 const STATUS = {
   exceeded:    { label: 'Exceeded',    col: '#1a8c4e', bg: '#dcece2', txt: '#155e34' },
@@ -51,38 +68,64 @@ function StatusBadge({ s }) {
   );
 }
 
+const barColor = (pct) => pct >= 100 ? '#1a8c4e' : pct >= 70 ? '#0e6e6e' : pct >= 40 ? '#e0a12a' : '#c86a3a';
+
 function ProgressBar({ pct }) {
   if (pct == null) return <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>—</span>;
-  const fill = Math.max(0, Math.min(pct, 100));
-  const col = pct >= 100 ? 'var(--green-600, #1a8c4e)' : pct >= 40 ? 'var(--green-600, #1a8c4e)' : 'var(--gold-500, #d99a2b)';
+  const fill = Math.max(2, Math.min(pct, 100));
+  const col = barColor(pct);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 120 }}>
-      <div style={{ flex: 1, minWidth: 60, height: 7, borderRadius: 9999, background: 'var(--border)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minWidth: 60, height: 8, borderRadius: 9999, background: 'var(--border)', overflow: 'hidden' }}>
         <div style={{ width: `${fill}%`, height: '100%', background: col, borderRadius: 9999 }} />
       </div>
-      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-2)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{pct}%</span>
+      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: col, fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{pct}%</span>
     </div>
   );
 }
 
-function StatTile({ label, value, sub }) {
+// Circular progress ring for the headline progress figure.
+function ProgressRing({ pct, label, sub }) {
+  const size = 96, stroke = 9, r = (size - stroke) / 2, circ = 2 * Math.PI * r;
+  const p = Math.max(0, Math.min(pct ?? 0, 100));
+  const col = barColor(pct ?? 0);
   return (
-    <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.85rem 1rem', minWidth: 150 }}>
-      <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)' }}>{label}</div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 800, color: 'var(--green-700, #155e34)', lineHeight: 1.2 }}>{value}</div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', background: 'var(--white)', border: '1px solid var(--border)', borderLeft: '3px solid ' + col, borderRadius: 12, padding: '0.9rem 1.1rem', boxShadow: 'var(--shadow-sm)' }}>
+      <svg width={size} height={size} style={{ flexShrink: 0 }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={circ * (1 - p / 100)} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+        <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle" style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.35rem', fill: 'var(--text-1)' }}>{pct == null ? '—' : `${pct}%`}</text>
+      </svg>
+      <div>
+        <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)' }}>{label}</div>
+        {sub && <div style={{ fontSize: '0.72rem', color: 'var(--text-2)', marginTop: '0.15rem', maxWidth: 150 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+function KpiTile({ icon: Icon, label, value, sub, accent = ACCENTS.teal }) {
+  return (
+    <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderLeft: '3px solid ' + accent.c, borderRadius: 12, padding: '0.85rem 1rem', minWidth: 170, boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+        {Icon && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8, background: accent.bg, color: accent.c }}><Icon size={15} /></span>}
+        <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)' }}>{label}</span>
+      </div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>{value}</div>
       {sub && <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '0.1rem' }}>{sub}</div>}
     </div>
   );
 }
 
-function InfoGrid({ icon: Icon, title, entries }) {
+function InfoGrid({ icon: Icon, title, entries, accent = ACCENTS.teal }) {
   const rows = Object.entries(entries || {}).filter(([, v]) => v != null && v !== '');
   if (!rows.length) return null;
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.8rem 1.1rem', borderBottom: '1px solid var(--border)' }}>
-        <Icon size={16} style={{ color: 'var(--green-700, #155e34)' }} />
-        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.95rem' }}>{title}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.7rem 1.1rem', borderBottom: '1px solid var(--border)', background: accent.bg }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'var(--white)', color: accent.c }}><Icon size={14} /></span>
+        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-1)' }}>{title}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.1rem 1.5rem', padding: '0.9rem 1.1rem' }}>
         {rows.map(([k, v]) => (
@@ -139,41 +182,48 @@ export default function ProjectDashboard({ user }) {
         <ArrowLeft size={15} /> Project Files
       </Link>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
-        <GaugeCircle size={24} style={{ color: 'var(--green-700, #155e34)', marginTop: '0.15rem' }} />
-        <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-1)', margin: 0 }}>
-            {profile.name} {profile.acronym && <span style={{ color: 'var(--text-3)', fontWeight: 700 }}>· {profile.acronym}</span>}
-          </h1>
+      {/* Gradient header banner */}
+      <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', marginBottom: '1.25rem', boxShadow: 'var(--shadow-md)', background: 'linear-gradient(135deg, var(--green-900) 0%, var(--green-700) 55%, var(--green-600) 100%)' }}>
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.12, backgroundImage: 'radial-gradient(circle at 88% 12%, #ffffff 0, transparent 42%), radial-gradient(circle at 12% 92%, var(--gold-400) 0, transparent 45%)' }} />
+        <div style={{ position: 'relative', padding: '1.5rem 1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+            <GaugeCircle size={22} style={{ color: 'var(--gold-400)' }} />
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff', margin: 0, lineHeight: 1.15 }}>
+              {profile.name}
+            </h1>
+            {profile.acronym && (
+              <span style={{ background: 'var(--gold-500)', color: 'var(--ink)', fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.03em', borderRadius: 9999, padding: '0.2rem 0.7rem' }}>{profile.acronym}</span>
+            )}
+          </div>
           {d.official_title && d.official_title !== profile.name && (
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginTop: '0.15rem' }}>{d.official_title}</div>
+            <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)', marginBottom: '0.5rem' }}>{d.official_title}</div>
           )}
+          {d.objective && (
+            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.55, margin: '0 0 0.5rem', maxWidth: 900 }}>{d.objective}</p>
+          )}
+          <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)' }}>
+            {d.source_document && <>Source: {d.source_document}</>}{d.period && <> · {d.period}</>}
+          </div>
         </div>
       </div>
-      {d.objective && (
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', lineHeight: 1.55, margin: '0.5rem 0 0.35rem', maxWidth: 900 }}>{d.objective}</p>
-      )}
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '1.25rem' }}>
-        {d.source_document && <>Source: {d.source_document}</>}{d.period && <> · {d.period}</>}
-      </div>
 
-      {/* Finance + highlight KPI tiles */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        {avgProgress != null && <StatTile label="Avg progress to end target" value={`${avgProgress}%`} sub={`${measurable.length} measured indicators`} />}
-        {fin.gef_grant != null && <StatTile label="GEF Grant" value={fmtUSD(fin.gef_grant)} />}
-        {fin.cofinancing != null && <StatTile label="Co-financing" value={fmtUSD(fin.cofinancing)} />}
-        {fin.disbursement != null && <StatTile label="Disbursement" value={fmtUSD(fin.disbursement)} sub={fin.as_of ? `as of ${fin.as_of}` : undefined} />}
-        {fin.delivery_vs_approved_pct != null && <StatTile label="Delivery (of budget)" value={`${fin.delivery_vs_approved_pct}%`} sub={fin.delivery_vs_expected_pct != null ? `${fin.delivery_vs_expected_pct}% of expected` : undefined} />}
-        {d.ratings?.['Overall risk rating'] && <StatTile label="Risk rating" value={d.ratings['Overall risk rating']} />}
-        {Object.entries(d.highlights || {}).map(([k, v]) => <StatTile key={k} label={k} value={v} />)}
+      {/* KPI tiles */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem', alignItems: 'stretch' }}>
+        {avgProgress != null && <ProgressRing pct={avgProgress} label="Avg progress to end target" sub={`${measurable.length} measured indicators`} />}
+        {fin.gef_grant != null && <KpiTile icon={Wallet} accent={ACCENTS.teal} label="GEF Grant" value={fmtUSD(fin.gef_grant)} />}
+        {fin.cofinancing != null && <KpiTile icon={Coins} accent={ACCENTS.ocean} label="Co-financing" value={fmtUSD(fin.cofinancing)} />}
+        {fin.disbursement != null && <KpiTile icon={Banknote} accent={ACCENTS.gold} label="Disbursement" value={fmtUSD(fin.disbursement)} sub={fin.as_of ? `as of ${fin.as_of}` : undefined} />}
+        {fin.delivery_vs_approved_pct != null && <KpiTile icon={TrendingUp} accent={ACCENTS.plum} label="Delivery (of budget)" value={`${fin.delivery_vs_approved_pct}%`} sub={fin.delivery_vs_expected_pct != null ? `${fin.delivery_vs_expected_pct}% of expected` : undefined} />}
+        {d.ratings?.['Overall risk rating'] && <KpiTile icon={ShieldCheck} accent={riskAccent(d.ratings['Overall risk rating'])} label="Risk rating" value={d.ratings['Overall risk rating']} />}
+        {Object.entries(d.highlights || {}).map(([k, v], i) => <KpiTile key={k} icon={Sparkles} accent={HILITE_ACCENTS[i % HILITE_ACCENTS.length]} label={k} value={v} />)}
       </div>
 
       {/* Development Objective Progress table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.1rem', borderBottom: '1px solid var(--border)' }}>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1rem' }}>Development Objective Progress</span>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginLeft: '0.25rem' }}>measured against the end-of-project target</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.75rem 1.1rem', borderBottom: '1px solid var(--border)', background: ACCENTS.teal.bg }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'var(--white)', color: ACCENTS.teal.c }}><TrendingUp size={14} /></span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1rem', color: 'var(--text-1)' }}>Development Objective Progress</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-2)', marginLeft: '0.25rem' }}>measured against the end-of-project target</span>
         </div>
         {indicators.length === 0 ? (
           <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-3)' }}>No indicators recorded.</div>
@@ -200,7 +250,7 @@ export default function ProjectDashboard({ user }) {
                   const cur = currentVal(it);
                   return (
                     <Fragment key={i}>
-                      <tr>
+                      <tr style={i % 2 ? { background: 'var(--green-50, #eaf4f3)' } : undefined}>
                         <td style={{ textAlign: 'center' }}>
                           {(hist.length > 0 || it.remarks) && (
                             <button onClick={() => setExpanded(e => ({ ...e, [i]: !open }))} title="History & remarks"
@@ -266,10 +316,10 @@ export default function ProjectDashboard({ user }) {
 
       {/* Info grids */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-        <InfoGrid icon={Building2} title="Basic data" entries={d.basic} />
-        <InfoGrid icon={CalendarDays} title="Key dates" entries={d.dates} />
-        <InfoGrid icon={ShieldCheck} title="Ratings" entries={d.ratings} />
-        <InfoGrid icon={Wallet} title="Finance" entries={{
+        <InfoGrid icon={Building2} title="Basic data" accent={ACCENTS.ocean} entries={d.basic} />
+        <InfoGrid icon={CalendarDays} title="Key dates" accent={ACCENTS.plum} entries={d.dates} />
+        <InfoGrid icon={ShieldCheck} title="Ratings" accent={ACCENTS.green} entries={d.ratings} />
+        <InfoGrid icon={Wallet} title="Finance" accent={ACCENTS.gold} entries={{
           'GEF Grant': fin.gef_grant != null ? fmtUSD(fin.gef_grant) : null,
           'Co-financing': fin.cofinancing != null ? fmtUSD(fin.cofinancing) : null,
           'PPG': fin.ppg != null ? fmtUSD(fin.ppg) : null,
