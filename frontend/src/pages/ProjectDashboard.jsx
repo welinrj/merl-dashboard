@@ -202,8 +202,8 @@ export default function ProjectDashboard({ user }) {
                     <Fragment key={i}>
                       <tr>
                         <td style={{ textAlign: 'center' }}>
-                          {hist.length > 0 && (
-                            <button onClick={() => setExpanded(e => ({ ...e, [i]: !open }))} title="History"
+                          {(hist.length > 0 || it.remarks) && (
+                            <button onClick={() => setExpanded(e => ({ ...e, [i]: !open }))} title="History & remarks"
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 2, display: 'inline-flex' }}>
                               {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                             </button>
@@ -228,20 +228,30 @@ export default function ProjectDashboard({ user }) {
                           </td>
                         )}
                       </tr>
-                      {open && hist.length > 0 && (
+                      {open && (hist.length > 0 || it.remarks) && (
                         <tr>
                           <td></td>
                           <td colSpan={canEdit ? 8 : 7} style={{ background: 'var(--green-50, #f3f7f4)' }}>
-                            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-3)', margin: '0.2rem 0 0.4rem' }}>Reported levels over time</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', paddingBottom: '0.3rem' }}>
-                              {hist.map((h, hi) => (
-                                <div key={hi} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--white)', padding: '0.4rem 0.6rem', minWidth: 120 }}>
-                                  <div style={{ fontSize: '0.64rem', color: 'var(--text-3)' }}>{h.period}{hi === hist.length - 1 ? ' · current' : hi === 0 ? '' : ''}</div>
-                                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.9rem', color: 'var(--green-700, #155e34)' }}>{fmtNum(h.value)}{it.unit === '%' ? '%' : ''}</div>
-                                  {h.note && <div style={{ fontSize: '0.64rem', color: 'var(--text-3)', maxWidth: 220 }}>{h.note}</div>}
+                            {hist.length > 0 && (
+                              <>
+                                <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-3)', margin: '0.2rem 0 0.4rem' }}>Reported levels over time</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', paddingBottom: '0.3rem' }}>
+                                  {hist.map((h, hi) => (
+                                    <div key={hi} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--white)', padding: '0.4rem 0.6rem', minWidth: 120 }}>
+                                      <div style={{ fontSize: '0.64rem', color: 'var(--text-3)' }}>{h.period}{hi === hist.length - 1 ? ' · current' : ''}</div>
+                                      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.9rem', color: 'var(--green-700, #155e34)' }}>{fmtNum(h.value)}{it.unit === '%' ? '%' : ''}</div>
+                                      {h.note && <div style={{ fontSize: '0.64rem', color: 'var(--text-3)', maxWidth: 220 }}>{h.note}</div>}
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
+                              </>
+                            )}
+                            {it.remarks && (
+                              <div style={{ marginTop: hist.length > 0 ? '0.6rem' : '0.2rem', paddingBottom: '0.3rem' }}>
+                                <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '0.3rem' }}>Remarks / reference</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-2)', lineHeight: 1.55, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.55rem 0.7rem', maxWidth: 780 }}>{it.remarks}</div>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )}
@@ -288,6 +298,7 @@ function RecordUpdateModal({ profile, updateFor, onClose, onSaved }) {
   const [period, setPeriod] = useState('');
   const [value, setValue] = useState('');
   const [note, setNote] = useState('');
+  const [remarks, setRemarks] = useState(it.remarks || '');
   const [saving, setSaving] = useState(false);
 
   const end = it.end_val != null ? Number(it.end_val) : null;
@@ -307,6 +318,7 @@ function RecordUpdateModal({ profile, updateFor, onClose, onSaved }) {
       target.history.push({ period: period.trim(), value: Number(value), note: note.trim() || null });
       target.current_val = Number(value);
       target.current = note.trim() || `${period.trim()}: ${Number(value).toLocaleString('en-US')}`;
+      target.remarks = remarks.trim() || null;
       if (target.end_val) target.progress_pct = Math.round((Number(value) / Number(target.end_val)) * 100);
       const res = await supabase.rpc('upsert_project_profile', {
         p_code: profile.code, p_name: profile.name, p_acronym: profile.acronym, p_data: data,
@@ -343,6 +355,10 @@ function RecordUpdateModal({ profile, updateFor, onClose, onSaved }) {
           <div>
             <label className="field-label">Note</label>
             <input className="field-input" value={note} onChange={e => setNote(e.target.value)} placeholder="Brief description of this update" disabled={saving} />
+          </div>
+          <div>
+            <label className="field-label">Remarks / reference</label>
+            <textarea className="field-input" rows={3} value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Progress comments and what remains to be done" disabled={saving} />
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-2)', background: 'var(--green-50, #f3f7f4)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>
             End-of-project target: <strong>{it.end ?? '—'}</strong>
