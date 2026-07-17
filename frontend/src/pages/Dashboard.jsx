@@ -272,12 +272,12 @@ export default function Dashboard() {
   const clearFilters = () => { setThemes([]); setFocusAreas([]); setStatuses([]); };
 
   return (
-    <div style={{ maxWidth:1720 }} className="animate-fade-up page-pad">
+    <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
 
-      <h1 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(2.4rem, 4.1vw, 3.6rem)', fontWeight:800, letterSpacing:'-0.03em', color:'var(--text-1)', margin:'0 0 0.35rem', lineHeight:1.1 }}>
+      <h1 style={{ fontFamily:'var(--font-display)', fontSize:'1.6rem', fontWeight:800, letterSpacing:'-0.02em', color:'var(--text-1)', margin:'0 0 0.25rem' }}>
         Dashboard — Monitoring, Evaluation, Research &amp; Learning
       </h1>
-      <div style={{ fontSize:'1rem', color:'var(--text-2)', margin:'0 0 1.4rem' }}>
+      <div style={{ fontSize:'0.85rem', color:'var(--text-2)', margin:'0 0 1.25rem' }}>
         DoCC Strategic Results Framework 2025–2030 · Government of Vanuatu
       </div>
 

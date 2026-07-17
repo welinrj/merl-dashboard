@@ -576,16 +576,16 @@ export default function App() {
       {/* Top navigation */}
       <header style={{
         flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1.25rem',
+        display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1.15rem 1.75rem',
       }}>
         {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--green-50)', border: '1px solid var(--green-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--green-50)', border: '1px solid var(--green-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6, flexShrink: 0 }}>
             <img src={CREST} alt="Vanuatu Coat of Arms" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
-          <div style={{ lineHeight: 1.1 }}>
-            <div style={{ fontFamily: 'var(--font-display)', color: 'var(--text-1)', fontSize: '0.95rem', fontWeight: 700, letterSpacing: '-0.01em' }}>L&amp;D MERL</div>
-            <div style={{ color: 'var(--text-3)', fontSize: '0.625rem', letterSpacing: '0.04em' }}>DoCC · Vanuatu</div>
+          <div style={{ lineHeight: 1.15 }}>
+            <div style={{ fontFamily: 'var(--font-display)', color: 'var(--text-1)', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.01em' }}>L&amp;D MERL</div>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', letterSpacing: '0.04em' }}>DoCC · Vanuatu</div>
           </div>
         </div>
 
@@ -602,8 +602,8 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', flexShrink: 0 }}>
           {IS_STAGING && (
             <div style={{
-              fontSize: '0.6875rem', color: 'var(--green-700)',
-              padding: '0.25rem 0.625rem', background: 'var(--green-50)',
+              fontSize: '0.8125rem', color: 'var(--green-700)',
+              padding: '0.35rem 0.8rem', background: 'var(--green-50)',
               border: '1px solid var(--green-100)', borderRadius: 9999,
               fontWeight: 700, letterSpacing: '0.04em',
             }}>
@@ -616,7 +616,7 @@ export default function App() {
               <button key={lng} onClick={() => i18n.changeLanguage(lng)}
                 aria-label={`Switch language to ${lng.toUpperCase()}`}
                 style={{
-                  padding: '0.3rem 0.55rem', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.03em',
+                  padding: '0.42rem 0.75rem', fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.03em',
                   border: 'none', cursor: 'pointer',
                   background: i18n.language === lng ? 'var(--green-600)' : 'var(--white)',
                   color: i18n.language === lng ? '#fff' : 'var(--text-3)',
@@ -626,7 +626,7 @@ export default function App() {
             ))}
           </div>
           <button className="topnav-icon-btn" title="Notifications" aria-label="Notifications">
-            <Bell size={17} />
+            <Bell size={20} />
           </button>
 
           {/* Account menu */}
@@ -636,10 +636,10 @@ export default function App() {
               background: 'none', border: 'none', cursor: 'pointer',
               padding: '0.15rem 0.25rem 0.15rem 0.15rem', borderRadius: 9999,
             }}>
-              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--green-600), var(--green-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.75rem', fontWeight: 700 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--green-600), var(--green-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.85rem', fontWeight: 700 }}>
                 {initials}
               </div>
-              <ChevronDown size={15} style={{ color: 'var(--text-3)' }} />
+              <ChevronDown size={17} style={{ color: 'var(--text-3)' }} />
             </button>
             {userMenuOpen && (
               <>
@@ -670,10 +670,10 @@ export default function App() {
 
       {/* Traditional ni-Vanuatu ornament band (header) */}
       <div aria-hidden="true" style={{
-        flexShrink: 0, height: 26, background: 'var(--white)',
+        flexShrink: 0, height: 34, background: 'var(--white)',
         borderBottom: '1px solid var(--border)',
         backgroundImage: `url(${PATTERN_BAND})`, backgroundRepeat: 'repeat-x',
-        backgroundPosition: 'center', backgroundSize: 'auto 26px',
+        backgroundPosition: 'center', backgroundSize: 'auto 34px',
       }} />
 
       {/* Mobile dropdown nav */}
