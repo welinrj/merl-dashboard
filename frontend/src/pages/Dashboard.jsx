@@ -4,7 +4,13 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
 import { ArrowRight, X, ChevronDown } from 'lucide-react';
+import { AnimatedImageText } from '@/components/ui/text-animation';
 import { STRATEGIC_THEMES, ACTIVITIES, PLAN_SUMMARY as S } from '../strategicPlan';
+
+/* Image clipped to the animated dashboard title. A misty forest reads as the
+   teal/green environmental theme when shown through the letters. */
+const TITLE_TEXTURE =
+  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200&auto=format&fit=crop&q=60';
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
 const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
@@ -275,7 +281,9 @@ export default function Dashboard() {
     <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
 
       <h1 style={{ fontFamily:'var(--font-display)', fontSize:'1.6rem', fontWeight:800, letterSpacing:'-0.02em', color:'var(--text-1)', margin:'0 0 0.25rem' }}>
-        Dashboard — Monitoring, Evaluation, Research &amp; Learning
+        <AnimatedImageText image={TITLE_TEXTURE}>
+          Dashboard — Monitoring, Evaluation, Research &amp; Learning
+        </AnimatedImageText>
       </h1>
       <div style={{ fontSize:'0.85rem', color:'var(--text-2)', margin:'0 0 1.25rem' }}>
         DoCC Strategic Results Framework 2025–2030 · Government of Vanuatu
