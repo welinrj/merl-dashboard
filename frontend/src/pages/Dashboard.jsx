@@ -274,7 +274,7 @@ export default function Dashboard() {
   return (
     <div style={{ maxWidth:1720 }} className="animate-fade-up page-pad">
 
-      <h1 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(2rem, 3.4vw, 3rem)', fontWeight:800, letterSpacing:'-0.03em', color:'var(--text-1)', margin:'0 0 0.35rem', lineHeight:1.1 }}>
+      <h1 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(2.4rem, 4.1vw, 3.6rem)', fontWeight:800, letterSpacing:'-0.03em', color:'var(--text-1)', margin:'0 0 0.35rem', lineHeight:1.1 }}>
         Dashboard — Monitoring, Evaluation, Research &amp; Learning
       </h1>
       <div style={{ fontSize:'1rem', color:'var(--text-2)', margin:'0 0 1.4rem' }}>
