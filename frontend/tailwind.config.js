@@ -62,6 +62,9 @@ export default {
       animation: {
         'fade-in': 'fadeIn 0.2s ease-in-out',
         'slide-in': 'slideIn 0.3s ease-out',
+        // Pans a background image clipped to text for a living-texture effect.
+        'text': 'text 8s ease infinite',
+        'text-reverse': 'textReverse 8s ease infinite',
       },
       keyframes: {
         fadeIn: {
@@ -71,6 +74,16 @@ export default {
         slideIn: {
           '0%': { transform: 'translateX(-10px)', opacity: '0' },
           '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
+        text: {
+          '0%': { backgroundPosition: '0 0' },
+          '50%': { backgroundPosition: '200px' },
+          '100%': { backgroundPosition: '0 0' },
+        },
+        textReverse: {
+          '0%': { backgroundPosition: '0 0' },
+          '50%': { backgroundPosition: '-200px' },
+          '100%': { backgroundPosition: '0 0' },
         },
       },
     },
