@@ -5,7 +5,7 @@
 // project name in the private project-documents store.
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Upload, Loader2, Download, Trash2, FileText, Search, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
+import { Upload, Loader2, Download, Trash2, FileText, Search, ChevronDown, ChevronRight, FolderOpen, Check, Minus, GaugeCircle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 import { processReportFile, reportKind, ACCEPTED_REPORT_EXT, REPORT_KIND_LABEL } from '../reportProcessing';
@@ -31,6 +31,37 @@ const fmtDateTime = (iso) => {
 };
 
 const emptyForm = { docType: 'annual_workplan', projectName: '', officer: '', file: null };
+
+// Present/missing indicator for a key document type. Uses an icon (not colour
+// alone) so the state reads without relying on colour perception.
+function DocCell({ count }) {
+  if (count > 0) {
+    return (
+      <span title={`${count} on file`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', color: 'var(--green-700, #155e34)', fontWeight: 700, fontSize: '0.75rem' }}>
+        <Check size={15} />{count > 1 ? count : ''}
+      </span>
+    );
+  }
+  return (
+    <span title="Not submitted" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-3)' }}>
+      <Minus size={15} />
+    </span>
+  );
+}
+
+// Completeness meter against the three key document types (0–3).
+function Completeness({ present }) {
+  const pct = Math.round((present / 3) * 100);
+  const col = present === 3 ? 'var(--green-600, #1a8c4e)' : present >= 1 ? 'var(--gold-500, #d99a2b)' : 'var(--red-600, #b3402f)';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div style={{ flex: 1, minWidth: 60, height: 7, borderRadius: 9999, background: 'var(--border)', overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: col, borderRadius: 9999 }} />
+      </div>
+      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-2)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{present}/3</span>
+    </div>
+  );
+}
 
 export default function ProjectFiles({ user }) {
   const canEdit = !!user && EDITOR_ROLES.includes(user.role);
@@ -120,6 +151,39 @@ export default function ProjectFiles({ user }) {
     toast.success('Document deleted.'); load();
   };
 
+  // Per-project documentation KPIs: which key documents each project has on
+  // file, completeness against the three key types, latest submission, officers.
+  const kpi = useMemo(() => {
+    const KEYS = ['annual_workplan', 'six_month_report', 'annual_report'];
+    const byProject = new Map();
+    const typeTotals = { annual_workplan: 0, six_month_report: 0, annual_report: 0 };
+    docs.forEach(d => {
+      if (!byProject.has(d.project_name)) {
+        byProject.set(d.project_name, {
+          project: d.project_name, total: 0,
+          types: { annual_workplan: 0, six_month_report: 0, annual_report: 0 },
+          officers: new Set(), latest: null,
+        });
+      }
+      const p = byProject.get(d.project_name);
+      p.total += 1;
+      if (p.types[d.doc_type] !== undefined) p.types[d.doc_type] += 1;
+      if (typeTotals[d.doc_type] !== undefined) typeTotals[d.doc_type] += 1;
+      if (d.submitted_by) p.officers.add(d.submitted_by);
+      if (!p.latest || new Date(d.created_at) > new Date(p.latest)) p.latest = d.created_at;
+    });
+    const rows = [...byProject.values()].map(p => {
+      const present = KEYS.filter(k => p.types[k] > 0).length;
+      return { ...p, officerCount: p.officers.size, present, complete: present === 3 };
+    }).sort((a, b) => a.project.localeCompare(b.project));
+    return {
+      rows, typeTotals,
+      projectCount: rows.length,
+      totalDocs: docs.length,
+      completeCount: rows.filter(r => r.complete).length,
+    };
+  }, [docs]);
+
   // Group documents by project name, honouring the search filter.
   const groups = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -181,6 +245,65 @@ export default function ProjectFiles({ user }) {
           </button>
         </div>
       </form>
+
+      {/* ── Documentation KPIs ──────────────────────────────────────────── */}
+      {!loading && kpi.projectCount > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.9rem 1.1rem', borderBottom: '1px solid var(--border)' }}>
+            <GaugeCircle size={17} style={{ color: 'var(--green-700, #155e34)' }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1rem' }}>Key documents KPIs</span>
+          </div>
+
+          {/* Summary stat band */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', padding: '1rem 1.1rem', borderBottom: '1px solid var(--border)', background: 'var(--green-50, #f3f7f4)' }}>
+            {[
+              ['Projects', kpi.projectCount],
+              ['Documents', kpi.totalDocs],
+              ['Complete sets', `${kpi.completeCount}/${kpi.projectCount}`],
+              ['Annual Workplans', kpi.typeTotals.annual_workplan],
+              ['6-Month Reports', kpi.typeTotals.six_month_report],
+              ['Annual Reports', kpi.typeTotals.annual_report],
+            ].map(([label, val]) => (
+              <div key={label}>
+                <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)' }}>{label}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 800, color: 'var(--green-700, #155e34)' }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Per-project scorecard */}
+          <div style={{ overflowX: 'auto' }} className="scrollbar-thin">
+            <table className="data-table" style={{ minWidth: 760 }}>
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th style={{ textAlign: 'center' }}>Docs</th>
+                  <th style={{ textAlign: 'center' }}>Annual Workplan</th>
+                  <th style={{ textAlign: 'center' }}>6-Month Report</th>
+                  <th style={{ textAlign: 'center' }}>Annual Report</th>
+                  <th>Completeness</th>
+                  <th>Latest</th>
+                  <th style={{ textAlign: 'center' }}>Officers</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kpi.rows.map(r => (
+                  <tr key={r.project}>
+                    <td style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: '0.8125rem', maxWidth: 220 }}>{r.project}</td>
+                    <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{r.total}</td>
+                    {['annual_workplan', 'six_month_report', 'annual_report'].map(k => (
+                      <td key={k} style={{ textAlign: 'center' }}><DocCell count={r.types[k]} /></td>
+                    ))}
+                    <td style={{ minWidth: 130 }}><Completeness present={r.present} /></td>
+                    <td style={{ fontSize: '0.72rem', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{r.latest ? fmtDateTime(r.latest) : '—'}</td>
+                    <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{r.officerCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── File manager ────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
