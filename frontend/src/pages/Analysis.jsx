@@ -4,6 +4,7 @@ import {
   Legend, Cell, PieChart, Pie,
 } from 'recharts';
 import { supabase } from '../supabaseClient';
+import { cachedRead } from '../lib/cachedRead';
 import { ACTIVITIES as EMBEDDED } from '../strategicPlan';
 
 /* ── theme / status ──────────────────────────────────────────────────────
@@ -57,6 +58,10 @@ function Kpi({ label, value, sub, color }) {
 
 export default function Analysis() {
   const [acts, setActs] = useState(null);
+  // Precomputed, organisation-wide aggregate shared by all users. Read from the
+  // Redis caching sidecar when present, otherwise straight from the DB
+  // materialized view (v_srf_analytics); null → derive from `acts` client-side.
+  const [agg, setAgg] = useState(null);
   const [error, setError] = useState('');
   const [themeFilter, setThemeFilter] = useState('All');
 
@@ -91,46 +96,82 @@ export default function Analysis() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await cachedRead('srf-analytics', async () => {
+          // Fallback when the sidecar isn't reachable: read the materialized
+          // view directly (still a single-row precomputed read, not a scan).
+          const { data: row } = await supabase.from('v_srf_analytics').select('*').maybeSingle();
+          return row || null;
+        });
+        if (!cancelled) setAgg(data && data.activity_count != null ? data : null);
+      } catch {
+        if (!cancelled) setAgg(null); // fall back to client-side aggregation
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const statusCounts = useMemo(() => {
+    if (agg) return { green: agg.status_on_track, amber: agg.status_at_risk, red: agg.status_no_progress, none: agg.status_unrated };
     const c = { green: 0, amber: 0, red: 0, none: 0 };
     (acts ?? []).forEach(a => { c[a.status] = (c[a.status] || 0) + 1; });
     return c;
-  }, [acts]);
+  }, [agg, acts]);
 
-  const totalBudget = useMemo(() => (acts ?? []).reduce((s, a) => s + a.budget, 0), [acts]);
+  const activityCount = agg ? agg.activity_count : (acts?.length ?? 0);
+  const themesCount = agg
+    ? (agg.by_theme?.length ?? 0)
+    : THEMES.filter(t => (acts ?? []).some(a => a.theme === t)).length;
+  const totalBudget = useMemo(
+    () => (agg ? Number(agg.total_budget_vuv || 0) : (acts ?? []).reduce((s, a) => s + a.budget, 0)),
+    [agg, acts]);
 
   const statusPie = useMemo(() =>
     STATUS_KEYS.map(k => ({ name: STATUS_LABEL[k], key: k, value: statusCounts[k] }))
       .filter(d => d.value > 0), [statusCounts]);
 
-  const budgetByTheme = useMemo(() =>
-    THEMES.map(t => ({
+  const budgetByTheme = useMemo(() => {
+    if (agg) return (agg.by_theme ?? []).map(t => ({ name: t.theme, budgetM: Math.round(Number(t.budget_vuv || 0) / 1e6) })).filter(d => d.budgetM > 0);
+    return THEMES.map(t => ({
       name: t,
       budgetM: Math.round((acts ?? []).filter(a => a.theme === t).reduce((s, a) => s + a.budget, 0) / 1e6),
-    })).filter(d => d.budgetM > 0), [acts]);
+    })).filter(d => d.budgetM > 0);
+  }, [agg, acts]);
 
-  const statusByTheme = useMemo(() =>
-    THEMES.map(t => {
+  const statusByTheme = useMemo(() => {
+    if (agg) return (agg.by_theme ?? []).map(t => ({
+      theme: t.theme, green: t.on_track, amber: t.at_risk, red: t.no_progress, none: t.unrated,
+    })).filter(r => STATUS_KEYS.some(k => r[k] > 0));
+    return THEMES.map(t => {
       const row = { theme: t };
       STATUS_KEYS.forEach(k => { row[k] = 0; });
       (acts ?? []).filter(a => a.theme === t).forEach(a => { row[a.status] += 1; });
       return row;
-    }).filter(r => STATUS_KEYS.some(k => r[k] > 0)), [acts]);
+    }).filter(r => STATUS_KEYS.some(k => r[k] > 0));
+  }, [agg, acts]);
 
   const focusByBudget = useMemo(() => {
-    const map = {};
-    (acts ?? []).forEach(a => {
-      if (!a.focusArea) return;
-      (map[a.focusArea] ??= { name: a.focusArea, theme: a.theme, budgetM: 0 });
-      map[a.focusArea].budgetM += a.budget / 1e6;
-    });
-    return Object.values(map)
-      .map(d => ({ ...d, budgetM: Math.round(d.budgetM) }))
+    let rows;
+    if (agg) {
+      rows = (agg.by_focus ?? []).map(f => ({ name: f.focus_area, theme: f.theme, budgetM: Math.round(Number(f.budget_vuv || 0) / 1e6) }));
+    } else {
+      const map = {};
+      (acts ?? []).forEach(a => {
+        if (!a.focusArea) return;
+        (map[a.focusArea] ??= { name: a.focusArea, theme: a.theme, budgetM: 0 });
+        map[a.focusArea].budgetM += a.budget / 1e6;
+      });
+      rows = Object.values(map).map(d => ({ ...d, budgetM: Math.round(d.budgetM) }));
+    }
+    return rows
       .filter(d => d.budgetM > 0)
       .sort((a, b) => b.budgetM - a.budgetM)
       .slice(0, 8)
       .map(d => ({ ...d, name: d.name.length > 24 ? d.name.slice(0, 24) + '…' : d.name }));
-  }, [acts]);
+  }, [agg, acts]);
 
   const themeTabs = ['All', ...THEMES];
   const visibleActs = useMemo(() =>
@@ -141,7 +182,7 @@ export default function Analysis() {
     return <div style={{ padding: '2rem 2.5rem', color: 'var(--text-3)' }}>Loading analysis…</div>;
   }
 
-  const onTrackPct = pct(statusCounts.green, acts.length);
+  const onTrackPct = pct(statusCounts.green, activityCount);
 
   return (
     <div style={{ maxWidth: 1400 }} className="animate-fade-up page-pad">
@@ -151,7 +192,7 @@ export default function Analysis() {
           Analysis
         </h1>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>
-          Strategic Results Framework — status, budget allocation and delivery across all {acts.length} activities.
+          Strategic Results Framework — status, budget allocation and delivery across all {activityCount} activities.
         </p>
         {error && (
           <div style={{ fontSize: '0.78rem', color: 'var(--gold-500)', marginTop: '0.4rem' }}>
@@ -162,9 +203,9 @@ export default function Analysis() {
 
       {/* KPI strip */}
       <div className="grid-kpi" style={{ marginBottom: '1.25rem' }}>
-        <Kpi label="Activities" value={acts.length} sub={`${THEMES.filter(t => acts.some(a => a.theme === t)).length} themes`} />
+        <Kpi label="Activities" value={activityCount} sub={`${themesCount} themes`} />
         <Kpi label="Total Budget" value={`${fmtVUV(totalBudget)}`} sub="VUV allocated" color="var(--green-600)" />
-        <Kpi label="On Track" value={`${onTrackPct}%`} sub={`${statusCounts.green} of ${acts.length} activities`} color={STATUS_COL.green} />
+        <Kpi label="On Track" value={`${onTrackPct}%`} sub={`${statusCounts.green} of ${activityCount} activities`} color={STATUS_COL.green} />
         <Kpi label="Needs Attention" value={statusCounts.amber + statusCounts.red} sub={`${statusCounts.amber} at risk · ${statusCounts.red} off track`} color={STATUS_COL.red} />
       </div>
 

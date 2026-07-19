@@ -1,5 +1,22 @@
 # MERL Dashboard — contributor guide
 
+## Architecture / caching
+
+- The frontend is a static SPA that talks directly to (self-hosted) Supabase
+  (PostgREST). Expensive **organisation-wide aggregates** (Analysis / Dashboard)
+  are cached in two layers so they aren't recomputed per user:
+  1. **DB materialized view** `merl.mv_srf_analytics` (exposed as
+     `public.v_srf_analytics`), auto-refreshed by a trigger on
+     `merl.srf_activities` and via `public.refresh_analytics_cache()`.
+  2. **Redis caching sidecar** (`cache-service/`, added to `docker-compose.yml`,
+     routed at `/api-cache/*` in `nginx/nginx.conf`) serving that view from Redis.
+- Read shared aggregates through `frontend/src/lib/cachedRead.js`
+  (`cachedRead(name, fallback)`), which tries the sidecar and **falls back**
+  gracefully (DB view → client compute) so the UI works with or without Redis
+  (e.g. Supabase Cloud staging has no sidecar). Only non-sensitive aggregates go
+  through the cache; row-level RLS-protected data stays on the direct Supabase
+  path with the user's token — never cache per-user data in the shared cache.
+
 ## Frontend
 
 - App lives in `frontend/` (Vite + React 18 + TypeScript, `.tsx`/`.jsx`). Build/typecheck with `cd frontend && npm run build` and `npx tsc --noEmit` before committing.
