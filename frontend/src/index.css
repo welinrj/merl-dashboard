@@ -238,11 +238,93 @@
 @media (max-width: 768px) {
   .topnav-staging, .topnav-lang { display: none; }
 }
-@media (max-width: 480px) {
+/* On phones the header collapses to brand + hamburger (matching the app
+   layout); notifications and the account avatar move into the menu. */
+@media (max-width: 768px) {
+  .topnav-bell, .topnav-account { display: none; }
+}
+.topnav-mobile-account { display: none; }
+@media (max-width: 960px) {
+  .topnav-mobile-account {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    margin-top: 0.5rem; padding: 0.7rem 0.4rem 0.125rem; border-top: 1px solid var(--border);
+  }
+  .topnav-mobile-account-name { font-size: 0.85rem; font-weight: 700; color: var(--text-1); }
+  .topnav-mobile-account-role { font-size: 0.72rem; color: var(--text-3); margin-top: 2px; }
+  .topnav-mobile-account button {
+    display: inline-flex; align-items: center; gap: 0.4rem; flex-shrink: 0;
+    padding: 0.5rem 0.85rem; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--white);
+    color: var(--red-600); font-weight: 700; font-size: 0.8rem;
+  }
+}
+@media (max-width: 400px) {
   .topnav { padding: 0.7rem 0.85rem; }
   .topnav-crest { width: 40px; height: 40px; border-radius: 10px; }
   .topnav-brand-title { font-size: 1.05rem; }
-  .topnav-brand-sub { display: none; }
+}
+
+/* ── Bottom tab bar (mobile only) ────────────────────────────────────────── */
+.bottomnav { display: none; }
+@media (max-width: 768px) {
+  .bottomnav {
+    display: flex; flex-shrink: 0;
+    background: var(--white); border-top: 1px solid var(--border);
+    padding: 0.3rem 0.35rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -3px 14px rgba(16, 24, 40, 0.06);
+    z-index: 30;
+  }
+  .bottomnav-item {
+    flex: 1 1 0; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.15rem; padding: 0.4rem 0.2rem 0.35rem;
+    background: none; border: none; cursor: pointer; text-decoration: none;
+    color: var(--text-3); border-radius: 12px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .bottomnav-item span {
+    font-size: 0.66rem; font-weight: 600; line-height: 1;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bottomnav-item svg { color: currentColor; }
+  .bottomnav-item.active { color: var(--green-600); }
+  .bottomnav-item.active svg { stroke-width: 2.4; }
+  .bottomnav-item:active { background: var(--green-50); }
+}
+
+/* ── Activities: wide table on desktop, cards on mobile ──────────────────── */
+.activities-cards { display: none; }
+@media (max-width: 768px) {
+  .activities-table-wrap { display: none; }
+  .activities-cards {
+    display: flex; flex-direction: column; gap: 0.75rem;
+    padding: 0.85rem 0.9rem 1rem;
+  }
+  .activity-card {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--white);
+    padding: 0.9rem 1rem; box-shadow: var(--shadow-sm);
+  }
+  .activity-card-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 0.6rem; margin-bottom: 0.75rem;
+  }
+  .activity-card-head > span { flex-shrink: 0; white-space: nowrap; }
+  .activity-card-code { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-3); }
+  .activity-card-name {
+    font-family: var(--font-display); font-weight: 700; color: var(--text-1);
+    font-size: 0.95rem; line-height: 1.25; margin-top: 0.1rem;
+  }
+  .activity-card-meta { display: grid; gap: 0.4rem; margin: 0; }
+  .activity-card-meta > div { display: flex; gap: 0.5rem; font-size: 0.8rem; align-items: baseline; }
+  .activity-card-meta dt { flex: 0 0 auto; min-width: 112px; color: var(--text-2); font-weight: 700; }
+  .activity-card-meta dt::after { content: ':'; }
+  .activity-card-meta dd { margin: 0; color: var(--text-1); min-width: 0; word-break: break-word; }
+  .activity-card-badges { display: flex; gap: 0.9rem; margin-top: 0.65rem; }
+  .activity-card-badges span { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; font-weight: 700; }
+  .activity-card-actions {
+    display: flex; align-items: center; gap: 0.4rem;
+    margin-top: 0.75rem; padding-top: 0.7rem; border-top: 1px solid var(--border);
+  }
 }
 
 /* ── Responsive layout helpers (used by inline-styled pages) ─────────────── */

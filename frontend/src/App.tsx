@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, FolderOpen,
   Activity, FileBarChart, Settings, LogOut, Target, Images,
-  ChevronRight, ChevronDown, Bell, Menu, Eye, EyeOff, AlertCircle, ShieldCheck,
+  ChevronRight, ChevronDown, Bell, Menu, MoreHorizontal, Eye, EyeOff, AlertCircle, ShieldCheck,
   Mail, Lock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -625,12 +625,12 @@ export default function App() {
               </button>
             ))}
           </div>
-          <button className="topnav-icon-btn" title="Notifications" aria-label="Notifications">
+          <button className="topnav-icon-btn topnav-bell" title="Notifications" aria-label="Notifications">
             <Bell size={20} />
           </button>
 
           {/* Account menu */}
-          <div style={{ position: 'relative' }}>
+          <div className="topnav-account" style={{ position: 'relative' }}>
             <button onClick={() => setUserMenuOpen(o => !o)} aria-label="Account menu" style={{
               display: 'flex', alignItems: 'center', gap: '0.35rem',
               background: 'none', border: 'none', cursor: 'pointer',
@@ -693,6 +693,16 @@ export default function App() {
             </button>
           ))}
         </div>
+        {/* Account + sign out (the header avatar is hidden on small screens) */}
+        <div className="topnav-mobile-account">
+          <div>
+            <div className="topnav-mobile-account-name">{user.name}</div>
+            <div className="topnav-mobile-account-role">{ROLES[user.role]}</div>
+          </div>
+          <button onClick={() => { setSidebarOpen(false); void supabase.auth.signOut(); setUser(null); }}>
+            <LogOut size={15} /> Sign Out
+          </button>
+        </div>
       </nav>
 
         {/* Stakeholder logo band */}
@@ -719,6 +729,24 @@ export default function App() {
             </Routes>
           </ErrorBoundary>
         </main>
+
+        {/* Bottom tab bar (mobile only) — quick access to the primary
+            destinations, with "More" opening the full menu. */}
+        <nav className="bottomnav" aria-label="Primary">
+          {visibleNav.slice(0, 3).map(({ key, path, label, Icon }) => (
+            <NavLink key={key} to={path}
+              className={({ isActive }) => `bottomnav-item${isActive ? ' active' : ''}`}>
+              <Icon size={21} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+          <button type="button" onClick={() => setSidebarOpen(o => !o)}
+            aria-label="More menu" aria-expanded={sidebarOpen}
+            className={`bottomnav-item${sidebarOpen ? ' active' : ''}`}>
+            <MoreHorizontal size={21} />
+            <span>More</span>
+          </button>
+        </nav>
 
     </div>
   );

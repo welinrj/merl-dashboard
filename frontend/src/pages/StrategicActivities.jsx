@@ -214,7 +214,7 @@ export default function StrategicActivities({ user }) {
           </select>
         </div>
 
-        <div style={{ overflowX:'auto' }} className="scrollbar-thin">
+        <div style={{ overflowX:'auto' }} className="scrollbar-thin activities-table-wrap">
           <table className="data-table" style={{ minWidth: 820 + cols.length * 140 }}>
             <thead>
               <tr>
@@ -276,6 +276,58 @@ export default function StrategicActivities({ user }) {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile card list — the table is replaced by cards on small screens */}
+        <div className="activities-cards">
+          {loading ? (
+            <div style={{ textAlign:'center', color:'var(--text-3)', padding:'1.5rem' }}>Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign:'center', color:'var(--text-3)', padding:'1.5rem' }}>No activities match.</div>
+          ) : filtered.map(r => (
+            <div key={r.id} className="activity-card">
+              <div className="activity-card-head">
+                <div style={{ minWidth:0 }}>
+                  {r.code && <span className="activity-card-code">{r.code}</span>}
+                  <div className="activity-card-name">{r.name}</div>
+                </div>
+                <StatusBadge s={r.status} />
+              </div>
+              <dl className="activity-card-meta">
+                <div><dt>Theme</dt><dd>{r.theme || '—'}</dd></div>
+                <div><dt>Focus Area</dt><dd>{r.focus_area || '—'}</dd></div>
+                <div><dt>Output Indicator</dt><dd>{r.indicator || '—'}</dd></div>
+                <div><dt>Budget</dt><dd>{r.budget_vuv ? `${fmtVUV(r.budget_vuv)} VUV` : '—'}</dd></div>
+                {cols.map(c => (
+                  <div key={c.id}><dt>{c.label}</dt><dd>{cellVal(r, c)}</dd></div>
+                ))}
+              </dl>
+              {(live && (photos[r.id]?.length > 0 || reportCounts[r.id] > 0)) && (
+                <div className="activity-card-badges">
+                  {photos[r.id]?.length > 0 && (
+                    <span style={{ color:'var(--green-700, #155e34)' }}><ImagePlus size={13} />{photos[r.id].length}</span>
+                  )}
+                  {reportCounts[r.id] > 0 && (
+                    <span style={{ color:'var(--gold-600, #8a6416)' }}><FileText size={13} />{reportCounts[r.id]}</span>
+                  )}
+                </div>
+              )}
+              {canEdit && live && (
+                <div className="activity-card-actions">
+                  <select value={r.status} onChange={e => changeStatus(r, e.target.value)} aria-label="Status"
+                    style={{ fontSize:'0.72rem', fontWeight:700, border:`1px solid ${STATUS[r.status]?.col ?? 'var(--border)'}`, color:STATUS[r.status]?.txt, background:STATUS[r.status]?.bg, borderRadius:9999, padding:'0.25rem 0.5rem', cursor:'pointer' }}>
+                    {Object.entries(STATUS).map(([k, m]) => <option key={k} value={k}>{m.label}</option>)}
+                  </select>
+                  <div style={{ marginLeft:'auto', display:'flex', gap:'0.15rem' }}>
+                    <button onClick={() => setReportModal({ id:r.id, name:r.name })} title="Reports" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:6 }}><FileText size={17} /></button>
+                    <button onClick={() => setPhotoModal({ id:r.id, name:r.name })} title="Photos" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:6 }}><ImagePlus size={17} /></button>
+                    <button onClick={() => openEdit(r)} title="Edit" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:6 }}><Pencil size={17} /></button>
+                    <button onClick={() => remove(r)} title="Delete" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--red-600)', padding:6 }}><Trash2 size={17} /></button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
