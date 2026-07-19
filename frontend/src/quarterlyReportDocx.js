@@ -179,7 +179,7 @@ export async function buildQuarterlyDocxBlob(report) {
   }));
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER, spacing: { after: 240 },
-    children: [new TextRun({ text: `Prepared by: ${meta.preparedBy}  ·  Generated: ${meta.dateGenerated}`, size: 16, color: MUTED })],
+    children: [new TextRun({ text: `Prepared by: ${meta.preparedBy}  ·  Generated: ${meta.dateGenerated}${meta.dataSource ? `  ·  ${meta.dataSource}` : ''}`, size: 16, color: MUTED })],
   }));
 
   // ── Executive summary ──
@@ -229,7 +229,7 @@ export async function buildQuarterlyDocxBlob(report) {
   children.push(summaryPara(report.summaries.accomplishments));
 
   // ── Budget utilisation ──
-  children.push(subheading('💰 Budget Utilisation'));
+  children.push(subheading('Budget Utilisation'));
   children.push(table(
     ['Component', 'Planned (VUV)', 'Actual (VUV)', 'Variance (VUV)', '% Utilised', 'Status'],
     [
@@ -268,7 +268,7 @@ export async function buildQuarterlyDocxBlob(report) {
   }
 
   // ── Activities conducted [BTOR] ──
-  children.push(subheading('📌 Activities Conducted [BTOR]'));
+  children.push(subheading('Activities Conducted [BTOR]'));
   children.push(table(
     ['Period', 'Activity', 'Location', 'Responsible Officer', 'Output / Result'],
     report.btor.map(b => [b.date, b.activity, b.location, b.officer, b.output]),
@@ -277,7 +277,7 @@ export async function buildQuarterlyDocxBlob(report) {
   children.push(summaryPara(report.summaries.btor));
 
   // ── Lessons learned ──
-  children.push(subheading('💡 Lessons Learned'));
+  children.push(subheading('Lessons Learned'));
   children.push(table(
     ['Lesson', 'Improvement Action', 'Responsible Unit', 'Quantitative Measure'],
     report.lessons.map(l => [l.lesson, l.improvement, l.unit, l.measure]),
@@ -285,7 +285,7 @@ export async function buildQuarterlyDocxBlob(report) {
   ));
 
   // ── Next steps ──
-  children.push(subheading('🚀 Next Steps'));
+  children.push(subheading('Next Steps'));
   children.push(table(
     ['Plan Activity', 'Expected Outcome', 'Timeline', 'Lead Officer', 'Target / Metric'],
     report.nextSteps.map(n => [n.activity, n.outcome, n.timeline, n.lead, n.target]),

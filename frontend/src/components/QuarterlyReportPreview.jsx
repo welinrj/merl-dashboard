@@ -6,6 +6,9 @@ import { renderFigureSvg } from '../reportCharts';
 // Subtle zebra striping so tables read as human-authored rather than a raw dump.
 const zebra = i => (i % 2 ? { background:'var(--green-50)' } : undefined);
 
+const SHORT_MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ymShort = (ym) => { if (!ym || ym === 'unknown') return 'Undated'; const [y, m] = ym.split('-').map(Number); return m ? `${SHORT_MONTH[m - 1]} ${y}` : ym; };
+
 // A figure: inline chart + caption + one-line interpretation.
 function Figure({ fig }) {
   return (
@@ -83,7 +86,7 @@ export default function QuarterlyReportPreview({ report }) {
         </div>
         <div style={{ fontSize:'0.85rem', fontWeight:600, color:'rgba(255,255,255,0.85)' }}>{meta.months}</div>
         <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', marginTop:'0.35rem' }}>
-          Prepared by {meta.preparedBy} · Generated {meta.dateGenerated} · DRAFT
+          Prepared by {meta.preparedBy} · Generated {meta.dateGenerated}{meta.dataSource ? ` · ${meta.dataSource}` : ''} · DRAFT
         </div>
       </div>
 
@@ -96,6 +99,7 @@ export default function QuarterlyReportPreview({ report }) {
           ['Ongoing', stats.amber],
           ['Delayed', stats.red],
           ['Planned Budget', fmtVUV(stats.totalBudget)],
+          ...(stats.conductedCount ? [['Conducted this period', stats.conductedCount]] : []),
         ].map(([l, v]) => (
           <div key={l}>
             <div style={{ fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)' }}>{l}</div>
@@ -167,7 +171,7 @@ export default function QuarterlyReportPreview({ report }) {
           <Summary>{report.summaries.accomplishments}</Summary>
         </Section>
 
-        <Section n={6} title="💰 Budget Utilisation">
+        <Section n={6} title="Budget Utilisation">
           <TableWrap>
             <thead><tr>{['Component','Planned (VUV)','Actual (VUV)','Variance','% Utilised','Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -223,9 +227,9 @@ export default function QuarterlyReportPreview({ report }) {
           <Summary>{report.summaries.challenges}</Summary>
         </Section>
 
-        <Section n={8} title="📌 Activities Conducted [BTOR]">
+        <Section n={8} title="Activities Conducted [BTOR]">
           <TableWrap>
-            <thead><tr>{['Period','Activity','Location','Responsible Officer','Output / Result'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+            <thead><tr>{['Date','Activity','Project / Location','Responsible Officer','Source'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {report.btor.map((b, i) => (
                 <tr key={i} style={zebra(i)}>
@@ -238,10 +242,26 @@ export default function QuarterlyReportPreview({ report }) {
               ))}
             </tbody>
           </TableWrap>
+          {report.conductedByMonth?.length > 0 && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'2rem', marginTop:'0.75rem' }}>
+              <div>
+                <div style={{ fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.3rem' }}>Activities carried out — by month</div>
+                {report.conductedByMonth.map(m => (
+                  <div key={m.month} style={{ fontSize:'0.74rem', color:'var(--text-2)' }}>{ymShort(m.month)} — <b style={{ color:'var(--text-1)' }}>{m.count}</b></div>
+                ))}
+              </div>
+              <div>
+                <div style={{ fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.3rem' }}>By submitting officer</div>
+                {report.conductedByOfficer.map(o => (
+                  <div key={o.officer} style={{ fontSize:'0.74rem', color:'var(--text-2)' }}>{o.officer} — <b style={{ color:'var(--text-1)' }}>{o.count}</b></div>
+                ))}
+              </div>
+            </div>
+          )}
           <Summary>{report.summaries.btor}</Summary>
         </Section>
 
-        <Section n={9} title="💡 Lessons Learned">
+        <Section n={9} title="Lessons Learned">
           <TableWrap>
             <thead><tr>{['Lesson','Improvement Action','Responsible Unit','Quantitative Measure'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -257,7 +277,7 @@ export default function QuarterlyReportPreview({ report }) {
           </TableWrap>
         </Section>
 
-        <Section n={10} title="🚀 Next Steps">
+        <Section n={10} title="Next Steps">
           <TableWrap>
             <thead><tr>{['Plan Activity','Expected Outcome','Timeline','Lead Officer','Target / Metric'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -276,7 +296,7 @@ export default function QuarterlyReportPreview({ report }) {
         </Section>
 
         {hasReports && (
-          <Section n={reportsN} title="📄 Activity Reports">
+          <Section n={reportsN} title="Activity Reports">
             <p style={{ margin:'0 0 0.7rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
               Automatic summaries of narrative reports uploaded against activities this period.
             </p>
@@ -294,7 +314,7 @@ export default function QuarterlyReportPreview({ report }) {
         )}
 
         {hasPhotos && (
-          <Section n={photosN} title="📷 Photo Documentation">
+          <Section n={photosN} title="Photo Documentation">
             <p style={{ margin:'0 0 0.7rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
               Field photographs uploaded against Strategic Results Framework activities during this reporting period.
             </p>
@@ -317,7 +337,7 @@ export default function QuarterlyReportPreview({ report }) {
           </Section>
         )}
 
-        <Section n={attachN} title="📎 Supporting Attachments">
+        <Section n={attachN} title="Supporting Attachments">
           <p style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
             The following annexes and figures support the findings in this report. Figures 1–4 appear inline in the relevant sections above.
           </p>

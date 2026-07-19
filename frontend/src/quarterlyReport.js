@@ -66,10 +66,83 @@ const THEME_CATEGORY = {
   Finance: 'Financial', Knowledge: 'Operational', 'Cross-cutting': 'Operational',
 };
 
-export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [], reports = [], kind = 'quarterly' } = {}) {
+// Live SRF activity status → the report's green/amber/red/none coding.
+const SRF_STATUS = { on_track: 'green', at_risk: 'amber', no_progress: 'red', unrated: 'none' };
+const REPORT_DOC_LABEL = {
+  annual_workplan: 'Annual Workplan', back_to_office: 'Back to Office', monthly_report: 'Monthly',
+  quarterly_report: 'Quarterly', six_month_report: '6-Month', annual_report: 'Annual',
+};
+const SHORT_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const ymShort = (ym) => {
+  if (!ym || ym === 'unknown') return 'Undated';
+  const [y, m] = ym.split('-').map(Number);
+  return m ? `${SHORT_MONTH[m - 1]} ${y}` : ym;
+};
+const fmtDMY = (d) => { try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return String(d); } };
+
+// Normalise live v_srf_activities rows to the embedded activity shape so the
+// whole report can be built from live data when it's available.
+function normalizeLiveActivities(rows) {
+  return (rows || []).filter(Boolean).map(r => ({
+    code: r.code, name: r.name, theme: r.theme, focusArea: r.focus_area,
+    indicator: r.indicator, budget: Number(r.budget_vuv || 0),
+    status: SRF_STATUS[r.status] || 'none', progress: r.progress, risk: r.risk,
+    target2030: r.target_2030 == null ? null : Number(r.target_2030),
+  }));
+}
+
+// Derive the plan-summary figures (status split, themes, budget by theme) from a
+// set of activities, so the report reflects live data rather than a static
+// snapshot. Deriving from the embedded ACTIVITIES reproduces PLAN_SUMMARY.
+function derivePlan(acts) {
+  const status = { green: 0, amber: 0, red: 0, none: 0 };
+  const themes = new Set(), focus = new Set(), themeBudget = {};
+  let budget = 0, indicators = 0;
+  for (const a of acts) {
+    status[a.status] = (status[a.status] || 0) + 1;
+    if (a.theme) themes.add(a.theme);
+    if (a.focusArea) focus.add(a.focusArea);
+    if (a.indicator && String(a.indicator).trim()) indicators += 1;
+    const b = Number(a.budget) || 0;
+    budget += b;
+    if (a.theme) themeBudget[a.theme] = (themeBudget[a.theme] || 0) + b;
+  }
+  return {
+    themes: themes.size, focus_areas: focus.size, activities: acts.length,
+    indicators: indicators || PLAN_SUMMARY.indicators, total_budget_vuv: budget,
+    status, budget_by_theme: Object.entries(themeBudget).map(([name, b]) => ({ name, budget: b })),
+  };
+}
+
+// The set of 'YYYY-MM' months covered by a parsed reporting period, used to
+// scope "activities conducted" to the period actually being reported on.
+function monthsInPeriod(p) {
+  const y = Number(p.year);
+  const set = [];
+  const add = (mm) => set.push(`${y}-${String(mm).padStart(2, '0')}`);
+  if (p.unit === 'month') {
+    const mi = MONTH_NAMES.findIndex(n => p.label.toLowerCase().startsWith(n.toLowerCase()));
+    if (mi >= 0) add(mi + 1);
+  } else if (p.unit === 'quarter') {
+    const q = Number(p.quarter.slice(1)); const start = (q - 1) * 3 + 1;
+    for (let m = start; m < start + 3; m++) add(m);
+  } else if (p.unit === 'half') {
+    const start = p.label.startsWith('H1') ? 1 : 7;
+    for (let m = start; m < start + 6; m++) add(m);
+  } else {
+    for (let m = 1; m <= 12; m++) add(m);
+  }
+  return set;
+}
+
+export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [], reports = [], kind = 'quarterly', activities = null, reportActivities = [], project = '' } = {}) {
   const p = parsePeriod(period);
-  const acts = ACTIVITIES;
-  const S = PLAN_SUMMARY;
+  // Prefer live SRF activities (what officers edit on the Framework tab); fall
+  // back to the embedded plan snapshot when live data isn't available.
+  const liveActs = normalizeLiveActivities(activities);
+  const usingLive = liveActs.length > 0;
+  const acts = usingLive ? liveActs : ACTIVITIES;
+  const S = derivePlan(acts);
   const st = S.status;
   const total = acts.length;
   const onTrackPct = pct(st.green || 0, total);
@@ -77,6 +150,35 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
   const greenActs = acts.filter(a => a.status === 'green');
   const amberActs = acts.filter(a => a.status === 'amber');
   const redActs   = acts.filter(a => a.status === 'red');
+
+  /* ── Activities actually conducted in the reporting period ───────────────
+     Scoped from the activities the portal extracted from submitted reports,
+     which carry a month and the submitting officer — so monthly / BTOR /
+     quarterly reports show what was done in the period, and by whom. */
+  const allowedMonths = new Set(monthsInPeriod(p));
+  const projSel = (project || '').trim().toLowerCase();
+  const conducted = (reportActivities || [])
+    .filter(Boolean)
+    .filter(a => {
+      const month = a.activity_month || (a.activity_date ? String(a.activity_date).slice(0, 7) : '');
+      if (!month || !allowedMonths.has(month)) return false;
+      if (projSel) {
+        const pn = (a.project_name || '').toLowerCase();
+        return pn === projSel || pn.includes(projSel) || projSel.includes(pn);
+      }
+      return true;
+    })
+    .sort((a, b) => String(b.activity_date || b.activity_month || '').localeCompare(String(a.activity_date || a.activity_month || '')));
+
+  const byMonthMap = new Map(), byOfficerMap = new Map();
+  conducted.forEach(a => {
+    const m = a.activity_month || (a.activity_date ? String(a.activity_date).slice(0, 7) : 'unknown');
+    byMonthMap.set(m, (byMonthMap.get(m) || 0) + 1);
+    const o = a.submitted_by || '—';
+    byOfficerMap.set(o, (byOfficerMap.get(o) || 0) + 1);
+  });
+  const conductedByMonth = [...byMonthMap.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([month, count]) => ({ month, count }));
+  const conductedByOfficer = [...byOfficerMap.entries()].sort((x, y) => y[1] - x[1]).map(([officer, count]) => ({ officer, count }));
 
   const quarterLabel = p.quarter ? `${p.quarter} ${p.year}` : p.label;
   const quarterWord  = p.quarter
@@ -95,6 +197,11 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     `Of these, ${st.green} activities (${onTrackPct}%) are completed or on track, ${st.amber} are ongoing, and ${st.red} experienced delays. A total planned budget of ${fmtVUV(S.total_budget_vuv)} is being managed across the framework, delivered through strong collaboration with government stakeholders, development partners, line agencies, civil society organisations, and the private sector.`,
     `Despite challenges including the phased return of staff after the holiday period and disruption from extreme weather events, the Department maintained continuity of operations through adaptive management and prioritisation of critical activities to strengthen national climate resilience.`,
   ];
+  if (conducted.length) {
+    executiveSummary.push(
+      `During this reporting period, ${conducted.length} activit${conducted.length > 1 ? 'ies were' : 'y was'} carried out and reported by ${conductedByOfficer.length} officer${conductedByOfficer.length > 1 ? 's' : ''}${conductedByMonth.length > 1 ? ` across ${conductedByMonth.length} months` : ''}, as detailed in the Activities Conducted section.`,
+    );
+  }
 
   /* ── Key achievements (top completed/on-track activities) ─────────────── */
   const keyAchievements = greenActs.slice(0, 8).map(a => ({
@@ -170,13 +277,24 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
   ];
 
   /* ── Activities conducted [BTOR] (completed activities as field records) ─ */
-  const btor = greenActs.slice(0, 12).map(a => ({
-    date: p.months.split(' ')[0],
-    activity: a.name,
-    location: 'Port Vila / Vanuatu',
-    officer: 'DoCC',
-    output: a.indicator || '1 activity report',
-  }));
+  // Prefer the real activities conducted in the period (with their dates and
+  // officers); fall back to completed framework activities when no reports have
+  // been submitted for the period yet.
+  const btor = conducted.length
+    ? conducted.slice(0, 60).map(a => ({
+        date: a.activity_date ? fmtDMY(a.activity_date) : ymShort(a.activity_month),
+        activity: a.description,
+        location: a.project_name || '—',
+        officer: a.submitted_by || 'DoCC',
+        output: REPORT_DOC_LABEL[a.doc_type] || 'Activity report',
+      }))
+    : greenActs.slice(0, 12).map(a => ({
+        date: p.months.split(' ')[0],
+        activity: a.name,
+        location: 'Port Vila / Vanuatu',
+        officer: 'DoCC',
+        output: a.indicator || '1 activity report',
+      }));
 
   /* ── Lessons learned (distilled from at-risk activities) ──────────────── */
   const lessons = [
@@ -280,7 +398,12 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
       ? `Total planned ${fmtVUV(budgetTotals.planned)} against actual ${fmtVUV(budgetTotals.actual)} — ${budgetTotals.pctUtil}% utilised, leaving a variance of ${fmtVUV(budgetTotals.variance)}.`
       : `Total planned budget of ${fmtVUV(budgetTotals.planned)} across ${budgetRows.length} components; expenditure tracking begins once finance data is connected.`,
     challenges: `${challengeRows.length} activity-level risks were logged this quarter, concentrated in delayed and at-risk activities and mitigated through adaptive scheduling and reprioritisation.`,
-    btor: `${btor.length} completed activities are documented below as back-to-office field records for the quarter.`,
+    btor: conducted.length
+      ? `${conducted.length} activit${conducted.length > 1 ? 'ies were' : 'y was'} carried out and reported during ${quarterLabel}`
+        + (conductedByMonth.length ? ` — by month: ${conductedByMonth.map(m => `${ymShort(m.month)} (${m.count})`).join(', ')}` : '')
+        + (conductedByOfficer.length ? `; by officer: ${conductedByOfficer.slice(0, 8).map(o => `${o.officer} (${o.count})`).join(', ')}` : '')
+        + '.'
+      : `${btor.length} completed activities are documented below as back-to-office field records for the period (no period reports have been submitted yet).`,
     nextSteps: `${nextSteps.length} at-risk and delayed activities are prioritised for acceleration in ${nextQuarter}.`,
     photos: photoDocs.length
       ? `${photoDocs.length} photograph${photoDocs.length > 1 ? 's' : ''} document field implementation across ${photoActivityCount || 1} activit${(photoActivityCount || 1) > 1 ? 'ies' : 'y'} this period.`
@@ -320,8 +443,12 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
       months: p.months,
       preparedBy: 'Senior Monitoring & Evaluation Officer, Department of Climate Change',
       dateGenerated: new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }),
+      dataSource: usingLive ? 'Live framework data' : 'Sample data (offline)',
     },
-    stats: { total, onTrackPct, ...st, totalBudget: S.total_budget_vuv, themes: S.themes, focusAreas: S.focus_areas },
+    stats: { total, onTrackPct, ...st, totalBudget: S.total_budget_vuv, themes: S.themes, focusAreas: S.focus_areas, conductedCount: conducted.length },
+    conducted,
+    conductedByMonth,
+    conductedByOfficer,
     executiveSummary,
     keyAchievements,
     introduction,
