@@ -213,6 +213,8 @@ function exportExcel({ type, projectLabel, period, indicators, budgetRows }) {
 
 export default function Reports() {
   const [live, setLive]         = useState(null);
+  const [srfLive, setSrfLive]   = useState([]);   // live SRF activities (Framework tab)
+  const [reportActs, setReportActs] = useState([]); // activities extracted from submitted reports
   const [photos, setPhotos]     = useState([]);
   const [activityReports, setActivityReports] = useState([]);
   const [selected, setSelected] = useState(REPORT_TYPES[0]);
@@ -241,12 +243,15 @@ export default function Reports() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [acts, phs, reps] = await Promise.all([
-        supabase.from('v_srf_activities').select('id,name,code,theme,status'),
+      const [acts, phs, reps, rActs] = await Promise.all([
+        supabase.from('v_srf_activities').select('id,name,code,theme,status,focus_area,indicator,budget_vuv,progress,risk,target_2030'),
         supabase.from('v_srf_activity_photos').select('*').order('sort_order'),
         supabase.from('v_srf_activity_reports').select('*').order('created_at', { ascending: false }),
+        supabase.from('v_project_report_activities').select('*'),
       ]);
       if (cancelled || acts.error) return;
+      if (acts.data?.length) setSrfLive(acts.data);        // drives live status/budget in reports
+      if (!rActs.error) setReportActs(rActs.data ?? []);   // drives period-scoped "activities conducted"
       const byId = {};
       (acts.data ?? []).forEach(a => { byId[a.id] = a; });
       if (!phs.error && phs.data?.length) {
@@ -284,8 +289,8 @@ export default function Reports() {
 
   // Assemble the quarterly report object (auto-populated) for preview + Word.
   const quarterlyReport = useMemo(
-    () => buildQuarterlyReport({ period, live: live ?? undefined, photos, reports: activityReports, kind: selected.id }),
-    [selected.id, period, live, photos, activityReports],
+    () => buildQuarterlyReport({ period, live: live ?? undefined, photos, reports: activityReports, kind: selected.id, activities: srfLive, reportActivities: reportActs, project }),
+    [selected.id, period, live, photos, activityReports, srfLive, reportActs, project],
   );
 
   const [wordState, setWordState] = useState('idle'); // idle | working
