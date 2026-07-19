@@ -66,7 +66,173 @@ const TableWrap = ({ children }) => (
   </div>
 );
 
+const paraStyle = { margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 };
+
+function CoverHeader({ meta }) {
+  return (
+    <div style={{ background:'var(--green-900)', color:'#fff', padding:'1.5rem 2rem' }}>
+      <div style={{ fontSize:'0.625rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.375rem' }}>
+        Republic of Vanuatu · {meta.subtitle}
+      </div>
+      <div style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', fontWeight:700, marginBottom:'0.25rem', letterSpacing:'-0.01em' }}>{meta.title}</div>
+      <div style={{ fontSize:'0.85rem', fontWeight:600, color:'rgba(255,255,255,0.85)' }}>{meta.months}</div>
+      <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', marginTop:'0.35rem' }}>
+        Prepared by {meta.preparedBy} · Generated {meta.dateGenerated}{meta.dataSource ? ` · ${meta.dataSource}` : ''} · DRAFT
+      </div>
+      {meta.docRef && <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.55)', marginTop:'0.15rem' }}>Document Ref: {meta.docRef}</div>}
+    </div>
+  );
+}
+
+function SignOffBlock({ signoff }) {
+  if (!signoff) return null;
+  return (
+    <div style={{ marginTop:'1.25rem', paddingTop:'1rem', borderTop:'1.5px solid var(--green-100)' }}>
+      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.8rem' }}>
+        Approval &amp; Sign-off{signoff.date ? ` · ${signoff.date}` : ''}
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'1.5rem' }}>
+        {signoff.roles.map(role => (
+          <div key={role.role}>
+            <div style={{ fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.35rem' }}>{role.role}</div>
+            <div style={{ fontSize:'0.8rem', fontWeight:700, color:'var(--text-1)', minHeight:'1.05rem' }}>{role.name || ' '}</div>
+            <div style={{ fontSize:'0.7rem', color:'var(--text-3)', minHeight:'1rem', marginBottom:'1.6rem' }}>{role.title || ' '}</div>
+            <div style={{ borderTop:'1px solid var(--text-3)', paddingTop:'0.25rem', fontSize:'0.6rem', letterSpacing:'0.04em', textTransform:'uppercase', color:'var(--text-3)' }}>Signature &amp; date</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const ReportFooter = () => (
+  <div style={{ borderTop:'1px solid var(--border)', marginTop:'1.25rem', paddingTop:'0.75rem', fontSize:'0.68rem', color:'var(--text-3)', textAlign:'center' }}>
+    Department of Climate Change · Government of Vanuatu · www.docc.gov.vu · Confidential — For official use only
+  </div>
+);
+
+// Back to Office Report — a field/mission layout, distinct from the standard
+// framework report (no framework KPI band, accomplishment or budget tables).
+function BtorReportPreview({ report }) {
+  const { meta, btorMeta: m = {} } = report;
+  const hasPhotos = report.photos?.length > 0;
+  const missionDates = `${m.dateFrom || '—'}${m.dateTo && m.dateTo !== m.dateFrom ? ` – ${m.dateTo}` : ''}`;
+  return (
+    <div className="report-print-area" style={{ fontFamily:'var(--font-ui)', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
+      <CoverHeader meta={meta} />
+      <div style={{ maxHeight:480, overflowY:'auto', padding:'1.5rem 2rem' }} className="scrollbar-thin">
+        <Section n={1} title="Mission Details">
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.78rem' }}>
+            <tbody>
+              {[
+                ['Officer(s)', (m.officers || []).join(', ') || '—'],
+                ['Designation / unit', m.designation || '—'],
+                ['Mission dates', missionDates],
+                ['Destination(s)', (m.destinations || []).join(', ') || '—'],
+                ['Reporting period', meta.period],
+              ].map(([k, v]) => (
+                <tr key={k} style={{ borderBottom:'1px solid var(--border)' }}>
+                  <td style={{ padding:'0.4rem 0.6rem', fontWeight:700, color:'var(--text-2)', width:'34%', verticalAlign:'top' }}>{k}</td>
+                  <td style={{ padding:'0.4rem 0.6rem', color:'var(--text-1)' }}>{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+
+        <Section n={2} title="Purpose & Objectives"><p style={paraStyle}>{m.purpose}</p></Section>
+
+        <Section n={3} title="Activities Conducted">
+          <TableWrap>
+            <thead><tr>{['Date','Activity','Project / Location','Officer','Source'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {report.btor.map((b, i) => (
+                <tr key={i} style={zebra(i)}>
+                  <td style={{ ...td, whiteSpace:'nowrap' }}>{b.date}</td>
+                  <td style={td}>{b.activity}</td>
+                  <td style={td}>{b.location}</td>
+                  <td style={td}>{b.officer}</td>
+                  <td style={td}>{b.output}</td>
+                </tr>
+              ))}
+            </tbody>
+          </TableWrap>
+          {report.conductedByMonth?.length > 0 && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'2rem', marginTop:'0.75rem' }}>
+              <div>
+                <div style={{ fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.3rem' }}>Activities carried out — by month</div>
+                {report.conductedByMonth.map(mm => <div key={mm.month} style={{ fontSize:'0.74rem', color:'var(--text-2)' }}>{ymShort(mm.month)} — <b style={{ color:'var(--text-1)' }}>{mm.count}</b></div>)}
+              </div>
+              <div>
+                <div style={{ fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.3rem' }}>By officer</div>
+                {report.conductedByOfficer.map(o => <div key={o.officer} style={{ fontSize:'0.74rem', color:'var(--text-2)' }}>{o.officer} — <b style={{ color:'var(--text-1)' }}>{o.count}</b></div>)}
+              </div>
+            </div>
+          )}
+          <Summary>{report.summaries.btor}</Summary>
+        </Section>
+
+        <Section n={4} title="Key Findings & Outcomes">
+          <p style={paraStyle}>{m.findings}</p>
+          {report.keyAchievements?.length > 0 && (
+            <ul style={{ margin:'0.3rem 0 0', paddingLeft:'1.1rem' }}>
+              {report.keyAchievements.slice(0, 6).map((a, i) => (
+                <li key={i} style={{ fontSize:'0.76rem', color:'var(--text-2)', marginBottom:'0.3rem', lineHeight:1.5 }}>
+                  <strong style={{ color:'var(--text-1)' }}>{a.title}</strong> — {a.detail}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        <Section n={5} title="Stakeholders Engaged"><p style={paraStyle}>{m.stakeholders}</p></Section>
+
+        <Section n={6} title="Challenges & Limitations">
+          {report.challenges.narrative.map((t, i) => <p key={i} style={paraStyle}>{t}</p>)}
+          {report.challenges.rows.length > 0 && (
+            <TableWrap>
+              <thead><tr>{['Category','Challenge','Impact','Mitigation'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {report.challenges.rows.map((c, i) => (
+                  <tr key={i} style={zebra(i)}>
+                    <td style={td}>{c.category}</td><td style={td}>{c.description}</td><td style={td}>{c.impact}</td><td style={td}>{c.mitigation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableWrap>
+          )}
+        </Section>
+
+        <Section n={7} title="Follow-up Actions">
+          {(m.followUp || []).length ? (
+            <ol style={{ margin:0, paddingLeft:'1.15rem' }}>
+              {m.followUp.map((f, i) => <li key={i} style={{ fontSize:'0.78rem', color:'var(--text-2)', marginBottom:'0.3rem', lineHeight:1.5 }}>{f}</li>)}
+            </ol>
+          ) : <p style={paraStyle}>No outstanding follow-up actions for this mission.</p>}
+        </Section>
+
+        {hasPhotos && (
+          <Section n={8} title="Photo Documentation">
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'0.6rem' }}>
+              {report.photos.slice(0, 8).map(ph => (
+                <div key={ph.id} style={{ border:'1px solid var(--border)', borderRadius:6, overflow:'hidden' }}>
+                  <img src={ph.url} alt={ph.caption} style={{ width:'100%', height:100, objectFit:'cover', display:'block' }} />
+                  <div style={{ padding:'0.3rem 0.4rem', fontSize:'0.66rem', color:'var(--text-2)' }}>{ph.caption}</div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        <SignOffBlock signoff={report.signoff} />
+        <ReportFooter />
+      </div>
+    </div>
+  );
+}
+
 export default function QuarterlyReportPreview({ report }) {
+  if (report.meta?.kind === 'btor') return <BtorReportPreview report={report} />;
   const { meta, stats } = report;
   const figFor = section => (report.figures || []).filter(f => f.section === section);
   const hasReports = report.reports?.length > 0;
@@ -76,22 +242,7 @@ export default function QuarterlyReportPreview({ report }) {
   const attachN = 11 + (hasReports ? 1 : 0) + (hasPhotos ? 1 : 0);
   return (
     <div className="report-print-area" style={{ fontFamily:'var(--font-ui)', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
-      {/* Cover header */}
-      <div style={{ background:'var(--green-900)', color:'#fff', padding:'1.5rem 2rem' }}>
-        <div style={{ fontSize:'0.625rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.375rem' }}>
-          Republic of Vanuatu · {meta.subtitle}
-        </div>
-        <div style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', fontWeight:700, marginBottom:'0.25rem', letterSpacing:'-0.01em' }}>
-          {meta.title}
-        </div>
-        <div style={{ fontSize:'0.85rem', fontWeight:600, color:'rgba(255,255,255,0.85)' }}>{meta.months}</div>
-        <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', marginTop:'0.35rem' }}>
-          Prepared by {meta.preparedBy} · Generated {meta.dateGenerated}{meta.dataSource ? ` · ${meta.dataSource}` : ''} · DRAFT
-        </div>
-        {meta.docRef && (
-          <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.55)', marginTop:'0.15rem' }}>Document Ref: {meta.docRef}</div>
-        )}
-      </div>
+      <CoverHeader meta={meta} />
 
       {/* Snapshot band */}
       <div style={{ display:'flex', flexWrap:'wrap', gap:'1.25rem', padding:'1rem 2rem', background:'var(--green-50)', borderBottom:'1px solid var(--border)' }}>

@@ -52,11 +52,13 @@ const SRF_TO_KEY = { on_track:'green', at_risk:'amber', no_progress:'red', unrat
 // All report types are auto-populated from the Strategic Results Framework and
 // share the same section set; they differ only in title and reporting period.
 const REPORT_SECTIONS = ['Executive Summary','Key Achievements','Introduction','Activity Overview','Progress & Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps','Activity Reports','Photo Documentation'];
+// A Back to Office Report is a field/mission record with its own structure.
+const BTOR_SECTIONS = ['Mission Details','Purpose & Objectives','Activities Conducted','Key Findings & Outcomes','Stakeholders Engaged','Challenges & Limitations','Follow-up Actions','Photo Documentation','Sign-off'];
 
 const REPORT_TYPES = [
   { id:'btor',      label:'Back to Office Report', Icon:Plane,
-    desc:'Field/mission report of activities conducted, outputs and follow-up actions for the period.',
-    sections:REPORT_SECTIONS },
+    desc:'Field/mission report — who went, when, where, why, what was done, key findings and follow-up actions.',
+    sections:BTOR_SECTIONS },
   { id:'monthly',   label:'Monthly Report', Icon:CalendarDays,
     desc:'Auto-populated monthly progress across all activities — accomplishments, budget, challenges and next steps.',
     sections:REPORT_SECTIONS },
@@ -238,6 +240,21 @@ function applyOverrides(report, ov) {
       { role: 'Approved by', name: (ov.approvedBy || '').trim(), title: (ov.approvedTitle || '').trim() },
     ],
   };
+  // Back to Office Report mission fields (only rendered for the BTOR layout).
+  if (r.btorMeta) {
+    const bm = { ...r.btorMeta };
+    const csv = (s) => s.split(',').map(x => x.trim()).filter(Boolean);
+    if (ov.btorOfficers && ov.btorOfficers.trim()) bm.officers = csv(ov.btorOfficers);
+    if (ov.btorDesignation && ov.btorDesignation.trim()) bm.designation = ov.btorDesignation.trim();
+    if (ov.btorDateFrom) bm.dateFrom = fmtLongDate(ov.btorDateFrom);
+    if (ov.btorDateTo) bm.dateTo = fmtLongDate(ov.btorDateTo);
+    if (ov.btorDestination && ov.btorDestination.trim()) bm.destinations = csv(ov.btorDestination);
+    if (ov.btorPurpose && ov.btorPurpose.trim()) bm.purpose = ov.btorPurpose.trim();
+    if (ov.btorFindings && ov.btorFindings.trim()) bm.findings = ov.btorFindings.trim();
+    if (ov.btorStakeholders && ov.btorStakeholders.trim()) bm.stakeholders = ov.btorStakeholders.trim();
+    if (ov.btorFollowUp && ov.btorFollowUp.trim()) bm.followUp = ov.btorFollowUp.split(/\n+/).map(s => s.replace(/^[-•*]\s*/, '').trim()).filter(Boolean);
+    r.btorMeta = bm;
+  }
   return r;
 }
 
@@ -357,6 +374,17 @@ export default function Reports() {
     introduction: (quarterlyReport?.introduction || []).join('\n\n'),
     challenges: (quarterlyReport?.challenges?.narrative || []).join('\n\n'),
   };
+  const bm = quarterlyReport?.btorMeta || {};
+  const autoBtor = {
+    btorOfficers: (bm.officers || []).join(', '),
+    btorDesignation: bm.designation || '',
+    btorDestination: (bm.destinations || []).join(', '),
+    btorPurpose: bm.purpose || '',
+    btorFindings: bm.findings || '',
+    btorStakeholders: bm.stakeholders || '',
+    btorFollowUp: (bm.followUp || []).join('\n'),
+  };
+  const isBtor = selected.id === 'btor';
   const finalReport = useMemo(() => applyOverrides(quarterlyReport, overrides), [quarterlyReport, overrides]);
 
   const [wordState, setWordState] = useState('idle'); // idle | working
@@ -492,14 +520,36 @@ export default function Reports() {
                       </div>
                     </div>
                   ))}
-                  {[['execSummary','Executive Summary'],['introduction','Introduction'],['challenges','Challenges & Limitations']].map(([k, label]) => (
+                  {isBtor && (
+                    <>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+                        <div>
+                          <label className="field-label">Officer(s) — comma separated</label>
+                          <input className="field-input" value={overrides.btorOfficers ?? autoBtor.btorOfficers} onChange={e => setOv('btorOfficers', e.target.value)} placeholder="Names of mission officers"/>
+                        </div>
+                        <div>
+                          <label className="field-label">Designation / unit</label>
+                          <input className="field-input" value={overrides.btorDesignation ?? autoBtor.btorDesignation} onChange={e => setOv('btorDesignation', e.target.value)} placeholder="e.g. Adaptation Division"/>
+                        </div>
+                      </div>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0.75rem' }}>
+                        <div><label className="field-label">Mission from</label><input type="date" className="field-input" value={overrides.btorDateFrom || ''} onChange={e => setOv('btorDateFrom', e.target.value)}/></div>
+                        <div><label className="field-label">Mission to</label><input type="date" className="field-input" value={overrides.btorDateTo || ''} onChange={e => setOv('btorDateTo', e.target.value)}/></div>
+                        <div><label className="field-label">Destination(s)</label><input className="field-input" value={overrides.btorDestination ?? autoBtor.btorDestination} onChange={e => setOv('btorDestination', e.target.value)} placeholder="Location(s)"/></div>
+                      </div>
+                    </>
+                  )}
+                  {(isBtor
+                    ? [['btorPurpose','Purpose & objectives', autoBtor.btorPurpose],['btorFindings','Key findings & outcomes', autoBtor.btorFindings],['btorStakeholders','Stakeholders engaged', autoBtor.btorStakeholders],['btorFollowUp','Follow-up actions (one per line)', autoBtor.btorFollowUp],['challenges','Challenges & limitations', autoText.challenges]]
+                    : [['execSummary','Executive Summary', autoText.execSummary],['introduction','Introduction', autoText.introduction],['challenges','Challenges & Limitations', autoText.challenges]]
+                  ).map(([k, label, auto]) => (
                     <div key={k}>
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'0.25rem' }}>
                         <label className="field-label" style={{ margin:0 }}>{label}</label>
                         <button type="button" onClick={() => setOv(k, undefined)}
                           style={{ fontSize:'0.68rem', color:'var(--green-700)', background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>Reset to auto</button>
                       </div>
-                      <textarea className="field-input" rows={4} value={overrides[k] ?? autoText[k]} onChange={e => setOv(k, e.target.value)}
+                      <textarea className="field-input" rows={4} value={overrides[k] ?? auto} onChange={e => setOv(k, e.target.value)}
                         style={{ resize:'vertical', lineHeight:1.5, fontFamily:'var(--font-ui)', minHeight:80 }}
                         placeholder="Separate paragraphs with a blank line"/>
                     </div>
