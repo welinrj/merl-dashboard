@@ -574,18 +574,18 @@ export default function App() {
     <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
 
       {/* Top navigation */}
-      <header style={{
+      <header className="topnav" style={{
         flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1.15rem 1.75rem',
+        display: 'flex', alignItems: 'center',
       }}>
         {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--green-50)', border: '1px solid var(--green-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6, flexShrink: 0 }}>
+        <div className="topnav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, minWidth: 0 }}>
+          <div className="topnav-crest" style={{ background: 'var(--green-50)', border: '1px solid var(--green-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6, flexShrink: 0 }}>
             <img src={CREST} alt="Vanuatu Coat of Arms" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
-          <div style={{ lineHeight: 1.15 }}>
-            <div style={{ fontFamily: 'var(--font-display)', color: 'var(--text-1)', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.01em' }}>L&amp;D MERL</div>
-            <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', letterSpacing: '0.04em' }}>DoCC · Vanuatu</div>
+          <div style={{ lineHeight: 1.15, minWidth: 0 }}>
+            <div className="topnav-brand-title" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-1)', fontWeight: 800, letterSpacing: '-0.01em' }}>L&amp;D MERL</div>
+            <div className="topnav-brand-sub" style={{ color: 'var(--text-3)', fontSize: '0.75rem', letterSpacing: '0.04em' }}>DoCC · Vanuatu</div>
           </div>
         </div>
 
@@ -601,7 +601,7 @@ export default function App() {
         {/* Right cluster */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', flexShrink: 0 }}>
           {IS_STAGING && (
-            <div style={{
+            <div className="topnav-staging" style={{
               fontSize: '0.8125rem', color: 'var(--green-700)',
               padding: '0.35rem 0.8rem', background: 'var(--green-50)',
               border: '1px solid var(--green-100)', borderRadius: 9999,
@@ -610,8 +610,8 @@ export default function App() {
               Staging
             </div>
           )}
-          {/* Language switcher (EN / FR) */}
-          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+          {/* Language switcher (EN / FR) — hidden on small screens, moved into the mobile menu */}
+          <div className="topnav-lang" style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             {(['en', 'fr'] as const).map(lng => (
               <button key={lng} onClick={() => i18n.changeLanguage(lng)}
                 aria-label={`Switch language to ${lng.toUpperCase()}`}
@@ -683,6 +683,16 @@ export default function App() {
             <Icon size={16} />{label}
           </NavLink>
         ))}
+        {/* Language switcher inside the mobile menu (the header toggle is hidden on small screens) */}
+        <div className="topnav-mobile-lang">
+          {(['en', 'fr'] as const).map(lng => (
+            <button key={lng} onClick={() => i18n.changeLanguage(lng)}
+              aria-label={`Switch language to ${lng.toUpperCase()}`}
+              className={i18n.language === lng ? 'active' : ''}>
+              {lng.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </nav>
 
         {/* Stakeholder logo band */}
