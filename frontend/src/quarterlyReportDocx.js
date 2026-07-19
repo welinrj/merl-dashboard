@@ -188,6 +188,50 @@ export async function buildQuarterlyDocxBlob(report) {
     }));
   }
 
+  // ── Back to Office Report — mission layout ──
+  if (meta.kind === 'btor') {
+    const m = report.btorMeta || {};
+    const missionDates = `${m.dateFrom || '—'}${m.dateTo && m.dateTo !== m.dateFrom ? ` – ${m.dateTo}` : ''}`;
+    children.push(heading('1. Mission Details'));
+    children.push(table(['Field', 'Detail'], [
+      [{ text: 'Officer(s)', bold: true }, (m.officers || []).join(', ') || '—'],
+      [{ text: 'Designation / unit', bold: true }, m.designation || '—'],
+      [{ text: 'Mission dates', bold: true }, missionDates],
+      [{ text: 'Destination(s)', bold: true }, (m.destinations || []).join(', ') || '—'],
+      [{ text: 'Reporting period', bold: true }, meta.period],
+    ], [2800, 7200]));
+    children.push(heading('2. Purpose & Objectives'));
+    children.push(para(m.purpose || '', { size: 20 }));
+    children.push(heading('3. Activities Conducted'));
+    children.push(table(
+      ['Date', 'Activity', 'Project / Location', 'Officer', 'Source'],
+      report.btor.map(b => [b.date, b.activity, b.location, b.officer, b.output]),
+      [1400, 4000, 1900, 1700, 1000],
+    ));
+    children.push(summaryPara(report.summaries.btor));
+    children.push(heading('4. Key Findings & Outcomes'));
+    children.push(para(m.findings || '', { size: 20 }));
+    (report.keyAchievements || []).slice(0, 6).forEach(a => children.push(para(`•  ${a.title} — ${a.detail}`, { size: 18 })));
+    children.push(heading('5. Stakeholders Engaged'));
+    children.push(para(m.stakeholders || '', { size: 20 }));
+    children.push(heading('6. Challenges & Limitations'));
+    report.challenges.narrative.forEach(t => children.push(para(t, { size: 20 })));
+    if (report.challenges.rows.length) {
+      children.push(table(
+        ['Category', 'Challenge', 'Impact', 'Mitigation'],
+        report.challenges.rows.map(c => [c.category, c.description, c.impact, c.mitigation]),
+        [1800, 3800, 2200, 2200],
+      ));
+    }
+    children.push(heading('7. Follow-up Actions'));
+    if ((m.followUp || []).length) m.followUp.forEach((f, i) => children.push(para(`${i + 1}.  ${f}`, { size: 20 })));
+    else children.push(para('No outstanding follow-up actions for this mission.', { size: 20 }));
+    if (photoPngs.length) {
+      children.push(heading('8. Photo Documentation'));
+      photoPngs.forEach(({ photo, png }) => photoParagraphs(photo, png).forEach(pp => children.push(pp)));
+    }
+  } else {
+
   // ── Executive summary ──
   children.push(heading('Executive Summary'));
   report.executiveSummary.forEach(t => children.push(para(t, { size: 20 })));
@@ -335,6 +379,8 @@ export async function buildQuarterlyDocxBlob(report) {
     ],
     [1600, 3600, 4800],
   ));
+
+  } // end standard (non-BTOR) body
 
   // ── Approval & sign-off ──
   if (report.signoff) {

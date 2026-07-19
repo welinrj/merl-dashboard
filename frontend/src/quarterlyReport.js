@@ -316,6 +316,26 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     target: a.target2030 != null ? `${Math.round(a.target2030 * 100)}% by 2030` : '—',
   }));
 
+  /* ── Back to Office Report — mission framing ──────────────────────────────
+     A BTOR is a field/mission record, so it gets its own structure: who went,
+     when, where, why, what was done, what was found and what follows. Auto-
+     populated from the activities conducted in the period (officers, dates,
+     destinations) and editable on the Reports page. */
+  const btorDates = conducted.map(a => a.activity_date).filter(Boolean).sort();
+  const btorMeta = {
+    officers: conductedByOfficer.map(o => o.officer).filter(o => o && o !== '—'),
+    designation: 'Department of Climate Change',
+    dateFrom: btorDates.length ? fmtDMY(btorDates[0]) : p.months,
+    dateTo: btorDates.length ? fmtDMY(btorDates[btorDates.length - 1]) : p.months,
+    destinations: [...new Set(conducted.map(a => a.project_name).filter(Boolean))],
+    purpose: `To carry out and document field activities under the DoCC Strategic Results Framework 2025–2030 during ${quarterLabel}, and to record outputs, findings and follow-up actions.`,
+    findings: conducted.length
+      ? `${conducted.length} activit${conducted.length > 1 ? 'ies were' : 'y was'} carried out and reported during the mission period across ${(new Set(conducted.map(a => a.project_name).filter(Boolean)).size) || 1} project/location(s). Delivery against the Strategic Results Framework stands at ${onTrackPct}% on track (${st.green} of ${total} activities).`
+      : `No field activities were reported for ${quarterLabel}. Delivery against the Strategic Results Framework stands at ${onTrackPct}% on track (${st.green} of ${total} activities).`,
+    stakeholders: 'Department of Climate Change, provincial and area council authorities, community stakeholders, line agencies and development partners.',
+    followUp: nextSteps.slice(0, 8).map(n => n.activity),
+  };
+
   /* ── Figures (charts) — one SVG source, rendered in preview + Word ─────── */
   const topTheme = activityOverview[0] || { theme: '—', total: 0 };
   const budgetThemeBars = activityOverview
@@ -444,11 +464,13 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
       preparedBy: 'Senior Monitoring & Evaluation Officer, Department of Climate Change',
       dateGenerated: new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }),
       dataSource: usingLive ? 'Live framework data' : 'Sample data (offline)',
+      kind,
     },
     stats: { total, onTrackPct, ...st, totalBudget: S.total_budget_vuv, themes: S.themes, focusAreas: S.focus_areas, conductedCount: conducted.length },
     conducted,
     conductedByMonth,
     conductedByOfficer,
+    btorMeta,
     executiveSummary,
     keyAchievements,
     introduction,
