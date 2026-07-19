@@ -205,6 +205,11 @@
 
 .topnav-hamburger { display: none; }
 
+/* Top bar base spacing/sizing (kept in CSS so breakpoints can tighten it) */
+.topnav { gap: 1.25rem; padding: 1.15rem 1.75rem; }
+.topnav-crest { width: 48px; height: 48px; border-radius: 12px; }
+.topnav-brand-title { font-size: 1.25rem; }
+
 /* Mobile dropdown nav */
 .topnav-mobile { display: none; }
 .topnav-mobile.open {
@@ -213,10 +218,31 @@
   background: var(--white); border-bottom: 1px solid var(--border);
 }
 .topnav-mobile .topnav-link { border-radius: 10px; padding: 0.65rem 0.9rem; }
+/* Language switcher inside the mobile menu */
+.topnav-mobile-lang { display: flex; gap: 0.5rem; padding: 0.5rem 0.4rem 0.125rem; }
+.topnav-mobile-lang button {
+  flex: 1; padding: 0.55rem 0; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--white);
+  color: var(--text-2); font-weight: 700; font-size: 0.8125rem; letter-spacing: 0.03em;
+}
+.topnav-mobile-lang button.active { background: var(--green-600); color: #fff; border-color: var(--green-600); }
 
 @media (max-width: 960px) {
   .topnav-links { display: none; }
   .topnav-hamburger { display: inline-flex; }
+  .topnav { gap: 0.6rem; padding: 0.8rem 1rem; }
+}
+
+/* On phones the header is brand + bell + avatar + menu only; the Staging badge
+   and the inline EN/FR toggle are hidden (language lives in the mobile menu). */
+@media (max-width: 768px) {
+  .topnav-staging, .topnav-lang { display: none; }
+}
+@media (max-width: 480px) {
+  .topnav { padding: 0.7rem 0.85rem; }
+  .topnav-crest { width: 40px; height: 40px; border-radius: 10px; }
+  .topnav-brand-title { font-size: 1.05rem; }
+  .topnav-brand-sub { display: none; }
 }
 
 /* ── Responsive layout helpers (used by inline-styled pages) ─────────────── */
