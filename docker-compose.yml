@@ -48,6 +48,51 @@ services:
       timeout: 3s
       retries: 3
 
+  # Shared Redis cache for expensive, organisation-wide aggregate results.
+  # In-memory only (no persistence needed — it's a cache); LRU-evicts under
+  # pressure. Not exposed outside the internal dmp-net network.
+  redis:
+    image: redis:7-alpine
+    container_name: dmp-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    networks:
+      - dmp-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # Caching sidecar: serves precomputed shared aggregates from Redis so the
+  # database doesn't recompute them for every user. Reads the anon-granted
+  # v_srf_analytics view with the public anon key; falls back to a cache MISS
+  # (direct origin fetch) if Redis is unavailable.
+  cache-service:
+    build:
+      context: ./cache-service
+    container_name: dmp-cache
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      SUPABASE_URL: ${VITE_SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+      CACHE_TTL: ${CACHE_TTL:-300}
+      INVALIDATE_SECRET: ${CACHE_INVALIDATE_SECRET:-}
+      PORT: 8080
+    expose:
+      - "8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - dmp-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
   proxy:
     image: nginx:1.27-alpine
     container_name: dmp-proxy
@@ -62,6 +107,8 @@ services:
     depends_on:
       frontend:
         condition: service_healthy
+      cache-service:
+        condition: service_started
     networks:
       - dmp-net
 
