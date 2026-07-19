@@ -181,6 +181,12 @@ export async function buildQuarterlyDocxBlob(report) {
     alignment: AlignmentType.CENTER, spacing: { after: 240 },
     children: [new TextRun({ text: `Prepared by: ${meta.preparedBy}  ·  Generated: ${meta.dateGenerated}${meta.dataSource ? `  ·  ${meta.dataSource}` : ''}`, size: 16, color: MUTED })],
   }));
+  if (meta.docRef) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER, spacing: { after: 200 },
+      children: [new TextRun({ text: `Document Ref: ${meta.docRef}`, size: 16, color: MUTED })],
+    }));
+  }
 
   // ── Executive summary ──
   children.push(heading('Executive Summary'));
@@ -295,7 +301,7 @@ export async function buildQuarterlyDocxBlob(report) {
 
   // ── Activity reports ──
   if ((report.reports || []).length) {
-    children.push(heading('📄 Activity Reports'));
+    children.push(heading('Activity Reports'));
     children.push(para('Automatic summaries of narrative reports uploaded against activities this period.', { size: 20 }));
     report.reports.forEach(r => {
       children.push(new Paragraph({
@@ -312,14 +318,14 @@ export async function buildQuarterlyDocxBlob(report) {
 
   // ── Photo documentation ──
   if (photoPngs.length) {
-    children.push(heading('📷 Photo Documentation'));
+    children.push(heading('Photo Documentation'));
     children.push(para('Field photographs uploaded against Strategic Results Framework activities during this reporting period.', { size: 20 }));
     photoPngs.forEach(({ photo, png }) => photoParagraphs(photo, png).forEach(pp => children.push(pp)));
     if (report.summaries.photos) children.push(summaryPara(report.summaries.photos));
   }
 
   // ── Supporting attachments ──
-  children.push(heading('📎 Supporting Attachments'));
+  children.push(heading('Supporting Attachments'));
   children.push(para('The following annexes and figures support the findings in this report. Figures 1–4 are embedded inline in the relevant sections above.', { size: 20 }));
   children.push(table(
     ['Reference', 'Attachment', 'Description'],
@@ -329,6 +335,17 @@ export async function buildQuarterlyDocxBlob(report) {
     ],
     [1600, 3600, 4800],
   ));
+
+  // ── Approval & sign-off ──
+  if (report.signoff) {
+    children.push(heading(`Approval & Sign-off${report.signoff.date ? ` · ${report.signoff.date}` : ''}`));
+    report.signoff.roles.forEach(role => {
+      children.push(new Paragraph({ spacing: { before: 160, after: 20 }, children: [new TextRun({ text: role.role, bold: true, size: 18, color: GREEN })] }));
+      children.push(para(role.name || '________________________', { size: 20 }));
+      if (role.title) children.push(para(role.title, { size: 16, color: MUTED, italics: true }));
+      children.push(para('Signature: ______________________     Date: ____________', { size: 16, color: MUTED }));
+    });
+  }
 
   // ── Footer ──
   children.push(new Paragraph({

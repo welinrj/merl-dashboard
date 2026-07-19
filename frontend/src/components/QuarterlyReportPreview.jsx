@@ -88,6 +88,9 @@ export default function QuarterlyReportPreview({ report }) {
         <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', marginTop:'0.35rem' }}>
           Prepared by {meta.preparedBy} · Generated {meta.dateGenerated}{meta.dataSource ? ` · ${meta.dataSource}` : ''} · DRAFT
         </div>
+        {meta.docRef && (
+          <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.55)', marginTop:'0.15rem' }}>Document Ref: {meta.docRef}</div>
+        )}
       </div>
 
       {/* Snapshot band */}
@@ -362,7 +365,25 @@ export default function QuarterlyReportPreview({ report }) {
           </TableWrap>
         </Section>
 
-        <div style={{ borderTop:'1px solid var(--border)', paddingTop:'0.75rem', fontSize:'0.68rem', color:'var(--text-3)', textAlign:'center' }}>
+        {report.signoff && (
+          <div style={{ marginTop:'1.25rem', paddingTop:'1rem', borderTop:'1.5px solid var(--green-100)' }}>
+            <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.8rem' }}>
+              Approval &amp; Sign-off{report.signoff.date ? ` · ${report.signoff.date}` : ''}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:'1.5rem' }}>
+              {report.signoff.roles.map(role => (
+                <div key={role.role}>
+                  <div style={{ fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.35rem' }}>{role.role}</div>
+                  <div style={{ fontSize:'0.8rem', fontWeight:700, color:'var(--text-1)', minHeight:'1.05rem' }}>{role.name || ' '}</div>
+                  <div style={{ fontSize:'0.7rem', color:'var(--text-3)', minHeight:'1rem', marginBottom:'1.6rem' }}>{role.title || ' '}</div>
+                  <div style={{ borderTop:'1px solid var(--text-3)', paddingTop:'0.25rem', fontSize:'0.6rem', letterSpacing:'0.04em', textTransform:'uppercase', color:'var(--text-3)' }}>Signature &amp; date</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ borderTop:'1px solid var(--border)', marginTop:'1.25rem', paddingTop:'0.75rem', fontSize:'0.68rem', color:'var(--text-3)', textAlign:'center' }}>
           Department of Climate Change · Government of Vanuatu · www.docc.gov.vu · Confidential — For official use only
         </div>
       </div>
