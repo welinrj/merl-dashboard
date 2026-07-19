@@ -1,16 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
 import { ArrowRight, X, ChevronDown } from 'lucide-react';
-import { AnimatedImageText } from '@/components/ui/text-animation';
+import VaporizeTextCycle, { Tag } from '@/components/ui/vaporize-text-cycle';
 import { STRATEGIC_THEMES, ACTIVITIES, PLAN_SUMMARY as S } from '../strategicPlan';
 
-/* Image clipped to the animated dashboard title. A misty forest reads as the
-   teal/green environmental theme when shown through the letters. */
-const TITLE_TEXTURE =
-  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200&auto=format&fit=crop&q=60';
+/* The animated title cycles through the parts of the full heading. A single
+   non-wrapping canvas line can't fit the whole phrase legibly on a phone, so
+   we vaporize/reform it in readable segments (the hidden <h1> still carries the
+   complete title for accessibility and SEO). */
+const TITLE_PARTS = ['Dashboard', 'Monitoring, Evaluation,', 'Research & Learning'];
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
 const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
@@ -277,13 +278,36 @@ export default function Dashboard() {
 
   const clearFilters = () => { setThemes([]); setFocusAreas([]); setStatuses([]); };
 
+  /* Size the vaporize title to the container so each segment stays legible from
+     phone (~360px) to desktop, then derive a matching band height. */
+  const titleRef = useRef(null);
+  const [titleW, setTitleW] = useState(0);
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([e]) => setTitleW(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const titleFont = Math.round(Math.min(64, Math.max(30, titleW / 12)));
+
   return (
     <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
 
-      <h1 style={{ fontFamily:"'Impact', 'Haettenschweiler', 'Franklin Gothic Bold', 'Arial Narrow Bold', sans-serif", fontSize:'clamp(1.5rem, 5.5vw, 2.4rem)', fontWeight:900, letterSpacing:'0.01em', margin:'0 0 0.35rem', lineHeight:1.05 }}>
-        <AnimatedImageText image={TITLE_TEXTURE}>
-          Dashboard — Monitoring, Evaluation, Research &amp; Learning
-        </AnimatedImageText>
+      <h1 ref={titleRef} style={{ height:Math.round(titleFont * 1.5), margin:'0 0 0.35rem' }}>
+        {titleW > 0 && (
+          <VaporizeTextCycle
+            texts={TITLE_PARTS}
+            font={{ fontFamily:"'DM Sans', sans-serif", fontSize:`${titleFont}px`, fontWeight:800 }}
+            color="rgb(28, 21, 18)"
+            spread={4}
+            density={6}
+            animation={{ vaporizeDuration:2, fadeInDuration:1, waitDuration:1 }}
+            direction="left-to-right"
+            alignment="left"
+            tag={Tag.H1}
+          />
+        )}
       </h1>
       <div style={{ fontSize:'0.85rem', color:'var(--text-2)', margin:'0 0 1.25rem' }}>
         DoCC Strategic Results Framework 2025–2030 · Government of Vanuatu
