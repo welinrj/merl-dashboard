@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FileBarChart, Download, Printer, Loader2, CheckCircle, FileText } from 'lucide-react';
+import { FileBarChart, Download, Printer, Loader2, CheckCircle, FileText, Plane, CalendarDays, CalendarRange, CalendarClock, BookMarked } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
 import { buildQuarterlyReport } from '../quarterlyReport';
@@ -54,19 +54,19 @@ const SRF_TO_KEY = { on_track:'green', at_risk:'amber', no_progress:'red', unrat
 const REPORT_SECTIONS = ['Executive Summary','Key Achievements','Introduction','Activity Overview','Progress & Accomplishment','Budget Utilisation','Challenges & Limitations','Activities Conducted (BTOR)','Lessons Learned','Next Steps','Activity Reports','Photo Documentation'];
 
 const REPORT_TYPES = [
-  { id:'btor',      label:'Back to Office Report', icon:'📌',
+  { id:'btor',      label:'Back to Office Report', Icon:Plane,
     desc:'Field/mission report of activities conducted, outputs and follow-up actions for the period.',
     sections:REPORT_SECTIONS },
-  { id:'monthly',   label:'Monthly Report', icon:'🗓️',
+  { id:'monthly',   label:'Monthly Report', Icon:CalendarDays,
     desc:'Auto-populated monthly progress across all activities — accomplishments, budget, challenges and next steps.',
     sections:REPORT_SECTIONS },
-  { id:'quarterly', label:'Quarterly Report', icon:'📅',
+  { id:'quarterly', label:'Quarterly Report', Icon:CalendarRange,
     desc:'Auto-populated DoCC quarterly report — accomplishments, budget utilisation, challenges, BTOR, lessons, and next steps.',
     sections:REPORT_SECTIONS },
-  { id:'halfyear',  label:'Half-Year Report', icon:'📆',
+  { id:'halfyear',  label:'Half-Year Report', Icon:CalendarClock,
     desc:'Six-monthly progress consolidation against the Strategic Results Framework.',
     sections:REPORT_SECTIONS },
-  { id:'annual',    label:'Annual Report', icon:'📚',
+  { id:'annual',    label:'Annual Report', Icon:BookMarked,
     desc:'Year-end progress and results achievement across all themes and focus areas.',
     sections:REPORT_SECTIONS },
 ];
@@ -341,8 +341,13 @@ export default function Reports() {
                 borderColor: selected.id===rt.id ? 'var(--green-600)' : 'var(--border)',
                 boxShadow: selected.id===rt.id ? 'var(--shadow-sm)' : 'none',
               }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.25rem' }}>
-                <span style={{ fontSize:'1rem' }}>{rt.icon}</span>
+              <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.25rem' }}>
+                <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius:8, flexShrink:0,
+                  background: selected.id===rt.id ? 'var(--green-600)' : 'var(--green-50)',
+                  color: selected.id===rt.id ? '#fff' : 'var(--green-700)',
+                  border: selected.id===rt.id ? 'none' : '1px solid var(--green-100)' }}>
+                  <rt.Icon size={16} strokeWidth={2} />
+                </span>
                 <span style={{ fontSize:'0.8125rem', fontWeight:700, color:'var(--text-1)' }}>{rt.label}</span>
               </div>
               <p style={{ fontSize:'0.75rem', color:'var(--text-3)', margin:0, lineHeight:1.5 }}>{rt.desc}</p>
