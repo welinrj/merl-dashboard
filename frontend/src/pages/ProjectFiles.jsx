@@ -1,29 +1,45 @@
 // Project Files — a submission portal + file manager for project documents
-// (Annual Workplan, 6-Month Report, Annual Report). Users submit a document
-// with the project name and the submitting officer's name; the portal scans it
-// for a summary, timestamps and logs the submission, and files it under the
-// project name in the private project-documents store.
+// (Annual Workplan, Back to Office / Monthly / Quarterly / 6-Month / Annual
+// Report). Users submit a document with the project name and the submitting
+// officer's name; the portal scans it for a summary, extracts the activities it
+// reports, timestamps and logs the submission, and files it under the project
+// name in the private project-documents store. Extracted activities are shown in
+// an activities register and counted by month and by officer.
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Upload, Loader2, Download, Trash2, FileText, Search, ChevronDown, ChevronRight, FolderOpen, Check, Minus, GaugeCircle, ArrowRight } from 'lucide-react';
+import { Upload, Loader2, Download, Trash2, FileText, Search, ChevronDown, ChevronRight, FolderOpen, Check, Minus, GaugeCircle, ArrowRight, ListChecks, CalendarDays, Users } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
-import { processReportFile, reportKind, ACCEPTED_REPORT_EXT, REPORT_KIND_LABEL } from '../reportProcessing';
+import { processReportFile, extractActivities, reportKind, ACCEPTED_REPORT_EXT, REPORT_KIND_LABEL } from '../reportProcessing';
 
 const BUCKET = 'project-documents';
 const MAX_MB = 25;
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
+// The three "key" documents a project should have on file (drive completeness).
+const KEY_DOC_TYPES = ['annual_workplan', 'six_month_report', 'annual_report'];
 const DOC_TYPES = [
   { id: 'annual_workplan',   label: 'Annual Workplan' },
+  { id: 'back_to_office',    label: 'Back to Office Report' },
+  { id: 'monthly_report',    label: 'Monthly Report' },
+  { id: 'quarterly_report',  label: 'Quarterly Report' },
   { id: 'six_month_report',  label: '6-Month Report' },
   { id: 'annual_report',     label: 'Annual Report' },
 ];
 const DOC_LABEL = Object.fromEntries(DOC_TYPES.map(d => [d.id, d.label]));
 const DOC_BADGE = {
   annual_workplan:  { bg: '#dcece2', txt: '#155e34' },
+  back_to_office:   { bg: '#e3eefb', txt: '#1e4e79' },
+  monthly_report:   { bg: '#fdeede', txt: '#8a5a16' },
+  quarterly_report: { bg: '#f2e8fb', txt: '#5c3b8a' },
   six_month_report: { bg: '#f7ead0', txt: '#8a6416' },
   annual_report:    { bg: '#e5e7f7', txt: '#3b3f7a' },
+};
+const monthLabel = (ym) => {
+  if (!ym) return 'Undated';
+  const [y, m] = ym.split('-').map(Number);
+  if (!y || !m) return ym;
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 };
 
 const fmtDateTime = (iso) => {
@@ -67,9 +83,11 @@ function Completeness({ present }) {
 export default function ProjectFiles({ user }) {
   const canEdit = !!user && EDITOR_ROLES.includes(user.role);
   const [docs, setDocs] = useState([]);
+  const [activities, setActivities] = useState([]); // activities extracted from reports
   const [projects, setProjects] = useState([]); // for name suggestions
   const [profiles, setProfiles] = useState([]); // project KPI dashboards
   const [loading, setLoading] = useState(true);
+  const [actProject, setActProject] = useState('all'); // activities register filter
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
@@ -80,14 +98,16 @@ export default function ProjectFiles({ user }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [d, p, pr] = await Promise.all([
+    const [d, p, pr, a] = await Promise.all([
       supabase.from('v_project_documents').select('*').order('created_at', { ascending: false }),
       supabase.from('v_projects').select('code,name').order('code'),
       supabase.from('v_project_profiles').select('code,name,acronym').order('name'),
+      supabase.from('v_project_report_activities').select('*').order('activity_date', { ascending: false, nullsFirst: false }),
     ]);
     setDocs(d.error ? [] : (d.data ?? []));
     setProjects(p.error ? [] : (p.data ?? []));
     setProfiles(pr.error ? [] : (pr.data ?? []));
+    setActivities(a.error ? [] : (a.data ?? []));
     setLoading(false);
   }, []);
 
@@ -123,9 +143,9 @@ export default function ProjectFiles({ user }) {
       const up = await supabase.storage.from(BUCKET).upload(path, form.file, { upsert: false, contentType: form.file.type || undefined });
       if (up.error) { toast.error(up.error.message || 'Upload failed.'); setBusy(false); setProgress(''); return; }
 
-      // 2. scan the document for a summary
+      // 2. scan the document for a summary + its reported activities
       setProgress('Scanning document…');
-      let processed = { summary: null, wordCount: null };
+      let processed = { summary: null, wordCount: null, text: '' };
       try { processed = await processReportFile(form.file); } catch { /* keep defaults */ }
 
       // 3. record the submission (logs officer + signed-in user + timestamp)
@@ -139,7 +159,20 @@ export default function ProjectFiles({ user }) {
         toast.error(ins.error.message || 'Could not record submission.');
         setBusy(false); setProgress(''); return;
       }
-      toast.success('Document submitted.');
+
+      // 4. extract the activities the report describes and file them (best-effort)
+      let activityCount = 0;
+      try {
+        const fallbackMonth = new Date().toISOString().slice(0, 7); // submission month
+        const acts = extractActivities(processed.text || '', { fallbackMonth });
+        if (ins.data?.id && acts.length) {
+          setProgress('Filing activities…');
+          const res = await supabase.rpc('add_report_activities', { p_document_id: ins.data.id, p_activities: acts });
+          if (!res.error && typeof res.data === 'number') activityCount = res.data;
+        }
+      } catch { /* non-fatal — the document is already stored */ }
+
+      toast.success(activityCount ? `Document submitted · ${activityCount} activit${activityCount === 1 ? 'y' : 'ies'} logged.` : 'Document submitted.');
       setForm(f => ({ ...emptyForm, docType: f.docType, projectName: f.projectName })); // keep project for repeat submissions
       setOpen(o => ({ ...o, [projectName]: false }));
       load();
@@ -167,7 +200,7 @@ export default function ProjectFiles({ user }) {
   // Per-project documentation KPIs: which key documents each project has on
   // file, completeness against the three key types, latest submission, officers.
   const kpi = useMemo(() => {
-    const KEYS = ['annual_workplan', 'six_month_report', 'annual_report'];
+    const KEYS = KEY_DOC_TYPES;
     const byProject = new Map();
     const typeTotals = { annual_workplan: 0, six_month_report: 0, annual_report: 0 };
     docs.forEach(d => {
@@ -209,6 +242,52 @@ export default function ProjectFiles({ user }) {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [docs, q]);
 
+  // Project / entity suggestions for the submission form — DoCC (the department
+  // itself) plus every registered project and KPI profile, so a user can submit
+  // for DoCC or for a specific project (VCAP2, …).
+  const nameSuggestions = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    const add = (value, hint) => {
+      const v = (value || '').trim();
+      const key = v.toLowerCase();
+      if (!v || seen.has(key)) return;
+      seen.add(key);
+      out.push({ value: v, hint: hint || '' });
+    };
+    add('DoCC', 'Department of Climate Change');
+    profiles.forEach(pr => add(pr.acronym || pr.code, pr.name));
+    projects.forEach(p => add(p.name || p.code, p.code));
+    return out;
+  }, [profiles, projects]);
+
+  // Delete a single extracted activity (editor-gated).
+  const deleteActivity = async (a) => {
+    if (!(await confirmDialog({ title: 'Delete activity', message: 'Remove this activity from the register?', confirmLabel: 'Delete' }))) return;
+    const { error } = await supabase.rpc('delete_report_activity', { p_id: a.id });
+    if (error) { toast.error(error.message || 'Delete failed.'); return; }
+    setActivities(list => list.filter(x => x.id !== a.id));
+  };
+
+  // Activities register aggregates: filter by project/entity, then count by
+  // month and by submitting officer.
+  const actAgg = useMemo(() => {
+    const rows = activities.filter(a => actProject === 'all' || a.project_name === actProject);
+    const byMonth = new Map();   // 'YYYY-MM' -> count
+    const byOfficer = new Map(); // officer -> count
+    rows.forEach(a => {
+      const m = a.activity_month || 'unknown';
+      byMonth.set(m, (byMonth.get(m) || 0) + 1);
+      const o = a.submitted_by || '—';
+      byOfficer.set(o, (byOfficer.get(o) || 0) + 1);
+    });
+    const months = [...byMonth.entries()]
+      .sort((x, y) => (x[0] === 'unknown' ? 1 : y[0] === 'unknown' ? -1 : x[0].localeCompare(y[0])));
+    const officers = [...byOfficer.entries()].sort((x, y) => y[1] - x[1]);
+    const maxMonth = months.reduce((m, [, c]) => Math.max(m, c), 0);
+    return { rows, months, officers, maxMonth, projectNames: [...new Set(activities.map(a => a.project_name))].sort() };
+  }, [activities, actProject]);
+
   return (
     <div style={{ maxWidth: 1100 }} className="animate-fade-up page-pad">
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-1)', margin: '0 0 0.25rem' }}>
@@ -229,11 +308,11 @@ export default function ProjectFiles({ user }) {
             </select>
           </div>
           <div>
-            <label className="field-label">Project name *</label>
+            <label className="field-label">Project / entity *</label>
             <input className="field-input" list="project-name-options" value={form.projectName}
-              onChange={e => setF('projectName', e.target.value)} placeholder="e.g. VCAP2" disabled={busy} />
+              onChange={e => setF('projectName', e.target.value)} placeholder="e.g. DoCC or VCAP2" disabled={busy} />
             <datalist id="project-name-options">
-              {projects.map(p => <option key={p.code} value={p.name ? `${p.name}` : p.code}>{p.code}</option>)}
+              {nameSuggestions.map(s => <option key={s.value} value={s.value}>{s.hint}</option>)}
             </datalist>
           </div>
           <div>
@@ -330,6 +409,110 @@ export default function ProjectFiles({ user }) {
                     <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{r.officerCount}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reported activities ─────────────────────────────────────────── */}
+      {!loading && activities.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.9rem 1.1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+            <ListChecks size={17} style={{ color: 'var(--green-700, #155e34)' }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1rem' }}>Reported activities</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>auto-extracted from submitted reports</span>
+            <select className="field-input" value={actProject} onChange={e => setActProject(e.target.value)}
+              style={{ marginLeft: 'auto', flex: '0 0 auto', width: 'auto', height: 34 }}>
+              <option value="all">All projects</option>
+              {actAgg.projectNames.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+
+          {/* Stat band */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', padding: '1rem 1.1rem', borderBottom: '1px solid var(--border)', background: 'var(--green-50, #f3f7f4)' }}>
+            {[
+              ['Activities', actAgg.rows.length],
+              ['Months covered', actAgg.months.filter(([m]) => m !== 'unknown').length],
+              ['Officers', actAgg.officers.length],
+            ].map(([label, val]) => (
+              <div key={label}>
+                <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)' }}>{label}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 800, color: 'var(--green-700, #155e34)' }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* By month + by officer */}
+          <div className="grid-2" style={{ gap: '0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ padding: '0.9rem 1.1rem', borderRight: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.7rem' }}>
+                <CalendarDays size={14} style={{ color: 'var(--text-3)' }} />
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-3)' }}>Activities by month</span>
+              </div>
+              {actAgg.months.length === 0 ? <div style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>—</div> : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {actAgg.months.map(([m, c]) => (
+                    <div key={m} style={{ display: 'grid', gridTemplateColumns: '96px 1fr 28px', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{monthLabel(m === 'unknown' ? null : m)}</span>
+                      <span style={{ height: 8, borderRadius: 9999, background: 'var(--green-600, #0e6e6e)', width: `${Math.max(6, (c / actAgg.maxMonth) * 100)}%` }} />
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-mono)', textAlign: 'right', color: 'var(--text-2)' }}>{c}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '0.9rem 1.1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.7rem' }}>
+                <Users size={14} style={{ color: 'var(--text-3)' }} />
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-3)' }}>Activities by officer</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                {actAgg.officers.map(([o, c]) => (
+                  <div key={o} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem' }}>
+                    <span style={{ color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o}</span>
+                    <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-2)', flexShrink: 0 }}>{c}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Activity table */}
+          <div style={{ overflowX: 'auto' }} className="scrollbar-thin">
+            <table className="data-table" style={{ minWidth: 720 }}>
+              <thead>
+                <tr>
+                  <th style={{ whiteSpace: 'nowrap' }}>Date</th>
+                  <th>Activity</th>
+                  <th>Project</th>
+                  <th>Officer</th>
+                  <th>Type</th>
+                  {canEdit && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {actAgg.rows.slice(0, 300).map(a => {
+                  const badge = DOC_BADGE[a.doc_type] || DOC_BADGE.annual_workplan;
+                  return (
+                    <tr key={a.id}>
+                      <td style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-2)' }}>
+                        {a.activity_date ? new Date(a.activity_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : monthLabel(a.activity_month)}
+                      </td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-1)', minWidth: 260 }}>{a.description}</td>
+                      <td style={{ fontSize: '0.75rem', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{a.project_name}</td>
+                      <td style={{ fontSize: '0.75rem', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{a.submitted_by || '—'}</td>
+                      <td>
+                        <span style={{ fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', background: badge.bg, color: badge.txt, borderRadius: 4, padding: '0.1rem 0.4rem', whiteSpace: 'nowrap' }}>{DOC_LABEL[a.doc_type] || a.doc_type}</span>
+                      </td>
+                      {canEdit && (
+                        <td style={{ textAlign: 'right' }}>
+                          <button onClick={() => deleteActivity(a)} title="Delete activity" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600, #b3402f)', padding: 4 }}><Trash2 size={14} /></button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
