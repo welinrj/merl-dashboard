@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FileBarChart, Download, Printer, Loader2, CheckCircle, FileText, Plane, CalendarDays, CalendarRange, CalendarClock, BookMarked } from 'lucide-react';
+import { FileBarChart, Download, Printer, Loader2, CheckCircle, FileText, Plane, CalendarDays, CalendarRange, CalendarClock, BookMarked, ChevronDown, ChevronRight, PenLine } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
 import { buildQuarterlyReport } from '../quarterlyReport';
@@ -211,6 +211,36 @@ function exportExcel({ type, projectLabel, period, indicators, budgetRows }) {
   XLSX.writeFile(wb, fname);
 }
 
+// ── Editable narrative + sign-off (persisted per report identity) ────────────
+const SIGNOFF_DEFAULTS_KEY = 'merl:signoffDefaults';
+const ovKey = (id) => `merl:reportOverrides:${id}`;
+const loadJson = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
+const saveJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore quota */ } };
+const fmtLongDate = (d) => { try { return new Date(d).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }); } catch { return d; } };
+const splitParas = (s) => String(s || '').split(/\n\n+/).map(x => x.trim()).filter(Boolean);
+
+// Merge the officer's edits + sign-off details onto the auto-generated report.
+function applyOverrides(report, ov) {
+  if (!report) return report;
+  const r = { ...report, meta: { ...report.meta } };
+  if (ov.execSummary && ov.execSummary.trim()) r.executiveSummary = splitParas(ov.execSummary);
+  if (ov.introduction && ov.introduction.trim()) r.introduction = splitParas(ov.introduction);
+  if (ov.challenges && ov.challenges.trim()) r.challenges = { ...r.challenges, narrative: splitParas(ov.challenges) };
+  r.meta.docRef = (ov.docRef || '').trim();
+  const reportDate = ov.reportDate ? fmtLongDate(ov.reportDate) : r.meta.dateGenerated;
+  const prepName = (ov.preparedBy || '').trim();
+  if (prepName) r.meta.preparedBy = ov.preparedTitle ? `${prepName}, ${ov.preparedTitle.trim()}` : prepName;
+  r.signoff = {
+    date: reportDate,
+    roles: [
+      { role: 'Prepared by', name: prepName, title: (ov.preparedTitle || '').trim() },
+      { role: 'Reviewed by', name: (ov.reviewedBy || '').trim(), title: (ov.reviewedTitle || '').trim() },
+      { role: 'Approved by', name: (ov.approvedBy || '').trim(), title: (ov.approvedTitle || '').trim() },
+    ],
+  };
+  return r;
+}
+
 export default function Reports() {
   const [live, setLive]         = useState(null);
   const [srfLive, setSrfLive]   = useState([]);   // live SRF activities (Framework tab)
@@ -221,6 +251,33 @@ export default function Reports() {
   const [project, setProject]   = useState('');
   const [period, setPeriod]     = useState(() => periodsFor(REPORT_TYPES[0].id)[0]);
   const [state, setState]       = useState('idle'); // idle | generating | ready
+  const [editOpen, setEditOpen] = useState(false);
+  const [overrides, setOverrides] = useState({});   // narrative + sign-off edits
+
+  // Overrides are keyed by report identity (type + period + component) so each
+  // report keeps its own edits; sign-off names are seeded from the last-used
+  // defaults so officers don't re-type them for every period.
+  const identity = `${selected.id}|${period}|${project}`;
+  useEffect(() => {
+    const stored = loadJson(ovKey(identity), null);
+    if (stored) { setOverrides(stored); return; }
+    const d = loadJson(SIGNOFF_DEFAULTS_KEY, {});
+    setOverrides({
+      docRef: '', reportDate: new Date().toISOString().slice(0, 10),
+      preparedBy: d.preparedBy || '', preparedTitle: d.preparedTitle || 'Senior Monitoring & Evaluation Officer',
+      reviewedBy: d.reviewedBy || '', reviewedTitle: d.reviewedTitle || '',
+      approvedBy: d.approvedBy || '', approvedTitle: d.approvedTitle || '',
+    });
+  }, [identity]);
+  useEffect(() => { saveJson(ovKey(identity), overrides); }, [identity, overrides]);
+  useEffect(() => {
+    saveJson(SIGNOFF_DEFAULTS_KEY, {
+      preparedBy: overrides.preparedBy, preparedTitle: overrides.preparedTitle,
+      reviewedBy: overrides.reviewedBy, reviewedTitle: overrides.reviewedTitle,
+      approvedBy: overrides.approvedBy, approvedTitle: overrides.approvedTitle,
+    });
+  }, [overrides.preparedBy, overrides.preparedTitle, overrides.reviewedBy, overrides.reviewedTitle, overrides.approvedBy, overrides.approvedTitle]);
+  const setOv = (k, v) => setOverrides(o => ({ ...o, [k]: v }));
 
   useEffect(() => {
     let cancelled = false;
@@ -293,17 +350,26 @@ export default function Reports() {
     [selected.id, period, live, photos, activityReports, srfLive, reportActs, project],
   );
 
+  // The auto-generated narrative seeds the editor; the officer's edits + sign-off
+  // are merged in to produce the report shown in the preview and exports.
+  const autoText = {
+    execSummary: (quarterlyReport?.executiveSummary || []).join('\n\n'),
+    introduction: (quarterlyReport?.introduction || []).join('\n\n'),
+    challenges: (quarterlyReport?.challenges?.narrative || []).join('\n\n'),
+  };
+  const finalReport = useMemo(() => applyOverrides(quarterlyReport, overrides), [quarterlyReport, overrides]);
+
   const [wordState, setWordState] = useState('idle'); // idle | working
   const exportWord = async () => {
-    if (!quarterlyReport) return;
+    if (!finalReport) return;
     setWordState('working');
     try {
       const { buildQuarterlyDocxBlob } = await import('../quarterlyReportDocx');
-      const blob = await buildQuarterlyDocxBlob(quarterlyReport);
+      const blob = await buildQuarterlyDocxBlob(finalReport);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${quarterlyReport.meta.title.replace(/[^\w]+/g, '_')}_${period.replace(/\s+/g, '_')}.docx`;
+      a.download = `${finalReport.meta.title.replace(/[^\w]+/g, '_')}_${period.replace(/\s+/g, '_')}.docx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -393,6 +459,58 @@ export default function Reports() {
               </div>
             </div>
 
+            {/* Editable narrative + sign-off (optional; overrides the auto-draft) */}
+            <div style={{ marginBottom:'1.25rem', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
+              <button type="button" onClick={() => setEditOpen(o => !o)}
+                style={{ width:'100%', display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.65rem 0.85rem', background:'var(--green-50)', border:'none', cursor:'pointer', textAlign:'left' }}>
+                {editOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}
+                <PenLine size={14} style={{ color:'var(--green-700)' }}/>
+                <span style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--text-1)' }}>Edit narrative &amp; sign-off</span>
+                <span style={{ fontSize:'0.7rem', color:'var(--text-3)', marginLeft:'auto' }}>optional</span>
+              </button>
+              {editOpen && (
+                <div style={{ padding:'0.85rem', display:'flex', flexDirection:'column', gap:'0.75rem' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+                    <div>
+                      <label className="field-label">Document reference</label>
+                      <input className="field-input" value={overrides.docRef || ''} onChange={e => setOv('docRef', e.target.value)} placeholder="e.g. DoCC/QR/2026/Q3"/>
+                    </div>
+                    <div>
+                      <label className="field-label">Report date</label>
+                      <input type="date" className="field-input" value={overrides.reportDate || ''} onChange={e => setOv('reportDate', e.target.value)}/>
+                    </div>
+                  </div>
+                  {[['prepared','Prepared by'],['reviewed','Reviewed by'],['approved','Approved by']].map(([k, label]) => (
+                    <div key={k} style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+                      <div>
+                        <label className="field-label">{label} — name</label>
+                        <input className="field-input" value={overrides[`${k}By`] || ''} onChange={e => setOv(`${k}By`, e.target.value)} placeholder="Full name"/>
+                      </div>
+                      <div>
+                        <label className="field-label">{label} — title / unit</label>
+                        <input className="field-input" value={overrides[`${k}Title`] || ''} onChange={e => setOv(`${k}Title`, e.target.value)} placeholder="Position / unit"/>
+                      </div>
+                    </div>
+                  ))}
+                  {[['execSummary','Executive Summary'],['introduction','Introduction'],['challenges','Challenges & Limitations']].map(([k, label]) => (
+                    <div key={k}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'0.25rem' }}>
+                        <label className="field-label" style={{ margin:0 }}>{label}</label>
+                        <button type="button" onClick={() => setOv(k, undefined)}
+                          style={{ fontSize:'0.68rem', color:'var(--green-700)', background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>Reset to auto</button>
+                      </div>
+                      <textarea className="field-input" rows={4} value={overrides[k] ?? autoText[k]} onChange={e => setOv(k, e.target.value)}
+                        style={{ resize:'vertical', lineHeight:1.5, fontFamily:'var(--font-ui)', minHeight:80 }}
+                        placeholder="Separate paragraphs with a blank line"/>
+                    </div>
+                  ))}
+                  <div style={{ fontSize:'0.7rem', color:'var(--text-3)' }}>
+                    Edits are saved on this device per report period and merged into the preview and Word / PDF exports. Leave blank to use the auto-generated draft.
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={{ display:'flex', gap:'0.625rem' }}>
               <button onClick={generate} className="btn-primary" style={{ flex:1, padding:'0.625rem', fontSize:'0.875rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}>
                 {state==='generating' ? <><Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> Generating…</> :
@@ -442,8 +560,8 @@ export default function Reports() {
                     <Loader2 size={24} style={{ margin:'0 auto 0.75rem', animation:'spin 1s linear infinite', display:'block' }}/>
                     <p style={{ margin:0, fontSize:'0.875rem' }}>Compiling report data…</p>
                   </div>
-                ) : quarterlyReport ? (
-                  <QuarterlyReportPreview report={quarterlyReport}/>
+                ) : finalReport ? (
+                  <QuarterlyReportPreview report={finalReport}/>
                 ) : (
                   <ReportPreview type={selected} indicators={previewIndicators} budgetRows={budgetRows}/>
                 )}
