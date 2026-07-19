@@ -27,10 +27,20 @@ Rules to follow:
   so big display text scales down on phones instead of overflowing.
 - **The top nav (`.topnav` in `App.tsx`/`index.css`) is breakpoint-driven.**
   Below 960px the pill links collapse into the hamburger menu; below 768px the
-  Staging badge and inline EN/FR toggle are hidden (language moves into the
-  mobile menu); below 480px the crest/title shrink and the sub-label hides.
-  If you add header controls, give them the same responsive treatment — never
-  let the header exceed one row on a phone.
+  Staging badge, inline EN/FR toggle, notification bell and account avatar are
+  hidden (language, account details and Sign Out move into the mobile menu);
+  below 400px the crest/title shrink. If you add header controls, give them the
+  same responsive treatment — never let the header exceed one row on a phone.
+- **Phones get a bottom tab bar (`.bottomnav`).** Below 768px a fixed bottom
+  navigation shows the first primary destinations plus a "More" button that
+  opens the full menu. It's a flex sibling of `<main>` in the `.app-shell`
+  column so it pins to the bottom without overlapping scroll content. Keep it in
+  sync if you change the primary nav.
+- **Wide tables become cards on phones.** Below 768px the `.data-table`s are
+  hidden and a stacked card list is shown instead (see `.activities-cards` /
+  `.activity-card` in `StrategicActivities.jsx` + `index.css`). Any new wide
+  table should follow the same table-on-desktop / cards-on-mobile pattern rather
+  than only relying on horizontal scroll.
 - **Inline styles can't be overridden by media queries.** If a value must
   change at a breakpoint, put it in a CSS class (not an inline `style`), so a
   `@media` rule can win. Inline styles always beat stylesheet rules.
