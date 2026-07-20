@@ -191,11 +191,23 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     p.unit === 'month'   ? p.label :
     p.year;
 
+  /* ── Period-appropriate challenge framing ─────────────────────────────────
+     The end-of-year holiday return only applies to Q1 / Jan–Feb reports, and
+     extreme-weather disruption to the Nov–Apr cyclone season, so the narrative
+     reflects the months actually being reported on rather than a fixed sentence. */
+  const periodMonthNums = new Set(monthsInPeriod(p).map(m => Number(m.slice(5, 7))));
+  const holidayReturn = periodMonthNums.has(1) || periodMonthNums.has(2);
+  const cycloneSeason = [11, 12, 1, 2, 3, 4].some(m => periodMonthNums.has(m));
+  const opsChallengePhrase = holidayReturn
+    ? 'the phased return of staff following the end-of-year holiday period'
+    : 'competing operational priorities and scheduling pressures across concurrent workstreams';
+  const weatherClause = cycloneSeason ? ' and disruption from extreme weather events' : '';
+
   /* ── Executive summary (narrative from the numbers) ───────────────────── */
   const executiveSummary = [
     `During ${periodPhrase} (${p.months}), the Department of Climate Change (DoCC) advanced implementation of ${total} activities across ${S.themes} strategic themes and ${S.focus_areas} focus areas under the DoCC Strategic Results Framework 2025–2030.`,
     `Of these, ${st.green} activities (${onTrackPct}%) are completed or on track, ${st.amber} are ongoing, and ${st.red} experienced delays. A total planned budget of ${fmtVUV(S.total_budget_vuv)} is being managed across the framework, delivered through strong collaboration with government stakeholders, development partners, line agencies, civil society organisations, and the private sector.`,
-    `Despite challenges including the phased return of staff after the holiday period and disruption from extreme weather events, the Department maintained continuity of operations through adaptive management and prioritisation of critical activities to strengthen national climate resilience.`,
+    `Despite challenges including ${opsChallengePhrase}${weatherClause}, the Department maintained continuity of operations through adaptive management and prioritisation of critical activities to strengthen national climate resilience.`,
   ];
   if (conducted.length) {
     executiveSummary.push(
@@ -224,13 +236,34 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
   }
   const activityOverview = Object.values(byTheme).sort((a, b) => b.total - a.total);
 
-  /* ── Quarterly accomplishment table (every activity) ──────────────────── */
+  /* ── Quarterly accomplishment table (every activity) ──────────────────────
+     Reports the output/result delivered (the activity's output indicator, or
+     its progress note) and the means of verification (the evidence actually on
+     file — uploaded activity reports / photographs — else the SRF register). */
+  const evidence = {};
+  (photos || []).forEach(pp => { const k = pp && pp.activity; if (!k) return; (evidence[k] ??= { photos: 0, reports: 0 }).photos += 1; });
+  (reports || []).forEach(rr => { const k = rr && rr.activity; if (!k) return; (evidence[k] ??= { photos: 0, reports: 0 }).reports += 1; });
+  const outputFor = (a) => {
+    const ind = (a.indicator || '').trim();
+    if (ind) return ind;
+    const prog = (a.progress || '').trim();
+    if (prog && !/^no\s+(progress|data)/i.test(prog)) return prog;
+    return STATUS_OUTPUT[a.status] || STATUS_OUTPUT.none;
+  };
+  const movFor = (a) => {
+    const ev = evidence[a.name];
+    const parts = [];
+    if (ev?.reports) parts.push(`${ev.reports} activity report${ev.reports > 1 ? 's' : ''}`);
+    if (ev?.photos) parts.push(`${ev.photos} photograph${ev.photos > 1 ? 's' : ''}`);
+    if (!parts.length) parts.push('SRF activity register / progress note');
+    return parts.join('; ');
+  };
   const accomplishments = acts.map(a => ({
-    priority: a.theme,
     activity: a.name,
-    buildingBlock: a.focusArea,
-    partner: 'DoCC & Partners',
-    output: STATUS_OUTPUT[a.status] || STATUS_OUTPUT.none,
+    theme: a.theme,
+    focusArea: a.focusArea,
+    output: outputFor(a),
+    mov: movFor(a),
     statusKey: a.status,
   }));
 
@@ -272,8 +305,8 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
       quantitative: `1 activity (${a.code || a.focusArea})`,
     }));
   const challengeNarrative = [
-    `During ${quarterLabel}, the Department faced several operational challenges that affected the timely implementation of planned activities. A key challenge was the phased return of staff following the end-of-year holiday period, which temporarily slowed programme coordination and reporting.`,
-    `Additionally, extreme weather events disrupted planned activities, requiring a shift toward preparedness and response coordination. Further constraints included reporting and M&E capacity, financial constraints and delays in fund disbursement, limited human-resource capacity, and overlapping national priorities.`,
+    `During ${quarterLabel}, the Department faced several operational challenges that affected the timely implementation of planned activities. A key challenge was ${opsChallengePhrase}, which temporarily slowed programme coordination and reporting.`,
+    `${cycloneSeason ? 'Additionally, extreme weather events disrupted planned activities, requiring a shift toward preparedness and response coordination. ' : ''}Further constraints included reporting and M&E capacity, financial constraints and delays in fund disbursement, limited human-resource capacity, and overlapping national priorities.`,
   ];
 
   /* ── Activities conducted [BTOR] (completed activities as field records) ─ */
