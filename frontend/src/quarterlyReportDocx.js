@@ -268,14 +268,16 @@ export async function buildQuarterlyDocxBlob(report) {
   // ── Quarterly accomplishment ──
   children.push(heading(`${report.meta.period} — Progress & Accomplishment`));
   children.push(table(
-    ['Strategic Priority', 'Activity / Programme', 'Building Block', 'Partner', 'Output Status'],
+    ['Activity / Programme', 'Theme / Focus Area', 'Output / Result', 'Means of Verification', 'Status'],
     report.accomplishments.map(a => [
-      a.priority, a.activity, a.buildingBlock, a.partner,
+      a.activity,
+      a.focusArea ? `${a.theme} · ${a.focusArea}` : a.theme,
+      a.output, a.mov,
       { text: STATUS_KEY_LABEL[a.statusKey], fill: STATUS_FILL[a.statusKey], bold: true },
     ]),
-    [1800, 3400, 2200, 1600, 1600],
+    [2900, 2200, 2900, 2200, 1400],
   ));
-  children.push(para('Progress Status:  🟢 Completed / On track   🟡 Ongoing   🔴 Delayed', { size: 16, color: MUTED }));
+  children.push(para('Status key:  Completed / On track   ·   Ongoing   ·   Delayed   ·   Not started', { size: 16, color: MUTED }));
   children.push(summaryPara(report.summaries.accomplishments));
 
   // ── Budget utilisation ──

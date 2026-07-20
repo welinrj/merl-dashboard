@@ -308,20 +308,27 @@ export default function QuarterlyReportPreview({ report }) {
 
         <Section n={5} title={`${meta.period} — Progress & Accomplishment`}>
           <TableWrap>
-            <thead><tr>{['Strategic Priority','Activity / Programme','Building Block','Partner','Output Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+            <thead><tr>{['Activity / Programme','Theme / Focus Area','Output / Result','Means of Verification','Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {report.accomplishments.map((a, i) => (
                 <tr key={i} style={zebra(i)}>
-                  <td style={{ ...td, whiteSpace:'nowrap' }}>{a.priority}</td>
                   <td style={td}>{a.activity}</td>
-                  <td style={td}>{a.buildingBlock}</td>
-                  <td style={td}>{a.partner}</td>
+                  <td style={td}><span style={{ fontWeight:600 }}>{a.theme}</span>{a.focusArea ? <span style={{ color:'var(--text-3)' }}> · {a.focusArea}</span> : null}</td>
+                  <td style={td}>{a.output}</td>
+                  <td style={{ ...td, color:'var(--text-2)' }}>{a.mov}</td>
                   <td style={td}><StatusPill k={a.statusKey}/></td>
                 </tr>
               ))}
             </tbody>
           </TableWrap>
-          <div style={{ fontSize:'0.68rem', color:'var(--text-3)', marginTop:'0.4rem' }}>Progress Status: 🟢 Completed / On track · 🟡 Ongoing · 🔴 Delayed</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:'0.8rem', fontSize:'0.66rem', color:'var(--text-3)', marginTop:'0.5rem' }}>
+            <span style={{ fontWeight:700 }}>Status key:</span>
+            {[['green','Completed / On track'],['amber','Ongoing'],['red','Delayed'],['none','Not started']].map(([k, label]) => (
+              <span key={k} style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>
+                <span style={{ width:7, height:7, borderRadius:'50%', background:STATUS_COL[k] }}/>{label}
+              </span>
+            ))}
+          </div>
           <Summary>{report.summaries.accomplishments}</Summary>
         </Section>
 
