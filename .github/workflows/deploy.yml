@@ -34,6 +34,10 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        # Auto-enable Pages (with the GitHub Actions build source) if it isn't
+        # already, so the deploy doesn't fail with "Get Pages site failed".
+        with:
+          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
