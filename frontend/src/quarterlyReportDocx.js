@@ -7,6 +7,7 @@ import {
 } from 'docx';
 import { STATUS_KEY_LABEL } from './quarterlyReport';
 import { renderFigureSvg, svgToPngBytes, svgDims } from './reportCharts';
+import { patternBand, accentRule } from './reportPattern';
 
 const GREEN = '0E6E6E';
 const INK   = '1A1712';
@@ -157,6 +158,20 @@ export async function buildQuarterlyDocxBlob(report) {
     .filter(f => f.section === section && pngById[f.id])
     .flatMap(f => figureParagraphs(f, pngById[f.id]));
 
+  // Pre-rasterise the Vanuatu motif band + palette rule (palette-derived) for
+  // the cover and footer. Failures are skipped rather than failing the export.
+  let bandPng = null, rulePng = null;
+  try { bandPng = { bytes: await svgToPngBytes(patternBand({ width: 600, height: 18 }), 600, 18, 3), width: 520, height: 16 }; } catch { /* skip band */ }
+  try { rulePng = { bytes: await svgToPngBytes(accentRule({ width: 600, height: 5 }), 600, 5, 3), width: 520, height: 4 }; } catch { /* skip rule */ }
+  const bandPara = () => bandPng && new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: { before: 40, after: 160 },
+    children: [new ImageRun({ data: bandPng.bytes, transformation: { width: bandPng.width, height: bandPng.height } })],
+  });
+  const rulePara = () => rulePng && new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: { before: 120, after: 60 },
+    children: [new ImageRun({ data: rulePng.bytes, transformation: { width: rulePng.width, height: rulePng.height } })],
+  });
+
   // Pre-load activity photos (async fetch + canvas re-encode); failures skipped.
   const photoPngs = [];
   for (const photo of (report.photos || [])) {
@@ -187,6 +202,7 @@ export async function buildQuarterlyDocxBlob(report) {
       children: [new TextRun({ text: `Document Ref: ${meta.docRef}`, size: 16, color: MUTED })],
     }));
   }
+  if (bandPara()) children.push(bandPara());
 
   // ── Back to Office Report — mission layout ──
   if (meta.kind === 'btor') {
@@ -396,8 +412,9 @@ export async function buildQuarterlyDocxBlob(report) {
   }
 
   // ── Footer ──
+  if (rulePara()) children.push(rulePara());
   children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { before: 320 },
+    alignment: AlignmentType.CENTER, spacing: { before: rulePng ? 40 : 320 },
     children: [new TextRun({ text: 'Department of Climate Change · Government of Vanuatu · www.docc.gov.vu', size: 16, color: MUTED })],
   }));
 

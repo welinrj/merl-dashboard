@@ -2,6 +2,7 @@
 // template layout. Consumes the object from buildQuarterlyReport().
 import { fmtVUV, STATUS_KEY_LABEL } from '../quarterlyReport';
 import { renderFigureSvg } from '../reportCharts';
+import { patternBand, accentRule, PALETTE_GRADIENT } from '../reportPattern';
 
 // Subtle zebra striping so tables read as human-authored rather than a raw dump.
 const zebra = i => (i % 2 ? { background:'var(--green-50)' } : undefined);
@@ -52,9 +53,11 @@ const numTd = { ...td, fontFamily:'var(--font-mono)', textAlign:'right', whiteSp
 function Section({ n, title, children }) {
   return (
     <div style={{ marginBottom:'1.6rem' }}>
-      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.6rem', paddingBottom:'0.35rem', borderBottom:'1.5px solid var(--green-100)' }}>
+      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.15rem' }}>
         {n}. {title}
       </div>
+      {/* Palette-derived accent rule under each section heading */}
+      <div style={{ height:2.5, borderRadius:2, background:PALETTE_GRADIENT, opacity:0.9, marginBottom:'0.6rem' }} />
       {children}
     </div>
   );
@@ -70,16 +73,20 @@ const paraStyle = { margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2
 
 function CoverHeader({ meta }) {
   return (
-    <div style={{ background:'var(--green-900)', color:'#fff', padding:'1.5rem 2rem' }}>
-      <div style={{ fontSize:'0.625rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.375rem' }}>
-        Republic of Vanuatu · {meta.subtitle}
+    <div style={{ background:'var(--green-900)', color:'#fff' }}>
+      <div style={{ padding:'1.5rem 2rem 1.1rem' }}>
+        <div style={{ fontSize:'0.625rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.375rem' }}>
+          Republic of Vanuatu · {meta.subtitle}
+        </div>
+        <div style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', fontWeight:700, marginBottom:'0.25rem', letterSpacing:'-0.01em' }}>{meta.title}</div>
+        <div style={{ fontSize:'0.85rem', fontWeight:600, color:'rgba(255,255,255,0.85)' }}>{meta.months}</div>
+        <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', marginTop:'0.35rem' }}>
+          Prepared by {meta.preparedBy} · Generated {meta.dateGenerated}{meta.dataSource ? ` · ${meta.dataSource}` : ''} · DRAFT
+        </div>
+        {meta.docRef && <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.55)', marginTop:'0.15rem' }}>Document Ref: {meta.docRef}</div>}
       </div>
-      <div style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', fontWeight:700, marginBottom:'0.25rem', letterSpacing:'-0.01em' }}>{meta.title}</div>
-      <div style={{ fontSize:'0.85rem', fontWeight:600, color:'rgba(255,255,255,0.85)' }}>{meta.months}</div>
-      <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', marginTop:'0.35rem' }}>
-        Prepared by {meta.preparedBy} · Generated {meta.dateGenerated}{meta.dataSource ? ` · ${meta.dataSource}` : ''} · DRAFT
-      </div>
-      {meta.docRef && <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.55)', marginTop:'0.15rem' }}>Document Ref: {meta.docRef}</div>}
+      {/* Traditional Vanuatu motif band (palette-derived) */}
+      <div style={{ lineHeight:0 }} dangerouslySetInnerHTML={{ __html: patternBand({ width:900, height:26, responsive:true }) }} />
     </div>
   );
 }
@@ -106,8 +113,11 @@ function SignOffBlock({ signoff }) {
 }
 
 const ReportFooter = () => (
-  <div style={{ borderTop:'1px solid var(--border)', marginTop:'1.25rem', paddingTop:'0.75rem', fontSize:'0.68rem', color:'var(--text-3)', textAlign:'center' }}>
-    Department of Climate Change · Government of Vanuatu · www.docc.gov.vu · Confidential — For official use only
+  <div style={{ marginTop:'1.25rem' }}>
+    <div style={{ height:4, borderRadius:2, background:PALETTE_GRADIENT, opacity:0.9, marginBottom:'0.6rem' }} />
+    <div style={{ fontSize:'0.68rem', color:'var(--text-3)', textAlign:'center' }}>
+      Department of Climate Change · Government of Vanuatu · www.docc.gov.vu · Confidential — For official use only
+    </div>
   </div>
 );
 
