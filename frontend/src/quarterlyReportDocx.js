@@ -8,7 +8,6 @@ import {
 } from 'docx';
 import { STATUS_KEY_LABEL } from './quarterlyReport';
 import { renderFigureSvg, svgToPngBytes, svgDims } from './reportCharts';
-import { patternBand, accentRule } from './reportPattern';
 
 const GREEN = '0E6E6E';
 const INK   = '1A1712';
@@ -75,6 +74,33 @@ const summaryPara = text => new Paragraph({
     new TextRun({ text, size: 18, color: INK, italics: true }),
   ],
 });
+
+// One full activity write-up: a facts table followed by run-in labelled
+// paragraphs (Strategic alignment, Description, Outputs, MoV, Challenges, Status).
+function activityReportBlocks(ar) {
+  const labelled = (label, text) => new Paragraph({
+    spacing: { before: 60, after: 80 },
+    children: [
+      new TextRun({ text: `${label}:  `, bold: true, size: 18, color: GREEN }),
+      new TextRun({ text: text || '—', size: 18, color: INK }),
+    ],
+  });
+  return [
+    new Paragraph({
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 200, after: 80 },
+      keepNext: true,
+      children: [new TextRun({ text: `${ar.n}.  ${ar.title}`, bold: true, size: 22, color: INK })],
+    }),
+    table(['Field', 'Detail'], ar.facts.map(([k, v]) => [{ text: k, bold: true }, v]), [3000, 6800]),
+    labelled('Strategic alignment', ar.alignment),
+    labelled('Description of the activity', ar.description),
+    labelled('Outputs and results', ar.outputs),
+    labelled('Means of verification', ar.mov),
+    labelled('Challenges', ar.challenges),
+    labelled('Remarks and status', ar.remarks),
+  ];
+}
 
 // Load a photo URL into PNG bytes + scaled dimensions for embedding in the
 // document. Re-encodes through a canvas so large uploads are downsized and the
@@ -159,19 +185,15 @@ export async function buildQuarterlyDocxBlob(report) {
     .filter(f => f.section === section && pngById[f.id])
     .flatMap(f => figureParagraphs(f, pngById[f.id]));
 
-  // Pre-rasterise the Vanuatu motif band + palette rule (palette-derived) for
-  // the cover and footer. Failures are skipped rather than failing the export.
-  let bandPng = null, rulePng = null;
-  try { bandPng = { bytes: await svgToPngBytes(patternBand({ width: 600, height: 18 }), 600, 18, 3), width: 520, height: 16 }; } catch { /* skip band */ }
-  try { rulePng = { bytes: await svgToPngBytes(accentRule({ width: 600, height: 5 }), 600, 5, 3), width: 520, height: 4 }; } catch { /* skip rule */ }
-  const bandPara = () => bandPng && new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { before: 40, after: 160 },
-    children: [new ImageRun({ data: bandPng.bytes, transformation: { width: bandPng.width, height: bandPng.height } })],
+  // Plain horizontal rules (Word paragraph borders) for the cover and footer —
+  // a clean office-document look rather than decorative graphics.
+  const hr = ({ before = 120, after = 120, size = 8, color = 'B8B0A4', double = false } = {}) => new Paragraph({
+    spacing: { before, after },
+    border: { bottom: { style: double ? BorderStyle.DOUBLE : BorderStyle.SINGLE, size, color, space: 1 } },
+    children: [new TextRun({ text: '' })],
   });
-  const rulePara = () => rulePng && new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { before: 120, after: 60 },
-    children: [new ImageRun({ data: rulePng.bytes, transformation: { width: rulePng.width, height: rulePng.height } })],
-  });
+  const bandPara = () => hr({ before: 40, after: 200, size: 12, color: GREEN, double: true });
+  const rulePara = () => hr({ before: 200, after: 60, size: 6, color: 'B8B0A4' });
 
   // Pre-load activity photos (async fetch + canvas re-encode); failures skipped.
   const photoPngs = [];
@@ -395,6 +417,14 @@ export async function buildQuarterlyDocxBlob(report) {
   ));
   children.push(summaryPara(report.summaries.nextSteps));
 
+  // ── Detailed activity reports (one full write-up per activity) ──
+  if ((report.activityReports || []).length) {
+    children.push(heading('Detailed Activity Reports'));
+    children.push(para('Each activity conducted during the reporting period is reported in full below — its strategic alignment, description, outputs, means of verification, challenges and delivery status.', { size: 20 }));
+    report.activityReports.forEach(ar => activityReportBlocks(ar).forEach(b => children.push(b)));
+    if (report.summaries.activityReports) children.push(summaryPara(report.summaries.activityReports));
+  }
+
   // ── Activity reports ──
   if ((report.reports || []).length) {
     children.push(heading('Activity Reports'));
@@ -419,6 +449,20 @@ export async function buildQuarterlyDocxBlob(report) {
     photoPngs.forEach(({ photo, png }) => photoParagraphs(photo, png).forEach(pp => children.push(pp)));
     if (report.summaries.photos) children.push(summaryPara(report.summaries.photos));
   }
+
+  // ── Conclusion ──
+  children.push(heading('Conclusion'));
+  (report.conclusion || []).forEach(t => children.push(para(t, { size: 20 })));
+
+  // ── Recommendations ──
+  children.push(heading('Recommendations'));
+  (report.recommendations || []).forEach((t, i) => children.push(new Paragraph({
+    spacing: { after: 80 },
+    children: [
+      new TextRun({ text: `${i + 1}.  `, bold: true, size: 20, color: GREEN }),
+      new TextRun({ text: t, size: 20, color: INK }),
+    ],
+  })));
 
   // ── Supporting attachments ──
   children.push(heading('Supporting Attachments'));
@@ -446,10 +490,10 @@ export async function buildQuarterlyDocxBlob(report) {
   }
 
   // ── Footer ──
-  if (rulePara()) children.push(rulePara());
+  children.push(rulePara());
   children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { before: rulePng ? 40 : 320 },
-    children: [new TextRun({ text: 'Department of Climate Change · Government of Vanuatu · www.docc.gov.vu', size: 16, color: MUTED })],
+    alignment: AlignmentType.CENTER, spacing: { before: 40 },
+    children: [new TextRun({ text: 'Department of Climate Change · Government of Vanuatu · www.docc.gov.vu · Confidential — For official use only', size: 16, color: MUTED })],
   }));
 
   const doc = new Document({

@@ -2,10 +2,9 @@
 // template layout. Consumes the object from buildQuarterlyReport().
 import { fmtVUV, STATUS_KEY_LABEL } from '../quarterlyReport';
 import { renderFigureSvg } from '../reportCharts';
-import { patternBand, accentRule, PALETTE_GRADIENT } from '../reportPattern';
 
-// Subtle zebra striping so tables read as human-authored rather than a raw dump.
-const zebra = i => (i % 2 ? { background:'var(--green-50)' } : undefined);
+// Subtle zebra striping (Excel-style banded rows).
+const zebra = i => (i % 2 ? { background:'#f5f4f0' } : undefined);
 
 const SHORT_MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const ymShort = (ym) => { if (!ym || ym === 'unknown') return 'Undated'; const [y, m] = ym.split('-').map(Number); return m ? `${SHORT_MONTH[m - 1]} ${y}` : ym; };
@@ -38,26 +37,26 @@ const STATUS_COL = { green:'#1a8c4e', amber:'#d99a2b', red:'#b3402f', none:'#9a9
 const STATUS_BG  = { green:'#dcece2', amber:'#f7ead0', red:'#f6ded8', none:'#ece9e3' };
 const STATUS_TXT = { green:'#155e34', amber:'#8a6416', red:'#8a2e21', none:'#5b5349' };
 
+// Excel-style status cell — squared, bordered fill (conditional-format look).
 function StatusPill({ k }) {
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', background:STATUS_BG[k], color:STATUS_TXT[k], borderRadius:9999, padding:'0.1rem 0.5rem', fontSize:'0.625rem', fontWeight:700, textTransform:'uppercase', whiteSpace:'nowrap' }}>
-      <span style={{ width:4, height:4, borderRadius:'50%', background:STATUS_COL[k] }}/>{STATUS_KEY_LABEL[k]}
+    <span style={{ display:'inline-block', background:STATUS_BG[k], color:STATUS_TXT[k], border:`1px solid ${STATUS_COL[k]}`, padding:'0.05rem 0.4rem', fontSize:'0.66rem', fontWeight:700, whiteSpace:'nowrap' }}>
+      {STATUS_KEY_LABEL[k]}
     </span>
   );
 }
 
-const th = { padding:'0.4rem 0.6rem', textAlign:'left', color:'var(--green-700)', fontWeight:700, fontSize:'0.625rem', letterSpacing:'0.05em', textTransform:'uppercase', background:'var(--green-50)', borderBottom:'1px solid var(--border)' };
-const td = { padding:'0.4rem 0.6rem', color:'var(--text-1)', fontSize:'0.72rem', verticalAlign:'top', borderBottom:'1px solid var(--border)' };
-const numTd = { ...td, fontFamily:'var(--font-mono)', textAlign:'right', whiteSpace:'nowrap' };
+// Gridlined tables + neutral header, so the output reads like a Word/Excel table.
+const th = { padding:'0.35rem 0.6rem', textAlign:'left', color:'var(--text-1)', fontWeight:700, fontSize:'0.7rem', background:'#e9e6df', border:'1px solid #b9b2a5' };
+const td = { padding:'0.32rem 0.6rem', color:'var(--text-1)', fontSize:'0.72rem', verticalAlign:'top', border:'1px solid #cfc8bc' };
+const numTd = { ...td, textAlign:'right', whiteSpace:'nowrap' };
 
 function Section({ n, title, children }) {
   return (
-    <div style={{ marginBottom:'1.6rem' }}>
-      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.15rem' }}>
+    <div style={{ marginBottom:'1.4rem' }}>
+      <div style={{ fontSize:'0.86rem', fontWeight:700, color:'var(--text-1)', marginBottom:'0.55rem', paddingBottom:'0.2rem', borderBottom:'1.5px solid #4a4a4a' }}>
         {n}. {title}
       </div>
-      {/* Palette-derived accent rule under each section heading */}
-      <div style={{ height:2.5, borderRadius:2, background:PALETTE_GRADIENT, opacity:0.9, marginBottom:'0.6rem' }} />
       {children}
     </div>
   );
@@ -65,28 +64,32 @@ function Section({ n, title, children }) {
 
 const TableWrap = ({ children }) => (
   <div style={{ overflowX:'auto' }} className="scrollbar-thin">
-    <table style={{ width:'100%', minWidth:560, borderCollapse:'collapse' }}>{children}</table>
+    <table style={{ width:'100%', minWidth:560, borderCollapse:'collapse', border:'1px solid #b9b2a5' }}>{children}</table>
   </div>
 );
 
 const paraStyle = { margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 };
 
+// Formal title page — a plain, centred office-document cover (no graphics).
 function CoverHeader({ meta }) {
   return (
-    <div style={{ background:'var(--green-900)', color:'#fff' }}>
-      <div style={{ padding:'1.5rem 2rem 1.1rem' }}>
-        <div style={{ fontSize:'0.625rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.375rem' }}>
-          Republic of Vanuatu · {meta.subtitle}
-        </div>
-        <div style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', fontWeight:700, marginBottom:'0.25rem', letterSpacing:'-0.01em' }}>{meta.title}</div>
-        <div style={{ fontSize:'0.85rem', fontWeight:600, color:'rgba(255,255,255,0.85)' }}>{meta.months}</div>
-        <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', marginTop:'0.35rem' }}>
-          Prepared by {meta.preparedBy} · Generated {meta.dateGenerated}{meta.dataSource ? ` · ${meta.dataSource}` : ''} · DRAFT
-        </div>
-        {meta.docRef && <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.55)', marginTop:'0.15rem' }}>Document Ref: {meta.docRef}</div>}
+    <div style={{ padding:'2.4rem 2rem 1.6rem', textAlign:'center', background:'var(--white)', borderBottom:'2px solid var(--text-1)' }}>
+      <div style={{ fontSize:'0.72rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.35rem' }}>
+        Republic of Vanuatu
       </div>
-      {/* Traditional Vanuatu motif band (palette-derived) */}
-      <div style={{ lineHeight:0 }} dangerouslySetInnerHTML={{ __html: patternBand({ width:900, height:26, responsive:true }) }} />
+      <div style={{ fontSize:'0.88rem', fontWeight:600, color:'var(--text-2)', marginBottom:'1.2rem' }}>{meta.subtitle}</div>
+      <div style={{ borderTop:'1px solid var(--text-2)', borderBottom:'1px solid var(--text-2)', padding:'1rem 0.5rem', margin:'0 auto', maxWidth:660 }}>
+        <div style={{ fontFamily:'var(--font-display)', fontSize:'1.45rem', fontWeight:800, color:'var(--text-1)', marginBottom:'0.35rem', letterSpacing:'-0.01em' }}>{meta.title}</div>
+        <div style={{ fontSize:'0.92rem', fontWeight:600, color:'var(--text-2)' }}>{meta.months}</div>
+      </div>
+      <div style={{ fontSize:'0.72rem', color:'var(--text-3)', marginTop:'1rem', lineHeight:1.7 }}>
+        Prepared by {meta.preparedBy}<br />
+        Generated {meta.dateGenerated}{meta.dataSource ? ` · ${meta.dataSource}` : ''}
+        {meta.docRef ? <><br />Document Ref: {meta.docRef}</> : null}
+      </div>
+      <div style={{ fontSize:'0.68rem', color:'var(--text-3)', marginTop:'0.7rem', fontStyle:'italic' }}>
+        Confidential — For official use only
+      </div>
     </div>
   );
 }
@@ -95,10 +98,9 @@ function CoverHeader({ meta }) {
 function ContentsList({ items }) {
   return (
     <div style={{ marginBottom:'1.6rem' }}>
-      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.15rem' }}>
+      <div style={{ fontSize:'0.86rem', fontWeight:700, color:'var(--text-1)', marginBottom:'0.55rem', paddingBottom:'0.2rem', borderBottom:'1.5px solid #4a4a4a' }}>
         Table of Contents
       </div>
-      <div style={{ height:2.5, borderRadius:2, background:PALETTE_GRADIENT, opacity:0.9, marginBottom:'0.6rem' }} />
       <ol style={{ margin:0, paddingLeft:'1.35rem' }}>
         {items.map((t, i) => (
           <li key={i} style={{ fontSize:'0.76rem', color:'var(--text-2)', marginBottom:'0.25rem', lineHeight:1.5 }}>{t}</li>
@@ -113,10 +115,9 @@ function AcronymsBlock({ acronyms }) {
   if (!acronyms?.length) return null;
   return (
     <div style={{ marginBottom:'1.6rem' }}>
-      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.15rem' }}>
+      <div style={{ fontSize:'0.86rem', fontWeight:700, color:'var(--text-1)', marginBottom:'0.55rem', paddingBottom:'0.2rem', borderBottom:'1.5px solid #4a4a4a' }}>
         Acronyms and Abbreviations
       </div>
-      <div style={{ height:2.5, borderRadius:2, background:PALETTE_GRADIENT, opacity:0.9, marginBottom:'0.6rem' }} />
       <TableWrap>
         <thead><tr>{['Acronym','Definition'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
         <tbody>
@@ -128,6 +129,44 @@ function AcronymsBlock({ acronyms }) {
           ))}
         </tbody>
       </TableWrap>
+    </div>
+  );
+}
+
+// Detailed per-activity write-ups: a facts table + run-in labelled paragraphs.
+function DetailedActivityReports({ items }) {
+  const fieldTd = { padding:'0.26rem 0.55rem', fontSize:'0.7rem', border:'1px solid #cfc8bc', verticalAlign:'top', color:'var(--text-1)' };
+  const labels = [
+    ['Strategic alignment', 'alignment'], ['Description of the activity', 'description'],
+    ['Outputs and results', 'outputs'], ['Means of verification', 'mov'],
+    ['Challenges', 'challenges'], ['Remarks and status', 'remarks'],
+  ];
+  return (
+    <div>
+      <p style={{ margin:'0 0 0.8rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
+        Each activity conducted during the reporting period is reported in full below — its strategic alignment,
+        description, outputs, means of verification, challenges and delivery status.
+      </p>
+      {items.map(ar => (
+        <div key={ar.n} style={{ marginBottom:'1.3rem', breakInside:'avoid' }}>
+          <div style={{ fontSize:'0.8rem', fontWeight:700, color:'var(--text-1)', marginBottom:'0.4rem' }}>{ar.n}.{' '}{ar.title}</div>
+          <table style={{ borderCollapse:'collapse', width:'100%', border:'1px solid #b9b2a5', marginBottom:'0.5rem' }}>
+            <tbody>
+              {ar.facts.map(([k, v]) => (
+                <tr key={k}>
+                  <td style={{ ...fieldTd, fontWeight:700, background:'#f0eee8', width:'34%', whiteSpace:'nowrap' }}>{k}</td>
+                  <td style={fieldTd}>{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {labels.map(([label, key]) => (
+            <p key={key} style={{ margin:'0 0 0.4rem', fontSize:'0.75rem', color:'var(--text-2)', lineHeight:1.55 }}>
+              <strong style={{ color:'var(--text-1)' }}>{label}:</strong> {ar[key]}
+            </p>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -154,8 +193,7 @@ function SignOffBlock({ signoff }) {
 }
 
 const ReportFooter = () => (
-  <div style={{ marginTop:'1.25rem' }}>
-    <div style={{ height:4, borderRadius:2, background:PALETTE_GRADIENT, opacity:0.9, marginBottom:'0.6rem' }} />
+  <div style={{ marginTop:'1.25rem', borderTop:'1px solid var(--text-3)', paddingTop:'0.6rem' }}>
     <div style={{ fontSize:'0.68rem', color:'var(--text-3)', textAlign:'center' }}>
       Department of Climate Change · Government of Vanuatu · www.docc.gov.vu · Confidential — For official use only
     </div>
@@ -294,29 +332,40 @@ export default function QuarterlyReportPreview({ report }) {
   const figFor = section => (report.figures || []).filter(f => f.section === section);
   const hasReports = report.reports?.length > 0;
   const hasPhotos = report.photos?.length > 0;
-  const reportsN = 11;
-  const photosN = 11 + (hasReports ? 1 : 0);
-  const attachN = 11 + (hasReports ? 1 : 0) + (hasPhotos ? 1 : 0);
+  const hasActivityReports = report.activityReports?.length > 0;
+  // Running section counter so sections stay contiguously numbered as optional
+  // sections (detailed reports, uploaded reports, photos) come and go.
+  let s = 0;
+  const nx = () => (s += 1, s);
   return (
     <div className="report-print-area" style={{ fontFamily:'var(--font-ui)', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
       <CoverHeader meta={meta} />
 
-      {/* Snapshot band */}
-      <div style={{ display:'flex', flexWrap:'wrap', gap:'1.25rem', padding:'1rem 2rem', background:'var(--green-50)', borderBottom:'1px solid var(--border)' }}>
-        {[
-          ['Activities', stats.total],
-          ['On Track', `${stats.onTrackPct}%`],
-          ['Completed', stats.green],
-          ['Ongoing', stats.amber],
-          ['Delayed', stats.red],
-          ['Planned Budget', fmtVUV(stats.totalBudget)],
-          ...(stats.conductedCount ? [['Conducted this period', stats.conductedCount]] : []),
-        ].map(([l, v]) => (
-          <div key={l}>
-            <div style={{ fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)' }}>{l}</div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', fontWeight:800, color:'var(--green-700)' }}>{v}</div>
-          </div>
-        ))}
+      {/* Key performance summary — a plain bordered table (Excel-style) */}
+      <div style={{ padding:'1rem 2rem 0.4rem', overflowX:'auto' }} className="scrollbar-thin">
+        <div style={{ fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.3rem' }}>
+          Key Performance Summary
+        </div>
+        <table style={{ borderCollapse:'collapse', width:'100%', minWidth:560, border:'1px solid #b9b2a5' }}>
+          <tbody>
+            <tr>
+              {[
+                ['Activities', stats.total],
+                ['On Track', `${stats.onTrackPct}%`],
+                ['Completed', stats.green],
+                ['Ongoing', stats.amber],
+                ['Delayed', stats.red],
+                ['Planned Budget', fmtVUV(stats.totalBudget)],
+                ...(stats.conductedCount ? [['Conducted', stats.conductedCount]] : []),
+              ].map(([l, v]) => (
+                <td key={l} style={{ border:'1px solid #cfc8bc', padding:'0.35rem 0.5rem', textAlign:'center', verticalAlign:'top' }}>
+                  <div style={{ fontSize:'0.56rem', fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase', color:'var(--text-3)', marginBottom:'0.15rem' }}>{l}</div>
+                  <div style={{ fontSize:'0.98rem', fontWeight:700, color:'var(--text-1)' }}>{v}</div>
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div style={{ maxHeight:480, overflowY:'auto', padding:'1.5rem 2rem' }} className="scrollbar-thin">
@@ -325,20 +374,21 @@ export default function QuarterlyReportPreview({ report }) {
           'Executive Summary', 'Key Achievements', 'Introduction', 'Activity Overview',
           `${meta.period} — Progress & Accomplishment`, 'Budget Utilisation',
           'Challenges and Limitations', 'Activities Conducted [BTOR]', 'Lessons Learned', 'Next Steps',
+          ...(hasActivityReports ? ['Detailed Activity Reports'] : []),
           ...(hasReports ? ['Activity Reports'] : []),
           ...(hasPhotos ? ['Photo Documentation'] : []),
-          'Supporting Attachments',
+          'Conclusion', 'Recommendations', 'Supporting Attachments',
         ]} />
 
         <AcronymsBlock acronyms={report.acronyms} />
 
-        <Section n={1} title="Executive Summary">
+        <Section n={nx()} title="Executive Summary">
           {report.executiveSummary.map((t, i) => (
             <p key={i} style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>{t}</p>
           ))}
         </Section>
 
-        <Section n={2} title="Key Achievements">
+        <Section n={nx()} title="Key Achievements">
           <ul style={{ margin:0, paddingLeft:'1.1rem' }}>
             {report.keyAchievements.map((a, i) => (
               <li key={i} style={{ fontSize:'0.78rem', color:'var(--text-2)', marginBottom:'0.35rem', lineHeight:1.5 }}>
@@ -348,13 +398,13 @@ export default function QuarterlyReportPreview({ report }) {
           </ul>
         </Section>
 
-        <Section n={3} title="Introduction">
+        <Section n={nx()} title="Introduction">
           {report.introduction.map((t, i) => (
             <p key={i} style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>{t}</p>
           ))}
         </Section>
 
-        <Section n={4} title="Activity Overview">
+        <Section n={nx()} title="Activity Overview">
           <TableWrap>
             <thead><tr>{['Strategic Theme','Activities','On Track','Ongoing','Delayed','Budget (VUV)'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -374,7 +424,7 @@ export default function QuarterlyReportPreview({ report }) {
           {figFor('overview').map(f => <Figure key={f.id} fig={f} />)}
         </Section>
 
-        <Section n={5} title={`${meta.period} — Progress & Accomplishment`}>
+        <Section n={nx()} title={`${meta.period} — Progress & Accomplishment`}>
           <TableWrap>
             <thead><tr>{['Activity / Programme','Theme / Focus Area','Output / Result','Means of Verification','Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -400,7 +450,7 @@ export default function QuarterlyReportPreview({ report }) {
           <Summary>{report.summaries.accomplishments}</Summary>
         </Section>
 
-        <Section n={6} title="Budget Utilisation">
+        <Section n={nx()} title="Budget Utilisation">
           <TableWrap>
             <thead><tr>{['Component','Planned (VUV)','Actual (VUV)','Variance','% Utilised','Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -433,7 +483,7 @@ export default function QuarterlyReportPreview({ report }) {
           {figFor('budget').map(f => <Figure key={f.id} fig={f} />)}
         </Section>
 
-        <Section n={7} title="Challenges and Limitations">
+        <Section n={nx()} title="Challenges and Limitations">
           {report.challenges.narrative.map((t, i) => (
             <p key={i} style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>{t}</p>
           ))}
@@ -456,7 +506,7 @@ export default function QuarterlyReportPreview({ report }) {
           <Summary>{report.summaries.challenges}</Summary>
         </Section>
 
-        <Section n={8} title="Activities Conducted [BTOR]">
+        <Section n={nx()} title="Activities Conducted [BTOR]">
           <TableWrap>
             <thead><tr>{['Date','Activity','Project / Location','Responsible Officer','Source'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -490,7 +540,7 @@ export default function QuarterlyReportPreview({ report }) {
           <Summary>{report.summaries.btor}</Summary>
         </Section>
 
-        <Section n={9} title="Lessons Learned">
+        <Section n={nx()} title="Lessons Learned">
           <TableWrap>
             <thead><tr>{['Lesson','Improvement Action','Responsible Unit','Quantitative Measure'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -506,7 +556,7 @@ export default function QuarterlyReportPreview({ report }) {
           </TableWrap>
         </Section>
 
-        <Section n={10} title="Next Steps">
+        <Section n={nx()} title="Next Steps">
           <TableWrap>
             <thead><tr>{['Plan Activity','Expected Outcome','Timeline','Lead Officer','Target / Metric'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -524,8 +574,15 @@ export default function QuarterlyReportPreview({ report }) {
           <Summary>{report.summaries.nextSteps}</Summary>
         </Section>
 
+        {hasActivityReports && (
+          <Section n={nx()} title="Detailed Activity Reports">
+            <DetailedActivityReports items={report.activityReports} />
+            {report.summaries.activityReports && <Summary>{report.summaries.activityReports}</Summary>}
+          </Section>
+        )}
+
         {hasReports && (
-          <Section n={reportsN} title="Activity Reports">
+          <Section n={nx()} title="Activity Reports">
             <p style={{ margin:'0 0 0.7rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
               Automatic summaries of narrative reports uploaded against activities this period.
             </p>
@@ -543,7 +600,7 @@ export default function QuarterlyReportPreview({ report }) {
         )}
 
         {hasPhotos && (
-          <Section n={photosN} title="Photo Documentation">
+          <Section n={nx()} title="Photo Documentation">
             <p style={{ margin:'0 0 0.7rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
               Field photographs uploaded against Strategic Results Framework activities during this reporting period.
             </p>
@@ -566,7 +623,21 @@ export default function QuarterlyReportPreview({ report }) {
           </Section>
         )}
 
-        <Section n={attachN} title="Supporting Attachments">
+        <Section n={nx()} title="Conclusion">
+          {(report.conclusion || []).map((t, i) => (
+            <p key={i} style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>{t}</p>
+          ))}
+        </Section>
+
+        <Section n={nx()} title="Recommendations">
+          <ol style={{ margin:0, paddingLeft:'1.35rem' }}>
+            {(report.recommendations || []).map((t, i) => (
+              <li key={i} style={{ fontSize:'0.78rem', color:'var(--text-2)', marginBottom:'0.35rem', lineHeight:1.55 }}>{t}</li>
+            ))}
+          </ol>
+        </Section>
+
+        <Section n={nx()} title="Supporting Attachments">
           <p style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>
             The following annexes and figures support the findings in this report. Figures 1–4 appear inline in the relevant sections above.
           </p>
