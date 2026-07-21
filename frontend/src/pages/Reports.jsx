@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { FileBarChart, Download, Printer, Loader2, CheckCircle, FileText, Plane, CalendarDays, CalendarRange, CalendarClock, BookMarked, ChevronDown, ChevronRight, PenLine } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
+import { signPhotoPaths } from '../lib/photoUrls';
 import { buildQuarterlyReport } from '../quarterlyReport';
 import QuarterlyReportPreview from '../components/QuarterlyReportPreview';
 
@@ -329,11 +330,13 @@ export default function Reports() {
       const byId = {};
       (acts.data ?? []).forEach(a => { byId[a.id] = a; });
       if (!phs.error && phs.data?.length) {
+        const signed = await signPhotoPaths(phs.data.map(p => p.storage_path));
+        if (cancelled) return;
         const out = phs.data.map(p => {
           const a = byId[p.activity_id] || {};
           return {
             id: p.id,
-            url: supabase.storage.from('activity-photos').getPublicUrl(p.storage_path).data?.publicUrl || '',
+            url: signed.get(p.storage_path) || '',
             caption: p.caption || '',
             activity: a.name || '',
             code: a.code || '',
