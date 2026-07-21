@@ -95,7 +95,9 @@ export function createApp({
   // Optional: force-drop cached keys (e.g. right after an edit). Guarded by a
   // shared secret so it can't be triggered by the public.
   app.post("/invalidate", express.json(), async (req, res) => {
-    if (invalidateSecret && req.get("x-invalidate-secret") !== invalidateSecret) {
+    // Fail closed: the endpoint is disabled unless a secret is configured AND
+    // matches, so a blank INVALIDATE_SECRET can't leave it open to anyone.
+    if (!invalidateSecret || req.get("x-invalidate-secret") !== invalidateSecret) {
       return res.status(403).json({ error: "forbidden" });
     }
     const cleared = await store.del("dmp:");

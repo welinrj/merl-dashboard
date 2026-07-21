@@ -7,7 +7,6 @@ import { ConfirmHost } from './lib/confirm';
 
 // i18n must be imported before App so translations are ready
 import './i18n';
-// Register axios mock-data interceptor for static hosting (GitHub Pages)
 import App from './App';
 import './index.css';
 
