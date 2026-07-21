@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FileBarChart, Download, Printer, Loader2, CheckCircle, FileText, Plane, CalendarDays, CalendarRange, CalendarClock, BookMarked, ChevronDown, ChevronRight, PenLine } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { signPhotoPaths } from '../lib/photoUrls';
+import { buildXlsxBlob } from '../lib/xlsxWrite';
 import { buildQuarterlyReport } from '../quarterlyReport';
 import QuarterlyReportPreview from '../components/QuarterlyReportPreview';
 
@@ -195,23 +196,33 @@ function ReportPreview({ type, indicators, budgetRows }) {
   );
 }
 
-function exportExcel({ type, projectLabel, period, indicators, budgetRows }) {
-  const wb = XLSX.utils.book_new();
+// Builds the workbook with our JSZip-based writer (frontend/src/lib/xlsxWrite.js)
+// rather than SheetJS, which carries unpatched advisories on npm.
+async function exportExcel({ type, projectLabel, period, indicators, budgetRows }) {
+  const indRows = [
+    ['Code', 'Indicator', 'Baseline', 'Current', 'Target', '% of target', 'Status'],
+    ...indicators.map(i => [
+      i.code, i.name, i.baseline, i.current, i.target, pct(i.current, i.target), TRAFFIC_LABEL[i.traffic],
+    ]),
+  ];
+  const budRows = [
+    ['Component', 'Budget (VUV)', 'Spent (VUV)', '% utilised'],
+    ...budgetRows.map(b => [
+      b.label, b.budget_vuv, b.spent_vuv, pct(b.spent_vuv, b.budget_vuv),
+    ]),
+  ];
 
-  const indSheet = XLSX.utils.json_to_sheet(indicators.map(i => ({
-    Code: i.code, Indicator: i.name, Baseline: i.baseline, Current: i.current,
-    Target: i.target, '% of target': pct(i.current, i.target), Status: TRAFFIC_LABEL[i.traffic],
-  })));
-  XLSX.utils.book_append_sheet(wb, indSheet, 'Indicators');
-
-  const budSheet = XLSX.utils.json_to_sheet(budgetRows.map(b => ({
-    Component: b.label, 'Budget (VUV)': b.budget_vuv, 'Spent (VUV)': b.spent_vuv,
-    '% utilised': pct(b.spent_vuv, b.budget_vuv),
-  })));
-  XLSX.utils.book_append_sheet(wb, budSheet, 'Budget');
+  const blob = await buildXlsxBlob([
+    { name: 'Indicators', rows: indRows },
+    { name: 'Budget', rows: budRows },
+  ]);
 
   const fname = `${type.id}-report_${projectLabel}_${period}`.replace(/\s+/g, '_') + '.xlsx';
-  XLSX.writeFile(wb, fname);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // ── Editable narrative + sign-off (persisted per report identity) ────────────
@@ -580,7 +591,7 @@ export default function Reports() {
                       : <><FileText size={14}/> Word</>}
                   </button>
                   <button
-                    onClick={() => exportExcel({ type: selected, projectLabel, period, indicators: previewIndicators, budgetRows })}
+                    onClick={() => { exportExcel({ type: selected, projectLabel, period, indicators: previewIndicators, budgetRows }).catch(() => toast.error('Excel export failed.')); }}
                     className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.625rem 1rem', fontSize:'0.875rem' }}>
                     <Download size={14}/> Excel
                   </button>
