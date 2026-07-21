@@ -91,6 +91,47 @@ function CoverHeader({ meta }) {
   );
 }
 
+// Table of Contents — front matter listing the numbered body sections.
+function ContentsList({ items }) {
+  return (
+    <div style={{ marginBottom:'1.6rem' }}>
+      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.15rem' }}>
+        Table of Contents
+      </div>
+      <div style={{ height:2.5, borderRadius:2, background:PALETTE_GRADIENT, opacity:0.9, marginBottom:'0.6rem' }} />
+      <ol style={{ margin:0, paddingLeft:'1.35rem' }}>
+        {items.map((t, i) => (
+          <li key={i} style={{ fontSize:'0.76rem', color:'var(--text-2)', marginBottom:'0.25rem', lineHeight:1.5 }}>{t}</li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+// Acronyms & Abbreviations — front-matter glossary.
+function AcronymsBlock({ acronyms }) {
+  if (!acronyms?.length) return null;
+  return (
+    <div style={{ marginBottom:'1.6rem' }}>
+      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--green-700)', marginBottom:'0.15rem' }}>
+        Acronyms and Abbreviations
+      </div>
+      <div style={{ height:2.5, borderRadius:2, background:PALETTE_GRADIENT, opacity:0.9, marginBottom:'0.6rem' }} />
+      <TableWrap>
+        <thead><tr>{['Acronym','Definition'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+        <tbody>
+          {acronyms.map((a, i) => (
+            <tr key={a.abbr} style={zebra(i)}>
+              <td style={{ ...td, fontWeight:700, whiteSpace:'nowrap' }}>{a.abbr}</td>
+              <td style={td}>{a.full}</td>
+            </tr>
+          ))}
+        </tbody>
+      </TableWrap>
+    </div>
+  );
+}
+
 function SignOffBlock({ signoff }) {
   if (!signoff) return null;
   return (
@@ -131,6 +172,12 @@ function BtorReportPreview({ report }) {
     <div className="report-print-area" style={{ fontFamily:'var(--font-ui)', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
       <CoverHeader meta={meta} />
       <div style={{ maxHeight:480, overflowY:'auto', padding:'1.5rem 2rem' }} className="scrollbar-thin">
+        <ContentsList items={[
+          'Mission Details', 'Purpose & Objectives', 'Activities Conducted',
+          'Key Findings & Outcomes', 'Stakeholders Engaged', 'Challenges & Limitations',
+          'Follow-up Actions', ...(hasPhotos ? ['Photo Documentation'] : []),
+        ]} />
+        <AcronymsBlock acronyms={report.acronyms} />
         <Section n={1} title="Mission Details">
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.78rem' }}>
             <tbody>
@@ -273,6 +320,17 @@ export default function QuarterlyReportPreview({ report }) {
       </div>
 
       <div style={{ maxHeight:480, overflowY:'auto', padding:'1.5rem 2rem' }} className="scrollbar-thin">
+
+        <ContentsList items={[
+          'Executive Summary', 'Key Achievements', 'Introduction', 'Activity Overview',
+          `${meta.period} — Progress & Accomplishment`, 'Budget Utilisation',
+          'Challenges and Limitations', 'Activities Conducted [BTOR]', 'Lessons Learned', 'Next Steps',
+          ...(hasReports ? ['Activity Reports'] : []),
+          ...(hasPhotos ? ['Photo Documentation'] : []),
+          'Supporting Attachments',
+        ]} />
+
+        <AcronymsBlock acronyms={report.acronyms} />
 
         <Section n={1} title="Executive Summary">
           {report.executiveSummary.map((t, i) => (

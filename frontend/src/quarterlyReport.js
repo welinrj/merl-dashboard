@@ -60,6 +60,54 @@ function reportTitle(kind, p) {
   }
 }
 
+// A plain-language word for the report cadence, used in the introduction.
+const KIND_WORD = {
+  btor: 'back-to-office', monthly: 'monthly', halfyear: 'half-year',
+  annual: 'annual', quarterly: 'quarterly',
+};
+
+// Master acronym register for DoCC reports. A fixed, comprehensive glossary is
+// standard front-matter for these documents; the report includes the full list
+// so any acronym used in the narrative or tables is defined for the reader.
+const REPORT_ACRONYMS = [
+  ['CCA', 'Climate Change Adaptation'],
+  ['CCDRR', 'Climate Change and Disaster Risk Reduction (Policy 2016–2030)'],
+  ['CSO', 'Civil Society Organisation'],
+  ['DoCC', 'Department of Climate Change'],
+  ['DoE', 'Department of Energy'],
+  ['DRM', 'Disaster Risk Management'],
+  ['DRR', 'Disaster Risk Reduction'],
+  ['GCF', 'Green Climate Fund'],
+  ['GEDSI', 'Gender Equality, Disability and Social Inclusion'],
+  ['GEF', 'Global Environment Facility'],
+  ['GHG', 'Greenhouse Gas'],
+  ['KPI', 'Key Performance Indicator'],
+  ['L&D', 'Loss and Damage'],
+  ['LDCF', 'Least Developed Countries Fund'],
+  ['LDWG', 'Loss and Damage Working Group'],
+  ['M&E', 'Monitoring and Evaluation'],
+  ['MERL', 'Monitoring, Evaluation, Reporting and Learning'],
+  ['MFAT', 'Ministry of Foreign Affairs and Trade (New Zealand)'],
+  ['MoCC', 'Ministry of Climate Change'],
+  ['MoV', 'Means of Verification'],
+  ['MRV', 'Monitoring, Reporting and Verification'],
+  ['NAB', 'National Advisory Board on Climate Change and Disaster Risk Reduction'],
+  ['NAP', 'National Adaptation Plan'],
+  ['NAPA', 'National Adaptation Programme of Action'],
+  ['NDC', 'Nationally Determined Contribution'],
+  ['NDMO', 'National Disaster Management Office'],
+  ['NERM', 'National Energy Road Map'],
+  ['NIE', 'National Implementing Entity'],
+  ['NSDP', 'National Sustainable Development Plan (Vanuatu 2030)'],
+  ['RBM', 'Results-Based Management'],
+  ['REDD+', 'Reducing Emissions from Deforestation and Forest Degradation'],
+  ['SRF', 'Strategic Results Framework'],
+  ['UNFCCC', 'United Nations Framework Convention on Climate Change'],
+  ['VCAP', 'Vanuatu Coastal Adaptation Project'],
+  ['VMGD', 'Vanuatu Meteorology and Geo-Hazards Department'],
+  ['VUV', 'Vanuatu Vatu (national currency)'],
+].map(([abbr, full]) => ({ abbr, full }));
+
 // A concise, well-formed title-case category for a challenge, from a theme.
 const THEME_CATEGORY = {
   Adaptation: 'Technical', Mitigation: 'Technical', Governance: 'Coordination',
@@ -223,9 +271,13 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
   }));
 
   /* ── Introduction (institutional framing) ─────────────────────────────── */
+  const kindWord = KIND_WORD[kind] || 'progress';
   const introduction = [
-    `The Department of Climate Change is a key government institution mandated to address the urgent and complex challenges posed by climate change. Its primary focus is on mitigation, adaptation, and resilience-building to ensure that Vanuatu remains prepared for the adverse impacts of climate change on the environment, society, and economy.`,
-    `During ${periodPhrase}, the Department implemented a range of initiatives to enhance climate literacy, strengthen policy direction, deepen community engagement, and advance sectoral research — reaffirming its commitment to reducing climate risks and ensuring Vanuatu's communities and ecosystems are better equipped to withstand current and future climate challenges.`,
+    `The Department of Climate Change (DoCC), under the Ministry of Climate Change (MoCC), is the Government of Vanuatu's mandated institution for the coordination and implementation of all climate change adaptation, mitigation and disaster risk management across the country, established under the Meteorology, Geological Hazards and Climate Change Act No. 25 of 2016.`,
+    `Guided by its vision to build a sustainable and climate-resilient Vanuatu, the Department is the national focal point for climate change. It supports the National Advisory Board on Climate Change and Disaster Risk Reduction (NAB), mainstreams climate change across government in line with the National Sustainable Development Plan (NSDP) 2016–2030 — Vanuatu 2030: The People's Plan — operationalises the Climate Change and Disaster Risk Reduction (CCDRR) Policy 2016–2030, and coordinates Vanuatu's obligations under the UNFCCC and the Paris Agreement.`,
+    `Vanuatu is among the most climate-vulnerable nations on Earth, yet contributes only 0.0016% of global greenhouse-gas emissions. Recurrent extreme events — including Cyclones Pam (2015), Harold (2020), and Kevin and Judy (2023) — have each caused economic losses exceeding USD 500 million, compounded by slow-onset impacts such as sea-level rise, coastal erosion and the salinisation of productive land. This context frames the Department's work programme and the results reported here.`,
+    `This ${kindWord} report presents the Department's implementation progress for ${periodPhrase} against the DoCC Strategic Results Framework 2025–2030. It reports delivery across ${total} activities within ${S.themes} strategic themes — Adaptation, Mitigation, Governance, Finance, Knowledge and Cross-cutting — using a Results-Based Management (RBM) approach with traffic-light (red/amber/green) performance status, and consolidates key achievements, budget utilisation, challenges, lessons learned and priorities for the coming period.`,
+    `The report is generated from the Department's Monitoring, Evaluation, Reporting and Learning (MERL) platform, drawing on live activity data, field evidence recorded as Means of Verification (MoV), and narrative reports submitted by responsible officers — reaffirming the Department's commitment to transparency, accountability and evidence-based decision-making in strengthening national climate resilience.`,
   ];
 
   /* ── Activity overview (counts by theme) ──────────────────────────────── */
@@ -504,6 +556,7 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     conductedByMonth,
     conductedByOfficer,
     btorMeta,
+    acronyms: REPORT_ACRONYMS,
     executiveSummary,
     keyAchievements,
     introduction,
