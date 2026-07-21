@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, X, Search, AlertCircle, Columns3, ImagePlus, Load
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 import { processReportFile, reportKind, ACCEPTED_REPORT_EXT, REPORT_KIND_LABEL } from '../reportProcessing';
+import { signPhotoPaths } from '../lib/photoUrls';
 import { ACTIVITIES as EMBEDDED } from '../strategicPlan';
 
 const BANNER = `${import.meta.env.BASE_URL}IMG_0874.jpeg`;
@@ -11,7 +12,6 @@ const PHOTO_BUCKET = 'activity-photos';
 const REPORT_BUCKET = 'activity-reports';
 const MAX_PHOTO_MB = 10;
 const MAX_REPORT_MB = 25;
-const photoUrl = (path) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '';
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const THEMES = ['Adaptation', 'Mitigation', 'Governance', 'Finance', 'Knowledge', 'Cross-cutting'];
 const STATUS = {
@@ -523,6 +523,18 @@ function ReportsModal({ activity, onClose, onChanged }) {
 function PhotosModal({ activity, photos, user, onClose, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [captions, setCaptions] = useState({});   // photo id -> draft caption
+  const [urls, setUrls] = useState(new Map());     // storage_path -> signed URL
+
+  // The activity-photos bucket is private; sign the visible paths on demand.
+  const pathKey = photos.map(p => p.storage_path).join('|');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const map = await signPhotoPaths(photos.map(p => p.storage_path));
+      if (!cancelled) setUrls(map);
+    })();
+    return () => { cancelled = true; };
+  }, [pathKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const upload = async (fileList) => {
     const files = Array.from(fileList || []);
@@ -599,7 +611,7 @@ function PhotosModal({ activity, photos, user, onClose, onChanged }) {
               {photos.map(p => (
                 <div key={p.id} style={{ border:'1px solid var(--border)', borderRadius:10, overflow:'hidden', background:'var(--white)' }}>
                   <div style={{ position:'relative', aspectRatio:'4 / 3', background:'#ece9e3' }}>
-                    <img src={photoUrl(p.storage_path)} alt={p.caption || 'Activity photo'} loading="lazy"
+                    <img src={urls.get(p.storage_path) || ''} alt={p.caption || 'Activity photo'} loading="lazy"
                       style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                     <button onClick={() => remove(p)} disabled={busy} title="Delete photo" aria-label="Delete photo"
                       style={{ position:'absolute', top:8, right:8, background:'rgba(179,64,47,0.92)', border:'none', borderRadius:8, cursor:'pointer', color:'#fff', padding:'0.4rem', display:'flex', boxShadow:'0 1px 4px rgba(0,0,0,0.35)' }}>

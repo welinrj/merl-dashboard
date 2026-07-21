@@ -6,10 +6,9 @@ import { ChevronLeft, ChevronRight, Play, Pause, Images, ImageOff, Trash2 } from
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
+import { PHOTO_BUCKET, signPhotoPaths } from '../lib/photoUrls';
 
-const PHOTO_BUCKET = 'activity-photos';
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
-const photoUrl = (path) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '';
 const AUTO_MS = 5000;
 
 export default function Gallery({ user }) {
@@ -32,10 +31,13 @@ export default function Gallery({ user }) {
       if (cancelled) return;
       const byId = {};
       (ac.data ?? []).forEach(a => { byId[a.id] = a; });
-      const list = (ph.data ?? []).map(p => {
+      const rows = ph.data ?? [];
+      const signed = await signPhotoPaths(rows.map(p => p.storage_path));
+      if (cancelled) return;
+      const list = rows.map(p => {
         const a = byId[p.activity_id] || {};
         return {
-          id: p.id, url: photoUrl(p.storage_path), caption: p.caption || '',
+          id: p.id, url: signed.get(p.storage_path) || '', caption: p.caption || '',
           activity: a.name || '', theme: a.theme || '', code: a.code || '',
           source: p.source || 'manual',
         };
