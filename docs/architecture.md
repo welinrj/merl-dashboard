@@ -172,6 +172,30 @@ The database enum `merl.user_role` carries the same five roles
 `ROLE_*` constants via `toAppRole`/`toDbRole` in
 `frontend/src/supabaseClient.ts`.
 
+### 5.2 Storage objects & the shared analytics cache
+
+- **Private buckets, signed URLs.** All four storage buckets
+  (`activity-photos`, `activity-reports`, `project-documents`, `datasets`)
+  are private. Objects are served through short-lived signed URLs minted with
+  the caller's own token (`frontend/src/lib/photoUrls.js` batch-signs photo
+  paths; Project Files and Datasets sign on download). Nothing in storage is
+  world-readable by path.
+- **Editor-only writes.** `storage.objects` RLS is split per verb
+  (migration `0023_storage_hardening.sql`): any signed-in user may `SELECT`
+  (needed to mint signed URLs) and `INSERT` (upload / submission flows), but
+  `UPDATE` (overwrite) and `DELETE` are restricted to editors via the
+  `merl.is_editor()` helper — a signed-in user can no longer overwrite or
+  delete another user's files.
+- **Accepted anon exposure — `public.v_srf_analytics`.** This view is granted
+  to the `anon` role *by design* so the Redis caching sidecar can read it with
+  the public anon key. It exposes **only organisation-wide aggregates** —
+  activity counts by status, total budget, and budget/activity roll-ups by
+  theme and focus area (see migration `0020_analytics_cache.sql`). It contains
+  no row-level, personal, or per-user data, so anonymous read access is a
+  conscious, accepted trade-off. Per-user and RLS-protected data is never
+  routed through the shared cache; it stays on the direct Supabase path under
+  the user's token (see `CLAUDE.md` → *Architecture / caching*).
+
 ## 6. Deployment Environments
 
 | Environment | Frontend | Backend | Purpose |
