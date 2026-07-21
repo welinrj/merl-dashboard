@@ -4,6 +4,7 @@
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun,
+  PageBreak, TableOfContents,
 } from 'docx';
 import { STATUS_KEY_LABEL } from './quarterlyReport';
 import { renderFigureSvg, svgToPngBytes, svgDims } from './reportCharts';
@@ -179,30 +180,63 @@ export async function buildQuarterlyDocxBlob(report) {
     if (png) photoPngs.push({ photo, png });
   }
 
-  // ── Cover ──
+  // ── Cover page ──
   children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { before: 200, after: 80 },
-    children: [new TextRun({ text: meta.title, bold: true, size: 48, color: GREEN })],
+    alignment: AlignmentType.CENTER, spacing: { before: 480, after: 40 },
+    children: [new TextRun({ text: 'REPUBLIC OF VANUATU', bold: true, size: 22, color: MUTED, characterSpacing: 30 })],
+  }));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: { after: 300 },
+    children: [new TextRun({ text: meta.subtitle, size: 20, color: INK })],
+  }));
+  if (bandPara()) children.push(bandPara());
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: { before: 320, after: 80 },
+    children: [new TextRun({ text: meta.title, bold: true, size: 52, color: GREEN })],
   }));
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER, spacing: { after: 60 },
-    children: [new TextRun({ text: meta.subtitle, size: 22, color: INK })],
+    children: [new TextRun({ text: meta.months, size: 24, color: MUTED, italics: true })],
   }));
   children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { after: 60 },
-    children: [new TextRun({ text: meta.months, size: 20, color: MUTED, italics: true })],
+    alignment: AlignmentType.CENTER, spacing: { before: 400, after: 40 },
+    children: [new TextRun({ text: `Prepared by: ${meta.preparedBy}`, size: 18, color: INK })],
   }));
   children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { after: 240 },
-    children: [new TextRun({ text: `Prepared by: ${meta.preparedBy}  ·  Generated: ${meta.dateGenerated}${meta.dataSource ? `  ·  ${meta.dataSource}` : ''}`, size: 16, color: MUTED })],
+    alignment: AlignmentType.CENTER, spacing: { after: 40 },
+    children: [new TextRun({ text: `Generated: ${meta.dateGenerated}${meta.dataSource ? `  ·  ${meta.dataSource}` : ''}`, size: 16, color: MUTED })],
   }));
   if (meta.docRef) {
     children.push(new Paragraph({
-      alignment: AlignmentType.CENTER, spacing: { after: 200 },
+      alignment: AlignmentType.CENTER, spacing: { after: 40 },
       children: [new TextRun({ text: `Document Ref: ${meta.docRef}`, size: 16, color: MUTED })],
     }));
   }
-  if (bandPara()) children.push(bandPara());
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: { before: 200 },
+    children: [new TextRun({ text: 'Confidential — For official use only', size: 15, color: MUTED, italics: true })],
+  }));
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+
+  // ── Table of Contents ──
+  children.push(heading('Table of Contents'));
+  children.push(new Paragraph({
+    spacing: { after: 120 },
+    children: [new TextRun({ text: 'In Microsoft Word, right-click the field below and choose “Update Field” to populate page numbers.', size: 15, color: MUTED, italics: true })],
+  }));
+  children.push(new TableOfContents('Contents', { hyperlink: true, headingStyleRange: '1-2' }));
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+
+  // ── Acronyms & Abbreviations ──
+  if ((report.acronyms || []).length) {
+    children.push(heading('Acronyms and Abbreviations'));
+    children.push(table(
+      ['Acronym', 'Definition'],
+      report.acronyms.map(a => [{ text: a.abbr, bold: true }, a.full]),
+      [2200, 7600],
+    ));
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+  }
 
   // ── Back to Office Report — mission layout ──
   if (meta.kind === 'btor') {
