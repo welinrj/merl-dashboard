@@ -401,6 +401,113 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     target: a.target2030 != null ? `${Math.round(a.target2030 * 100)}% by 2030` : '—',
   }));
 
+  /* ── Detailed activity reports (one full write-up per activity) ────────────
+     A proper narrative section per activity, not a one-line summary. Built from
+     the activities actually conducted in the period (their reported description,
+     date, officer and project), enriched with the matching Strategic Results
+     Framework record (theme, focus area, indicator, target, status, risk). When
+     no field reports have been submitted, the in-progress framework activities
+     are written up from their own register fields instead. */
+  const titleFrom = (text) => {
+    const t = (text || '').trim().replace(/\s+/g, ' ');
+    if (!t) return 'Activity';
+    const first = t.split('. ')[0];
+    const words = first.split(' ');
+    const s = words.length > 16 ? words.slice(0, 16).join(' ') + '…' : first.replace(/\.$/, '');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+  const matchSrf = (text) => {
+    const t = (text || '').toLowerCase();
+    if (!t) return null;
+    let best = null, bestScore = 0;
+    for (const a of acts) {
+      const nm = (a.name || '').toLowerCase();
+      if (!nm) continue;
+      let s = 0;
+      for (const w of nm.split(/\W+/)) if (w.length > 4 && t.includes(w)) s += 1;
+      if (s > bestScore) { bestScore = s; best = a; }
+    }
+    return bestScore >= 2 ? best : null;
+  };
+  const arSource = conducted.length ? conducted.slice(0, 40) : [...greenActs, ...amberActs].slice(0, 12);
+  const activityReports = arSource.map((item, i) => {
+    const isConducted = !!item.description;
+    const srf = isConducted ? matchSrf(item.description) : item;
+    const title = isConducted ? titleFrom(item.description) : (item.name || 'Activity');
+    const theme = (srf && srf.theme) || item.theme || '—';
+    const focusArea = (srf && srf.focusArea) || item.focusArea || '';
+    const code = (srf && srf.code) || item.code || '';
+    const indicator = (srf && srf.indicator) || item.indicator || '';
+    const target = srf && srf.target2030 != null ? `${Math.round(srf.target2030 * 100)}% by 2030` : '';
+    const activityBudget = (srf && srf.budget) || item.budget || 0;
+    const risk = (srf && srf.risk) || item.risk || '';
+    const statusKey = (srf && srf.status) || item.status || 'none';
+    const date = isConducted ? (item.activity_date ? fmtDMY(item.activity_date) : ymShort(item.activity_month)) : p.months;
+    const location = isConducted ? (item.project_name || '—') : (project || 'DoCC Strategic Results Framework 2025–2030');
+    const officer = isConducted ? (item.submitted_by || 'Department of Climate Change') : 'Department of Climate Change';
+    const source = isConducted ? (REPORT_DOC_LABEL[item.doc_type] || 'Activity report') : 'SRF activity register';
+    const ev = evidence[title] || evidence[item.name] || null;
+
+    const alignment = focusArea
+      ? `This activity is delivered under the ${theme} theme of the DoCC Strategic Results Framework 2025–2030, within the focus area "${focusArea}"${code ? ` (activity ${code})` : ''}. It contributes to the Department's mandate to coordinate and implement climate change adaptation, mitigation and disaster risk management, in line with the National Sustainable Development Plan (Vanuatu 2030).`
+      : `This activity was undertaken under ${location} during ${date} as part of the Department's climate change work programme under the Strategic Results Framework 2025–2030.`;
+    const descText = isConducted
+      ? item.description.trim()
+      : ((item.progress && item.progress.trim() && !/^no\s+(progress|data)/i.test(item.progress))
+          ? item.progress.trim()
+          : `Implementation of this activity progressed during ${periodPhrase}. ${STATUS_OUTPUT[statusKey] || ''}`.trim());
+    const outputs = indicator
+      ? `The activity contributes to the output indicator: ${indicator}.${target ? ` Framework target: ${target}.` : ''}`
+      : `Outputs are as documented in the source ${isConducted ? 'report' : 'register'} for this activity.`;
+    const movParts = [];
+    if (ev?.reports) movParts.push(`${ev.reports} narrative report${ev.reports > 1 ? 's' : ''}`);
+    if (ev?.photos) movParts.push(`${ev.photos} field photograph${ev.photos > 1 ? 's' : ''}`);
+    if (isConducted) movParts.push(`source document (${source}, submitted by ${officer})`);
+    if (!movParts.length) movParts.push('Strategic Results Framework register and officer progress notes');
+    const mov = movParts.join('; ') + '.';
+    const challenges = risk
+      ? risk.trim()
+      : statusKey === 'red' ? 'Implementation was delayed during the reporting period. The activity is prioritised for acceleration in the next cycle.'
+      : statusKey === 'amber' ? 'Implementation is ongoing; minor scheduling and coordination constraints were managed through adaptive planning.'
+      : 'No significant challenges were reported for this activity during the period.';
+    const remarks = statusKey === 'green' ? 'The activity was delivered as planned and its outputs are on track against the 2025–2030 framework targets.'
+      : statusKey === 'amber' ? 'The activity remains in progress and will continue into the next reporting period.'
+      : statusKey === 'red' ? 'The activity requires management attention and is carried forward as a priority for the next period.'
+      : 'The activity is scheduled to commence in a forthcoming reporting period.';
+
+    return {
+      n: i + 1, title, date, period: quarterLabel, location, officer, source,
+      theme, focusArea, code, statusKey, budget: activityBudget,
+      facts: [
+        ['Reporting period', quarterLabel],
+        ['Date conducted', date],
+        ['Project / location', location],
+        ['Responsible officer', officer],
+        ['Strategic theme', theme],
+        ...(focusArea ? [['Focus area', focusArea]] : []),
+        ...(code ? [['SRF activity code', code]] : []),
+        ['Delivery status', STATUS_KEY_LABEL[statusKey]],
+        ...(activityBudget ? [['Indicative budget (VUV)', activityBudget.toLocaleString('en-US')]] : []),
+      ],
+      alignment, description: descText, outputs, mov, challenges, remarks,
+    };
+  });
+
+  /* ── Conclusion & recommendations ─────────────────────────────────────── */
+  const conclusion = [
+    `In summary, during ${periodPhrase} the Department of Climate Change advanced the implementation of ${total} activities across ${S.themes} strategic themes, with ${st.green} activities (${onTrackPct}%) completed or on track and ${st.red} experiencing delays. A total planned budget of ${fmtVUV(S.total_budget_vuv)} is being managed across the Strategic Results Framework 2025–2030.`,
+    `The Department reaffirms its commitment to building a sustainable and climate-resilient Vanuatu. It will continue to strengthen coordination with government stakeholders, development partners, civil society organisations and communities to accelerate delivery and address the challenges identified in this report.`,
+  ];
+  const recommendations = [
+    `Accelerate the ${st.red + st.amber} delayed and at-risk activities through focused work-planning and adaptive scheduling during ${nextQuarter}.`,
+    `Strengthen monthly progress and M&E reporting discipline across all units and delivery partners to maintain a complete and verifiable evidence base.`,
+    `Prioritise resource mobilisation and timely fund disbursement to sustain implementation momentum across the Framework.`,
+    budgetTotals.actual > 0
+      ? `Improve budget execution against the ${fmtVUV(budgetTotals.planned)} plan, currently at ${budgetTotals.pctUtil}% utilisation, and address variances by component.`
+      : `Connect the finance data source so that budget utilisation can be tracked against the ${fmtVUV(budgetTotals.planned)} planned allocation.`,
+    `Continue to deepen community engagement and gender-, disability- and social-inclusion (GEDSI) responsive approaches across adaptation activities.`,
+  ];
+
   /* ── Back to Office Report — mission framing ──────────────────────────────
      A BTOR is a field/mission record, so it gets its own structure: who went,
      when, where, why, what was done, what was found and what follows. Auto-
@@ -510,6 +617,9 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
         + '.'
       : `${btor.length} completed activities are documented below as back-to-office field records for the period (no period reports have been submitted yet).`,
     nextSteps: `${nextSteps.length} at-risk and delayed activities are prioritised for acceleration in ${nextQuarter}.`,
+    activityReports: activityReports.length
+      ? `${activityReports.length} activit${activityReports.length > 1 ? 'ies are' : 'y is'} reported in detail below, each with its strategic alignment, description, outputs, means of verification, challenges and status.`
+      : '',
     photos: photoDocs.length
       ? `${photoDocs.length} photograph${photoDocs.length > 1 ? 's' : ''} document field implementation across ${photoActivityCount || 1} activit${(photoActivityCount || 1) > 1 ? 'ies' : 'y'} this period.`
       : '',
@@ -565,8 +675,11 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     budget: { rows: budgetRows, totals: budgetTotals, live: !!(live && live.budgetRows?.length) },
     challenges: { narrative: challengeNarrative, rows: challengeRows },
     btor,
+    activityReports,
     lessons,
     nextSteps,
+    conclusion,
+    recommendations,
     figures,
     photos: photoDocs,
     reports: reportDocs,
