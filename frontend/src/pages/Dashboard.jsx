@@ -4,15 +4,14 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
 import { ArrowRight, X, ChevronDown } from 'lucide-react';
-import VaporizeTextCycle, { Tag } from '@/components/ui/vaporize-text-cycle';
 import StatTile from '@/components/ui/StatTile';
+import DashboardHero from '@/components/DashboardHero';
 import { STRATEGIC_THEMES, ACTIVITIES, PLAN_SUMMARY as S } from '../strategicPlan';
 
 /* The animated title cycles through the parts of the full heading. A single
    non-wrapping canvas line can't fit the whole phrase legibly on a phone, so
    we vaporize/reform it in readable segments (the hidden <h1> still carries the
    complete title for accessibility and SEO). */
-const TITLE_PARTS = ['Dashboard', 'Monitoring, Evaluation,', 'Research & Learning'];
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
 const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
@@ -269,40 +268,18 @@ export default function Dashboard() {
 
   const clearFilters = () => { setThemes([]); setFocusAreas([]); setStatuses([]); };
 
-  /* Size the vaporize title to the container so each segment stays legible from
-     phone (~360px) to desktop, then derive a matching band height. */
-  const titleRef = useRef(null);
-  const [titleW, setTitleW] = useState(0);
-  useEffect(() => {
-    const el = titleRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(([e]) => setTitleW(e.contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const titleFont = Math.round(Math.min(64, Math.max(30, titleW / 12)));
-
   return (
     <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
 
-      <h1 ref={titleRef} style={{ height:Math.round(titleFont * 1.5), margin:'0 0 0.35rem' }}>
-        {titleW > 0 && (
-          <VaporizeTextCycle
-            texts={TITLE_PARTS}
-            font={{ fontFamily:"'DM Sans', sans-serif", fontSize:`${titleFont}px`, fontWeight:800 }}
-            color="rgb(28, 21, 18)"
-            spread={4}
-            density={6}
-            animation={{ vaporizeDuration:2, fadeInDuration:1, waitDuration:1 }}
-            direction="left-to-right"
-            alignment="left"
-            tag={Tag.H1}
-          />
-        )}
-      </h1>
-      <div style={{ fontSize:'0.85rem', color:'var(--text-2)', margin:'0 0 1.25rem' }}>
-        DoCC Strategic Results Framework 2025–2030 · Government of Vanuatu
-      </div>
+      <DashboardHero
+        activities={view.activities}
+        onTrackPct={onTrackPct}
+        greenCount={st.green}
+        budgetLabel={fmtVUV(view.total_budget_vuv)}
+        themes={view.themes}
+        focusAreas={view.focus_areas}
+        indicators={view.indicators}
+      />
 
       {/* Filter bar */}
       <div className="card" style={{ padding:'0.85rem 1rem', marginBottom:'1rem', display:'flex', gap:'0.9rem', alignItems:'flex-end', flexWrap:'wrap' }}>
