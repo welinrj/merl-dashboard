@@ -637,10 +637,15 @@ export default function Reports() {
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @page { size: A4; margin: 16mm 14mm; }
         @media print {
           body * { visibility: hidden; }
           .report-print-area, .report-print-area * { visibility: visible; }
-          .report-print-area { position: absolute; left: 0; top: 0; width: 100%; max-height: none; }
+          .report-print-area { position: absolute; left: 0; top: 0; width: 100%; max-height: none; border: none; border-radius: 0; box-shadow: none; }
+          /* The on-screen preview scrolls inside a fixed-height box; for print,
+             release it so the whole report paginates instead of clipping. */
+          .report-body { max-height: none !important; overflow: visible !important; }
+          .report-avoid-break { break-inside: avoid; }
         }
       `}</style>
     </div>
