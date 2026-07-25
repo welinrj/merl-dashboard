@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { ArrowRight, X, ChevronDown } from 'lucide-react';
 import VaporizeTextCycle, { Tag } from '@/components/ui/vaporize-text-cycle';
+import StatTile from '@/components/ui/StatTile';
 import { STRATEGIC_THEMES, ACTIVITIES, PLAN_SUMMARY as S } from '../strategicPlan';
 
 /* The animated title cycles through the parts of the full heading. A single
@@ -167,16 +168,6 @@ function BannerCard({ title, action, children, style }) {
         {action && <div style={{ position:'relative', zIndex:1 }}>{action}</div>}
       </div>
       <div style={{ padding:'1.1rem 1.2rem', flex:1, display:'flex', flexDirection:'column' }}>{children}</div>
-    </div>
-  );
-}
-
-function Kpi({ label, value, tone = 'teal' }) {
-  const col = tone === 'red' ? 'var(--red-600)' : tone === 'gold' ? 'var(--gold-500)' : 'var(--green-600)';
-  return (
-    <div style={{ flex:1, minWidth:0 }}>
-      <div style={{ fontSize:'0.66rem', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--text-3)', lineHeight:1.25 }}>{label}</div>
-      <div style={{ fontFamily:'var(--font-display)', fontSize:'2rem', fontWeight:800, letterSpacing:'-0.03em', color:col, marginTop:'0.35rem', fontVariantNumeric:'tabular-nums' }}>{value}</div>
     </div>
   );
 }
@@ -347,43 +338,15 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Row 1 — three banner cards */}
-      <div className="grid-dash-3" style={{ marginBottom:'1rem' }}>
-        <BannerCard title="Strategic Framework">
-          <div style={{ display:'flex', gap:'0.75rem' }}>
-            <Kpi label="Themes" value={view.themes} tone="teal" />
-            <Kpi label="Focus Areas" value={view.focus_areas} tone="gold" />
-            <Kpi label="Activities" value={view.activities} tone="teal" />
-          </div>
-          <div style={{ marginTop:'auto', paddingTop:'0.9rem', fontSize:'0.78rem', color:'var(--text-3)' }}>
-            {view.themes} strategic {view.themes === 1 ? 'priority' : 'priorities'} · {view.indicators} output indicators tracked
-          </div>
-        </BannerCard>
-
-        <BannerCard title="Budget & Delivery">
-          <div style={{ display:'flex', gap:'0.75rem' }}>
-            <Kpi label="Total Budget (VUV)" value={fmtVUV(view.total_budget_vuv)} tone="teal" />
-            <Kpi label="On Track" value={`${onTrackPct}%`} tone="gold" />
-          </div>
-          <div style={{ marginTop:'auto', paddingTop:'0.9rem', fontSize:'0.78rem', color:'var(--text-3)' }}>
-            {st.green} on track · {st.amber} at risk · {st.red} no progress
-          </div>
-        </BannerCard>
-
-        <BannerCard title="Needs Attention"
-          action={<NavLink to="/analysis" style={{ color:'#fff', fontSize:'0.75rem', fontWeight:700, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>Analysis <ArrowRight size={13} /></NavLink>}>
-          {attention.length === 0 ? (
-            <div style={{ fontSize:'0.85rem', color:'var(--text-3)', margin:'auto 0' }}>No stalled activities 🎉</div>
-          ) : attention.map((a, i) => (
-            <div key={i} style={{ display:'flex', gap:'0.6rem', padding:'0.5rem 0', borderBottom:'1px solid var(--border)' }}>
-              <span style={{ width:7, height:7, borderRadius:'50%', background:STATUS_COL.red, marginTop:6, flexShrink:0 }} />
-              <div style={{ minWidth:0 }}>
-                <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{a.name}</div>
-                <div style={{ fontSize:'0.68rem', color:'var(--text-3)' }}>{a.code && `${a.code} · `}{a.focusArea}</div>
-              </div>
-            </div>
-          ))}
-        </BannerCard>
+      {/* Row 1 — one aligned strip of headline figures */}
+      <div className="grid-stats" style={{ marginBottom:'1rem' }}>
+        <StatTile label="Themes" value={view.themes} sub={view.themes === 1 ? 'strategic priority' : 'strategic priorities'} />
+        <StatTile label="Focus Areas" value={view.focus_areas} sub="across the framework" />
+        <StatTile label="Activities" value={view.activities} sub={`${view.indicators} output indicators`} />
+        <StatTile label="Total Budget" value={fmtVUV(view.total_budget_vuv)} sub="VUV planned allocation" />
+        <StatTile label="On Track" value={`${onTrackPct}%`}
+          status={onTrackPct >= 80 ? 'green' : onTrackPct >= 50 ? 'amber' : 'red'}
+          sub={`${st.green} on track · ${st.amber} at risk · ${st.red} no progress`} />
       </div>
 
       {/* Row 2 — budget chart + delivery gauge */}
@@ -428,6 +391,26 @@ export default function Dashboard() {
           </div>
         </BannerCard>
       </div>
+
+      {/* Needs attention — stalled activities */}
+      <BannerCard title="Needs Attention" style={{ marginBottom:'1rem' }}
+        action={<NavLink to="/analysis" style={{ color:'#fff', fontSize:'0.75rem', fontWeight:700, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>Analysis <ArrowRight size={13} /></NavLink>}>
+        {attention.length === 0 ? (
+          <div style={{ fontSize:'0.85rem', color:'var(--text-3)', padding:'0.4rem 0' }}>No stalled activities.</div>
+        ) : (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:'0.15rem 1.5rem' }}>
+            {attention.map((a, i) => (
+              <div key={i} style={{ display:'flex', gap:'0.6rem', padding:'0.5rem 0', borderBottom:'1px solid var(--border)' }}>
+                <span style={{ width:7, height:7, borderRadius:'50%', background:STATUS_COL.red, marginTop:6, flexShrink:0 }} />
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{a.name}</div>
+                  <div style={{ fontSize:'0.68rem', color:'var(--text-3)' }}>{a.code && `${a.code} · `}{a.focusArea}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </BannerCard>
 
       {/* Row 3 — activities table */}
       <BannerCard title="Strategic Results Framework — Activities" style={{ marginBottom:'1.5rem' }}>

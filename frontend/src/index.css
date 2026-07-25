@@ -353,6 +353,9 @@
 
 /* ── Responsive layout helpers (used by inline-styled pages) ─────────────── */
 .page-pad { padding: 2rem 2.5rem; }
+/* Uniform KPI/stat strip — equal auto-fitting tiles that wrap evenly at any
+   width, so headline numbers stay aligned instead of split across cards. */
+.grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
 .grid-kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .grid-main-side { display: grid; grid-template-columns: 1fr 260px; gap: 1rem; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
