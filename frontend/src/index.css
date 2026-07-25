@@ -45,6 +45,77 @@
   --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
 }
 
+/* ── Dark "forest" theme ──────────────────────────────────────────────────
+   The whole portal is driven by the tokens above, so the dark theme is simply
+   a re-mapping of those same token VALUES on a [data-theme="dark"] wrapper:
+   every existing var(--white)/var(--text-1)/var(--border) reference resolves to
+   the dark nature palette automatically. Deep charcoal-green surfaces, muted
+   sage + gold + soft-coral accents. Reports opt back out to light (below). */
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  --green-900: #0d1512;
+  --green-800: #16241e;
+  --green-700: #7fb98f;  /* now a light sage — used as heading/accent text on dark */
+  --green-600: #5fa87f;  /* primary sage accent */
+  --green-500: #6fb98d;
+  --green-200: #3a5749;  /* borders / rings on dark */
+  --green-100: #2a3d33;  /* progress track / tints */
+  --green-50:  #212d27;  /* subtle raised tint (table headers, hover rows, chart grid) */
+  --gold-500:  #d3ab61;
+  --gold-400:  #e2c07f;
+  --gold-100:  #33301f;
+  --red-700:   #e0917f;
+  --red-600:   #cf6551;  /* danger / brick on dark */
+  --red-500:   #dd8f78;  /* soft coral accent */
+  --red-100:   #3a2723;
+  --red-50:    #2a201d;
+  --ink:       #e9efe9;  /* text token (kept light so `color: var(--ink)` reads) */
+  --cream:     #19211d;  /* app background — deep charcoal-green */
+  --white:     #222c27;  /* card / raised surface */
+  --border:    #37433c;
+  --border-strong: #47544c;
+  --text-1:    #e9efe9;
+  --text-2:    #a7b3aa;
+  --text-3:    #808d84;
+  --surface-1: #2a352f;
+  --surface-2: #33403a;
+  --ring:      rgba(127,185,143,0.22);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
+  --shadow-md: 0 6px 18px rgba(0,0,0,0.40);
+  --shadow-lg: 0 18px 44px rgba(0,0,0,0.50);
+  color-scheme: dark;
+}
+
+/* Component touch-ups where a plain token swap isn't enough on dark. */
+/* The light Vanuatu watermark SVG reads as noise on dark — drop it for a clean
+   surface (inline background-image, so !important is required to win). */
+[data-theme="dark"] main { background-image: none !important; }
+[data-theme="dark"] .btn-primary { color: #10201a; }
+[data-theme="dark"] .btn-primary:hover:not(:disabled) { background: var(--green-500); }
+[data-theme="dark"] .btn-gold { color: #241d0c; }
+[data-theme="dark"] .topnav-link.active { background: var(--green-600); color: #10201a; }
+[data-theme="dark"] .badge-green  { background: #1f3a2c; color: #8fe0ad; }
+[data-theme="dark"] .badge-amber  { background: #3a3018; color: #e6c079; }
+[data-theme="dark"] .badge-red    { background: #3a2320; color: #eaa08c; }
+[data-theme="dark"] .badge-blue   { background: #1f303f; color: #8fb9e6; }
+[data-theme="dark"] .badge-purple { background: #2e2740; color: #b9a6e6; }
+[data-theme="dark"] .badge-gray   { background: #2b332e; color: #b6c0b8; }
+
+/* Reports are official Word/Excel-style documents — pin them to the light
+   palette regardless of the app theme, so the on-screen preview and print
+   output stay light even inside the dark shell. */
+.report-print-area {
+  --cream: #f3f1ec; --white: #ffffff; --ink: #1c1512;
+  --border: #e6e1d8; --border-strong: #d6cfc3;
+  --text-1: #1c1512; --text-2: #574f45; --text-3: #837a6e;
+  --green-900: #08302f; --green-700: #0c5b59; --green-600: #0e6e6e;
+  --green-100: #d3e8e6; --green-50: #eaf4f3;
+  --gold-500: #e0a12a; --red-600: #b3402f;
+  --surface-1: #f4f1ea; --surface-2: #ebe7de;
+  color-scheme: light;
+  background: #ffffff;
+}
+
 @layer base {
   html {
     font-family: var(--font-ui);
