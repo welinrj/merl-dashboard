@@ -24,7 +24,7 @@ function ReviewModal({ dataset, onConfirm, onCancel }) {
   const [note, setNote] = useState('');
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
-      <div style={{ background:'var(--white)', borderRadius:12, padding:'1.75rem', width:420, maxWidth:'90vw', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+      <div style={{ background:'#fff', borderRadius:12, padding:'1.75rem', width:420, maxWidth:'90vw', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
         <div style={{ fontWeight:700, fontSize:'1rem', color:'var(--text-1)', marginBottom:'0.375rem' }}>Reject Dataset</div>
         <div style={{ fontSize:'0.8125rem', color:'var(--text-3)', marginBottom:'1.25rem' }}>
           Rejecting: <strong>{dataset.name}</strong>

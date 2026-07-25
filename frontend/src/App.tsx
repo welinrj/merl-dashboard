@@ -571,7 +571,7 @@ export default function App() {
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   return (
-    <div className="app-shell" data-theme="dark" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
 
       {/* Top navigation */}
       <header className="topnav" style={{

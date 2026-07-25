@@ -37,83 +37,16 @@
   --surface-1: #f4f1ea;  /* subtle raised control background */
   --surface-2: #ebe7de;  /* hover for the above */
   --ring:      rgba(14,110,110,0.16); /* teal focus glow */
-  --shadow-sm: 0 1px 2px rgba(16,24,40,0.05);
-  --shadow-md: 0 4px 16px rgba(16,24,40,0.08);
-  --shadow-lg: 0 16px 40px rgba(16,24,40,0.12);
+  /* Layered elevation (ambient + key light), warm-tinted to match the cream
+     palette — gives surfaces a real sense of depth / lift ("3D" effect). */
+  --shadow-sm: 0 1px 2px rgba(28,21,18,0.06), 0 1px 3px rgba(28,21,18,0.05);
+  --shadow-md: 0 2px 5px rgba(28,21,18,0.06), 0 10px 20px -6px rgba(28,21,18,0.14);
+  --shadow-lg: 0 6px 14px rgba(28,21,18,0.08), 0 26px 50px -12px rgba(28,21,18,0.22);
+  /* A faint top highlight that reads as a light catching the raised edge. */
+  --edge-hi: inset 0 1px 0 rgba(255,255,255,0.75);
   --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-ui:      'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
-}
-
-/* ── Dark "forest" theme ──────────────────────────────────────────────────
-   The whole portal is driven by the tokens above, so the dark theme is simply
-   a re-mapping of those same token VALUES on a [data-theme="dark"] wrapper:
-   every existing var(--white)/var(--text-1)/var(--border) reference resolves to
-   the dark nature palette automatically. Deep charcoal-green surfaces, muted
-   sage + gold + soft-coral accents. Reports opt back out to light (below). */
-:root[data-theme="dark"],
-[data-theme="dark"] {
-  --green-900: #0d1512;
-  --green-800: #16241e;
-  --green-700: #7fb98f;  /* now a light sage — used as heading/accent text on dark */
-  --green-600: #5fa87f;  /* primary sage accent */
-  --green-500: #6fb98d;
-  --green-200: #3a5749;  /* borders / rings on dark */
-  --green-100: #2a3d33;  /* progress track / tints */
-  --green-50:  #212d27;  /* subtle raised tint (table headers, hover rows, chart grid) */
-  --gold-500:  #d3ab61;
-  --gold-400:  #e2c07f;
-  --gold-100:  #33301f;
-  --red-700:   #e0917f;
-  --red-600:   #cf6551;  /* danger / brick on dark */
-  --red-500:   #dd8f78;  /* soft coral accent */
-  --red-100:   #3a2723;
-  --red-50:    #2a201d;
-  --ink:       #e9efe9;  /* text token (kept light so `color: var(--ink)` reads) */
-  --cream:     #19211d;  /* app background — deep charcoal-green */
-  --white:     #222c27;  /* card / raised surface */
-  --border:    #37433c;
-  --border-strong: #47544c;
-  --text-1:    #e9efe9;
-  --text-2:    #a7b3aa;
-  --text-3:    #808d84;
-  --surface-1: #2a352f;
-  --surface-2: #33403a;
-  --ring:      rgba(127,185,143,0.22);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
-  --shadow-md: 0 6px 18px rgba(0,0,0,0.40);
-  --shadow-lg: 0 18px 44px rgba(0,0,0,0.50);
-  color-scheme: dark;
-}
-
-/* Component touch-ups where a plain token swap isn't enough on dark. */
-/* The light Vanuatu watermark SVG reads as noise on dark — drop it for a clean
-   surface (inline background-image, so !important is required to win). */
-[data-theme="dark"] main { background-image: none !important; }
-[data-theme="dark"] .btn-primary { color: #10201a; }
-[data-theme="dark"] .btn-primary:hover:not(:disabled) { background: var(--green-500); }
-[data-theme="dark"] .btn-gold { color: #241d0c; }
-[data-theme="dark"] .topnav-link.active { background: var(--green-600); color: #10201a; }
-[data-theme="dark"] .badge-green  { background: #1f3a2c; color: #8fe0ad; }
-[data-theme="dark"] .badge-amber  { background: #3a3018; color: #e6c079; }
-[data-theme="dark"] .badge-red    { background: #3a2320; color: #eaa08c; }
-[data-theme="dark"] .badge-blue   { background: #1f303f; color: #8fb9e6; }
-[data-theme="dark"] .badge-purple { background: #2e2740; color: #b9a6e6; }
-[data-theme="dark"] .badge-gray   { background: #2b332e; color: #b6c0b8; }
-
-/* Reports are official Word/Excel-style documents — pin them to the light
-   palette regardless of the app theme, so the on-screen preview and print
-   output stay light even inside the dark shell. */
-.report-print-area {
-  --cream: #f3f1ec; --white: #ffffff; --ink: #1c1512;
-  --border: #e6e1d8; --border-strong: #d6cfc3;
-  --text-1: #1c1512; --text-2: #574f45; --text-3: #837a6e;
-  --green-900: #08302f; --green-700: #0c5b59; --green-600: #0e6e6e;
-  --green-100: #d3e8e6; --green-50: #eaf4f3;
-  --gold-500: #e0a12a; --red-600: #b3402f;
-  --surface-1: #f4f1ea; --surface-2: #ebe7de;
-  color-scheme: light;
-  background: #ffffff;
 }
 
 @layer base {
@@ -145,17 +78,29 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.375rem;
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    /* Raised elevation + a soft top highlight so cards float above the page. */
+    box-shadow: var(--shadow-md), var(--edge-hi);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   }
-  /* Opt-in lift for clickable cards, so interactive surfaces read consistently. */
+  /* Opt-in extra lift for clickable cards. */
   .card-hover:hover {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg), var(--edge-hi);
     border-color: var(--green-200);
-    transform: translateY(-1px);
+    transform: translateY(-3px);
   }
   .card-accent { border-left: 3px solid var(--green-500); }
   .card-gold   { border-left: 3px solid var(--gold-500); }
+
+  /* KPI stat tiles: raised surfaces with a soft top highlight that lift on hover
+     — the core of the "3D" depth treatment for headline figures. */
+  .stat-tile {
+    box-shadow: var(--shadow-md), var(--edge-hi);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .stat-tile:hover {
+    box-shadow: var(--shadow-lg), var(--edge-hi);
+    transform: translateY(-3px);
+  }
 
   .section-title {
     font-family: var(--font-display);
@@ -180,19 +125,25 @@
     transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.05s;
     cursor: pointer; border: none; white-space: nowrap;
   }
-  .btn:active { transform: translateY(1px); }
+  /* Raised, tactile buttons: a soft drop shadow + inner top highlight, pressing
+     down on :active. */
+  .btn:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--shadow-sm); }
   .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
-  .btn-primary { background: var(--green-600); color: var(--white); }
-  .btn-primary:hover:not(:disabled) { background: var(--green-700); box-shadow: var(--shadow-md); }
+  .btn-primary {
+    background: var(--green-600); color: var(--white);
+    box-shadow: 0 2px 5px rgba(12,91,89,0.28), inset 0 1px 0 rgba(255,255,255,0.18);
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--green-700); box-shadow: 0 5px 12px rgba(12,91,89,0.32), inset 0 1px 0 rgba(255,255,255,0.18); transform: translateY(-1px); }
   .btn-secondary {
     background: var(--white); color: var(--text-1);
     border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-sm);
   }
-  .btn-secondary:hover:not(:disabled) { background: var(--green-50); border-color: var(--green-200); }
-  .btn-gold { background: var(--gold-500); color: var(--ink); }
-  .btn-gold:hover:not(:disabled) { background: var(--gold-400); }
-  .btn-danger { background: var(--red-600); color: var(--white); }
-  .btn-danger:hover:not(:disabled) { background: var(--red-700); box-shadow: var(--shadow-md); }
+  .btn-secondary:hover:not(:disabled) { background: var(--green-50); border-color: var(--green-200); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .btn-gold { background: var(--gold-500); color: var(--ink); box-shadow: 0 2px 5px rgba(224,161,42,0.30), inset 0 1px 0 rgba(255,255,255,0.30); }
+  .btn-gold:hover:not(:disabled) { background: var(--gold-400); box-shadow: 0 5px 12px rgba(224,161,42,0.34), inset 0 1px 0 rgba(255,255,255,0.30); transform: translateY(-1px); }
+  .btn-danger { background: var(--red-600); color: var(--white); box-shadow: 0 2px 5px rgba(146,44,31,0.28), inset 0 1px 0 rgba(255,255,255,0.16); }
+  .btn-danger:hover:not(:disabled) { background: var(--red-700); box-shadow: 0 5px 12px rgba(146,44,31,0.32); transform: translateY(-1px); }
 
   .field-label {
     display: block; font-size: 0.6875rem; font-weight: 700;
@@ -288,7 +239,7 @@
   transition: background 0.15s, color 0.15s;
 }
 .topnav-link:hover { background: var(--surface-1); color: var(--text-1); }
-.topnav-link.active { background: var(--ink); color: #ffffff; }
+.topnav-link.active { background: var(--ink); color: #ffffff; box-shadow: 0 3px 8px rgba(28,21,18,0.28), inset 0 1px 0 rgba(255,255,255,0.12); }
 
 .topnav-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -300,8 +251,9 @@
 
 .topnav-hamburger { display: none; }
 
-/* Top bar base spacing/sizing (kept in CSS so breakpoints can tighten it) */
-.topnav { gap: 1.25rem; padding: 1.15rem 1.75rem; }
+/* Top bar base spacing/sizing (kept in CSS so breakpoints can tighten it).
+   White header, lifted above the content with a soft elevation shadow. */
+.topnav { gap: 1.25rem; padding: 1.15rem 1.75rem; box-shadow: 0 2px 10px rgba(28,21,18,0.06), 0 6px 20px -8px rgba(28,21,18,0.10); position: relative; z-index: 20; }
 .topnav-crest { width: 48px; height: 48px; border-radius: 12px; }
 .topnav-brand-title { font-size: 1.25rem; }
 
