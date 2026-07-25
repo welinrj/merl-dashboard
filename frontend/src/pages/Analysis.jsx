@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { supabase } from '../supabaseClient';
 import { cachedRead } from '../lib/cachedRead';
+import StatTile from '@/components/ui/StatTile';
 import { ACTIVITIES as EMBEDDED } from '../strategicPlan';
 
 /* ── theme / status ──────────────────────────────────────────────────────
@@ -45,16 +46,6 @@ const ChartTooltip = ({ active, payload, label, suffix = '' }) => {
     </div>
   );
 };
-
-function Kpi({ label, value, sub, color }) {
-  return (
-    <div className="card" style={{ padding: '1rem 1.1rem' }}>
-      <div className="section-label" style={{ marginBottom: '0.35rem' }}>{label}</div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: color || 'var(--text-1)', lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.2rem' }}>{sub}</div>}
-    </div>
-  );
-}
 
 export default function Analysis() {
   const [acts, setActs] = useState(null);
@@ -203,10 +194,14 @@ export default function Analysis() {
 
       {/* KPI strip */}
       <div className="grid-kpi" style={{ marginBottom: '1.25rem' }}>
-        <Kpi label="Activities" value={activityCount} sub={`${themesCount} themes`} />
-        <Kpi label="Total Budget" value={`${fmtVUV(totalBudget)}`} sub="VUV allocated" color="var(--green-600)" />
-        <Kpi label="On Track" value={`${onTrackPct}%`} sub={`${statusCounts.green} of ${activityCount} activities`} color={STATUS_COL.green} />
-        <Kpi label="Needs Attention" value={statusCounts.amber + statusCounts.red} sub={`${statusCounts.amber} at risk · ${statusCounts.red} off track`} color={STATUS_COL.red} />
+        <StatTile label="Activities" value={activityCount} sub={`${themesCount} themes`} />
+        <StatTile label="Total Budget" value={fmtVUV(totalBudget)} sub="VUV allocated" />
+        <StatTile label="On Track" value={`${onTrackPct}%`}
+          status={onTrackPct >= 80 ? 'green' : onTrackPct >= 50 ? 'amber' : 'red'}
+          sub={`${statusCounts.green} of ${activityCount} activities`} />
+        <StatTile label="Needs Attention" value={statusCounts.amber + statusCounts.red}
+          status={statusCounts.red > 0 ? 'red' : statusCounts.amber > 0 ? 'amber' : 'green'}
+          sub={`${statusCounts.amber} at risk · ${statusCounts.red} off track`} />
       </div>
 
       {/* Charts row 1 */}

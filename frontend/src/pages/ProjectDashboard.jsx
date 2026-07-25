@@ -10,6 +10,7 @@ import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ArrowLeft, GaugeCircle, Building2, CalendarDays, Wallet, ShieldCheck, X, Plus, ChevronDown, ChevronRight, Loader2, Coins, Banknote, TrendingUp, Sparkles } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import StatTile from '@/components/ui/StatTile';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 
@@ -105,16 +106,16 @@ function ProgressRing({ pct, label, sub }) {
   );
 }
 
-function KpiTile({ icon: Icon, label, value, sub, accent = ACCENTS.teal }) {
+// Thin adapter over the shared StatTile so the project dashboard's finance
+// tiles use the same "form of visualisation" as the rest of the portal, while
+// keeping the icon + accent palette this page passes in.
+function KpiTile({ icon, label, value, sub, accent = ACCENTS.teal }) {
   return (
-    <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderLeft: '3px solid ' + accent.c, borderRadius: 12, padding: '0.85rem 1rem', minWidth: 170, boxShadow: 'var(--shadow-sm)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-        {Icon && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8, background: accent.bg, color: accent.c }}><Icon size={15} /></span>}
-        <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)' }}>{label}</span>
-      </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>{value}</div>
-      {sub && <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '0.1rem' }}>{sub}</div>}
-    </div>
+    <StatTile
+      icon={icon} label={label} value={value} sub={sub}
+      accent={accent.c} accentBg={accent.bg}
+      style={{ flex: '1 1 190px' }}
+    />
   );
 }
 
