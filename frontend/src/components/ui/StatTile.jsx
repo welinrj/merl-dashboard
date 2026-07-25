@@ -24,13 +24,13 @@ const STATUS_DOT = { green: '#1a8c4e', amber: '#d99a2b', red: '#b3402f', none: '
 export default function StatTile({ label, value, sub, status, icon: Icon, accent, accentBg, style }) {
   return (
     <div
+      className="stat-tile"
       style={{
         background: 'var(--white)',
         border: '1px solid var(--border)',
         borderLeft: accent ? `3px solid ${accent}` : '1px solid var(--border)',
         borderRadius: 12,
         padding: '0.9rem 1rem',
-        boxShadow: 'var(--shadow-sm)',
         minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
