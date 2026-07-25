@@ -209,7 +209,7 @@ function BtorReportPreview({ report }) {
   return (
     <div className="report-print-area" style={{ fontFamily:'var(--font-ui)', background:'var(--white)', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
       <CoverHeader meta={meta} />
-      <div style={{ maxHeight:480, overflowY:'auto', padding:'1.5rem 2rem' }} className="scrollbar-thin">
+      <div style={{ maxHeight:480, overflowY:'auto', padding:'1.5rem 2rem' }} className="scrollbar-thin report-body">
         <ContentsList items={[
           'Mission Details', 'Purpose & Objectives', 'Activities Conducted',
           'Key Findings & Outcomes', 'Stakeholders Engaged', 'Challenges & Limitations',
@@ -368,7 +368,7 @@ export default function QuarterlyReportPreview({ report }) {
         </table>
       </div>
 
-      <div style={{ maxHeight:480, overflowY:'auto', padding:'1.5rem 2rem' }} className="scrollbar-thin">
+      <div style={{ maxHeight:480, overflowY:'auto', padding:'1.5rem 2rem' }} className="scrollbar-thin report-body">
 
         <ContentsList items={[
           'Executive Summary', 'Key Achievements', 'Introduction', 'Activity Overview',

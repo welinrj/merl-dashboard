@@ -4,7 +4,7 @@
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun,
-  PageBreak, TableOfContents,
+  PageBreak, TableOfContents, Footer, PageNumber, TabStopType, TabStopPosition,
 } from 'docx';
 import { STATUS_KEY_LABEL } from './quarterlyReport';
 import { renderFigureSvg, svgToPngBytes, svgDims } from './reportCharts';
@@ -242,10 +242,6 @@ export async function buildQuarterlyDocxBlob(report) {
 
   // ── Table of Contents ──
   children.push(heading('Table of Contents'));
-  children.push(new Paragraph({
-    spacing: { after: 120 },
-    children: [new TextRun({ text: 'In Microsoft Word, right-click the field below and choose “Update Field” to populate page numbers.', size: 15, color: MUTED, italics: true })],
-  }));
   children.push(new TableOfContents('Contents', { hyperlink: true, headingStyleRange: '1-2' }));
   children.push(new Paragraph({ children: [new PageBreak()] }));
 
@@ -489,18 +485,42 @@ export async function buildQuarterlyDocxBlob(report) {
     });
   }
 
-  // ── Footer ──
+  // ── End of report marker ──
   children.push(rulePara());
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER, spacing: { before: 40 },
-    children: [new TextRun({ text: 'Department of Climate Change · Government of Vanuatu · www.docc.gov.vu · Confidential — For official use only', size: 16, color: MUTED })],
+    children: [new TextRun({ text: '— End of Report —', size: 16, color: MUTED, italics: true })],
   }));
+
+  // Running page-number footer: department (left) · "Page X of Y" (right). A
+  // separate empty footer on the title page keeps the cover unnumbered.
+  const pageFooter = new Footer({
+    children: [new Paragraph({
+      tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+      border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'D8D2C8', space: 6 } },
+      children: [
+        new TextRun({ text: 'Department of Climate Change · Government of Vanuatu', size: 15, color: MUTED }),
+        new TextRun({ text: '\tPage ', size: 15, color: MUTED }),
+        new TextRun({ children: [PageNumber.CURRENT], size: 15, color: MUTED }),
+        new TextRun({ text: ' of ', size: 15, color: MUTED }),
+        new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 15, color: MUTED }),
+      ],
+    })],
+  });
+  const coverFooter = new Footer({ children: [new Paragraph({ children: [new TextRun({ text: '' })] })] });
 
   const doc = new Document({
     creator: 'DoCC MERL Dashboard',
     title: meta.title,
+    // Tells Word to update field results (incl. the Table of Contents and its
+    // page numbers) when the document is opened, so the TOC is populated.
+    features: { updateFields: true },
     styles: { default: { document: { run: { font: 'Calibri' } } } },
-    sections: [{ properties: {}, children }],
+    sections: [{
+      properties: { titlePage: true },
+      footers: { default: pageFooter, first: coverFooter },
+      children,
+    }],
   });
 
   return Packer.toBlob(doc);
