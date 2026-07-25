@@ -19,13 +19,15 @@ const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
 const fmtVUV = n =>
   n >= 1e9 ? (n / 1e9).toFixed(1) + 'B' :
   n >= 1e6 ? (n / 1e6).toFixed(0) + 'M' : String(Math.round(n));
-const STATUS_COL   = { green:'#1a8c4e', amber:'#d99a2b', red:'#b3402f', none:'#9a9186' };
-const STATUS_BG    = { green:'#dcece2', amber:'#f7ead0', red:'#f6ded8', none:'#ece9e3' };
-const STATUS_TXT   = { green:'#155e34', amber:'#8a6416', red:'#8a2e21', none:'#5b5349' };
+// Colours tuned for the dark "forest" surface — brighter, desaturated marks
+// that read on the charcoal-green background.
+const STATUS_COL   = { green:'#4cbf85', amber:'#e2b566', red:'#df8064', none:'#8a9188' };
+const STATUS_BG    = { green:'#1f3a2c', amber:'#3a3018', red:'#3a2320', none:'#2b332e' };
+const STATUS_TXT   = { green:'#8fe0ad', amber:'#e6c079', red:'#eaa08c', none:'#b6c0b8' };
 const STATUS_LABEL = { green:'On Track', amber:'At Risk', red:'No Progress', none:'Unrated' };
 const THEME_COL    = {
-  Adaptation:'#0e6e6e', Mitigation:'#d99a2b', Governance:'#b3402f',
-  Finance:'#158a7a', Knowledge:'#9a6d3b', 'Cross-cutting':'#5c6b8a',
+  Adaptation:'#5fb894', Mitigation:'#d9b06a', Governance:'#df8f79',
+  Finance:'#57b3a6', Knowledge:'#c2a06a', 'Cross-cutting':'#8aa0c8',
 };
 const BANNER = `${import.meta.env.BASE_URL}IMG_0874.jpeg`;
 
@@ -172,6 +174,21 @@ function BannerCard({ title, action, children, style }) {
   );
 }
 
+/* A small hand-built leaf sprig — a quiet nature motif (no raster/AI art). */
+function LeafSprig() {
+  const leaf = (rot) => (
+    <path d="M0 0 C 3 -3, 7 -3, 9 0 C 7 3, 3 3, 0 0 Z" fill="var(--green-600)" opacity="0.9" transform={`rotate(${rot})`} />
+  );
+  return (
+    <svg width="18" height="16" viewBox="-2 -8 22 16" aria-hidden="true" style={{ flexShrink:0 }}>
+      <path d="M0 6 C 5 2, 12 0, 18 -6" fill="none" stroke="var(--green-500)" strokeWidth="1.4" strokeLinecap="round" opacity="0.85" />
+      <g transform="translate(5.5 3)">{leaf(-32)}</g>
+      <g transform="translate(10 -0.5)">{leaf(-20)}</g>
+      <g transform="translate(14 -3.5)">{leaf(-8)}</g>
+    </svg>
+  );
+}
+
 /* ── semicircle gauge ────────────────────────────────────────────────────── */
 function Gauge({ value, label }) {
   const cx = 100, cy = 104, r = 62;
@@ -185,9 +202,9 @@ function Gauge({ value, label }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', margin:'auto 0' }}>
       <svg width="210" height="128" viewBox="0 0 200 128">
-        <path d={arc(0, 40)}   fill="none" stroke="#b3402f" strokeWidth="15" strokeLinecap="round" />
-        <path d={arc(42, 72)}  fill="none" stroke="#e0a12a" strokeWidth="15" strokeLinecap="round" />
-        <path d={arc(74, 100)} fill="none" stroke="#0e6e6e" strokeWidth="15" strokeLinecap="round" />
+        <path d={arc(0, 40)}   fill="none" stroke={STATUS_COL.red}   strokeWidth="15" strokeLinecap="round" />
+        <path d={arc(42, 72)}  fill="none" stroke={STATUS_COL.amber} strokeWidth="15" strokeLinecap="round" />
+        <path d={arc(74, 100)} fill="none" stroke={STATUS_COL.green} strokeWidth="15" strokeLinecap="round" />
         <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" />
         <circle cx={cx} cy={cy} r="6.5" fill="var(--ink)" />
       </svg>
@@ -290,7 +307,7 @@ export default function Dashboard() {
           <VaporizeTextCycle
             texts={TITLE_PARTS}
             font={{ fontFamily:"'DM Sans', sans-serif", fontSize:`${titleFont}px`, fontWeight:800 }}
-            color="rgb(28, 21, 18)"
+            color="rgb(233, 239, 233)"
             spread={4}
             density={6}
             animation={{ vaporizeDuration:2, fadeInDuration:1, waitDuration:1 }}
@@ -300,8 +317,11 @@ export default function Dashboard() {
           />
         )}
       </h1>
-      <div style={{ fontSize:'0.85rem', color:'var(--text-2)', margin:'0 0 1.25rem' }}>
-        DoCC Strategic Results Framework 2025–2030 · Government of Vanuatu
+      <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', margin:'0 0 1.25rem' }}>
+        <LeafSprig />
+        <span style={{ fontSize:'0.85rem', color:'var(--text-2)' }}>
+          DoCC Strategic Results Framework 2025–2030 · Government of Vanuatu
+        </span>
       </div>
 
       {/* Filter bar */}
