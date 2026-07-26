@@ -426,3 +426,35 @@
   .dash-hero-copy { position: static; padding: 1.4rem 1.25rem 0; max-width: none; }
   .dash-hero-chips { position: static; padding: 1rem 1.25rem 1.4rem; }
 }
+
+/* ── Dashboard hero — living background ────────────────────────────────────
+   Subtle, ambient motion: a drifting aurora glow behind the scene, a breathing
+   backlight, a gentle wind-sway of the canopy, drifting mist and twinkling data
+   particles. All disabled under prefers-reduced-motion. */
+.dash-hero::before {
+  content: ''; position: absolute; inset: -25%; pointer-events: none;
+  background:
+    radial-gradient(38% 42% at 32% 38%, rgba(95,168,127,0.20), transparent 70%),
+    radial-gradient(32% 38% at 72% 30%, rgba(127,191,139,0.14), transparent 70%);
+  animation: dh-aurora 20s ease-in-out infinite alternate;
+}
+.dh-glow    { transform-box: fill-box; transform-origin: center; animation: dh-breathe 9s ease-in-out infinite; }
+.dh-canopy  { transform-box: fill-box; transform-origin: 50% 100%; animation: dh-sway 7s ease-in-out infinite; }
+.dh-particle { animation: dh-twinkle 3.2s ease-in-out infinite; }
+.dh-mist-a  { animation: dh-drift-a 16s ease-in-out infinite alternate; }
+.dh-mist-b  { animation: dh-drift-b 20s ease-in-out infinite alternate; }
+
+@keyframes dh-aurora {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(3%, -2%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, 3%, 0) scale(1.04); }
+}
+@keyframes dh-breathe { 0%, 100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+@keyframes dh-sway    { 0%, 100% { transform: rotate(-0.8deg); } 50% { transform: rotate(0.8deg); } }
+@keyframes dh-twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.95; } }
+@keyframes dh-drift-a { from { transform: translateX(0); } to { transform: translateX(10px); } }
+@keyframes dh-drift-b { from { transform: translateX(0); } to { transform: translateX(-13px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-hero::before, .dh-glow, .dh-canopy, .dh-particle, .dh-mist { animation: none !important; }
+}
