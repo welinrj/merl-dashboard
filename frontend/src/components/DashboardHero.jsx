@@ -110,16 +110,16 @@ export default function DashboardHero() {
           </linearGradient>
         </defs>
 
-        <circle cx="665" cy="175" r="225" fill="url(#dh-glow)" />
-        <path d="M0 250 C 140 170, 260 300, 420 220 S 720 150, 1000 210 L1000 400 L0 400Z" fill="url(#dh-m1)" opacity="0.55" />
-        <path d="M0 300 C 160 240, 320 320, 520 275 S 820 240, 1000 285 L1000 400 L0 400Z" fill="url(#dh-m2)" />
+        <circle className="dh-glow" cx="665" cy="175" r="225" fill="url(#dh-glow)" />
+        <path className="dh-mist dh-mist-a" d="M0 250 C 140 170, 260 300, 420 220 S 720 150, 1000 210 L1000 400 L0 400Z" fill="url(#dh-m1)" opacity="0.55" />
+        <path className="dh-mist dh-mist-b" d="M0 300 C 160 240, 320 320, 520 275 S 820 240, 1000 285 L1000 400 L0 400Z" fill="url(#dh-m2)" />
 
         {/* floating data particles + connectors */}
         {PARTICLES.slice(0, -1).map((p, i) => (
           <line key={`l${i}`} x1={p[0]} y1={p[1]} x2={PARTICLES[i + 1][0]} y2={PARTICLES[i + 1][1]} stroke="#6fbf85" strokeWidth="1" strokeOpacity="0.25" />
         ))}
         {PARTICLES.map((p, i) => (
-          <circle key={`p${i}`} cx={p[0]} cy={p[1]} r={i % 3 ? 2.4 : 3.4} fill="#8fd39a" fillOpacity={i % 2 ? 0.5 : 0.85} />
+          <circle key={`p${i}`} className="dh-particle" style={{ animationDelay: `${(i * 0.4).toFixed(1)}s` }} cx={p[0]} cy={p[1]} r={i % 3 ? 2.4 : 3.4} fill="#8fd39a" fillOpacity={i % 2 ? 0.5 : 0.85} />
         ))}
 
         <ellipse cx="660" cy="352" rx="150" ry="16" fill="#0b120e" fillOpacity="0.55" />
@@ -131,11 +131,13 @@ export default function DashboardHero() {
           'M660 208 C 680 192, 676 172, 692 158',
         ].map((d, i) => <path key={`b${i}`} d={d} stroke="#7a5a3a" strokeWidth={i < 2 ? 7 : 6} fill="none" strokeLinecap="round" />)}
 
-        {blobs.map((b, i) => (
-          <circle key={`c${i}`} cx={b.x.toFixed(1)} cy={b.y.toFixed(1)} r={b.r.toFixed(1)} fill={`url(#dh-${b.tone})`} />
-        ))}
-        <ellipse cx="610" cy="250" rx="120" ry="22" fill="#bfe0c4" fillOpacity="0.10" />
-        <ellipse cx="720" cy="270" rx="150" ry="24" fill="#bfe0c4" fillOpacity="0.08" />
+        <g className="dh-canopy">
+          {blobs.map((b, i) => (
+            <circle key={`c${i}`} cx={b.x.toFixed(1)} cy={b.y.toFixed(1)} r={b.r.toFixed(1)} fill={`url(#dh-${b.tone})`} />
+          ))}
+        </g>
+        <ellipse className="dh-mist dh-mist-a" cx="610" cy="250" rx="120" ry="22" fill="#bfe0c4" fillOpacity="0.10" />
+        <ellipse className="dh-mist dh-mist-b" cx="720" cy="270" rx="150" ry="24" fill="#bfe0c4" fillOpacity="0.08" />
       </svg>
 
       {/* copy (top-left) */}
