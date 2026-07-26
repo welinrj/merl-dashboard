@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 import Dashboard   from './pages/Dashboard';
+import DashboardHero from './components/DashboardHero';
 import StrategicActivities from './pages/StrategicActivities';
 import Gallery     from './pages/Gallery';
 import ProjectFiles from './pages/ProjectFiles';
@@ -569,9 +570,14 @@ export default function App() {
   const visibleNav = NAV_ITEMS.filter(n => allowed.includes(n.key));
   const defaultPath = visibleNav[0]?.path ?? '/dashboard';
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+  // On the dashboard, the tree hero leads the page — it sits above the header, so
+  // the whole shell scrolls as one column (elsewhere the header stays fixed and
+  // only <main> scrolls).
+  const isDashboard = location.pathname === '/' || location.pathname.startsWith('/dashboard');
 
   return (
-    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
+    <div className="app-shell scrollbar-thin" style={{ display: 'flex', flexDirection: 'column', overflowX: 'hidden', overflowY: isDashboard ? 'auto' : 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
+      {isDashboard && <DashboardHero />}
 
       {/* Top navigation */}
       <header className="topnav" style={{
@@ -711,7 +717,8 @@ export default function App() {
         </div>
 
         <main style={{
-          flex: 1, overflowY: 'auto', background: 'var(--cream)',
+          flex: isDashboard ? '0 0 auto' : 1, overflowY: isDashboard ? 'visible' : 'auto',
+          background: 'var(--cream)',
           backgroundImage: `url(${PATTERN_WATERMARK})`, backgroundSize: '150px',
         }} className="scrollbar-thin">
           <ErrorBoundary key={location.pathname}>

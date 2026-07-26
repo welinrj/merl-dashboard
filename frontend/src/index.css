@@ -316,6 +316,9 @@
 @media (max-width: 768px) {
   .bottomnav {
     display: flex; flex-shrink: 0;
+    /* sticky so it stays pinned to the viewport bottom on the Dashboard, where
+       the whole shell scrolls (the tree hero leads the page above the header). */
+    position: sticky; bottom: 0;
     background: var(--white); border-top: 1px solid var(--border);
     padding: 0.3rem 0.35rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -3px 14px rgba(16, 24, 40, 0.06);
@@ -402,13 +405,11 @@
 /* ── Dashboard hero (dark atmospheric tree scene) ─────────────────────────── */
 .dash-hero {
   position: relative;
-  border-radius: 22px;
   overflow: hidden;
+  flex-shrink: 0;
   height: 400px;
   background: radial-gradient(120% 100% at 78% 12%, #21362c 0%, #16211c 42%, #0f1814 100%);
-  box-shadow: 0 26px 60px -22px rgba(0,0,0,0.5);
-  border: 1px solid #24332b;
-  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #24332b;
 }
 .dash-hero-copy { position: absolute; top: 30px; left: 34px; z-index: 6; max-width: 440px; }
 .dash-hero-title {

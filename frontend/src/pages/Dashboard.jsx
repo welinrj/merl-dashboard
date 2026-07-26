@@ -5,7 +5,6 @@ import {
 } from 'recharts';
 import { ArrowRight, X, ChevronDown } from 'lucide-react';
 import StatTile from '@/components/ui/StatTile';
-import DashboardHero from '@/components/DashboardHero';
 import { STRATEGIC_THEMES, ACTIVITIES, PLAN_SUMMARY as S } from '../strategicPlan';
 
 /* The animated title cycles through the parts of the full heading. A single
@@ -271,15 +270,6 @@ export default function Dashboard() {
   return (
     <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
 
-      <DashboardHero
-        activities={view.activities}
-        onTrackPct={onTrackPct}
-        greenCount={st.green}
-        budgetLabel={fmtVUV(view.total_budget_vuv)}
-        themes={view.themes}
-        focusAreas={view.focus_areas}
-        indicators={view.indicators}
-      />
 
       {/* Filter bar */}
       <div className="card" style={{ padding:'0.85rem 1rem', marginBottom:'1rem', display:'flex', gap:'0.9rem', alignItems:'flex-end', flexWrap:'wrap' }}>
