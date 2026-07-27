@@ -116,6 +116,16 @@ const THEME_CATEGORY = {
 
 // Live SRF activity status → the report's green/amber/red/none coding.
 const SRF_STATUS = { on_track: 'green', at_risk: 'amber', no_progress: 'red', unrated: 'none' };
+
+// Project-profile DO-indicator status → traffic-light key (project updates).
+const PROJ_STATUS_KEY = (s) => {
+  const k = String(s || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (['exceeded', 'achieved', 'on_track', 'ontrack', 'completed', 'complete', 'met'].includes(k)) return 'green';
+  if (['in_progress', 'ongoing', 'on_going', 'partial', 'partially', 'started'].includes(k)) return 'amber';
+  if (['delayed', 'off_track', 'behind', 'at_risk', 'not_met'].includes(k)) return 'red';
+  return 'none';
+};
+export const PROJ_STATUS_LABEL = { green: 'On track / exceeded', amber: 'In progress', red: 'Delayed / at risk', none: 'Not yet rated' };
 const REPORT_DOC_LABEL = {
   annual_workplan: 'Annual Workplan', back_to_office: 'Back to Office', monthly_report: 'Monthly',
   quarterly_report: 'Quarterly', six_month_report: '6-Month', annual_report: 'Annual',
@@ -183,7 +193,7 @@ function monthsInPeriod(p) {
   return set;
 }
 
-export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [], reports = [], kind = 'quarterly', activities = null, reportActivities = [], project = '' } = {}) {
+export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos = [], reports = [], kind = 'quarterly', activities = null, reportActivities = [], project = '', projectProfiles = [] } = {}) {
   const p = parsePeriod(period);
   // Prefer live SRF activities (what officers edit on the Framework tab); fall
   // back to the embedded plan snapshot when live data isn't available.
@@ -628,6 +638,60 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
       : '',
   };
 
+  /* ── Project updates (project-level DO progress from project profiles) ─────
+     Six-monthly (SMR) and Annual reports consolidate the latest recorded update
+     for each major programme/project — its Development Objective progress
+     indicators, ratings and delivery — from the project profiles maintained on
+     the MERL platform (e.g. GEF/UNDP Project Implementation Reports). */
+  const projStatusCount = { green: 0, amber: 0, red: 0, none: 0 };
+  const projectList = (projectProfiles || []).filter(Boolean).map(pr => {
+    const d = (pr && pr.data) || {};
+    const rawInds = Array.isArray(d.indicators) ? d.indicators : [];
+    const indicators = rawInds.map(it => {
+      const statusKey = PROJ_STATUS_KEY(it.status);
+      projStatusCount[statusKey] += 1;
+      return {
+        code: it.code || '', description: it.description || '',
+        baseline: it.baseline == null ? '' : String(it.baseline),
+        midterm: it.midterm == null ? '' : String(it.midterm),
+        end: it.end == null ? '' : String(it.end),
+        current: it.current == null ? '' : String(it.current),
+        statusKey,
+      };
+    });
+    const fin = d.finance || {};
+    const rat = d.ratings || {};
+    const deliveryPct = fin.delivery_vs_approved_pct != null ? Number(fin.delivery_vs_approved_pct)
+      : (fin.delivery_vs_expected_pct != null ? Number(fin.delivery_vs_expected_pct) : null);
+    return {
+      code: pr.code || '', name: pr.name || d.official_title || pr.code || 'Project',
+      acronym: pr.acronym || '', objective: (d.objective || '').trim(),
+      period: d.period || '', sourceDocument: d.source_document || '',
+      updatedBy: pr.updated_by || '', updatedAt: pr.updated_at ? fmtDMY(pr.updated_at) : '',
+      ratings: { do: rat['Overall DO rating'] || '', ip: rat['Overall IP rating'] || '', risk: rat['Overall risk rating'] || '' },
+      finance: {
+        grant: Number(fin.gef_grant || 0), cofinancing: Number(fin.cofinancing || 0),
+        disbursement: Number(fin.disbursement || 0), deliveryPct, asOf: fin.as_of || '',
+      },
+      highlights: (d.highlights && typeof d.highlights === 'object')
+        ? Object.entries(d.highlights).map(([label, value]) => ({ label, value: String(value) })) : [],
+      indicators, indicatorCount: indicators.length,
+    };
+  }).sort((a, b) => String(a.code).localeCompare(String(b.code)));
+
+  const projTotalInd = projectList.reduce((n, p) => n + p.indicatorCount, 0);
+  const projectUpdates = {
+    // Consolidated into the six-monthly (SMR) and annual reports, as requested.
+    show: ['halfyear', 'annual'].includes(kind) && projectList.length > 0,
+    projects: projectList,
+    narrative: projectList.length ? [
+      `Beyond the Strategic Results Framework activities above, the Department monitors delivery of ${projectList.length} major programme${projectList.length > 1 ? 's' : ''}/project${projectList.length > 1 ? 's' : ''} through dedicated project profiles on the MERL platform. The latest recorded update for each — drawn from its most recent implementation report (e.g. GEF/UNDP Project Implementation Reports) and Development Objective (DO) progress indicators — is consolidated below for ${periodPhrase}.`,
+    ] : [],
+    summary: projectList.length
+      ? `${projectList.length} project${projectList.length > 1 ? 's' : ''} reported ${projTotalInd} Development Objective indicator${projTotalInd !== 1 ? 's' : ''}${projTotalInd ? `, of which ${projStatusCount.green} are on track or exceeded and ${projStatusCount.red} are delayed or at risk` : ''}. Figures reflect each project's latest recorded update.`
+      : '',
+  };
+
   /* ── Supporting attachments / annexes ─────────────────────────────────── */
   const attachments = [
     { ref: 'Annex A', title: 'DoCC Strategic Results Framework 2025–2030', note: `Source register for all ${total} activities, ${S.focus_areas} focus areas and ${S.indicators} output indicators.` },
@@ -647,6 +711,14 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
       ref: `Annex ${photoDocs.length ? 'F' : 'E'}`,
       title: 'Activity reports',
       note: `${reportDocs.length} narrative report${reportDocs.length > 1 ? 's' : ''} across ${reportActivityCount || 1} activit${(reportActivityCount || 1) > 1 ? 'ies' : 'y'}, summarised in the Activity Reports section.`,
+    });
+  }
+  if (projectUpdates.show) {
+    const letter = String.fromCharCode('E'.charCodeAt(0) + (photoDocs.length ? 1 : 0) + (reportDocs.length ? 1 : 0));
+    attachments.push({
+      ref: `Annex ${letter}`,
+      title: 'Project implementation profiles',
+      note: `Latest recorded Development Objective progress for ${projectList.length} project${projectList.length > 1 ? 's' : ''} (Project Updates section).`,
     });
   }
 
@@ -683,6 +755,7 @@ export function buildQuarterlyReport({ period = 'Q1 2026', live = null, photos =
     figures,
     photos: photoDocs,
     reports: reportDocs,
+    projectUpdates,
     summaries,
     attachments,
   };
