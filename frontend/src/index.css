@@ -418,20 +418,18 @@
   animation: dh-bg-drift 26s ease-in-out infinite alternate;
   border-bottom: 1px solid #24332b;
 }
-.dash-hero-copy { position: absolute; top: 30px; left: 34px; z-index: 6; max-width: 440px; }
+.dash-hero-copy { position: absolute; top: 50%; left: 34px; transform: translateY(-50%); z-index: 6; max-width: 440px; }
 .dash-hero-title {
-  font-family: 'Space Grotesk', var(--font-display);
+  font-family: var(--font-display);
   font-weight: 700; font-size: clamp(1.7rem, 4.2vw, 2.5rem);
-  line-height: 1.03; letter-spacing: -0.03em; color: #f2f8f2; margin: 0.5rem 0;
+  line-height: 1.05; letter-spacing: -0.03em; color: #f2f8f2; margin: 0.5rem 0;
 }
 .dash-hero-title b { font-weight: 300; color: #7fbf8b; }
-.dash-hero-chips { position: absolute; left: 34px; bottom: 30px; z-index: 6; display: flex; gap: 0.7rem; flex-wrap: wrap; }
 
-/* Phones: let the scene be a backdrop; stack the copy and chips over it. */
+/* Phones: let the scene be a backdrop; sit the copy over it. */
 @media (max-width: 768px) {
-  .dash-hero { height: auto; min-height: 360px; display: flex; flex-direction: column; justify-content: space-between; }
-  .dash-hero-copy { position: static; padding: 1.4rem 1.25rem 0; max-width: none; }
-  .dash-hero-chips { position: static; padding: 1rem 1.25rem 1.4rem; }
+  .dash-hero { height: auto; min-height: 300px; display: flex; flex-direction: column; justify-content: center; }
+  .dash-hero-copy { position: static; transform: none; padding: 1.6rem 1.25rem; max-width: none; }
 }
 
 /* ── Dashboard hero — living background ────────────────────────────────────

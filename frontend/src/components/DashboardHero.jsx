@@ -2,18 +2,9 @@
 // hand-built SVG (no raster/AI art): a procedurally-scattered, depth-shaded
 // canopy, misted forest silhouettes, a soft glow and floating data particles.
 // Sits as a dark band at the top of the (otherwise light) Dashboard, under the
-// white top navigation.
-import { useMemo, useState, useEffect } from 'react';
-import { PLAN_SUMMARY as S } from '../strategicPlan';
-import { cachedRead } from '../lib/cachedRead';
-import { supabase } from '../supabaseClient';
-
-const fmtVUV = (n) => (!n ? '0' : n >= 1e9 ? (n / 1e9).toFixed(1) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(0) + 'M' : String(Math.round(n)));
-const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
-const fallbackStats = () => ({
-  activities: S.activities, themes: S.themes, focusAreas: S.focus_areas, indicators: S.indicators,
-  budgetLabel: fmtVUV(S.total_budget_vuv), onTrackPct: pct(S.status.green, S.activities), greenCount: S.status.green,
-});
+// white top navigation. It is purely a brand banner — the headline figures live
+// once, in the Dashboard's stat strip below, so nothing is repeated here.
+import { useMemo } from 'react';
 
 // Tonal radial gradients give each foliage cluster volume (lit top-left).
 const TONES = [
@@ -54,41 +45,8 @@ function buildCanopy() {
 
 const PARTICLES = [[470, 70], [520, 110], [430, 60], [560, 95], [600, 70], [520, 150], [450, 120]];
 
-function Chip({ label, value, sub }) {
-  return (
-    <div style={{ background: 'rgba(24,38,31,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: '1px solid rgba(127,191,139,0.22)', borderRadius: 14, padding: '0.7rem 0.9rem', minWidth: 104 }}>
-      <div style={{ fontSize: '0.56rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8fa898' }}>{label}</div>
-      <div style={{ fontFamily: "'Space Grotesk', var(--font-display)", fontWeight: 700, fontSize: '1.5rem', color: '#f2f8f2', lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '0.62rem', color: '#7fbf8b' }}>{sub}</div>}
-    </div>
-  );
-}
-
 export default function DashboardHero() {
   const blobs = useMemo(buildCanopy, []);
-  // Self-contained: show the embedded framework figures immediately, then upgrade
-  // to the live shared aggregate (v_srf_analytics) when available.
-  const [s, setStats] = useState(fallbackStats);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await cachedRead('srf-analytics', async () => {
-          const { data: row } = await supabase.from('v_srf_analytics').select('*').maybeSingle();
-          return row || null;
-        });
-        if (cancelled || !data || data.activity_count == null) return;
-        const total = data.activity_count, green = data.status_on_track || 0;
-        setStats({
-          activities: total, themes: (data.by_theme?.length) || S.themes, focusAreas: S.focus_areas,
-          indicators: S.indicators, budgetLabel: fmtVUV(Number(data.total_budget_vuv || 0)),
-          onTrackPct: pct(green, total), greenCount: green,
-        });
-      } catch { /* keep embedded fallback */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const { activities, onTrackPct, greenCount, budgetLabel, themes, focusAreas, indicators } = s;
   return (
     <div className="dash-hero animate-fade-up">
       <svg viewBox="0 0 1000 400" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"
@@ -140,25 +98,18 @@ export default function DashboardHero() {
         <ellipse className="dh-mist dh-mist-b" cx="720" cy="270" rx="150" ry="24" fill="#bfe0c4" fillOpacity="0.08" />
       </svg>
 
-      {/* copy (top-left) */}
+      {/* copy — brand only; the figures live once in the stat strip below */}
       <div className="dash-hero-copy">
-        <div style={{ fontFamily: "'Space Grotesk', var(--font-display)", fontWeight: 500, fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7fbf8b', opacity: 0.9 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#7fbf8b', opacity: 0.9 }}>
           DoCC · Vanuatu · 2025–2030
         </div>
         <h1 className="dash-hero-title">
           Growing a <b>climate&#8209;resilient</b> Vanuatu
         </h1>
-        <p style={{ color: '#a9bdb0', fontSize: '0.9rem', fontWeight: 400, lineHeight: 1.5, maxWidth: 340, margin: 0 }}>
-          Strategic Results Framework — tracking delivery across {themes} themes,
-          {' '}{focusAreas} focus areas and {activities} activities.
+        <p style={{ color: '#a9bdb0', fontSize: '0.9rem', fontWeight: 400, lineHeight: 1.5, maxWidth: 360, margin: 0 }}>
+          Monitoring, evaluation and learning for Vanuatu&rsquo;s Loss &amp; Damage
+          investments — planning, delivery and results in one place.
         </p>
-      </div>
-
-      {/* KPI chips (bottom-left) */}
-      <div className="dash-hero-chips">
-        <Chip label="Activities" value={activities} sub={`${indicators} indicators`} />
-        <Chip label="On Track" value={`${onTrackPct}%`} sub={`${greenCount} of ${activities}`} />
-        <Chip label="Budget" value={budgetLabel} sub="VUV" />
       </div>
     </div>
   );
