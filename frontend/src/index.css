@@ -408,7 +408,14 @@
   overflow: hidden;
   flex-shrink: 0;
   height: 400px;
-  background: radial-gradient(120% 100% at 78% 12%, #21362c 0%, #16211c 42%, #0f1814 100%);
+  /* Two stacked, oversized gradients that slowly pan in opposite directions so
+     the dark band reads as a living, breathing atmosphere (see dh-bg-drift). */
+  background:
+    radial-gradient(80% 70% at 22% 8%, rgba(63,125,82,0.28) 0%, transparent 60%),
+    radial-gradient(120% 100% at 78% 12%, #21362c 0%, #16211c 42%, #0f1814 100%);
+  background-size: 180% 180%, 160% 160%;
+  background-position: 0% 0%, 100% 0%;
+  animation: dh-bg-drift 26s ease-in-out infinite alternate;
   border-bottom: 1px solid #24332b;
 }
 .dash-hero-copy { position: absolute; top: 30px; left: 34px; z-index: 6; max-width: 440px; }
@@ -444,6 +451,11 @@
 .dh-mist-a  { animation: dh-drift-a 16s ease-in-out infinite alternate; }
 .dh-mist-b  { animation: dh-drift-b 20s ease-in-out infinite alternate; }
 
+@keyframes dh-bg-drift {
+  0%   { background-position: 0% 0%,   100% 0%; }
+  50%  { background-position: 40% 30%, 60% 25%; }
+  100% { background-position: 15% 12%, 85% 8%; }
+}
 @keyframes dh-aurora {
   0%   { transform: translate3d(0, 0, 0) scale(1); }
   50%  { transform: translate3d(3%, -2%, 0) scale(1.08); }
@@ -456,5 +468,5 @@
 @keyframes dh-drift-b { from { transform: translateX(0); } to { transform: translateX(-13px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .dash-hero::before, .dh-glow, .dh-canopy, .dh-particle, .dh-mist { animation: none !important; }
+  .dash-hero, .dash-hero::before, .dh-glow, .dh-canopy, .dh-particle, .dh-mist { animation: none !important; }
 }
