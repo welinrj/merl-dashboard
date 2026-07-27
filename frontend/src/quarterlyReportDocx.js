@@ -413,6 +413,39 @@ export async function buildQuarterlyDocxBlob(report) {
   ));
   children.push(summaryPara(report.summaries.nextSteps));
 
+  // ── Project updates (SMR / annual: project-level DO progress) ──
+  if (report.projectUpdates?.show) {
+    children.push(heading('Project Updates'));
+    (report.projectUpdates.narrative || []).forEach(t => children.push(para(t, { size: 20 })));
+    report.projectUpdates.projects.forEach(pj => {
+      children.push(new Paragraph({
+        heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 40 }, keepNext: true,
+        children: [new TextRun({ text: `${pj.acronym ? `${pj.acronym} — ` : ''}${pj.name}`, bold: true, size: 22, color: INK })],
+      }));
+      const metaLine = [pj.code, pj.period, pj.updatedAt ? `updated ${pj.updatedAt}${pj.updatedBy ? ` by ${pj.updatedBy}` : ''}` : ''].filter(Boolean).join('  ·  ');
+      if (metaLine) children.push(para(metaLine, { size: 16, color: MUTED, italics: true }));
+      const facts = [
+        pj.ratings.do && `DO rating: ${pj.ratings.do}`,
+        pj.ratings.ip && `IP rating: ${pj.ratings.ip}`,
+        pj.ratings.risk && `Risk: ${pj.ratings.risk}`,
+        pj.finance.deliveryPct != null && `Delivery: ${pj.finance.deliveryPct}%${pj.finance.asOf ? ` (as of ${pj.finance.asOf})` : ''}`,
+      ].filter(Boolean).join('     ');
+      if (facts) children.push(para(facts, { size: 18 }));
+      if (pj.indicators.length) {
+        children.push(table(
+          ['Development Objective indicator', 'Baseline', 'Target (end)', 'Current status', 'Status'],
+          pj.indicators.map(it => [
+            it.code ? `${it.code}. ${it.description}` : it.description,
+            it.baseline || '—', it.end || '—', it.current || '—',
+            { text: STATUS_KEY_LABEL[it.statusKey], fill: STATUS_FILL[it.statusKey], bold: true },
+          ]),
+          [3400, 1300, 1600, 2100, 1400],
+        ));
+      }
+    });
+    if (report.projectUpdates.summary) children.push(summaryPara(report.projectUpdates.summary));
+  }
+
   // ── Detailed activity reports (one full write-up per activity) ──
   if ((report.activityReports || []).length) {
     children.push(heading('Detailed Activity Reports'));

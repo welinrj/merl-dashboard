@@ -276,6 +276,7 @@ export default function Reports() {
   const [reportActs, setReportActs] = useState([]); // activities extracted from submitted reports
   const [photos, setPhotos]     = useState([]);
   const [activityReports, setActivityReports] = useState([]);
+  const [projProfiles, setProjProfiles] = useState([]); // project profiles → SMR/annual project updates
   const [selected, setSelected] = useState(REPORT_TYPES[0]);
   const [project, setProject]   = useState('');
   const [period, setPeriod]     = useState(() => periodsFor(REPORT_TYPES[0].id)[0]);
@@ -329,15 +330,17 @@ export default function Reports() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [acts, phs, reps, rActs] = await Promise.all([
+      const [acts, phs, reps, rActs, projs] = await Promise.all([
         supabase.from('v_srf_activities').select('id,name,code,theme,status,focus_area,indicator,budget_vuv,progress,risk,target_2030'),
         supabase.from('v_srf_activity_photos').select('*').order('sort_order'),
         supabase.from('v_srf_activity_reports').select('*').order('created_at', { ascending: false }),
         supabase.from('v_project_report_activities').select('*'),
+        supabase.from('v_project_profiles').select('code,name,acronym,data,updated_by,updated_at').order('code'),
       ]);
       if (cancelled || acts.error) return;
       if (acts.data?.length) setSrfLive(acts.data);        // drives live status/budget in reports
       if (!rActs.error) setReportActs(rActs.data ?? []);   // drives period-scoped "activities conducted"
+      if (!projs.error) setProjProfiles(projs.data ?? []); // drives the SMR/annual Project Updates section
       const byId = {};
       (acts.data ?? []).forEach(a => { byId[a.id] = a; });
       if (!phs.error && phs.data?.length) {
@@ -377,8 +380,8 @@ export default function Reports() {
 
   // Assemble the quarterly report object (auto-populated) for preview + Word.
   const quarterlyReport = useMemo(
-    () => buildQuarterlyReport({ period, live: live ?? undefined, photos, reports: activityReports, kind: selected.id, activities: srfLive, reportActivities: reportActs, project }),
-    [selected.id, period, live, photos, activityReports, srfLive, reportActs, project],
+    () => buildQuarterlyReport({ period, live: live ?? undefined, photos, reports: activityReports, kind: selected.id, activities: srfLive, reportActivities: reportActs, project, projectProfiles: projProfiles }),
+    [selected.id, period, live, photos, activityReports, srfLive, reportActs, project, projProfiles],
   );
 
   // The auto-generated narrative seeds the editor; the officer's edits + sign-off

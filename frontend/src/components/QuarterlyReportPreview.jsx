@@ -374,6 +374,7 @@ export default function QuarterlyReportPreview({ report }) {
           'Executive Summary', 'Key Achievements', 'Introduction', 'Activity Overview',
           `${meta.period} — Progress & Accomplishment`, 'Budget Utilisation',
           'Challenges and Limitations', 'Activities Conducted [BTOR]', 'Lessons Learned', 'Next Steps',
+          ...(report.projectUpdates?.show ? ['Project Updates'] : []),
           ...(hasActivityReports ? ['Detailed Activity Reports'] : []),
           ...(hasReports ? ['Activity Reports'] : []),
           ...(hasPhotos ? ['Photo Documentation'] : []),
@@ -573,6 +574,51 @@ export default function QuarterlyReportPreview({ report }) {
           </TableWrap>
           <Summary>{report.summaries.nextSteps}</Summary>
         </Section>
+
+        {report.projectUpdates?.show && (
+          <Section n={nx()} title="Project Updates">
+            {report.projectUpdates.narrative.map((t, i) => (
+              <p key={i} style={{ margin:'0 0 0.6rem', fontSize:'0.78rem', color:'var(--text-2)', lineHeight:1.55 }}>{t}</p>
+            ))}
+            {report.projectUpdates.projects.map(pj => (
+              <div key={pj.code} style={{ marginBottom:'1.1rem', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
+                <div style={{ background:'var(--green-50)', padding:'0.5rem 0.75rem', borderBottom:'1px solid var(--border)' }}>
+                  <div style={{ fontSize:'0.8rem', fontWeight:800, color:'var(--text-1)' }}>{pj.acronym ? `${pj.acronym} — ` : ''}{pj.name}</div>
+                  <div style={{ fontSize:'0.66rem', color:'var(--text-3)', marginTop:'0.1rem' }}>
+                    {[pj.code, pj.period, pj.updatedAt ? `updated ${pj.updatedAt}${pj.updatedBy ? ` by ${pj.updatedBy}` : ''}` : ''].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <div style={{ padding:'0.6rem 0.75rem' }}>
+                  {(pj.ratings.do || pj.ratings.ip || pj.ratings.risk || pj.finance.deliveryPct != null) && (
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:'1.2rem', marginBottom:'0.55rem', fontSize:'0.7rem', color:'var(--text-2)' }}>
+                      {pj.ratings.do && <span><b style={{ color:'var(--text-1)' }}>DO rating:</b> {pj.ratings.do}</span>}
+                      {pj.ratings.ip && <span><b style={{ color:'var(--text-1)' }}>IP rating:</b> {pj.ratings.ip}</span>}
+                      {pj.ratings.risk && <span><b style={{ color:'var(--text-1)' }}>Risk:</b> {pj.ratings.risk}</span>}
+                      {pj.finance.deliveryPct != null && <span><b style={{ color:'var(--text-1)' }}>Delivery:</b> {pj.finance.deliveryPct}%{pj.finance.asOf ? ` (as of ${pj.finance.asOf})` : ''}</span>}
+                    </div>
+                  )}
+                  {pj.indicators.length > 0 && (
+                    <TableWrap>
+                      <thead><tr>{['Development Objective indicator','Baseline','Target (end)','Current status','Status'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {pj.indicators.map((it, ii) => (
+                          <tr key={ii} style={zebra(ii)}>
+                            <td style={td}>{it.code ? <strong>{it.code}. </strong> : null}{it.description}</td>
+                            <td style={td}>{it.baseline || '—'}</td>
+                            <td style={td}>{it.end || '—'}</td>
+                            <td style={td}>{it.current || '—'}</td>
+                            <td style={td}><StatusPill k={it.statusKey}/></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </TableWrap>
+                  )}
+                </div>
+              </div>
+            ))}
+            <Summary>{report.projectUpdates.summary}</Summary>
+          </Section>
+        )}
 
         {hasActivityReports && (
           <Section n={nx()} title="Detailed Activity Reports">
