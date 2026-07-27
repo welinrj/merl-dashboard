@@ -47,6 +47,11 @@
   --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-ui:      'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
+  /* The whole portal is capped to this width and centred, so it never stretches
+     awkwardly wide on large monitors; --app-frame is the warm neutral shown
+     behind the centred column on screens wider than the cap. */
+  --content-max:  1600px;
+  --app-frame:    #e7e1d6;
 }
 
 @layer base {
@@ -56,7 +61,7 @@
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: 'kern' 1, 'liga' 1;
   }
-  body { background-color: var(--cream); color: var(--text-1); line-height: 1.5; }
+  body { background-color: var(--app-frame); color: var(--text-1); line-height: 1.5; }
   *:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px var(--white), 0 0 0 4px var(--green-600);
@@ -227,7 +232,16 @@
 }
 
 /* ── App shell (top navigation) ──────────────────────────────────────────── */
-.app-shell { height: 100vh; height: 100dvh; }
+/* Centre the whole portal and cap its width so it stays comfortable on any
+   screen. Below the cap the shell is simply full-width (nothing changes on
+   phones/tablets/laptops); above it, the shell centres with the --app-frame
+   neutral showing on either side and a soft edge shadow lifting the column. */
+.app-shell {
+  height: 100vh; height: 100dvh;
+  width: 100%; max-width: var(--content-max);
+  margin-inline: auto;
+  box-shadow: 0 0 0 1px var(--border), 0 22px 60px -24px rgba(28, 21, 18, 0.22);
+}
 
 /* Center pill navigation */
 .topnav-links { display: flex; align-items: center; gap: 0.12rem; }
