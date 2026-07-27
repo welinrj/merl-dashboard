@@ -230,11 +230,11 @@
 .app-shell { height: 100vh; height: 100dvh; }
 
 /* Center pill navigation */
-.topnav-links { display: flex; align-items: center; gap: 0.25rem; }
+.topnav-links { display: flex; align-items: center; gap: 0.12rem; }
 .topnav-link {
   display: inline-flex; align-items: center; gap: 0.4rem;
-  padding: 0.62rem 1.1rem; border-radius: 9999px;
-  font-size: 0.98rem; font-weight: 600; text-decoration: none;
+  padding: 0.55rem 0.78rem; border-radius: 9999px;
+  font-size: 0.92rem; font-weight: 600; text-decoration: none;
   color: var(--text-2); white-space: nowrap;
   transition: background 0.15s, color 0.15s;
 }
@@ -253,7 +253,7 @@
 
 /* Top bar base spacing/sizing (kept in CSS so breakpoints can tighten it).
    White header, lifted above the content with a soft elevation shadow. */
-.topnav { gap: 1.25rem; padding: 1.15rem 1.75rem; box-shadow: 0 2px 10px rgba(28,21,18,0.06), 0 6px 20px -8px rgba(28,21,18,0.10); position: relative; z-index: 20; }
+.topnav { gap: 0.85rem; padding: 1.1rem 1.35rem; box-shadow: 0 2px 10px rgba(28,21,18,0.06), 0 6px 20px -8px rgba(28,21,18,0.10); position: relative; z-index: 20; }
 .topnav-crest { width: 48px; height: 48px; border-radius: 12px; }
 .topnav-brand-title { font-size: 1.25rem; }
 
@@ -274,10 +274,15 @@
 }
 .topnav-mobile-lang button.active { background: var(--green-600); color: #fff; border-color: var(--green-600); }
 
-@media (max-width: 960px) {
+/* Seven pills + brand + Staging/language/bell/account intrinsically need
+   ~1330px; below that the inline pills overflow (the right cluster gets pushed
+   off the edge on tablet landscape), so collapse them into the hamburger menu.
+   The threshold is set just above the measured pill-bar width so the tabs only
+   render where they actually fit (≈1366px laptops and wider). */
+@media (max-width: 1340px) {
   .topnav-links { display: none; }
   .topnav-hamburger { display: inline-flex; }
-  .topnav { gap: 0.6rem; padding: 0.8rem 1rem; }
+  .topnav { gap: 0.6rem; padding: 0.8rem 1.1rem; }
 }
 
 /* On phones the header is brand + bell + avatar + menu only; the Staging badge
@@ -291,7 +296,7 @@
   .topnav-bell, .topnav-account { display: none; }
 }
 .topnav-mobile-account { display: none; }
-@media (max-width: 960px) {
+@media (max-width: 1340px) {
   .topnav-mobile-account {
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
     margin-top: 0.5rem; padding: 0.7rem 0.4rem 0.125rem; border-top: 1px solid var(--border);
