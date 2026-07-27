@@ -421,69 +421,63 @@
   .grid-kpi { grid-template-columns: 1fr; }
 }
 
-/* ── Dashboard hero (dark atmospheric tree scene) ─────────────────────────── */
+/* ── Dashboard hero (emblem / stone-wall image banner) ────────────────────── */
 .dash-hero {
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
   height: 400px;
-  /* Two stacked, oversized gradients that slowly pan in opposite directions so
-     the dark band reads as a living, breathing atmosphere (see dh-bg-drift). */
-  background:
-    radial-gradient(80% 70% at 22% 8%, rgba(63,125,82,0.28) 0%, transparent 60%),
-    radial-gradient(120% 100% at 78% 12%, #21362c 0%, #16211c 42%, #0f1814 100%);
-  background-size: 180% 180%, 160% 160%;
-  background-position: 0% 0%, 100% 0%;
-  animation: dh-bg-drift 26s ease-in-out infinite alternate;
-  border-bottom: 1px solid #24332b;
+  background: #12100e;               /* dark base shown behind the artwork */
+  border-bottom: 1px solid #2a251d;
 }
-.dash-hero-copy { position: absolute; top: 50%; left: 34px; transform: translateY(-50%); z-index: 6; max-width: 440px; }
+/* The supplied artwork covering the band. The image URL is set inline (it is a
+   hashed/base-pathed public asset); anchored left so the emblem stays in view,
+   with a very slow zoom so the banner feels alive (see dh-kenburns). */
+.dash-hero-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background-size: cover; background-position: left center; background-repeat: no-repeat;
+  transform-origin: 30% 45%;
+  animation: dh-kenburns 24s ease-in-out infinite alternate;
+}
+/* Legibility scrim — darkens the right side where the title sits (and adds a
+   soft floor vignette) without hiding the emblem on the left. */
+.dash-hero::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(10,12,10,0.42) 0%, rgba(10,12,10,0.04) 34%, rgba(10,12,10,0.16) 60%, rgba(10,12,10,0.66) 100%),
+    linear-gradient(0deg, rgba(10,12,10,0.30), transparent 42%);
+}
+.dash-hero-copy { position: absolute; top: 50%; right: 60px; transform: translateY(-50%); z-index: 6; max-width: 440px; text-align: right; }
+.dash-hero-eyebrow {
+  font-family: var(--font-display); font-weight: 500; font-size: 0.68rem;
+  letter-spacing: 0.22em; text-transform: uppercase; color: #e6c98a; opacity: 0.95;
+}
 .dash-hero-title {
   font-family: var(--font-display);
-  font-weight: 700; font-size: clamp(1.7rem, 4.2vw, 2.5rem);
-  line-height: 1.05; letter-spacing: -0.03em; color: #f2f8f2; margin: 0.5rem 0;
+  font-weight: 700; font-size: clamp(1.45rem, 4.6vw, 2.5rem);
+  line-height: 1.06; letter-spacing: -0.03em; color: #fbf7ee; margin: 0.5rem 0;
+  text-shadow: 0 2px 18px rgba(0,0,0,0.45); overflow-wrap: break-word;
 }
-.dash-hero-title b { font-weight: 300; color: #7fbf8b; }
+.dash-hero-title b { font-weight: 300; color: #e6c98a; }
+/* Kept in a class (not inline) so the width can relax on phones — an inline
+   max-width would be unbeatable by the media query below. */
+.dash-hero-sub {
+  color: #d6cbb6; font-size: 0.9rem; font-weight: 400; line-height: 1.5;
+  max-width: 360px; margin: 0 0 0 auto;
+}
 
-/* Phones: let the scene be a backdrop; sit the copy over it. */
+/* Phones: image as a backdrop; centre the copy over a stronger, even scrim so
+   it stays legible whatever part of the artwork shows through. */
 @media (max-width: 768px) {
   .dash-hero { height: auto; min-height: 300px; display: flex; flex-direction: column; justify-content: center; }
-  .dash-hero-copy { position: static; transform: none; padding: 1.6rem 1.25rem; max-width: none; }
+  .dash-hero-bg { background-position: center; }
+  .dash-hero::after { background: linear-gradient(0deg, rgba(10,12,10,0.72), rgba(10,12,10,0.48)); }
+  .dash-hero-copy { position: static; transform: none; padding: 1.6rem 1.25rem; max-width: none; width: 100%; min-width: 0; text-align: left; }
+  .dash-hero-sub { max-width: none; margin: 0; }
 }
 
-/* ── Dashboard hero — living background ────────────────────────────────────
-   Subtle, ambient motion: a drifting aurora glow behind the scene, a breathing
-   backlight, a gentle wind-sway of the canopy, drifting mist and twinkling data
-   particles. All disabled under prefers-reduced-motion. */
-.dash-hero::before {
-  content: ''; position: absolute; inset: -25%; pointer-events: none;
-  background:
-    radial-gradient(38% 42% at 32% 38%, rgba(95,168,127,0.20), transparent 70%),
-    radial-gradient(32% 38% at 72% 30%, rgba(127,191,139,0.14), transparent 70%);
-  animation: dh-aurora 20s ease-in-out infinite alternate;
-}
-.dh-glow    { transform-box: fill-box; transform-origin: center; animation: dh-breathe 9s ease-in-out infinite; }
-.dh-canopy  { transform-box: fill-box; transform-origin: 50% 100%; animation: dh-sway 7s ease-in-out infinite; }
-.dh-particle { animation: dh-twinkle 3.2s ease-in-out infinite; }
-.dh-mist-a  { animation: dh-drift-a 16s ease-in-out infinite alternate; }
-.dh-mist-b  { animation: dh-drift-b 20s ease-in-out infinite alternate; }
-
-@keyframes dh-bg-drift {
-  0%   { background-position: 0% 0%,   100% 0%; }
-  50%  { background-position: 40% 30%, 60% 25%; }
-  100% { background-position: 15% 12%, 85% 8%; }
-}
-@keyframes dh-aurora {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  50%  { transform: translate3d(3%, -2%, 0) scale(1.08); }
-  100% { transform: translate3d(-2%, 3%, 0) scale(1.04); }
-}
-@keyframes dh-breathe { 0%, 100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
-@keyframes dh-sway    { 0%, 100% { transform: rotate(-0.8deg); } 50% { transform: rotate(0.8deg); } }
-@keyframes dh-twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.95; } }
-@keyframes dh-drift-a { from { transform: translateX(0); } to { transform: translateX(10px); } }
-@keyframes dh-drift-b { from { transform: translateX(0); } to { transform: translateX(-13px); } }
+@keyframes dh-kenburns { from { transform: scale(1); } to { transform: scale(1.06); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .dash-hero, .dash-hero::before, .dh-glow, .dh-canopy, .dh-particle, .dh-mist { animation: none !important; }
+  .dash-hero-bg { animation: none !important; }
 }
