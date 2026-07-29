@@ -127,29 +127,13 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         setError('No active platform profile is linked to this account. Contact the system administrator.');
         return;
       }
-      if (profile.role !== 'ROLE_ADMIN') {
-        onLogin(profile);
-        return;
-      }
-      // MFA required for System Administrator
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factors?.totp?.find(f => f.status === 'verified') ?? factors?.totp?.[0];
-      if (totpFactor) {
-        setFactorId(totpFactor.id);
-        setPendingUser(profile);
-      } else {
-        // First sign-in: enroll a TOTP factor before granting access
-        const { data: enroll, error: eErr } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
-        if (eErr || !enroll) {
-          await supabase.auth.signOut();
-          setError(eErr?.message ?? 'Could not start MFA enrollment.');
-          return;
-        }
-        setFactorId(enroll.id);
-        setEnrollQr(enroll.totp.qr_code);
-        setEnrollSecret(enroll.totp.secret);
-        setPendingUser(profile);
-      }
+      // TEMPORARILY DISABLED (2026-07-29): 2FA/MFA enforcement for
+      // System Administrator is switched off for now. Previously,
+      // ROLE_ADMIN fell through to a TOTP challenge/enrollment step
+      // (supabase.auth.mfa.listFactors/enroll) before onLogin() was
+      // called. That block was removed; restore it from git history
+      // to re-enable MFA.
+      onLogin(profile);
     } finally {
       setLoading(false);
     }
