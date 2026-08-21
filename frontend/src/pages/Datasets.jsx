@@ -6,9 +6,24 @@ import {
   ThumbsUp, ThumbsDown, X, MessageSquare,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { parseTabular, isTabular } from '../lib/parseTabular';
 
 /* ── constants ──────────────────────────────────────────────────────────── */
 const TYPE_ICON = { csv: Table, xlsx: Table, geojson: Map, json: FileText };
+// Roles allowed to ingest structured rows into the indicator time-series
+// (matches merl.require_editor() on the server).
+const CAN_INGEST = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
+
+// Indicator time-series fields an uploaded column can map to.
+const INGEST_FIELDS = [
+  { key: 'reporting_period',    label: 'Reporting period', required: true,  hint: 'date (YYYY-MM-DD)' },
+  { key: 'value',               label: 'Value',            required: true,  hint: 'number' },
+  { key: 'disaggregation_key',   label: 'Disaggregation',   required: false, hint: 'e.g. sex, age' },
+  { key: 'disaggregation_value', label: 'Disagg. value',    required: false, hint: 'e.g. female' },
+  { key: 'location_island',      label: 'Island',           required: false, hint: '' },
+  { key: 'location_province',    label: 'Province',         required: false, hint: '' },
+  { key: 'notes',                label: 'Notes',            required: false, hint: '' },
+];
 
 const STATUS_CFG = {
   processed: { icon: CheckCircle, color: '#1a8c4e', bg: '#d1fae5', label: 'Processed' },
@@ -100,6 +115,8 @@ function UploadPanel({ user, onSuccess, projects }) {
   const [selectedProject, setSelectedProject] = useState('');
   const [uploading, setUploading]             = useState(false);
   const [results, setResults]                 = useState([]);   // [{name, ok, error}]
+  const [mapTask, setMapTask]                 = useState(null); // pending ingestion mapping
+  const canIngest = CAN_INGEST.includes(user?.role);
 
   // Default to the first real project once the list loads.
   useEffect(() => {
@@ -124,8 +141,8 @@ function UploadPanel({ user, onSuccess, projects }) {
 
         if (storageErr) throw new Error(storageErr.message);
 
-        // 2. insert metadata row into datasets table
-        const { error: dbErr } = await supabase
+        // 2. insert metadata row into datasets table (return id for ingestion)
+        const { data: inserted, error: dbErr } = await supabase
           .from('datasets')
           .insert({
             name:         file.name,
@@ -137,18 +154,33 @@ function UploadPanel({ user, onSuccess, projects }) {
             status:       'pending',
             tags:         [],
             storage_path: storagePath,
-          });
+          })
+          .select('id')
+          .single();
 
         if (dbErr) throw new Error(dbErr.message);
-        outcomes.push({ name: file.name, ok: true });
+        outcomes.push({ name: file.name, ok: true, id: inserted?.id, file });
       } catch (err) {
         outcomes.push({ name: file.name, ok: false, error: err.message });
       }
     }
 
     setUploading(false);
-    setResults(outcomes);
+    setResults(outcomes.map(({ file: _f, ...rest }) => rest));
     if (outcomes.some(o => o.ok)) onSuccess();
+
+    // Offer structured ingestion for the first CSV/XLSX an editor uploaded.
+    if (canIngest) {
+      const tabular = outcomes.find(o => o.ok && o.id && isTabular(o.name));
+      if (tabular) {
+        try {
+          const { columns, rows } = await parseTabular(tabular.file);
+          if (columns.length && rows.length) {
+            setMapTask({ datasetId: tabular.id, fileName: tabular.name, columns, rows });
+          }
+        } catch { /* not parseable as a table — leave as a stored file */ }
+      }
+    }
   };
 
   return (
@@ -196,6 +228,175 @@ function UploadPanel({ user, onSuccess, projects }) {
           ))}
         </div>
       )}
+
+      {canIngest && (
+        <p style={{ marginTop: '0.75rem', fontSize: '0.72rem', color: 'var(--text-3)' }}>
+          Upload a CSV or Excel file of indicator data to map its columns and
+          consolidate the rows into the indicator time-series.
+        </p>
+      )}
+
+      {mapTask && (
+        <MappingModal
+          task={mapTask}
+          onClose={() => setMapTask(null)}
+          onIngested={() => { setMapTask(null); onSuccess(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── column-mapping / ingestion modal ───────────────────────────────────────
+   Maps the uploaded file's columns to indicator time-series fields and calls
+   ingest_indicator_values, which validates and lands the rows in
+   merl.indicator_values (feeding the indicator dashboards and reports). */
+function MappingModal({ task, onClose, onIngested }) {
+  const { fileName, columns, rows, datasetId } = task;
+  const [indicators, setIndicators] = useState([]);
+  const [indMode, setIndMode]       = useState('fixed'); // 'fixed' | 'column'
+  const [fixedInd, setFixedInd]     = useState('');
+  const [indCol, setIndCol]         = useState('');
+  const [map, setMap]               = useState({});      // field -> column
+  const [busy, setBusy]             = useState(false);
+  const [result, setResult]         = useState(null);
+  const [err, setErr]               = useState('');
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('v_indicators').select('code,name').order('code');
+      setIndicators(data ?? []);
+    })();
+  }, []);
+
+  // Best-effort auto-map by header name.
+  useEffect(() => {
+    const guess = {};
+    const norm = s => s.toLowerCase().replace(/[^a-z]/g, '');
+    for (const f of INGEST_FIELDS) {
+      const hit = columns.find(c => norm(c).includes(norm(f.key.replace('reporting_', '').replace('location_', '').replace('disaggregation_', 'disagg'))));
+      if (hit) guess[f.key] = hit;
+    }
+    setMap(guess);
+    const indHit = columns.find(c => /indicator|code/i.test(c));
+    if (indHit) { setIndMode('column'); setIndCol(indHit); }
+  }, [columns]);
+
+  const setField = (k, v) => setMap(m => ({ ...m, [k]: v }));
+  const required = INGEST_FIELDS.filter(f => f.required);
+  const indicatorReady = indMode === 'fixed' ? !!fixedInd : !!indCol;
+  const ready = indicatorReady && required.every(f => map[f.key]);
+
+  const submit = async () => {
+    setBusy(true); setErr(''); setResult(null);
+    const payload = rows.map(r => {
+      const o = {};
+      o.indicator_code = indMode === 'fixed' ? fixedInd : r[indCol];
+      for (const f of INGEST_FIELDS) if (map[f.key]) o[f.key] = r[map[f.key]];
+      return o;
+    });
+    const { data, error } = await supabase.rpc('ingest_indicator_values', {
+      p_dataset_id: datasetId,
+      p_rows: payload,
+    });
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    setResult(data);
+  };
+
+  const colOptions = ['', ...columns];
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'1rem' }}>
+      <div style={{ background:'#fff', borderRadius:12, padding:'1.5rem', width:640, maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.25rem' }}>
+          <div style={{ fontWeight:700, fontSize:'1rem', color:'var(--text-1)' }}>Map columns to indicators</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)' }}><X size={18} /></button>
+        </div>
+        <div style={{ fontSize:'0.8125rem', color:'var(--text-3)', marginBottom:'1rem' }}>
+          {fileName} · {rows.length} data row{rows.length === 1 ? '' : 's'} detected
+        </div>
+
+        {!result && (
+          <>
+            {/* Indicator source */}
+            <div style={{ marginBottom:'1rem', padding:'0.75rem', border:'1px solid var(--border)', borderRadius:8 }}>
+              <div style={{ fontSize:'0.75rem', fontWeight:700, color:'var(--text-2)', marginBottom:'0.5rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Indicator</div>
+              <div style={{ display:'flex', gap:'1rem', flexWrap:'wrap', alignItems:'center' }}>
+                <label style={{ fontSize:'0.8rem', display:'flex', gap:'0.35rem', alignItems:'center' }}>
+                  <input type="radio" checked={indMode === 'fixed'} onChange={() => setIndMode('fixed')} />
+                  One indicator for all rows
+                </label>
+                <label style={{ fontSize:'0.8rem', display:'flex', gap:'0.35rem', alignItems:'center' }}>
+                  <input type="radio" checked={indMode === 'column'} onChange={() => setIndMode('column')} />
+                  Read the indicator code from a column
+                </label>
+              </div>
+              <div style={{ marginTop:'0.6rem' }}>
+                {indMode === 'fixed' ? (
+                  <select className="field-input" value={fixedInd} onChange={e => setFixedInd(e.target.value)} style={{ width:'100%', maxWidth:420 }}>
+                    <option value="">Select an indicator…</option>
+                    {indicators.map(i => <option key={i.code} value={i.code}>{i.code} — {i.name}</option>)}
+                  </select>
+                ) : (
+                  <select className="field-input" value={indCol} onChange={e => setIndCol(e.target.value)} style={{ width:'100%', maxWidth:420 }}>
+                    {colOptions.map(c => <option key={c} value={c}>{c || 'Select a column…'}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            {/* Field → column mapping */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem 1rem', marginBottom:'1rem' }}>
+              {INGEST_FIELDS.map(f => (
+                <div key={f.key}>
+                  <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-2)', display:'block', marginBottom:'0.2rem' }}>
+                    {f.label}{f.required && <span style={{ color:'#dc2626' }}> *</span>}
+                    {f.hint && <span style={{ color:'var(--text-3)', fontWeight:400 }}> · {f.hint}</span>}
+                  </label>
+                  <select className="field-input" value={map[f.key] || ''} onChange={e => setField(f.key, e.target.value)} style={{ width:'100%' }}>
+                    {colOptions.map(c => <option key={c} value={c}>{c || '—'}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            {err && <div style={{ background:'#fee2e2', border:'1px solid #fca5a5', color:'#991b1b', borderRadius:8, padding:'0.5rem 0.75rem', fontSize:'0.8rem', marginBottom:'0.75rem' }}>{err}</div>}
+
+            <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end' }}>
+              <button onClick={onClose} style={{ padding:'0.5rem 1rem', borderRadius:8, border:'1px solid var(--border)', background:'none', cursor:'pointer', fontSize:'0.8125rem', color:'var(--text-2)' }}>Skip / store file only</button>
+              <button onClick={submit} disabled={!ready || busy} style={{ padding:'0.5rem 1.25rem', borderRadius:8, border:'none', background: ready ? 'var(--green-700)' : 'var(--border)', color:'#fff', fontWeight:600, cursor: ready ? 'pointer' : 'not-allowed', fontSize:'0.8125rem' }}>
+                {busy ? 'Importing…' : `Import ${rows.length} rows`}
+              </button>
+            </div>
+          </>
+        )}
+
+        {result && (
+          <div>
+            <div style={{ display:'flex', gap:'1rem', marginBottom:'1rem' }}>
+              <div style={{ flex:1, background:'#d1fae5', border:'1px solid #6ee7b7', borderRadius:8, padding:'0.75rem', textAlign:'center' }}>
+                <div style={{ fontSize:'1.5rem', fontWeight:800, color:'#065f46' }}>{result.inserted}</div>
+                <div style={{ fontSize:'0.72rem', color:'#065f46' }}>rows imported</div>
+              </div>
+              <div style={{ flex:1, background: result.skipped ? '#fef3c7' : '#f3f4f6', border:`1px solid ${result.skipped ? '#fcd34d' : 'var(--border)'}`, borderRadius:8, padding:'0.75rem', textAlign:'center' }}>
+                <div style={{ fontSize:'1.5rem', fontWeight:800, color: result.skipped ? '#92400e' : 'var(--text-3)' }}>{result.skipped}</div>
+                <div style={{ fontSize:'0.72rem', color: result.skipped ? '#92400e' : 'var(--text-3)' }}>rows skipped</div>
+              </div>
+            </div>
+            {Array.isArray(result.errors) && result.errors.length > 0 && (
+              <div style={{ maxHeight:160, overflowY:'auto', border:'1px solid var(--border)', borderRadius:8, padding:'0.5rem', marginBottom:'1rem' }}>
+                {result.errors.map((e, i) => (
+                  <div key={i} style={{ fontSize:'0.75rem', color:'#991b1b' }}>Row {e.row}: {e.reason}</div>
+                ))}
+              </div>
+            )}
+            <div style={{ display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={onIngested} style={{ padding:'0.5rem 1.25rem', borderRadius:8, border:'none', background:'var(--green-700)', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'0.8125rem' }}>Done</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -286,6 +487,9 @@ export default function Datasets({ user }) {
         reviewed_at: new Date().toISOString(),
         review_note: null,
       }).eq('id', dataset.id);
+      // Mark any indicator values ingested from this dataset as verified so
+      // they count toward the dashboards and reports (ignore if none/blocked).
+      await supabase.rpc('verify_dataset_values', { p_dataset_id: dataset.id });
     } catch (err) {
       console.error('Approval failed:', err.message);
     }

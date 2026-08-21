@@ -81,18 +81,28 @@ Open **Datasets** and press **Upload**. Three kinds of input are supported:
 
 ### 5.1 CSV / Excel files
 
-For bulk indicator data (`.csv`, `.xlsx`, `.xls`):
+For bulk indicator data (`.csv`, `.xlsx`):
 
-1. Choose the file (or drag it onto the upload area).
-2. The platform reads the columns and proposes a mapping to indicator
-   fields — check each column is matched correctly.
-3. Fix any rows flagged red (missing values, wrong data types) — either in
-   the preview or by correcting the file and re-uploading.
-4. Press **Submit**. The dataset enters the approval queue (§6).
+1. Choose the file (or drag it onto the upload area). The file is saved and a
+   **column-mapping** window opens.
+2. Choose the **indicator** — either apply one indicator to every row, or read
+   the indicator code from a column in the file.
+3. Map the file's columns to the indicator fields: **reporting period** and
+   **value** are required; disaggregation (e.g. sex, age), island, province,
+   and notes are optional. The platform proposes a mapping from the column
+   names; adjust as needed.
+4. Press **Import**. Each row is validated (value must be a number, reporting
+   period a date `YYYY-MM-DD`, indicator code must exist) and the valid rows
+   are written to the indicator time-series. A summary shows how many rows were
+   imported and lists any that were skipped, with the reason for each.
 
-Keep one header row, one record per row. Include the disaggregation columns
-(sex, age, disability, location) wherever the indicator requires them —
-submissions without required disaggregation are rejected by the reviewer.
+The imported values enter the approval queue (§6) as unverified; on approval
+they are marked verified and count toward the dashboards and reports. Keep one
+header row and one record per row.
+
+> **Who can import:** structured import is available to M&E Officers, Project
+> Managers, and Administrators. Field Staff and others can still attach CSV /
+> Excel files as evidence (§5.2); an officer can import them later.
 
 ### 5.2 Photos and documents (evidence)
 
