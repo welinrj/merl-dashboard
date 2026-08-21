@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen,
@@ -21,7 +21,7 @@ import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
 import { LogoCloud } from './components/logo-cloud';
 import { supabase, toAppRole } from './supabaseClient';
-import type { AppUser, UserRole, NavItem, NavKey, MFAStatus } from './types';
+import type { AppUser, UserRole, NavItem, NavKey } from './types';
 
 // ── Environment ───────────────────────────────────────────────────────────────
 // VITE_APP_ENV is set to "production" in the production build .env file.
@@ -52,11 +52,11 @@ const ROLES: Record<UserRole, string> = {
 };
 
 // ── Supabase Auth ─────────────────────────────────────────────────────────────
-// Sign-in is email/password against Supabase Auth. The signed-in user's
-// platform profile (name + contract role) comes from the current_profile()
-// RPC (migration 0003), which resolves auth.uid() → merl.users. TOTP MFA is
-// enforced for the System Administrator role: an admin without an enrolled
-// factor is walked through QR enrollment on first sign-in.
+// Sign-in is email/password against Supabase Auth. Accounts are created by the
+// administrator (who issues a password), and users sign in directly with those
+// credentials — there is no second factor. The signed-in user's platform
+// profile (name + contract role) comes from the current_profile() RPC
+// (migration 0003), which resolves auth.uid() → merl.users.
 async function loadProfile(): Promise<AppUser | null> {
   const { data, error } = await supabase.rpc('current_profile');
   if (error || !data || data.length === 0) return null;
@@ -66,7 +66,6 @@ async function loadProfile(): Promise<AppUser | null> {
     username: p.email,
     role: toAppRole(p.role),
     name: p.full_name,
-    mfaEnabled: p.role === 'administrator',
   };
 }
 
@@ -101,16 +100,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
 
-  // MFA step state
-  const [pendingUser, setPendingUser] = useState<AppUser | null>(null);
-  const [factorId, setFactorId]       = useState('');
-  const [enrollQr, setEnrollQr]       = useState('');   // non-empty ⇒ enrollment step
-  const [enrollSecret, setEnrollSecret] = useState('');
-  const [mfaCode, setMfaCode]         = useState('');
-  const [mfaError, setMfaError]       = useState('');
-  const [mfaLoading, setMfaLoading]   = useState(false);
-
-  // Step 1 — Supabase Auth credential check
+  // Supabase Auth credential check — direct email/password sign-in.
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -127,52 +117,11 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         setError('No active platform profile is linked to this account. Contact the system administrator.');
         return;
       }
-      // TEMPORARILY DISABLED (2026-07-29): 2FA/MFA enforcement for
-      // System Administrator is switched off for now. Previously,
-      // ROLE_ADMIN fell through to a TOTP challenge/enrollment step
-      // (supabase.auth.mfa.listFactors/enroll) before onLogin() was
-      // called. That block was removed; restore it from git history
-      // to re-enable MFA.
       onLogin(profile);
     } finally {
       setLoading(false);
     }
   };
-
-  // Step 2 — MFA verification (covers both enrolled factors and enrollment)
-  const handleMFA = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pendingUser) return;
-    setMfaLoading(true);
-    setMfaError('');
-    try {
-      const { data: challenge, error: cErr } =
-        await supabase.auth.mfa.challenge({ factorId });
-      if (cErr) throw cErr;
-
-      const { error: vErr } = await supabase.auth.mfa.verify({
-        factorId,
-        challengeId: challenge.id,
-        code:        mfaCode.replace(/\s/g, ''),
-      });
-      if (vErr) throw new Error('Invalid code. Please try again.');
-      onLogin(pendingUser);
-    } catch (err: unknown) {
-      setMfaError(err instanceof Error ? err.message : 'MFA verification failed.');
-    } finally {
-      setMfaLoading(false);
-    }
-  }, [pendingUser, factorId, mfaCode, onLogin]);
-
-  const cancelMFA = useCallback(async () => {
-    await supabase.auth.signOut();
-    setPendingUser(null);
-    setFactorId('');
-    setEnrollQr('');
-    setEnrollSecret('');
-    setMfaCode('');
-    setMfaError('');
-  }, []);
 
   return (
     <div className="lg-root">
@@ -235,9 +184,6 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         .lg-notice{display:flex;align-items:flex-start;gap:.55rem;margin-top:1.5rem;padding:.75rem .9rem;border-radius:9px;background:var(--green-50);border:1px solid var(--green-100);font-size:.75rem;line-height:1.45;color:var(--text-2)}
         .lg-notice svg{color:var(--green-700);flex-shrink:0;margin-top:1px}
         .lg-foot{margin-top:1.1rem;text-align:center;font-size:.75rem;color:var(--text-3)}
-        .lg-mfa-badge{width:42px;height:42px;border-radius:11px;background:var(--green-50);border:1px solid var(--green-100);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .lg-link{background:none;border:none;cursor:pointer;color:var(--text-3);font-size:.8125rem;padding:.5rem;width:100%}
-        .lg-link:hover{color:var(--green-700)}
         @media (max-width:860px){.lg-brand{display:none}.lg-mobile-brand{display:flex;align-items:center;gap:.7rem;justify-content:center;margin-bottom:1.75rem;padding-bottom:1.4rem;border-bottom:1px solid var(--border)}}
         @media (prefers-reduced-motion:reduce){.lg-submit{transition:none}}
       `}</style>
@@ -289,14 +235,12 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
             </div>
           </div>
 
-          {/* ── Step 1: credentials ── */}
-          {!pendingUser && (
-            <>
-              <div className="lg-eyebrow"><Lock size={13} /> Secure sign-in</div>
-              <h2 className="lg-h2">Welcome back</h2>
-              <p className="lg-lead">Sign in with your official DoCC credentials to continue to the MERL platform.</p>
+          {/* ── Sign in: credentials ── */}
+          <div className="lg-eyebrow"><Lock size={13} /> Secure sign-in</div>
+          <h2 className="lg-h2">Welcome back</h2>
+          <p className="lg-lead">Sign in with your official DoCC credentials to continue to the MERL platform.</p>
 
-              <form onSubmit={handleCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                   <label className="field-label" htmlFor="lg-email">Email address</label>
                   <div className="lg-ifield">
@@ -333,81 +277,6 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
                   {loading ? 'Signing in…' : 'Sign in'}
                 </button>
               </form>
-            </>
-          )}
-
-          {/* ── Step 2: MFA ── */}
-          {pendingUser && (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--green-50)', border: '1px solid var(--green-100)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ShieldCheck size={20} style={{ color: 'var(--green-700)' }} />
-                </div>
-                <div>
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.025em' }}>
-                    Two-factor authentication
-                  </h2>
-                  <p style={{ color: 'var(--text-3)', fontSize: '0.8125rem', margin: 0 }}>
-                    Required for System Administrator access
-                  </p>
-                </div>
-              </div>
-
-              {enrollQr ? (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <p style={{ color: 'var(--text-2)', fontSize: '0.875rem', marginBottom: '1rem', lineHeight: 1.5 }}>
-                    First sign-in for <strong>{pendingUser.name}</strong>: scan this QR code with your
-                    authenticator app (Google Authenticator, Authy, …), then enter the 6-digit code
-                    it shows to activate two-factor authentication.
-                  </p>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                    <img src={enrollQr} alt="TOTP enrollment QR code"
-                      style={{ width: 168, height: 168, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }} />
-                  </div>
-                  <div style={{ textAlign: 'center', fontSize: '0.6875rem', color: 'var(--text-3)' }}>
-                    Can't scan? Enter this key manually:{' '}
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-2)', wordBreak: 'break-all' }}>{enrollSecret}</span>
-                  </div>
-                </div>
-              ) : (
-                <p style={{ color: 'var(--text-2)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-                  Enter the 6-digit code from your authenticator app to continue as{' '}
-                  <strong>{pendingUser.name}</strong>.
-                </p>
-              )}
-
-              <form onSubmit={handleMFA} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label className="field-label">Authenticator code</label>
-                  <input
-                    value={mfaCode}
-                    onChange={e => { setMfaCode(e.target.value.replace(/[^0-9]/g, '')); setMfaError(''); }}
-                    className="field-input"
-                    placeholder="000000"
-                    maxLength={6}
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    required
-                    style={{ fontSize: '1.5rem', letterSpacing: '0.3em', textAlign: 'center' }}
-                  />
-                </div>
-
-                {mfaError && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '0.625rem 0.875rem', color: '#991b1b', fontSize: '0.8125rem' }}>
-                    <AlertCircle size={14} style={{ flexShrink: 0 }} />{mfaError}
-                  </div>
-                )}
-
-                <button type="submit" className="lg-submit" disabled={mfaLoading || mfaCode.length !== 6}>
-                  {mfaLoading ? 'Verifying…' : enrollQr ? 'Activate & sign in' : 'Verify & sign in'}
-                </button>
-
-                <button type="button" className="lg-link" onClick={cancelMFA}>
-                  ← Back to sign in
-                </button>
-              </form>
-            </>
-          )}
 
           <div className="lg-notice">
             <ShieldCheck size={15} />

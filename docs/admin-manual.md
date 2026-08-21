@@ -32,8 +32,10 @@ operations), [backup-restore.md](backup-restore.md) (backups),
 - Apply application updates (docker-compose-reference.md §4).
 - Enforce the security duties in §8.
 
-The administrator account **must** have MFA enabled — this is a contract
-requirement and the Admin Panel will prompt until it is enrolled.
+Sign-in is by email and password for every role, including the System
+Administrator. There is no second factor (OTP/MFA): the administrator
+creates each account with a password and users sign in directly with those
+credentials.
 
 ## 2. User Management
 
@@ -65,11 +67,11 @@ Open **Admin → Users** (visible only to the System Administrator role).
   login immediately. Do **not** delete users: their identity is referenced
   by the audit log and past submissions.
 
-### 2.3 MFA
+### 2.3 Sign-in
 
-Users enrol an authenticator app (TOTP) from their profile. If a user loses
-their device, un-enrol the factor in Supabase Studio → Authentication →
-user → Factors, then have them re-enrol at next login.
+All roles sign in with email and password only — there is no OTP/MFA step.
+Issue each user their password when you create the account (§2.1) and reset
+it from Admin → Users when needed (§2.2).
 
 ## 3. Project Configuration
 
@@ -143,8 +145,9 @@ the maintenance contact listed in the handover checklist
 
 1. **Least privilege** — audit the user list quarterly; deactivate departed
    staff the same week.
-2. **MFA** — mandatory for the System Administrator; encourage it for
-   Senior and M&E Officers.
+2. **Passwords** — issue strong passwords, reset them promptly on request,
+   and rotate the administrator password on any suspected exposure. (Sign-in
+   is password-only; there is no OTP/MFA.)
 3. **Secrets** — keep `.env` files at permissions 600; rotate secrets per
    environment-variables.md §4.
 4. **Updates** — apply OS security patches monthly

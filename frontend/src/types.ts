@@ -19,10 +19,7 @@ export interface AppUser {
   name: string;
   /** project codes this user is assigned to; empty = all projects for senior roles */
   assignedProjects?: string[];
-  mfaEnabled?: boolean;
 }
-
-export type MFAStatus = 'required' | 'verified' | 'not_required';
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 

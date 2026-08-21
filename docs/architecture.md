@@ -97,7 +97,7 @@ The app runs in two modes controlled by `VITE_APP_ENV`:
 
 | Service | Role in the DMP |
 |---|---|
-| **GoTrue (Auth)** | Email/password login, JWT issuance (1-hour expiry, auto-refresh), TOTP MFA |
+| **GoTrue (Auth)** | Email/password login, JWT issuance (1-hour expiry, auto-refresh) |
 | **PostgREST** | Auto-generated REST API over the `merl` schema; every request executes under the caller's JWT so RLS applies |
 | **Realtime** | WebSocket change feeds — used for dataset-approval notifications |
 | **Storage** | Project-scoped private buckets for photos, PDFs, and signed agreements (Means of Verification) |
@@ -141,9 +141,10 @@ Defence in depth, in four layers:
 
 1. **Transport** — HTTPS/TLS 1.2+ everywhere; HSTS; security headers set
    at the nginx proxy.
-2. **Authentication** — Supabase Auth: bcrypt-hashed passwords (min 10
-   characters), JWT tokens expiring after 1 hour with automatic refresh,
-   TOTP MFA (mandatory for the System Administrator role).
+2. **Authentication** — Supabase Auth: email/password sign-in for all roles
+   (accounts and passwords issued by the administrator), bcrypt-hashed
+   passwords (min 10 characters), JWT tokens expiring after 1 hour with
+   automatic refresh. There is no second factor (OTP/MFA).
 3. **Authorization** —
    - *Application level*: role-based navigation and route guards
      (`TAB_ACCESS` in `frontend/src/App.tsx`).
@@ -159,7 +160,7 @@ Defence in depth, in four layers:
 
 | Role | Access |
 |---|---|
-| System Administrator | All modules incl. Admin Panel; user and project management; MFA mandatory |
+| System Administrator | All modules incl. Admin Panel; user and project management |
 | DoCC Senior Officer | Dashboard, Projects, Datasets, Analysis, Reports (approve/publish) |
 | DoCC M&E Officer | Dashboard, Projects, Datasets, Analysis, Reports (full read/write) |
 | Project Manager | Dashboard, Projects, Datasets, Analysis, Reports (assigned projects) |

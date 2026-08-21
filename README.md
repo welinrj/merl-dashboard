@@ -35,8 +35,9 @@ property of DoCC (contract clause D12).
   (Recharts), GIS mapping (Leaflet) with province/island disaggregation.
 - **Reports** — DoCC/MFAT-aligned reports generated in the browser,
   exportable as PDF and Excel.
-- **Security** — five-role RBAC, PostgreSQL Row-Level Security, TOTP MFA,
-  immutable audit logging, HTTPS/TLS. English and French interfaces.
+- **Security** — five-role RBAC, PostgreSQL Row-Level Security, email/password
+  sign-in (accounts issued by the administrator), immutable audit logging,
+  HTTPS/TLS. English and French interfaces.
 
 ## Repository layout
 
@@ -102,7 +103,7 @@ Contract deliverables and their status:
 
 | Role | Access |
 |---|---|
-| System Administrator | Everything, incl. Admin Panel (user/project management); MFA mandatory |
+| System Administrator | Everything, incl. Admin Panel (user/project management) |
 | DoCC Senior Officer | Dashboard, Projects, Datasets, Analysis, Reports |
 | DoCC M&E Officer | Dashboard, Projects, Datasets, Analysis, Reports |
 | Project Manager | Dashboard, Projects, Datasets, Analysis, Reports (assigned projects) |

@@ -32,7 +32,6 @@ must rebuild the frontend image after changing them**
 | `VITE_APP_ENV` | yes | `production` disables demo mode. Anything else enables the demo accounts and mock data. The production Docker build hard-sets `production`. |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | yes | As above. |
 | `VITE_DEMO_ADMIN_PASS`, `VITE_DEMO_SENIOR_PASS`, `VITE_DEMO_MEO_PASS`, `VITE_DEMO_MGR_PASS`, `VITE_DEMO_STAFF_PASS` | demo only | Passwords for the five demo accounts (`admin`, `senior`, `meo`, `manager`, `staff`). Ignored in production mode. |
-| `VITE_DEMO_ADMIN_TOTP_CODE` | demo only | Static 6-digit MFA fallback for the demo admin until a real TOTP factor is enrolled. |
 
 ## 3. Supabase backend (`/opt/supabase/docker/.env`)
 
