@@ -30,9 +30,11 @@ platform address, and the username and password given to you by the system
 administrator.
 
 1. Open the platform address in your browser.
-2. Enter your username and password and press **Sign in**.
-3. If your account has MFA (multi-factor authentication) enabled, enter the
-   6-digit code from your authenticator app.
+2. Enter your email address and password and press **Sign in**.
+
+That's all — sign-in is password only. There is no one-time code or
+authenticator app step. Your account and password are issued by the system
+administrator.
 
 **Forgotten password?** Use the reset link on the login page, or contact the
 system administrator to send you a reset email.
@@ -155,7 +157,7 @@ language at any time. Your choice is remembered on that browser.
 ## 10. Getting Help
 
 1. **Returned dataset or data question** → your M&E Officer.
-2. **Cannot log in / wrong role / MFA problems** → the system
+2. **Cannot log in / wrong role / password reset** → the system
    administrator (see admin-manual.md §2).
 3. **Something looks broken** → note what you did, the time, and take a
    screenshot if possible; report it to the system administrator so it can

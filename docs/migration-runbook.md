@@ -279,7 +279,8 @@ resetting** depending on JWT secret differences. Recommended:
 2. Confirm all expected users are present.
 3. Trigger a password-reset email for each user, or set temporary passwords
    and require change at first login.
-4. Confirm the System Administrator re-enrols TOTP MFA (mandatory).
+4. Confirm the System Administrator can sign in with email and password
+   (there is no OTP/MFA step).
 
 **Verify:** each role can log in at `https://dmp.gov.vu` and sees only the
 modules allowed for their role (see user-manual.md §2).
@@ -288,7 +289,7 @@ modules allowed for their role (see user-manual.md §2).
 
 With the DoCC Project Manager present, confirm:
 
-- [ ] Login works for all five roles; MFA prompt appears for the administrator
+- [ ] Login works for all five roles with email and password (no OTP/MFA step)
 - [ ] Dashboard KPIs show the migrated data
 - [ ] A test CSV uploads, appears in Datasets, and can be approved
 - [ ] An uploaded photo/PDF opens from evidence links

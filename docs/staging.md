@@ -16,7 +16,7 @@ them from the agreed credential channel.
 
 | Email | Name | Role |
 |---|---|---|
-| ronal.tavita@vcap.gov.vu | Ronal Tavita | System Administrator (TOTP MFA enforced) |
+| ronal.tavita@vcap.gov.vu | Ronal Tavita | System Administrator |
 | peter.naupa@mof.gov.vu | Peter Naupa | DoCC Senior Officer |
 | jean.kalsakau@vcap.gov.vu | Jean Kalsakau | DoCC M&E Officer |
 | mere.bani@vcap.gov.vu | Mere Bani | Project Manager |
@@ -24,8 +24,8 @@ them from the agreed credential channel.
 
 Notes for testers:
 
-- The **administrator** account is walked through authenticator-app (TOTP)
-  enrollment on first sign-in; subsequent sign-ins require the 6-digit code.
+- All accounts, including the **administrator**, sign in with email and
+  password only — there is no OTP/MFA step.
 - Sign-out is in the sidebar footer. Sessions persist across page reloads.
 - The **Dashboard** shows live indicator and budget data from the staging
   database (header says "Live data"; "Sample data (offline)" means the

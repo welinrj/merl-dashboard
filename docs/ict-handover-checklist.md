@@ -41,7 +41,7 @@ joint session; both parties sign §7.
 - [ ] TLS certificate renewal method understood (certbot automatic, or
       Government CA procedure documented)
 - [ ] System Administrator application account created for the DoCC ICT
-      officer, with MFA enrolled
+      officer, with a strong password issued
 - [ ] Supabase Cloud (staging) project ownership transferred or scheduled
       for decommissioning (final backup exported first)
 

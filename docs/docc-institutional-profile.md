@@ -89,7 +89,7 @@ DoCC's functional areas **[Sourced / To confirm exact org chart]**:
 
 | Role | Role ID | Primary function |
 |---|---|---|
-| System Administrator | `ROLE_ADMIN` | Users, projects, system config; MFA mandatory |
+| System Administrator | `ROLE_ADMIN` | Users, projects, system config |
 | DoCC Senior Officer | `ROLE_DOCC_SENIOR` | Monitor all projects; approve & publish reports |
 | DoCC M&E Officer | `ROLE_DOCC_MEO` | Validate data, configure indicators, generate reports |
 | Project Manager | `ROLE_PROJ_MANAGER` | Manage assigned project, upload data |
