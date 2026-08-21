@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useRealtimeRefetch } from '../lib/useRealtimeRefetch';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, X, Search, AlertCircle, Columns3, ImagePlus, Loader2, Upload, FileText, Download } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -95,6 +96,7 @@ export default function StrategicActivities({ user }) {
   }, [loadPhotos, loadReportCounts]);
 
   useEffect(() => { load(); }, [load]);
+  useRealtimeRefetch('srf_activities', load);
 
   const filtered = useMemo(() => rows.filter(r =>
     (fTheme === 'all' || r.theme === fTheme) &&

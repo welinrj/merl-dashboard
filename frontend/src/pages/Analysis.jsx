@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   Legend, Cell, PieChart, Pie,
 } from 'recharts';
 import { supabase } from '../supabaseClient';
 import { cachedRead } from '../lib/cachedRead';
+import { useRealtimeRefetch } from '../lib/useRealtimeRefetch';
 import StatTile from '@/components/ui/StatTile';
 import { ACTIVITIES as EMBEDDED } from '../strategicPlan';
 
@@ -56,54 +57,46 @@ export default function Analysis() {
   const [error, setError] = useState('');
   const [themeFilter, setThemeFilter] = useState('All');
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data, error: err } = await supabase
-        .from('v_srf_activities')
-        .select('code,name,theme,focus_area,budget_vuv,status,indicator,target_2030')
-        .order('sort_order');
-      if (cancelled) return;
-      const normalize = (rows) => rows.map(a => ({
-        code: a.code, name: a.name, theme: a.theme, focusArea: a.focusArea,
-        budget: Number(a.budget || 0), status: NORM[a.status] ?? 'none',
-        indicator: a.indicator, target2030: a.target2030,
-      }));
-      if (!err && data && data.length) {
-        setActs(data.map(a => ({
-          code: a.code, name: a.name, theme: a.theme, focusArea: a.focus_area,
-          budget: Number(a.budget_vuv || 0), status: NORM[a.status] ?? 'none',
-          indicator: a.indicator, target2030: a.target_2030,
-        })));
-      } else if (err && err.message && !/does not exist|relation|permission/i.test(err.message)) {
-        // A genuine transport error (not a missing/empty view) — surface it,
-        // but still fall back to the embedded plan so the page is never blank.
-        setError(err.message);
-        setActs(normalize(EMBEDDED));
-      } else {
-        setActs(normalize(EMBEDDED));
-      }
-    })();
-    return () => { cancelled = true; };
+  const load = useCallback(async () => {
+    const { data, error: err } = await supabase
+      .from('v_srf_activities')
+      .select('code,name,theme,focus_area,budget_vuv,status,indicator,target_2030')
+      .order('sort_order');
+    const normalize = (rows) => rows.map(a => ({
+      code: a.code, name: a.name, theme: a.theme, focusArea: a.focusArea,
+      budget: Number(a.budget || 0), status: NORM[a.status] ?? 'none',
+      indicator: a.indicator, target2030: a.target2030,
+    }));
+    if (!err && data && data.length) {
+      setError('');
+      setActs(data.map(a => ({
+        code: a.code, name: a.name, theme: a.theme, focusArea: a.focus_area,
+        budget: Number(a.budget_vuv || 0), status: NORM[a.status] ?? 'none',
+        indicator: a.indicator, target2030: a.target_2030,
+      })));
+    } else if (err && err.message && !/does not exist|relation|permission/i.test(err.message)) {
+      // A genuine transport error (not a missing/empty view) — surface it,
+      // but still fall back to the embedded plan so the page is never blank.
+      setError(err.message);
+      setActs(normalize(EMBEDDED));
+    } else {
+      setActs(normalize(EMBEDDED));
+    }
+
+    // Precomputed aggregate (Redis sidecar → DB materialized view fallback).
+    try {
+      const { data: agg } = await cachedRead('srf-analytics', async () => {
+        const { data: row } = await supabase.from('v_srf_analytics').select('*').maybeSingle();
+        return row || null;
+      });
+      setAgg(agg && agg.activity_count != null ? agg : null);
+    } catch {
+      setAgg(null); // fall back to client-side aggregation
+    }
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await cachedRead('srf-analytics', async () => {
-          // Fallback when the sidecar isn't reachable: read the materialized
-          // view directly (still a single-row precomputed read, not a scan).
-          const { data: row } = await supabase.from('v_srf_analytics').select('*').maybeSingle();
-          return row || null;
-        });
-        if (!cancelled) setAgg(data && data.activity_count != null ? data : null);
-      } catch {
-        if (!cancelled) setAgg(null); // fall back to client-side aggregation
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  useEffect(() => { load(); }, [load]);
+  useRealtimeRefetch('srf_activities', load);
 
   const statusCounts = useMemo(() => {
     if (agg) return { green: agg.status_on_track, amber: agg.status_at_risk, red: agg.status_no_progress, none: agg.status_unrated };
