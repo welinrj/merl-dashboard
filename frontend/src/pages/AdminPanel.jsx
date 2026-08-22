@@ -2,21 +2,23 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 
+// The five official user types. `id` is the DB enum value (merl.user_role).
 const DB_ROLES = [
-  { id: 'administrator',       label: 'System Administrator', color: 'bg-red-100 text-red-700' },
-  { id: 'docc_senior_officer', label: 'DoCC Senior Officer',  color: 'bg-purple-100 text-purple-700' },
-  { id: 'docc_me_officer',     label: 'DoCC M&E Officer',     color: 'bg-blue-100 text-blue-700' },
-  { id: 'project_manager',     label: 'Project Manager',      color: 'bg-green-100 text-green-700' },
-  { id: 'field_staff',         label: 'Field Staff',          color: 'bg-gray-100 text-gray-700' },
+  { id: 'system_admin',       label: 'System Administrator',                 color: 'bg-red-100 text-red-700' },
+  { id: 'docc_me_officer',    label: 'DoCC M&E Officer',                     color: 'bg-blue-100 text-blue-700' },
+  { id: 'project_manager',    label: 'Project Manager / Project Focal Point', color: 'bg-green-100 text-green-700' },
+  { id: 'data_entry_officer', label: 'Data Entry / Project Officer',         color: 'bg-amber-100 text-amber-700' },
+  { id: 'viewer',             label: 'Viewer / Executive',                   color: 'bg-gray-100 text-gray-700' },
 ];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
+// App-side role codes (UserRole in types.ts), same five official roles.
 const ROLES = [
-  { id: 'ROLE_ADMIN',        label: 'System Administrator', color: 'bg-red-100 text-red-700' },
-  { id: 'ROLE_DOCC_SENIOR',  label: 'DoCC Senior Officer',  color: 'bg-purple-100 text-purple-700' },
-  { id: 'ROLE_DOCC_MEO',     label: 'DoCC M&E Officer',     color: 'bg-blue-100 text-blue-700' },
-  { id: 'ROLE_PROJ_MANAGER', label: 'Project Manager',      color: 'bg-green-100 text-green-700' },
-  { id: 'ROLE_FIELD_STAFF',   label: 'Field Staff',        color: 'bg-gray-100 text-gray-700' },
+  { id: 'ROLE_ADMIN',        label: 'System Administrator',                 color: 'bg-red-100 text-red-700' },
+  { id: 'ROLE_DOCC_MEO',     label: 'DoCC M&E Officer',                     color: 'bg-blue-100 text-blue-700' },
+  { id: 'ROLE_PROJ_MANAGER', label: 'Project Manager / Project Focal Point', color: 'bg-green-100 text-green-700' },
+  { id: 'ROLE_DATA_ENTRY',   label: 'Data Entry / Project Officer',         color: 'bg-amber-100 text-amber-700' },
+  { id: 'ROLE_VIEWER',       label: 'Viewer / Executive',                   color: 'bg-gray-100 text-gray-700' },
 ];
 
 const CATEGORIES = [
@@ -52,7 +54,7 @@ function UsersTab() {
   const [loading, setLoading]   = useState(true);
   const [err, setErr]           = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm]         = useState({ email: '', full_name: '', role: 'field_staff', organisation: '' });
+  const [form, setForm]         = useState({ email: '', full_name: '', role: 'data_entry_officer', organisation: '' });
   const [busy, setBusy]         = useState(false);
   const [cred, setCred]         = useState(null);
 
@@ -74,7 +76,7 @@ function UsersTab() {
     setBusy(false);
     if (error) { setErr(error.message); return; }
     setCred({ email: form.email.trim().toLowerCase(), password: data });
-    setForm({ email: '', full_name: '', role: 'field_staff', organisation: '' });
+    setForm({ email: '', full_name: '', role: 'data_entry_officer', organisation: '' });
     setShowForm(false);
     load();
   };

@@ -41,10 +41,10 @@ const LOGIN_BG = `${import.meta.env.BASE_URL}vanuatu-login-bg.svg`;
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const ROLES: Record<UserRole, string> = {
   ROLE_ADMIN:        'System Administrator',
-  ROLE_DOCC_SENIOR:  'DoCC Senior Officer',
-  ROLE_DOCC_MEO:     'M&E Officer',
-  ROLE_PROJ_MANAGER: 'Project Manager',
-  ROLE_FIELD_STAFF:  'Field Staff',          // aligned with RFQ Section C
+  ROLE_DOCC_MEO:     'DoCC M&E Officer',
+  ROLE_PROJ_MANAGER: 'Project Manager / Project Focal Point',
+  ROLE_DATA_ENTRY:   'Data Entry / Project Officer',
+  ROLE_VIEWER:       'Viewer / Executive',
 };
 
 // ── Supabase Auth ─────────────────────────────────────────────────────────────
@@ -83,12 +83,18 @@ const NAV_ITEMS: SideItem[] = [
   { key: 'admin',      path: '/admin',                label: 'Administration',       Icon: Settings,        head: 'Administration' },
 ];
 
+// Navigation by role (spec §18). Functions a role can't use are hidden.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
+  // System Administrator — full portal incl. Administration
   ROLE_ADMIN:        ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents', 'admin'],
-  ROLE_DOCC_SENIOR:  ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
+  // DoCC M&E Officer — portfolio-wide MERL (Review & Approval lives in Activities/Reports); no Administration
   ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
+  // Project Manager — assigned projects only (route data is project-scoped by RLS)
   ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
-  ROLE_FIELD_STAFF:  ['overview', 'activities', 'locations', 'risks', 'reports', 'documents'],
+  // Data Entry / Project Officer — data entry for assigned projects; no approval/admin
+  ROLE_DATA_ENTRY:   ['overview', 'projects', 'indicators', 'activities', 'locations', 'risks', 'documents'],
+  // Viewer / Executive — read-only overview, projects, results and reports
+  ROLE_VIEWER:       ['overview', 'projects', 'results', 'reports'],
 };
 
 // Which access key gates each real route.
