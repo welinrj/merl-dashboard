@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
-  Settings, LogOut, ChevronDown, Bell, Menu, MoreHorizontal,
+  LayoutDashboard, Settings, LogOut, ChevronDown, Bell, Menu, MoreHorizontal,
   Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck, ClipboardList,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import Dashboards from './pages/Dashboards';
 import ProjectSetup from './pages/ProjectSetup';
 import MerlReporting from './pages/MerlReporting';
 import AdminPanel  from './pages/AdminPanel';
@@ -67,17 +68,18 @@ async function loadProfile(): Promise<AppUser | null> {
 // (project-setup wizard, dashboards and report generators) are rebuilt in
 // follow-up work.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['setup', 'merl', 'admin'],
-  ROLE_DOCC_SENIOR:  ['setup', 'merl'],
-  ROLE_DOCC_MEO:     ['setup', 'merl'],
-  ROLE_PROJ_MANAGER: ['setup', 'merl'],
-  ROLE_FIELD_STAFF:  ['merl'],
+  ROLE_ADMIN:        ['dashboards', 'setup', 'merl', 'admin'],
+  ROLE_DOCC_SENIOR:  ['dashboards', 'setup', 'merl'],
+  ROLE_DOCC_MEO:     ['dashboards', 'setup', 'merl'],
+  ROLE_PROJ_MANAGER: ['dashboards', 'setup', 'merl'],
+  ROLE_FIELD_STAFF:  ['dashboards', 'merl'],
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'setup', path: '/project-setup',   label: 'Project Setup',  Icon: ClipboardList  },
-  { key: 'merl',  path: '/merl-reporting',  label: 'MERL',           Icon: ClipboardCheck },
-  { key: 'admin', path: '/admin',           label: 'Administration', Icon: Settings       },
+  { key: 'dashboards', path: '/dashboards',    label: 'Dashboards',     Icon: LayoutDashboard },
+  { key: 'setup',      path: '/project-setup', label: 'Project Setup',  Icon: ClipboardList   },
+  { key: 'merl',       path: '/merl-reporting', label: 'MERL',          Icon: ClipboardCheck  },
+  { key: 'admin',      path: '/admin',          label: 'Administration', Icon: Settings        },
 ];
 
 // ── Login screen ──────────────────────────────────────────────────────────────
@@ -461,6 +463,7 @@ export default function App() {
           <ErrorBoundary key={location.pathname}>
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
+              <Route path="/dashboards" element={allowed.includes('dashboards') ? <Dashboards /> : <Navigate to={defaultPath} replace />} />
               <Route path="/project-setup" element={allowed.includes('setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={allowed.includes('merl') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
