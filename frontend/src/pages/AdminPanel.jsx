@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 
@@ -603,15 +603,149 @@ function ProjectsTab() {
 }
 
 // ── Audit Log Tab ─────────────────────────────────────────────────────────────
+const ACTION_STYLE = {
+  INSERT: 'bg-green-100 text-green-700',
+  UPDATE: 'bg-amber-100 text-amber-700',
+  DELETE: 'bg-red-100 text-red-700',
+};
+const PAGE_SIZE = 25;
+
 function AuditTab() {
+  const [rows, setRows]       = useState([]);
+  const [total, setTotal]     = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState('');
+  const [action, setAction]   = useState('');
+  const [search, setSearch]   = useState('');
+  const [page, setPage]       = useState(0);
+  const [expanded, setExpanded] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr('');
+    const { data, error } = await supabase.rpc('admin_audit_log', {
+      p_limit: PAGE_SIZE,
+      p_offset: page * PAGE_SIZE,
+      p_table: null,
+      p_action: action || null,
+      p_search: search || null,
+    });
+    if (error) { setErr(error.message); setRows([]); setTotal(0); }
+    else {
+      setRows(data ?? []);
+      setTotal(data?.[0]?.total_count ?? 0);
+    }
+    setLoading(false);
+  }, [page, action, search]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const fmt = ts => (ts ? new Date(ts).toLocaleString() : '—');
+
   return (
     <div className="space-y-4">
-      <h2 className="text-base font-bold text-gray-800">Audit Log</h2>
-      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
-        <p className="text-sm font-medium text-gray-500">No audit entries yet</p>
-        <p className="mt-1 text-xs text-gray-400">
-          Administrative actions will be recorded here once audit logging is enabled.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h2 className="text-base font-bold text-gray-800">Audit Log</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={action}
+            onChange={e => { setPage(0); setAction(e.target.value); }}
+            className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white"
+          >
+            <option value="">All actions</option>
+            <option value="INSERT">Insert</option>
+            <option value="UPDATE">Update</option>
+            <option value="DELETE">Delete</option>
+          </select>
+          <input
+            value={search}
+            onChange={e => { setPage(0); setSearch(e.target.value); }}
+            placeholder="Search table / user / id…"
+            className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white min-w-[180px]"
+          />
+          <button onClick={load} className="text-sm text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100">
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {err && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{err}</div>}
+
+      <div className="overflow-x-auto rounded-lg border border-gray-100">
+        <table className="w-full text-sm min-w-[720px]">
+          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+            <tr>
+              <th className="text-left font-semibold px-3 py-2">When</th>
+              <th className="text-left font-semibold px-3 py-2">User</th>
+              <th className="text-left font-semibold px-3 py-2">Action</th>
+              <th className="text-left font-semibold px-3 py-2">Table</th>
+              <th className="text-left font-semibold px-3 py-2">Record</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {loading && (
+              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">Loading…</td></tr>
+            )}
+            {!loading && rows.length === 0 && (
+              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">No audit entries match.</td></tr>
+            )}
+            {!loading && rows.map(r => (
+              <Fragment key={r.id}>
+                <tr className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmt(r.changed_at)}</td>
+                  <td className="px-3 py-2 text-gray-800">{r.actor_name || <span className="text-gray-400">system</span>}</td>
+                  <td className="px-3 py-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ACTION_STYLE[r.action] || 'bg-gray-100 text-gray-600'}`}>{r.action}</span>
+                  </td>
+                  <td className="px-3 py-2 font-mono text-xs text-gray-600">{r.schema_name}.{r.table_name}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-gray-400">{r.record_id ? String(r.record_id).slice(0, 8) : '—'}</td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      onClick={() => setExpanded(expanded === r.id ? null : r.id)}
+                      className="text-xs text-green-700 font-semibold hover:underline"
+                    >
+                      {expanded === r.id ? 'Hide' : 'Details'}
+                    </button>
+                  </td>
+                </tr>
+                {expanded === r.id && (
+                  <tr className="bg-gray-50 border-t border-gray-100">
+                    <td colSpan={6} className="px-3 py-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Before</div>
+                          <pre className="text-xs bg-white border border-gray-100 rounded-lg p-2 overflow-x-auto max-h-56">{r.old_values ? JSON.stringify(r.old_values, null, 2) : '—'}</pre>
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-gray-400 uppercase mb-1">After</div>
+                          <pre className="text-xs bg-white border border-gray-100 rounded-lg p-2 overflow-x-auto max-h-56">{r.new_values ? JSON.stringify(r.new_values, null, 2) : '—'}</pre>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between text-sm text-gray-500">
+        <span>{total} event{total === 1 ? '' : 's'}</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40"
+          >Previous</button>
+          <span>Page {page + 1} of {pages}</span>
+          <button
+            onClick={() => setPage(p => (p + 1 < pages ? p + 1 : p))}
+            disabled={page + 1 >= pages}
+            className="px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40"
+          >Next</button>
+        </div>
       </div>
     </div>
   );
@@ -619,43 +753,58 @@ function AuditTab() {
 
 // ── System Tab ────────────────────────────────────────────────────────────────
 function SystemTab() {
-  const services = [
-    'Supabase PostgreSQL',
-    'Supabase Auth',
-    'Supabase Storage',
-    'Supabase Edge Functions',
-    'React Frontend (Vercel / GitHub Pages)',
-    'Realtime / WebSocket',
-  ];
+  const [status, setStatus]   = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState('');
 
-  const rls_tables = [
-    'projects', 'indicators', 'datasets', 'events', 'users',
-    'audit_logs', 'reports', 'activities', 'rbm_results_chains',
-    'community_engagements', 'file_uploads', 'system_config',
-  ];
+  const load = useCallback(async () => {
+    setLoading(true); setErr('');
+    const { data, error } = await supabase.rpc('system_status');
+    if (error) setErr(error.message);
+    else setStatus(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const fmt = ts => (ts ? new Date(ts).toLocaleString() : '—');
+  const rlsTables = status?.rls_tables ?? [];
+  const rlsCovered = rlsTables.filter(t => t.rls_enabled).length;
+
+  if (loading) return <div className="px-4 py-10 text-center text-gray-400 text-sm">Loading system status…</div>;
+  if (err) return <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{err}</div>;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-base font-bold text-gray-800 mb-3">Service Health</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {services.map(s => (
-            <div key={s} className="flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />
-              <span className="text-sm font-medium text-gray-700">{s}</span>
-              <span className="ml-auto text-xs text-green-600 font-semibold">Healthy</span>
-            </div>
-          ))}
+        <h2 className="text-base font-bold text-gray-800 mb-3">System</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
+            <div className="text-xs font-semibold text-gray-400 uppercase">Audit events</div>
+            <div className="text-xl font-bold text-gray-900 mt-0.5">{status?.audit_row_count ?? 0}</div>
+            <div className="text-xs text-gray-400 mt-0.5">last {fmt(status?.last_audit_at)}</div>
+          </div>
+          <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
+            <div className="text-xs font-semibold text-gray-400 uppercase">Analytics cache</div>
+            <div className="text-sm font-semibold text-gray-800 mt-1">{fmt(status?.analytics_computed_at)}</div>
+            <div className="text-xs text-gray-400 mt-0.5">last refreshed</div>
+          </div>
+          <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
+            <div className="text-xs font-semibold text-gray-400 uppercase">RLS coverage</div>
+            <div className="text-xl font-bold text-gray-900 mt-0.5">{rlsCovered}/{rlsTables.length}</div>
+            <div className="text-xs text-gray-400 mt-0.5">tables protected</div>
+          </div>
         </div>
       </div>
 
       <div>
         <h2 className="text-base font-bold text-gray-800 mb-3">Row Level Security (RLS)</h2>
-        <div className="grid grid-cols-3 gap-2">
-          {rls_tables.map(t => (
-            <div key={t} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-              <span className="text-xs text-gray-600 font-mono">{t}</span>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {rlsTables.map(t => (
+            <div key={t.table} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-2">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${t.rls_enabled ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-xs text-gray-600 font-mono truncate">{t.table}</span>
+              {!t.rls_enabled && <span className="ml-auto text-[10px] text-red-600 font-semibold">OFF</span>}
             </div>
           ))}
         </div>

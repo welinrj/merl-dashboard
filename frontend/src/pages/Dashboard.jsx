@@ -1,11 +1,13 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
 import { ArrowRight, X, ChevronDown } from 'lucide-react';
 import StatTile from '@/components/ui/StatTile';
-import { STRATEGIC_THEMES, ACTIVITIES, PLAN_SUMMARY as S } from '../strategicPlan';
+import { supabase } from '../supabaseClient';
+import { useRealtimeRefetch } from '../lib/useRealtimeRefetch';
+import { STRATEGIC_THEMES, ACTIVITIES as EMBEDDED } from '../strategicPlan';
 
 /* The animated title cycles through the parts of the full heading. A single
    non-wrapping canvas line can't fit the whole phrase legibly on a phone, so
@@ -21,6 +23,11 @@ const STATUS_COL   = { green:'#1a8c4e', amber:'#d99a2b', red:'#b3402f', none:'#9
 const STATUS_BG    = { green:'#dcece2', amber:'#f7ead0', red:'#f6ded8', none:'#ece9e3' };
 const STATUS_TXT   = { green:'#155e34', amber:'#8a6416', red:'#8a2e21', none:'#5b5349' };
 const STATUS_LABEL = { green:'On Track', amber:'At Risk', red:'No Progress', none:'Unrated' };
+/* Accept both the DB (on_track/…) and embedded (green/amber/…) status codings. */
+const NORM = {
+  green:'green', amber:'amber', red:'red', none:'none',
+  on_track:'green', at_risk:'amber', no_progress:'red', unrated:'none',
+};
 const THEME_COL    = {
   Adaptation:'#0e6e6e', Mitigation:'#d99a2b', Governance:'#b3402f',
   Finance:'#158a7a', Knowledge:'#9a6d3b', 'Cross-cutting':'#5c6b8a',
@@ -36,7 +43,6 @@ const THEME_OPTIONS  = STRATEGIC_THEMES.map(t => t.name);
 const FOCUS_BY_THEME = Object.fromEntries(
   STRATEGIC_THEMES.map(t => [t.name, t.focusAreas.map(f => f.name)]),
 );
-const ALL_FOCUS = [...new Set(ACTIVITIES.map(a => a.focusArea))];
 const STATUS_OPTIONS = [
   { value:'green', label:'On Track' },
   { value:'amber', label:'At Risk' },
@@ -216,36 +222,69 @@ const BudgetTooltip = ({ active, payload, label }) => {
 
 /* ══ Dashboard — DoCC Strategic Plan 2025–2030 ═══════════════════════════════ */
 export default function Dashboard() {
+  // Live Strategic Results Framework activities — the same source the Analysis
+  // and Framework tabs read, so every KPI reflects the live register. `acts` is
+  // null while loading; `offline` flags the labelled embedded-plan fallback.
+  const [acts, setActs] = useState(null);
+  const [offline, setOffline] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('v_srf_activities')
+      .select('code,name,theme,focus_area,budget_vuv,status,indicator')
+      .order('sort_order');
+    if (!error && data && data.length) {
+      setActs(data.map(a => ({
+        code: a.code, name: a.name, theme: a.theme, focusArea: a.focus_area,
+        budget: Number(a.budget_vuv || 0), status: NORM[a.status] ?? 'none',
+        indicator: a.indicator,
+      })));
+      setOffline(false);
+    } else {
+      // Missing/empty view or a transport error — fall back to the embedded
+      // plan so the page is never blank, and label it clearly.
+      setActs(EMBEDDED.map(a => ({
+        code: a.code, name: a.name, theme: a.theme, focusArea: a.focusArea,
+        budget: Number(a.budget || 0), status: NORM[a.status] ?? 'none',
+        indicator: a.indicator,
+      })));
+      setOffline(true);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+  useRealtimeRefetch('srf_activities', load);
+
   // Each filter dimension holds an array of selected values (multi-select).
   const [themes, setThemes] = useState([]);
   const [focusAreas, setFocusAreas] = useState([]);
   const [statuses, setStatuses] = useState([]);
 
   const isFiltered = themes.length > 0 || focusAreas.length > 0 || statuses.length > 0;
+  const rows = acts ?? [];
 
   // Focus-area options narrow to the selected themes (union), if any.
+  const allFocus = useMemo(() => [...new Set(rows.map(a => a.focusArea))], [rows]);
   const focusOptions = useMemo(
     () => (themes.length
       ? [...new Set(themes.flatMap(t => FOCUS_BY_THEME[t] || []))]
-      : ALL_FOCUS),
-    [themes],
+      : allFocus),
+    [themes, allFocus],
   );
 
   const filtered = useMemo(
     () => (isFiltered
-      ? ACTIVITIES.filter(a =>
+      ? rows.filter(a =>
           (themes.length === 0 || themes.includes(a.theme)) &&
           (focusAreas.length === 0 || focusAreas.includes(a.focusArea)) &&
           (statuses.length === 0 || statuses.includes(a.status)))
-      : ACTIVITIES),
-    [isFiltered, themes, focusAreas, statuses],
+      : rows),
+    [isFiltered, rows, themes, focusAreas, statuses],
   );
 
-  // When filtered, recompute the summary; otherwise use the overall figures.
-  const view = useMemo(
-    () => (isFiltered ? deriveView(filtered) : S),
-    [isFiltered, filtered],
-  );
+  // Every KPI/chart is derived from the (filtered) live activities.
+  const view = useMemo(() => deriveView(filtered), [filtered]);
+  const total = rows.length;
 
   const st = view.status;
   const onTrackPct = pct(st.green || 0, view.activities);
@@ -267,9 +306,24 @@ export default function Dashboard() {
 
   const clearFilters = () => { setThemes([]); setFocusAreas([]); setStatuses([]); };
 
+  if (acts === null) {
+    return (
+      <div style={{ maxWidth:1400 }} className="page-pad">
+        <div className="card" style={{ padding:'2.5rem 1rem', textAlign:'center', color:'var(--text-3)' }}>
+          Loading dashboard…
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth:1400 }} className="animate-fade-up page-pad">
 
+      {offline && (
+        <div className="card" style={{ padding:'0.6rem 0.9rem', marginBottom:'1rem', background:'var(--gold-50, #f7ead0)', border:'1px solid var(--gold-200, #e6c876)', color:'var(--text-2)', fontSize:'0.8rem' }}>
+          Showing the embedded strategic plan — live data is currently unavailable.
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="card" style={{ padding:'0.85rem 1rem', marginBottom:'1rem', display:'flex', gap:'0.9rem', alignItems:'flex-end', flexWrap:'wrap' }}>
@@ -291,8 +345,8 @@ export default function Dashboard() {
         <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'0.75rem' }}>
           <span style={{ fontSize:'0.75rem', fontWeight:600, color:isFiltered ? 'var(--green-600)' : 'var(--text-3)' }}>
             {isFiltered
-              ? `Filtered · ${filtered.length} of ${S.activities} activities`
-              : `Showing all ${S.activities} activities`}
+              ? `Filtered · ${filtered.length} of ${total} activities`
+              : `Showing all ${total} activities`}
           </span>
           {isFiltered && (
             <button

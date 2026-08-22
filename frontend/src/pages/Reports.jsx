@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { FileBarChart, Download, Printer, Loader2, CheckCircle, FileText, Plane, CalendarDays, CalendarRange, CalendarClock, BookMarked, ChevronDown, ChevronRight, PenLine } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
@@ -183,7 +183,7 @@ function ReportPreview({ type, indicators, budgetRows }) {
               </table>
             ) : !sec.toLowerCase().includes('indicator') && !sec.toLowerCase().includes('dashboard') && !sec.toLowerCase().includes('traffic') && (
               <p style={{ color:'var(--text-3)', fontStyle:'italic', fontSize:'0.75rem', margin:0 }}>
-                [Content for this section is populated from the M&amp;E database upon generation.]
+                No data available for this section in the selected period.
               </p>
             )}
           </div>
@@ -288,18 +288,49 @@ export default function Reports() {
   // report keeps its own edits; sign-off names are seeded from the last-used
   // defaults so officers don't re-type them for every period.
   const identity = `${selected.id}|${period}|${project}`;
+  // Track which identity's draft has finished loading, so the save effect never
+  // writes one report's edits under another's key during the async load.
+  const loadedFor = useRef(null);
   useEffect(() => {
-    const stored = loadJson(ovKey(identity), null);
-    if (stored) { setOverrides(stored); return; }
-    const d = loadJson(SIGNOFF_DEFAULTS_KEY, {});
-    setOverrides({
-      docRef: '', reportDate: new Date().toISOString().slice(0, 10),
-      preparedBy: d.preparedBy || '', preparedTitle: d.preparedTitle || 'Senior Monitoring & Evaluation Officer',
-      reviewedBy: d.reviewedBy || '', reviewedTitle: d.reviewedTitle || '',
-      approvedBy: d.approvedBy || '', approvedTitle: d.approvedTitle || '',
-    });
+    let cancelled = false;
+    loadedFor.current = null;
+    (async () => {
+      // Shared, durable draft (Supabase) first; fall back to the local cache
+      // and then to seeded sign-off defaults so the editor is never empty.
+      let draft = null;
+      try {
+        const { data } = await supabase.rpc('get_report_draft', { p_identity: identity });
+        if (data && typeof data === 'object' && Object.keys(data).length) draft = data;
+      } catch { /* offline — fall back to cache */ }
+      if (cancelled) return;
+      if (!draft) draft = loadJson(ovKey(identity), null);
+      if (draft) {
+        setOverrides(draft);
+      } else {
+        const d = loadJson(SIGNOFF_DEFAULTS_KEY, {});
+        setOverrides({
+          docRef: '', reportDate: new Date().toISOString().slice(0, 10),
+          preparedBy: d.preparedBy || '', preparedTitle: d.preparedTitle || 'Senior Monitoring & Evaluation Officer',
+          reviewedBy: d.reviewedBy || '', reviewedTitle: d.reviewedTitle || '',
+          approvedBy: d.approvedBy || '', approvedTitle: d.approvedTitle || '',
+        });
+      }
+      loadedFor.current = identity;
+    })();
+    return () => { cancelled = true; };
   }, [identity]);
-  useEffect(() => { saveJson(ovKey(identity), overrides); }, [identity, overrides]);
+
+  // Persist edits: local cache immediately, shared draft debounced (editors
+  // only — the RPC ignores non-editors). Guarded to this identity.
+  useEffect(() => {
+    if (loadedFor.current !== identity) return undefined;
+    saveJson(ovKey(identity), overrides);
+    const t = setTimeout(() => {
+      supabase.rpc('save_report_draft', { p_identity: identity, p_body: overrides })
+        .then(() => {}, () => {});
+    }, 800);
+    return () => clearTimeout(t);
+  }, [identity, overrides]);
   useEffect(() => {
     saveJson(SIGNOFF_DEFAULTS_KEY, {
       preparedBy: overrides.preparedBy, preparedTitle: overrides.preparedTitle,
@@ -424,10 +455,9 @@ export default function Reports() {
     }
   };
 
-  const generate = () => {
-    setState('generating');
-    setTimeout(() => setState('ready'), 900);
-  };
+  // The report is assembled reactively (finalReport, above); "generate" simply
+  // reveals the preview — no artificial delay.
+  const generate = () => setState('ready');
 
   const projectLabel = project || 'All_Components';
 
