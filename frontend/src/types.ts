@@ -28,6 +28,7 @@ export type NavKey =
   | 'framework'
   | 'gallery'
   | 'files'
+  | 'datasets'
   | 'registration'
   | 'projects'
   | 'analysis'
