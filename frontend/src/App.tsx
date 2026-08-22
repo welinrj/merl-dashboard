@@ -1,20 +1,32 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
-  LayoutDashboard, Settings, LogOut, ChevronDown, Bell, Menu, MoreHorizontal,
-  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck, ClipboardList, FileBarChart,
+  LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin,
+  AlertTriangle, FolderOpen, FileBarChart, Settings, LogOut, Bell, Menu,
+  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import Overview from './pages/Overview';
 import Dashboards from './pages/Dashboards';
 import ProjectSetup from './pages/ProjectSetup';
 import MerlReporting from './pages/MerlReporting';
 import Reports from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
-import { LogoCloud } from './components/logo-cloud';
+import { DashboardFilterProvider, useDashboardFilters } from './lib/dashboardFilters';
 import { supabase, toAppRole } from './supabaseClient';
-import type { AppUser, UserRole, NavItem, NavKey } from './types';
+import type { AppUser, UserRole, NavKey } from './types';
+
+// Official DoCC emblem (base-aware) for the sidebar brand.
+const DOCC_LOGO = `${import.meta.env.BASE_URL}docc-logo-compact.png`;
+
+// Sidebar item shape (richer than the old NavItem: carries the header title).
+interface SideItem {
+  key: NavKey; path: string; label: string;
+  Icon: React.ComponentType<{ size?: number | string }>;
+  head: string; sub?: string;
+}
 
 // ── Environment ───────────────────────────────────────────────────────────────
 // VITE_APP_ENV is set to "production" in the production build .env file.
@@ -28,12 +40,6 @@ const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
 // Faded scenic backdrop for the sign-in brand panel. To use a real
 // photograph instead, drop a file in public/ and point LOGIN_BG at it.
 const LOGIN_BG = `${import.meta.env.BASE_URL}vanuatu-login-bg.svg`;
-// Traditional ni-Vanuatu ornament (hand-drawn SVG): a woven-diamond / namele
-// chevron band for the header & footer, and a faint sandroing (sand-drawing)
-// motif tiled as a background watermark. Base-aware so they resolve under the
-// GitHub Pages project path.
-const PATTERN_BAND = `${import.meta.env.BASE_URL}pattern-band.svg`;
-const PATTERN_WATERMARK = `${import.meta.env.BASE_URL}pattern-watermark.svg`;
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const ROLES: Record<UserRole, string> = {
@@ -62,27 +68,43 @@ async function loadProfile(): Promise<AppUser | null> {
   };
 }
 
-// ── Tab access map ────────────────────────────────────────────────────────────
-// The legacy pre-DoCC modules (Dashboard, Framework, Registration, Progress,
-// Gallery, Files, Datasets, Analysis, Reports) have been retired; the portal now
-// exposes the new DoCC MERL module plus Administration. Their DoCC replacements
-// (project-setup wizard, dashboards and report generators) are rebuilt in
-// follow-up work.
+// ── Sidebar navigation (matches the approved sample) ───────────────────────────
+// Analytical lenses (Results/Indicators/Finances/Locations/Risks) open the
+// tabbed analytics dashboard; Projects/Activities/Documents open the DoCC data
+// pages; Overview is the executive dashboard.
+const NAV_ITEMS: SideItem[] = [
+  { key: 'overview',   path: '/dashboards',           label: 'Overview',             Icon: LayoutDashboard, head: 'MERL Project Portfolio Dashboard', sub: 'Monitoring, Evaluation, Reporting & Learning' },
+  { key: 'projects',   path: '/project-setup',        label: 'Projects',             Icon: FolderKanban,    head: 'Project Setup' },
+  { key: 'results',    path: '/analytics/results',    label: 'Results Framework',    Icon: Target,          head: 'Results Framework' },
+  { key: 'indicators', path: '/analytics/indicators', label: 'Indicators',           Icon: Activity,        head: 'Indicators' },
+  { key: 'activities', path: '/merl-reporting',       label: 'Activities & Workplan', Icon: ListChecks,     head: 'Activities & Workplan' },
+  { key: 'finances',   path: '/analytics/financial',  label: 'Finances',             Icon: Wallet,          head: 'Finances' },
+  { key: 'locations',  path: '/analytics/geographic', label: 'Locations',            Icon: MapPin,          head: 'Geographic Coverage' },
+  { key: 'risks',      path: '/analytics/risks',      label: 'Risks & Issues',       Icon: AlertTriangle,   head: 'Risks & Issues' },
+  { key: 'reports',    path: '/reports',              label: 'Reports',              Icon: FileBarChart,    head: 'Reports' },
+  { key: 'documents',  path: '/merl-reporting',       label: 'Documents',            Icon: FolderOpen,      head: 'Documents & Evidence' },
+  { key: 'admin',      path: '/admin',                label: 'Administration',       Icon: Settings,        head: 'Administration' },
+];
+
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['dashboards', 'setup', 'merl', 'reports', 'admin'],
-  ROLE_DOCC_SENIOR:  ['dashboards', 'setup', 'merl', 'reports'],
-  ROLE_DOCC_MEO:     ['dashboards', 'setup', 'merl', 'reports'],
-  ROLE_PROJ_MANAGER: ['dashboards', 'setup', 'merl', 'reports'],
-  ROLE_FIELD_STAFF:  ['dashboards', 'merl', 'reports'],
+  ROLE_ADMIN:        ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents', 'admin'],
+  ROLE_DOCC_SENIOR:  ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
+  ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
+  ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
+  ROLE_FIELD_STAFF:  ['overview', 'activities', 'locations', 'risks', 'reports', 'documents'],
 };
 
-const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboards', path: '/dashboards',    label: 'Dashboards',     Icon: LayoutDashboard },
-  { key: 'setup',      path: '/project-setup', label: 'Project Setup',  Icon: ClipboardList   },
-  { key: 'merl',       path: '/merl-reporting', label: 'MERL',          Icon: ClipboardCheck  },
-  { key: 'reports',    path: '/reports',        label: 'Reports',        Icon: FileBarChart    },
-  { key: 'admin',      path: '/admin',          label: 'Administration', Icon: Settings        },
-];
+// Which access key gates each real route.
+const ROUTE_GATE: Record<string, NavKey> = {
+  '/dashboards': 'overview', '/project-setup': 'projects', '/merl-reporting': 'activities',
+  '/reports': 'reports', '/admin': 'admin',
+};
+
+// Map an /analytics/:lens segment to a Dashboards tab.
+const LENS_TO_TAB: Record<string, string> = {
+  results: 'results', indicators: 'results', financial: 'financial',
+  geographic: 'geographic', risks: 'risks', portfolio: 'portfolio', reporting: 'reporting',
+};
 
 // ── Login screen ──────────────────────────────────────────────────────────────
 interface LoginScreenProps {
@@ -314,185 +336,141 @@ export default function App() {
 
   const allowed    = TAB_ACCESS[user.role] ?? [];
   const visibleNav = NAV_ITEMS.filter(n => allowed.includes(n.key));
-  const defaultPath = visibleNav[0]?.path ?? '/merl-reporting';
+  const defaultPath = visibleNav[0]?.path ?? '/dashboards';
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+  const activeItem = NAV_ITEMS.find(n => n.path === location.pathname)
+    ?? (location.pathname.startsWith('/analytics') ? NAV_ITEMS.find(n => n.key === 'results') : undefined)
+    ?? NAV_ITEMS.find(n => n.key === 'overview')!;
+  const gate = (path: string) => allowed.includes(ROUTE_GATE[path]);
 
   return (
-    <div className="app-shell scrollbar-thin" style={{ display: 'flex', flexDirection: 'column', overflowX: 'hidden', overflowY: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
+    <DashboardFilterProvider>
+    <div className="dsh">
+      {sidebarOpen && <div className="dsh-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Top navigation */}
-      <header className="topnav" style={{
-        flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center',
-      }}>
-        {/* Brand */}
-        <div className="topnav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, minWidth: 0 }}>
-          <div className="topnav-crest" style={{ background: 'var(--green-50)', border: '1px solid var(--green-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6, flexShrink: 0 }}>
-            <img src={CREST} alt="Vanuatu Coat of Arms" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          </div>
-          <div style={{ lineHeight: 1.15, minWidth: 0 }}>
-            <div className="topnav-brand-title" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-1)', fontWeight: 800, letterSpacing: '-0.01em' }}>L&amp;D MERL</div>
-            <div className="topnav-brand-sub" style={{ color: 'var(--text-3)', fontSize: '0.75rem', letterSpacing: '0.04em' }}>DoCC · Vanuatu</div>
+      {/* ── Sidebar ── */}
+      <aside className={`dsh-side${sidebarOpen ? ' open' : ''}`}>
+        <div className="dsh-brand">
+          <img src={DOCC_LOGO} alt="Department of Climate Change" />
+          <div style={{ minWidth: 0 }}>
+            <div className="dsh-brand-dept">Dept. of Climate Change</div>
+            <div className="dsh-brand-title">MERL Dashboard</div>
           </div>
         </div>
-
-        {/* Center pill nav (desktop) — text-only tabs, like the reference */}
-        <nav className="topnav-links" style={{ margin: '0 auto' }}>
-          {visibleNav.map(({ key, path, label }) => (
-            <NavLink key={key} to={path} className={({ isActive }) => `topnav-link${isActive ? ' active' : ''}`}>
-              {label}
+        <nav className="dsh-nav" aria-label="Primary">
+          {visibleNav.map(({ key, path, label, Icon }) => (
+            <NavLink key={key} to={path} onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => (isActive ? 'active' : '')}>
+              <Icon size={17} />{label}
             </NavLink>
           ))}
         </nav>
+        <SidebarQuickFilters />
+      </aside>
 
-        {/* Right cluster */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', flexShrink: 0 }}>
-          {IS_STAGING && (
-            <div className="topnav-staging" style={{
-              fontSize: '0.8125rem', color: 'var(--green-700)',
-              padding: '0.35rem 0.8rem', background: 'var(--green-50)',
-              border: '1px solid var(--green-100)', borderRadius: 9999,
-              fontWeight: 700, letterSpacing: '0.04em',
-            }}>
-              Staging
-            </div>
-          )}
-          {/* Language switcher (EN / FR) — hidden on small screens, moved into the mobile menu */}
-          <div className="topnav-lang" style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-            {(['en', 'fr'] as const).map(lng => (
-              <button key={lng} onClick={() => i18n.changeLanguage(lng)}
-                aria-label={`Switch language to ${lng.toUpperCase()}`}
-                style={{
-                  padding: '0.42rem 0.75rem', fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.03em',
-                  border: 'none', cursor: 'pointer',
-                  background: i18n.language === lng ? 'var(--green-600)' : 'var(--white)',
-                  color: i18n.language === lng ? '#fff' : 'var(--text-3)',
-                }}>
-                {lng.toUpperCase()}
-              </button>
-            ))}
+      {/* ── Main column ── */}
+      <div className="dsh-main">
+        <header className="dsh-head">
+          <button className="dsh-hamburger" aria-label="Toggle menu" onClick={() => setSidebarOpen(o => !o)}><Menu size={20} /></button>
+          <div style={{ minWidth: 0 }}>
+            <div className="dsh-head-title">{activeItem.head}</div>
+            {activeItem.sub && <div className="dsh-head-sub">{activeItem.sub}</div>}
           </div>
-          <button className="topnav-icon-btn topnav-bell" title="Notifications" aria-label="Notifications">
-            <Bell size={20} />
-          </button>
-
-          {/* Account menu */}
-          <div className="topnav-account" style={{ position: 'relative' }}>
-            <button onClick={() => setUserMenuOpen(o => !o)} aria-label="Account menu" style={{
-              display: 'flex', alignItems: 'center', gap: '0.35rem',
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: '0.15rem 0.25rem 0.15rem 0.15rem', borderRadius: 9999,
-            }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--green-600), var(--green-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.85rem', fontWeight: 700 }}>
-                {initials}
-              </div>
-              <ChevronDown size={17} style={{ color: 'var(--text-3)' }} />
-            </button>
-            {userMenuOpen && (
-              <>
-                <div onClick={() => setUserMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 224, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
-                  <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-3)', marginTop: 2 }}>{ROLES[user.role]}</div>
-                  </div>
-                  <button onClick={() => { setUserMenuOpen(false); void supabase.auth.signOut(); setUser(null); }} style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.75rem 1rem', background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--red-600)', fontSize: '0.8125rem', fontWeight: 600,
-                  }}>
-                    <LogOut size={15} /> Sign Out
-                  </button>
-                </div>
-              </>
+          <div className="dsh-head-actions">
+            {IS_STAGING && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--green-700)', padding: '0.25rem 0.6rem', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 9999, fontWeight: 700 }}>Staging</span>
             )}
+            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              {(['en', 'fr'] as const).map(lng => (
+                <button key={lng} onClick={() => i18n.changeLanguage(lng)} aria-label={`Language ${lng.toUpperCase()}`}
+                  style={{ padding: '0.34rem 0.6rem', fontSize: '0.72rem', fontWeight: 700, border: 'none', cursor: 'pointer',
+                    background: i18n.language === lng ? 'var(--green-600)' : 'var(--white)', color: i18n.language === lng ? '#fff' : 'var(--text-3)' }}>
+                  {lng.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button className="dsh-bell" title="Notifications" aria-label="Notifications"><Bell size={19} /></button>
+            <div style={{ position: 'relative' }}>
+              <button className="dsh-user" onClick={() => setUserMenuOpen(o => !o)} aria-label="Account menu">
+                <span className="dsh-avatar">{initials}</span>
+                <span className="dsh-user-meta">
+                  <span className="dsh-user-name" style={{ display: 'block' }}>{user.name}</span>
+                  <span className="dsh-user-role">{ROLES[user.role]}</span>
+                </span>
+              </button>
+              {userMenuOpen && (
+                <>
+                  <div onClick={() => setUserMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 220, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
+                    <div style={{ padding: '0.8rem 1rem', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: 2 }}>{ROLES[user.role]}</div>
+                    </div>
+                    <button onClick={() => { setUserMenuOpen(false); void supabase.auth.signOut(); setUser(null); }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)', fontSize: '0.8rem', fontWeight: 600 }}>
+                      <LogOut size={15} /> Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
+        </header>
 
-          {/* Mobile hamburger */}
-          <button className="topnav-hamburger topnav-icon-btn" aria-label="Toggle navigation menu" onClick={() => setSidebarOpen(o => !o)}>
-            <Menu size={18} />
-          </button>
-        </div>
-      </header>
-
-      {/* Traditional ni-Vanuatu ornament band (header) */}
-      <div aria-hidden="true" style={{
-        flexShrink: 0, height: 34, background: 'var(--white)',
-        borderBottom: '1px solid var(--border)',
-        backgroundImage: `url(${PATTERN_BAND})`, backgroundRepeat: 'repeat-x',
-        backgroundPosition: 'center', backgroundSize: 'auto 34px',
-      }} />
-
-      {/* Mobile dropdown nav */}
-      <nav className={`topnav-mobile${sidebarOpen ? ' open' : ''}`}>
-        {visibleNav.map(({ key, path, label, Icon }) => (
-          <NavLink key={key} to={path} onClick={() => setSidebarOpen(false)} className={({ isActive }) => `topnav-link${isActive ? ' active' : ''}`}>
-            <Icon size={16} />{label}
-          </NavLink>
-        ))}
-        {/* Language switcher inside the mobile menu (the header toggle is hidden on small screens) */}
-        <div className="topnav-mobile-lang">
-          {(['en', 'fr'] as const).map(lng => (
-            <button key={lng} onClick={() => i18n.changeLanguage(lng)}
-              aria-label={`Switch language to ${lng.toUpperCase()}`}
-              className={i18n.language === lng ? 'active' : ''}>
-              {lng.toUpperCase()}
-            </button>
-          ))}
-        </div>
-        {/* Account + sign out (the header avatar is hidden on small screens) */}
-        <div className="topnav-mobile-account">
-          <div>
-            <div className="topnav-mobile-account-name">{user.name}</div>
-            <div className="topnav-mobile-account-role">{ROLES[user.role]}</div>
-          </div>
-          <button onClick={() => { setSidebarOpen(false); void supabase.auth.signOut(); setUser(null); }}>
-            <LogOut size={15} /> Sign Out
-          </button>
-        </div>
-      </nav>
-
-        {/* Stakeholder logo band */}
-        <div style={{ flexShrink: 0, background: 'var(--white)', borderBottom: '1px solid var(--border)' }}>
-          <LogoCloud />
-        </div>
-
-        <main style={{
-          flex: 1, overflowY: 'auto',
-          background: 'var(--cream)',
-          backgroundImage: `url(${PATTERN_WATERMARK})`, backgroundSize: '150px',
-        }} className="scrollbar-thin">
+        <div className="dsh-scroll scrollbar-thin">
           <ErrorBoundary key={location.pathname}>
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
-              <Route path="/dashboards" element={allowed.includes('dashboards') ? <Dashboards /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/project-setup" element={allowed.includes('setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/merl-reporting" element={allowed.includes('merl') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/reports" element={allowed.includes('reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="*"          element={<Navigate to={defaultPath} replace />} />
+              <Route path="/dashboards" element={gate('/dashboards') ? <Overview /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/analytics/:lens" element={allowed.includes('overview') ? <AnalyticsRoute /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/reports" element={gate('/reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/admin" element={gate('/admin') ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="*" element={<Navigate to={defaultPath} replace />} />
             </Routes>
           </ErrorBoundary>
-        </main>
+        </div>
+      </div>
+    </div>
+    </DashboardFilterProvider>
+  );
+}
 
-        {/* Bottom tab bar (mobile only) — quick access to the primary
-            destinations, with "More" opening the full menu. */}
-        <nav className="bottomnav" aria-label="Primary">
-          {visibleNav.slice(0, 3).map(({ key, path, label, Icon }) => (
-            <NavLink key={key} to={path}
-              className={({ isActive }) => `bottomnav-item${isActive ? ' active' : ''}`}>
-              <Icon size={21} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-          <button type="button" onClick={() => setSidebarOpen(o => !o)}
-            aria-label="More menu" aria-expanded={sidebarOpen}
-            className={`bottomnav-item${sidebarOpen ? ' active' : ''}`}>
-            <MoreHorizontal size={21} />
-            <span>More</span>
-          </button>
-        </nav>
-
+// Sidebar "Filter Quick Links" — bound to the shared dashboard filter context.
+function SidebarQuickFilters() {
+  const { filters, patch, reset } = useDashboardFilters();
+  const nowY = new Date().getFullYear();
+  const years = [nowY + 1, nowY, nowY - 1, nowY - 2, nowY - 3];
+  const provinces = ['TORBA', 'SANMA', 'PENAMA', 'MALAMPA', 'SHEFA', 'TAFEA'];
+  const themes = ['Climate Change Adaptation', 'Climate Change Mitigation', 'Loss and Damage', 'Community Resilience Building', 'Disaster Risk Reduction', 'Nature-based Solutions', 'Other'];
+  const partners = ['Government of Vanuatu', 'MFAT', 'GCF', 'GEF', 'UNDP', 'SPC', 'World Bank', 'ADB', 'Other'];
+  return (
+    <div className="dsh-qf">
+      <div className="dsh-qf-h">Filter Quick Links</div>
+      <select value={filters.fy} onChange={e => patch({ fy: e.target.value })} aria-label="Financial Year">
+        <option value="">Financial Year</option>
+        {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
+      </select>
+      <select value={filters.partner} onChange={e => patch({ partner: e.target.value })} aria-label="Funding Partner">
+        <option value="">Funding Partner</option>
+        {partners.map(p => <option key={p} value={p}>{p}</option>)}
+      </select>
+      <select value={filters.theme} onChange={e => patch({ theme: e.target.value })} aria-label="Theme / Sector">
+        <option value="">Theme / Sector</option>
+        {themes.map(t => <option key={t} value={t}>{t}</option>)}
+      </select>
+      <select value={filters.province} onChange={e => patch({ province: e.target.value })} aria-label="Province">
+        <option value="">Province</option>
+        {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+      </select>
+      <button className="dsh-qf-clear" onClick={reset}>Clear Filters</button>
     </div>
   );
+}
+
+// /analytics/:lens → the tabbed analytics dashboard with the tab preselected.
+function AnalyticsRoute() {
+  const { lens } = useParams();
+  return <Dashboards initialTab={LENS_TO_TAB[lens ?? ''] ?? 'portfolio'} />;
 }

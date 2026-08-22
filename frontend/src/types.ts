@@ -24,18 +24,17 @@ export interface AppUser {
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 
 export type NavKey =
-  | 'dashboard'
-  | 'dashboards'
-  | 'framework'
-  | 'gallery'
-  | 'files'
-  | 'datasets'
-  | 'registration'
+  | 'overview'
   | 'projects'
-  | 'progress'
+  | 'results'
+  | 'indicators'
+  | 'activities'
+  | 'finances'
+  | 'locations'
+  | 'risks'
+  | 'documents'
   | 'setup'
   | 'merl'
-  | 'analysis'
   | 'reports'
   | 'admin';
 
