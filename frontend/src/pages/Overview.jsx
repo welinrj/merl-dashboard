@@ -91,7 +91,7 @@ export default function Overview() {
         q('v_beneficiaries', 'project_id, total_direct, female'),
         q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
         q('v_project_indicators', 'project_id, id'),
-        q('v_indicator_progress', 'project_id, achievement_pct, performance_status, reporting_period'),
+        q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
         q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
         q('v_project_locations', 'project_id, province'),
       ]);
@@ -138,12 +138,17 @@ export default function Overview() {
     for (const p of projects) m.set(fundingCategory(p.donor), (m.get(fundingCategory(p.donor)) || 0) + (Number(p.budget_vuv) || 0));
     return FUND_CATS.map((name) => ({ name, value: m.get(name) || 0, color: FUND_COLOR[name] })).filter((x) => x.value > 0);
   })();
+  const projInds = inScope(d.indicators);
+  const totalIndicators = projInds.length;
   const perfData = (() => {
     const order = [['on_track', C.onTrack], ['attention_required', C.attention], ['off_track', C.offTrack], ['no_data', C.noData]];
-    const m = new Map(); for (const r of prog) { const s = r.performance_status || 'no_data'; m.set(s, (m.get(s) || 0) + 1); }
-    return order.map(([k, color]) => ({ name: OPT.labelOf(OPT.PERFORMANCE_STATUS, k), value: m.get(k) || 0, color }));
+    // Latest progress status per indicator (indicators with no progress = No Data).
+    const latest = new Map();
+    for (const r of prog) { const prev = latest.get(r.indicator_id); if (!prev || (r.created_at ?? '') > (prev.created_at ?? '')) latest.set(r.indicator_id, r); }
+    const counts = { on_track: 0, attention_required: 0, off_track: 0, no_data: 0 };
+    for (const ind of projInds) { const s = latest.get(ind.id)?.performance_status || 'no_data'; counts[s in counts ? s : 'no_data'] += 1; }
+    return order.map(([k, color]) => ({ name: OPT.labelOf(OPT.PERFORMANCE_STATUS, k), value: counts[k] || 0, color }));
   })();
-  const totalIndicators = inScope(d.indicators).length;
   const trendData = (() => {
     const m = new Map(); for (const r of prog) { if (!r.reporting_period || r.achievement_pct == null) continue; const e = m.get(r.reporting_period) || { s: 0, n: 0 }; e.s += Number(r.achievement_pct); e.n += 1; m.set(r.reporting_period, e); }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([period, e]) => ({ period, pct: Math.round(e.s / e.n) }));
