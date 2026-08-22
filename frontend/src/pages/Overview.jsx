@@ -10,11 +10,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, LineChart, Line, Tooltip, ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, LineChart, Line, Tooltip, ResponsiveContainer, CartesianGrid, LabelList,
 } from 'recharts';
 import {
-  FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, CheckCheck, Wallet,
-  Users, Printer, MapPin, ArrowRight, CalendarDays,
+  FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, Ban, Flag, Wallet,
+  Users, Printer, MapPin, ArrowRight,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -24,14 +24,27 @@ import {
   useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
 } from '../lib/dashboardFilters';
 
-// ── Semantic colours (consistent across the whole dashboard) ──────────────────
+// ── Semantic colours (matched to the approved sample) ─────────────────────────
+const BLUE = '#2f6df0';
 const C = {
-  onTrack: '#16a34a', atRisk: '#d97706', notStarted: '#94a3b8', completed: '#7c3aed',
-  high: '#dc2626', medium: '#d97706', low: '#16a34a', closed: '#94a3b8',
-  offTrack: '#dc2626', attention: '#d97706', noData: '#94a3b8',
-  cat: ['#0e6e6e', '#2563eb', '#e0a12a', '#7c3aed', '#0891b2', '#94a3b8'],
+  onTrack: '#22a565', atRisk: '#e0a12a', notStarted: '#dc2626', completed: '#7c3aed',
+  high: '#dc2626', medium: '#e0a12a', low: '#22a565', closed: '#94a3b8',
+  offTrack: '#dc2626', attention: '#e0a12a', noData: '#94a3b8',
 };
 const STATUS_COLOR = { on_track: C.onTrack, at_risk: C.atRisk, not_started: C.notStarted, completed: C.completed };
+const KPI_ACCENT = { total: BLUE, on_track: C.onTrack, at_risk: C.atRisk, not_started: C.notStarted, completed: C.completed, budget: BLUE };
+
+// Funding-partner → category grouping for the Budget Overview (Section 7).
+const FUND_CATS = ['DoCC / Govt', 'Multilateral', 'Bilateral', 'Other / Private'];
+const FUND_COLOR = { 'DoCC / Govt': BLUE, 'Multilateral': '#22a565', 'Bilateral': '#e0a12a', 'Other / Private': '#7c3aed' };
+function fundingCategory(donor) {
+  const s = (donor || '').toLowerCase();
+  if (!donor) return 'Other / Private';
+  if (s.includes('vanuatu') || s.includes('govern') || s.includes('docc')) return 'DoCC / Govt';
+  if (['gcf', 'gef', 'undp', 'world bank', 'adb', 'spc', 'eu', 'unicef', 'fao'].some((k) => s.includes(k))) return 'Multilateral';
+  if (['mfat', 'australia', 'japan', 'new zealand', 'dfat', 'usaid', 'bilateral'].some((k) => s.includes(k))) return 'Bilateral';
+  return 'Other / Private';
+}
 const BADGE = {
   on_track: ['#dcfce7', '#166534'], at_risk: ['#fef3c7', '#92400e'], delayed: ['#fee2e2', '#991b1b'],
   completed: ['#ede9fe', '#5b21b6'], closed: ['#ede9fe', '#5b21b6'], not_started: ['#f1f5f9', '#475569'],
@@ -49,6 +62,14 @@ function fmtVUV(v) {
   return `VUV ${n.toLocaleString()}`;
 }
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+const pct1 = (n, d) => (d ? `${((n / d) * 100).toFixed(1)}%` : '0%');
+function fmtCompact(v) {
+  const n = Number(v) || 0;
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return n.toLocaleString();
+}
 const countBy = (rows, keyFn) => {
   const m = new Map();
   for (const r of rows) for (const k of [].concat(keyFn(r)).filter(Boolean)) m.set(k, (m.get(k) || 0) + 1);
@@ -70,8 +91,8 @@ export default function Overview() {
         q('v_beneficiaries', 'project_id, total_direct, female'),
         q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
         q('v_project_indicators', 'project_id, id'),
-        q('v_indicator_progress', 'project_id, achievement_pct, performance_status, reporting_period'),
-        q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at'),
+        q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
+        q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
         q('v_project_locations', 'project_id, province'),
       ]);
       setD({
@@ -111,16 +132,23 @@ export default function Overview() {
   const statusData = Object.keys(byBucket).map((k) => ({ key: k, name: STATUS_BUCKETS_LABEL(k), value: byBucket[k], color: STATUS_COLOR[k] }));
   const themeData = countBy(projects, (p) => p.category).map(([name, value]) => ({ name, value }));
   const provinceCounts = {}; for (const p of projects) for (const pv of (p.provinces || [])) provinceCounts[pv] = (provinceCounts[pv] || 0) + 1;
-  const budgetByDonor = (() => {
-    const m = new Map(); for (const p of projects) { const k = p.donor || 'Other / Unspecified'; m.set(k, (m.get(k) || 0) + (Number(p.budget_vuv) || 0)); }
-    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([name, value], i) => ({ name, value, color: C.cat[i % C.cat.length] }));
+  const nationalCount = projects.filter((p) => !(p.provinces || []).length).length;
+  const budgetByCategory = (() => {
+    const m = new Map(FUND_CATS.map((c) => [c, 0]));
+    for (const p of projects) m.set(fundingCategory(p.donor), (m.get(fundingCategory(p.donor)) || 0) + (Number(p.budget_vuv) || 0));
+    return FUND_CATS.map((name) => ({ name, value: m.get(name) || 0, color: FUND_COLOR[name] })).filter((x) => x.value > 0);
   })();
+  const projInds = inScope(d.indicators);
+  const totalIndicators = projInds.length;
   const perfData = (() => {
     const order = [['on_track', C.onTrack], ['attention_required', C.attention], ['off_track', C.offTrack], ['no_data', C.noData]];
-    const m = new Map(); for (const r of prog) { const s = r.performance_status || 'no_data'; m.set(s, (m.get(s) || 0) + 1); }
-    return order.map(([k, color]) => ({ name: OPT.labelOf(OPT.PERFORMANCE_STATUS, k), value: m.get(k) || 0, color }));
+    // Latest progress status per indicator (indicators with no progress = No Data).
+    const latest = new Map();
+    for (const r of prog) { const prev = latest.get(r.indicator_id); if (!prev || (r.created_at ?? '') > (prev.created_at ?? '')) latest.set(r.indicator_id, r); }
+    const counts = { on_track: 0, attention_required: 0, off_track: 0, no_data: 0 };
+    for (const ind of projInds) { const s = latest.get(ind.id)?.performance_status || 'no_data'; counts[s in counts ? s : 'no_data'] += 1; }
+    return order.map(([k, color]) => ({ name: OPT.labelOf(OPT.PERFORMANCE_STATUS, k), value: counts[k] || 0, color }));
   })();
-  const totalIndicators = inScope(d.indicators).length;
   const trendData = (() => {
     const m = new Map(); for (const r of prog) { if (!r.reporting_period || r.achievement_pct == null) continue; const e = m.get(r.reporting_period) || { s: 0, n: 0 }; e.s += Number(r.achievement_pct); e.n += 1; m.set(r.reporting_period, e); }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([period, e]) => ({ period, pct: Math.round(e.s / e.n) }));
@@ -144,10 +172,14 @@ export default function Overview() {
   const femalePct = bens.some((b) => b.female != null) && totalBen ? pct(femaleBen, totalBen) : null;
 
   // Recent updates (latest 6) + milestones (next 30 days)
+  const updatedByOf = (pid) => {
+    const rows = reps.filter((r) => r.project_id === pid && r.reporting_officer_name)
+      .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''));
+    return rows[0]?.reporting_officer_name || '—';
+  };
   const recent = [...projects].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? '')).slice(0, 6).map((p) => {
-    const acts0 = acts.filter((a) => a.project_id === p.id && a.status && a.status !== 'not_started');
     const progAvg = (() => { const withPct = prog.filter((x) => x.project_id === p.id && x.achievement_pct != null); return withPct.length ? Math.round(sum(withPct, (x) => x.achievement_pct) / withPct.length) : null; })();
-    return { ...p, progress: progAvg };
+    return { ...p, progress: progAvg, updatedBy: updatedByOf(p.id) };
   });
   const projName = (id) => d.projects.find((p) => p.id === id)?.name || '';
   const milestones = (() => {
@@ -180,12 +212,12 @@ export default function Overview() {
 
       {/* KPI row */}
       <div className="ov-kpis">
-        <Kpi icon={FolderKanban} accent="#0e6e6e" label="Total Projects" value={total} sub={active ? 'Matching filters' : 'All projects'} />
-        <Kpi icon={CheckCircle2} accent={C.onTrack} label="On Track" value={byBucket.on_track} sub={`${pct(byBucket.on_track, total)}% of total`} />
-        <Kpi icon={AlertTriangle} accent={C.atRisk} label="At Risk / Delayed" value={byBucket.at_risk} sub={`${pct(byBucket.at_risk, total)}% of total`} />
-        <Kpi icon={CircleDashed} accent={C.notStarted} label="Not Started" value={byBucket.not_started} sub={`${pct(byBucket.not_started, total)}% of total`} />
-        <Kpi icon={CheckCheck} accent={C.completed} label="Completed" value={byBucket.completed} sub={`${pct(byBucket.completed, total)}% of total`} />
-        <Kpi icon={Wallet} accent="#e0a12a" label="Total Approved Budget" value={fmtVUV(totalBudget)} sub="Across all projects" small />
+        <Kpi icon={FolderKanban} accent={KPI_ACCENT.total} label="Total Projects" value={total} sub={active ? 'Matching filters' : 'All active projects'} />
+        <Kpi icon={CheckCircle2} accent={KPI_ACCENT.on_track} label="On Track" value={byBucket.on_track} sub={`${pct1(byBucket.on_track, total)} of total`} />
+        <Kpi icon={AlertTriangle} accent={KPI_ACCENT.at_risk} label="At Risk / Delayed" value={byBucket.at_risk} sub={`${pct1(byBucket.at_risk, total)} of total`} />
+        <Kpi icon={Ban} accent={KPI_ACCENT.not_started} label="Not Started" value={byBucket.not_started} sub={`${pct1(byBucket.not_started, total)} of total`} />
+        <Kpi icon={Flag} accent={KPI_ACCENT.completed} label="Completed" value={byBucket.completed} sub={`${pct1(byBucket.completed, total)} of total`} />
+        <Kpi icon={Wallet} accent={KPI_ACCENT.budget} label="Total Approved Budget" value={fmtVUV(totalBudget)} sub="Across all projects" small />
       </div>
 
       {/* Analytics row 1 */}
@@ -198,26 +230,29 @@ export default function Overview() {
           {themeData.length === 0 ? <NoData /> : (
             <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={themeData} layout="vertical" margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
+                <BarChart data={themeData} layout="vertical" margin={{ left: 8, right: 64, top: 4, bottom: 4 }}>
                   <CartesianGrid horizontal={false} stroke="var(--border)" />
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [`${v} (${pct(v, total)}%)`, 'Projects']} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} fill="#0e6e6e" cursor="pointer"
-                    onClick={(e) => { const n = e?.name ?? e?.payload?.name; if (n) setFilter('theme', n); }} />
+                  <YAxis type="category" dataKey="name" width={116} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => [`${v} (${pct1(v, total)})`, 'Projects']} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} fill={BLUE} cursor="pointer"
+                    onClick={(e) => { const n = e?.name ?? e?.payload?.name; if (n) setFilter('theme', n); }}>
+                    <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: 'var(--text-2)' }}
+                      formatter={(v) => `${v} (${pct1(v, total)})`} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
         </Panel>
         <Panel title="Projects by Province" footer={<FooterLink label="View on map" icon={MapPin} onClick={() => nav('/analytics/geographic')} />}>
-          <VanuatuMap counts={provinceCounts} selected={filters.province} onSelect={(name) => setFilter('province', name)} />
+          <VanuatuMap counts={provinceCounts} nationalCount={nationalCount} selected={filters.province} onSelect={(name) => setFilter('province', name)} />
         </Panel>
         <Panel title="Budget Overview (VUV)" footer={<FooterLink label="View finance" onClick={() => nav('/analytics/financial')} />}>
-          {budgetByDonor.length === 0 ? <NoData /> : (
+          {budgetByCategory.length === 0 ? <NoData /> : (
             <>
-              <Donut data={budgetByDonor} center={[fmtVUV(totalBudget).replace('VUV ', ''), 'VUV']} onSlice={(s) => setFilter('partner', s.name === 'Other / Unspecified' ? '' : s.name)} valueFmt={fmtVUV} />
-              <Legend items={budgetByDonor.map((s) => ({ ...s, onClick: () => setFilter('partner', s.name === 'Other / Unspecified' ? '' : s.name) }))} total={totalBudget} valueFmt={fmtVUV} />
+              <Donut data={budgetByCategory} center={[fmtCompact(totalBudget), 'VUV Total']} valueFmt={fmtCompact} />
+              <Legend items={budgetByCategory} total={totalBudget} valueFmt={fmtCompact} />
             </>
           )}
         </Panel>
@@ -238,7 +273,7 @@ export default function Overview() {
                   <XAxis dataKey="period" tick={{ fontSize: 11 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
                   <Tooltip formatter={(v) => [`${v}%`, 'Avg achievement']} />
-                  <Line type="monotone" dataKey="pct" stroke="#0e6e6e" strokeWidth={2} dot={{ r: 3 }} label={{ fontSize: 10, position: 'top' }} />
+                  <Line type="monotone" dataKey="pct" stroke={BLUE} strokeWidth={2.5} dot={{ r: 3, fill: BLUE }} label={{ fontSize: 10, position: 'top', fill: 'var(--text-2)', formatter: (v) => `${v}%` }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -247,7 +282,7 @@ export default function Overview() {
         <Panel title="Beneficiaries Reached" footer={<FooterLink label="View beneficiaries" onClick={() => nav('/analytics/geographic')} />}>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: 200, gap: '0.4rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span style={{ width: 40, height: 40, borderRadius: 10, background: '#ede9fe', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} /></span>
+              <span style={{ width: 40, height: 40, borderRadius: '50%', background: '#dcfce7', color: '#22a565', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} /></span>
               <div>
                 <div style={{ fontSize: '1.9rem', fontWeight: 800, lineHeight: 1, fontFamily: 'var(--font-display)' }}>{totalBen ? totalBen.toLocaleString() : '0'}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Total beneficiaries</div>
@@ -258,7 +293,7 @@ export default function Overview() {
                 <div style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>No disaggregated data</div>
               ) : (
                 <>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1 }}>{femalePct}%</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1, color: '#22a565' }}>{femalePct}%</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Female beneficiaries</div>
                 </>
               )}
@@ -277,7 +312,7 @@ export default function Overview() {
           {recent.length === 0 ? <NoData label="No projects match the current filters" /> : (
             <div style={{ overflowX: 'auto' }}>
               <table className="ov-table">
-                <thead><tr><th>Project ID</th><th>Title</th><th>Status</th><th>Progress</th><th>Budget (VUV)</th><th>Last Updated</th></tr></thead>
+                <thead><tr><th>Project ID</th><th>Title</th><th>Status</th><th>Progress</th><th>Budget (VUV)</th><th>Last Updated</th><th>Updated By</th></tr></thead>
                 <tbody>
                   {recent.map((p) => (
                     <tr key={p.id}>
@@ -287,6 +322,7 @@ export default function Overview() {
                       <td><Progress value={p.progress} /></td>
                       <td>{fmtVUV(p.budget_vuv).replace('VUV ', '')}</td>
                       <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{p.updated_at ? p.updated_at.slice(0, 10) : '—'}</td>
+                      <td style={{ color: 'var(--text-2)' }}>{p.updatedBy}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -298,14 +334,15 @@ export default function Overview() {
           {milestones.length === 0 ? <NoData label="Nothing due in the next 30 days" /> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {milestones.map((m, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.7rem', alignItems: 'center', padding: '0.4rem 0', borderBottom: i < milestones.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <div style={{ flexShrink: 0, width: 44, textAlign: 'center', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 8, padding: '0.25rem 0' }}>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 800, lineHeight: 1, color: 'var(--green-800)' }}>{m.date.getDate()}</div>
-                    <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--green-700)' }}>{m.date.toLocaleString('en', { month: 'short' }).toUpperCase()}</div>
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</div>
+                <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', padding: '0.5rem 0', borderBottom: i < milestones.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: ['#22a565', BLUE, '#e0a12a', '#7c3aed'][i % 4], flexShrink: 0 }} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: BLUE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.subtitle}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 34 }}>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, lineHeight: 1, color: 'var(--text-1)' }}>{m.date.getDate()}</div>
+                    <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', color: '#22a565' }}>{m.date.toLocaleString('en', { month: 'short' }).toUpperCase()}</div>
                   </div>
                 </div>
               ))}
@@ -325,12 +362,12 @@ function STATUS_BUCKETS_LABEL(k) {
 function Kpi({ icon: Icon, accent, label, value, sub, small }) {
   return (
     <div className="ov-kpi">
-      <span className="ov-kpi-ic" style={{ background: `color-mix(in srgb, ${accent} 14%, #fff)`, color: accent }}><Icon size={18} /></span>
       <div style={{ minWidth: 0 }}>
         <div className="ov-kpi-label">{label}</div>
         <div className="ov-kpi-value" style={{ fontSize: small ? '1.35rem' : '1.7rem' }}>{value}</div>
         {sub && <div className="ov-kpi-sub">{sub}</div>}
       </div>
+      <span className="ov-kpi-ic" style={{ background: `color-mix(in srgb, ${accent} 15%, #fff)`, color: accent }}><Icon size={20} /></span>
     </div>
   );
 }
@@ -390,7 +427,7 @@ function Legend({ items, total, valueFmt }) {
           <span style={{ width: 9, height: 9, borderRadius: 2, background: s.color || '#0e6e6e', flexShrink: 0 }} />
           <span style={{ fontSize: '0.76rem', color: 'var(--text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
           <span style={{ fontSize: '0.76rem', fontWeight: 700 }}>{valueFmt ? valueFmt(s.value) : s.value}</span>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', width: 34, textAlign: 'right' }}>{pct(s.value, total)}%</span>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', width: 46, textAlign: 'right' }}>({pct1(s.value, total)})</span>
         </button>
       ))}
     </div>

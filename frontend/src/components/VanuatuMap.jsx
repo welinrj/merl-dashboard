@@ -23,7 +23,7 @@ function ringToPath(ring, bbox) {
   }).join(' ') + 'Z';
 }
 
-export default function VanuatuMap({ counts = {}, selected, onSelect }) {
+export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, onSelect }) {
   const [features, setFeatures] = useState(null);
   const [hover, setHover] = useState(null);
 
@@ -98,6 +98,12 @@ export default function VanuatuMap({ counts = {}, selected, onSelect }) {
             </button>
           );
         })}
+        {nationalCount > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.55rem', borderRadius: 8, border: '1px dashed var(--border)', background: 'var(--surface-1)' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-2)', fontWeight: 600 }}>National</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-1)' }}>{nationalCount}</span>
+          </div>
+        )}
       </div>
     </div>
   );
