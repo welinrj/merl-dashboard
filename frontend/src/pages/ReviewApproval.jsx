@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { ClipboardCheck, CheckCircle2, RotateCcw, Eye, Unlock, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { confirmDialog } from '../lib/confirm';
+import { confirmDialog, promptDialog } from '../lib/confirm';
 
 const REVIEWER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 const STATUS = {
@@ -91,8 +91,9 @@ export default function ReviewApproval({ user }) {
   };
 
   const doReview = r => act('review_reporting_period', { p_id: r.id, p_decision: 'review', p_comments: null }, 'Marked under review');
-  const doReturn = r => {
-    const c = window.prompt('Comment explaining what needs correction (required):');
+  const doReturn = async r => {
+    const c = await promptDialog({ title:'Return for correction', label:'What needs correction?', required:true, multiline:true,
+      message:'The Project Manager will see this comment on the returned submission.' });
     if (c == null || !c.trim()) return;
     act('review_reporting_period', { p_id: r.id, p_decision: 'return', p_comments: c.trim() }, 'Returned for correction');
   };
@@ -105,8 +106,9 @@ export default function ReviewApproval({ user }) {
     if (!ok) return;
     act('review_reporting_period', { p_id: r.id, p_decision: 'approve', p_comments: r.review_comments ?? null }, 'Approved and locked');
   };
-  const doReopen = r => {
-    const reason = window.prompt('Reason for reopening this approved reporting period (required):');
+  const doReopen = async r => {
+    const reason = await promptDialog({ title:'Reopen reporting period', label:'Reason for reopening', required:true, multiline:true,
+      message:'This approved period will return to draft for correction. The reason is recorded in the audit trail.' });
     if (reason == null || !reason.trim()) return;
     act('reopen_reporting_period', { p_id: r.id, p_reason: reason.trim() }, 'Reporting period reopened');
   };

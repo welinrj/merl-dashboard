@@ -15,6 +15,7 @@ import {
   ClipboardCheck, Plus, Pencil, Trash2, Send, CheckCircle2, RotateCcw, X, AlertTriangle, Lock, Unlock,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { confirmDialog, promptDialog } from '../lib/confirm';
 import * as OPT from '../constants/formOptions';
 import {
   achievementPct, variance as calcVariance, performanceStatus, remainingBalance,
@@ -286,7 +287,7 @@ export default function MerlReporting({ user }) {
   };
 
   const deleteRecord = async (row) => {
-    if (!window.confirm('Delete this record? This cannot be undone.')) return;
+    if (!(await confirmDialog({ title:'Delete record', message:'Delete this record? This cannot be undone.', confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc(activeModule.del, { p_id: row.id });
     if (error) { toast.error(error.message); return; }
     toast.success('Deleted');
@@ -312,12 +313,13 @@ export default function MerlReporting({ user }) {
     let params;
     if (rpc === 'reopen_reporting_period') {
       // Reopening an approved period requires a reason (recorded in the audit trail).
-      const reason = window.prompt('Reason for reopening this approved reporting period (required):');
+      const reason = await promptDialog({ title:'Reopen reporting period', label:'Reason for reopening', required:true, multiline:true,
+        message:'This approved period will return to draft for correction. The reason is recorded in the audit trail.' });
       if (reason == null || !reason.trim()) return;
       params = { p_id: id, p_reason: reason.trim() };
     } else if (decision === 'return') {
       // Returning for correction requires a comment explaining what to fix.
-      const comment = window.prompt('Comment explaining what needs correction (required):');
+      const comment = await promptDialog({ title:'Return for correction', label:'What needs correction?', required:true, multiline:true });
       if (comment == null || !comment.trim()) return;
       params = { p_id: id, p_decision: decision, p_comments: comment.trim() };
     } else if (decision) {
