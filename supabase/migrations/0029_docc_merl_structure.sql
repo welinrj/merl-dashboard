@@ -196,6 +196,17 @@ BEGIN
 EXCEPTION WHEN others THEN NULL;
 END $$;
 
+-- Form 1: widen merl.projects.status to the DoCC operational vocabulary
+-- (Pipeline / Approved / Not Started / On Track / At Risk / Delayed / Suspended
+--  / Completed / Closed), retaining the legacy values so existing rows stay valid.
+ALTER TABLE merl.projects DROP CONSTRAINT IF EXISTS projects_status_check;
+ALTER TABLE merl.projects ADD CONSTRAINT projects_status_check CHECK (
+    (status)::text = ANY (ARRAY[
+        'pipeline','approved','not_started','on_track','at_risk','delayed','suspended','completed','closed',
+        'planning','active','on_hold','cancelled'
+    ]::text[])
+);
+
 -- ---------------------------------------------------------------------------
 -- 4. New module tables (Forms 4, 6, 7, 8, 9, 10, 11, 12)
 --    Every table carries created_by/created_at/updated_by/updated_at for the
