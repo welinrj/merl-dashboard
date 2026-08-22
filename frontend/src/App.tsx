@@ -1,27 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, FolderOpen, Database,
-  Activity, FileBarChart, Settings, LogOut, Target, Images,
-  ChevronRight, ChevronDown, Bell, Menu, MoreHorizontal, Eye, EyeOff, AlertCircle, ShieldCheck,
-  Mail, Lock, ClipboardList, ClipboardCheck,
+  Settings, LogOut, ChevronDown, Bell, Menu, MoreHorizontal,
+  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
-import Dashboard   from './pages/Dashboard';
-import DashboardHero from './components/DashboardHero';
-import StrategicActivities from './pages/StrategicActivities';
-import ProjectRegistration from './pages/ProjectRegistration';
-import ResultsFramework from './pages/ResultsFramework';
-import ActivityProgress from './pages/ActivityProgress';
 import MerlReporting from './pages/MerlReporting';
-import Gallery     from './pages/Gallery';
-import ProjectFiles from './pages/ProjectFiles';
-import ProjectDashboard from './pages/ProjectDashboard';
-import Datasets    from './pages/Datasets';
-import Analysis    from './pages/Analysis';
-import Reports     from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
 import { LogoCloud } from './components/logo-cloud';
@@ -75,26 +60,22 @@ async function loadProfile(): Promise<AppUser | null> {
 }
 
 // ── Tab access map ────────────────────────────────────────────────────────────
+// The legacy pre-DoCC modules (Dashboard, Framework, Registration, Progress,
+// Gallery, Files, Datasets, Analysis, Reports) have been retired; the portal now
+// exposes the new DoCC MERL module plus Administration. Their DoCC replacements
+// (project-setup wizard, dashboards and report generators) are rebuilt in
+// follow-up work.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['dashboard', 'framework', 'registration', 'progress', 'merl', 'gallery', 'files', 'datasets', 'analysis', 'reports', 'admin'],
-  ROLE_DOCC_SENIOR:  ['dashboard', 'framework', 'registration', 'progress', 'merl', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
-  ROLE_DOCC_MEO:     ['dashboard', 'framework', 'registration', 'progress', 'merl', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
-  ROLE_PROJ_MANAGER: ['dashboard', 'framework', 'registration', 'progress', 'merl', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
-  ROLE_FIELD_STAFF:  ['gallery', 'files', 'datasets', 'analysis'],
+  ROLE_ADMIN:        ['merl', 'admin'],
+  ROLE_DOCC_SENIOR:  ['merl'],
+  ROLE_DOCC_MEO:     ['merl'],
+  ROLE_PROJ_MANAGER: ['merl'],
+  ROLE_FIELD_STAFF:  ['merl'],
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard',    path: '/dashboard',    label: 'Dashboard',      Icon: LayoutDashboard },
-  { key: 'framework',    path: '/framework',    label: 'Framework',      Icon: Target          },
-  { key: 'registration', path: '/registration', label: 'Registration',   Icon: ClipboardList   },
-  { key: 'progress',     path: '/progress',     label: 'Progress',       Icon: ClipboardCheck  },
-  { key: 'merl',         path: '/merl-reporting', label: 'MERL',         Icon: ClipboardCheck  },
-  { key: 'gallery',      path: '/gallery',      label: 'Gallery',        Icon: Images          },
-  { key: 'files',        path: '/files',        label: 'Project Files',  Icon: FolderOpen      },
-  { key: 'datasets',     path: '/datasets',     label: 'Data',           Icon: Database        },
-  { key: 'analysis',     path: '/analysis',     label: 'Analysis',       Icon: Activity        },
-  { key: 'reports',      path: '/reports',      label: 'Reports',        Icon: FileBarChart    },
-  { key: 'admin',        path: '/admin',        label: 'Administration', Icon: Settings        },
+  { key: 'merl',  path: '/merl-reporting', label: 'MERL',           Icon: ClipboardCheck },
+  { key: 'admin', path: '/admin',          label: 'Administration', Icon: Settings       },
 ];
 
 // ── Login screen ──────────────────────────────────────────────────────────────
@@ -322,124 +303,16 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // ── Real-time: dataset upload notifications ──────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel('global-dataset-notifications')
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'datasets' },
-        payload => {
-          const row = payload.new as Record<string, unknown>;
-          if (row.uploaded_by === user.name) return;
-
-          const ext  = typeof row.type === 'string' ? row.type.toUpperCase() : 'FILE';
-          const sizeKb = typeof row.size_kb === 'number' ? row.size_kb : 0;
-          const size = sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
-
-          toast.custom(t => (
-            <div onClick={() => toast.dismiss(t.id)} style={{
-              display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-              background: '#1e293b', border: '1px solid rgba(74,171,130,0.35)',
-              borderLeft: '3px solid #4aab82', borderRadius: 10,
-              padding: '0.875rem 1.125rem', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-              cursor: 'pointer', maxWidth: 340,
-            }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: 'rgba(74,171,130,0.15)', border: '1px solid rgba(74,171,130,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem' }}>📎</div>
-              <div>
-                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.2rem' }}>New upload</div>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.4 }}>
-                  <span style={{ color: '#4aab82', fontWeight: 600 }}>{String(row.uploaded_by)}</span>
-                  {' '}uploaded{' '}
-                  <span style={{ color: '#f1f5f9', fontWeight: 600 }}>{String(row.name)}</span>
-                </div>
-                <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.35)', marginTop: '0.2rem' }}>
-                  {ext} · {size} · {String(row.project_code)}
-                </div>
-              </div>
-            </div>
-          ), { duration: 6000, position: 'top-right' });
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [user]);
-
-  // ── Real-time: dataset approval/rejection ────────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel('global-approval-notifications')
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'datasets' },
-        payload => {
-          const row = payload.new as Record<string, unknown>;
-          const isPersonal = row.uploaded_by === user.name;
-
-          if (row.status === 'approved') {
-            toast.custom(t => (
-              <div onClick={() => toast.dismiss(t.id)} style={{
-                display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-                background: '#1e293b', border: '1px solid rgba(22,163,74,0.35)',
-                borderLeft: '3px solid #16a34a', borderRadius: 10,
-                padding: '0.875rem 1.125rem', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                cursor: 'pointer', maxWidth: 340,
-              }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: 'rgba(22,163,74,0.15)', border: '1px solid rgba(22,163,74,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem' }}>✅</div>
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.2rem' }}>
-                    {isPersonal ? 'Your upload was approved' : 'Dataset approved'}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#f1f5f9', lineHeight: 1.4, marginBottom: '0.2rem' }}>{String(row.name)}</div>
-                  <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.45)' }}>by {String(row.reviewed_by ?? 'Admin')}</div>
-                </div>
-              </div>
-            ), { duration: 6000, position: 'top-right' });
-          } else if (row.status === 'rejected' && isPersonal) {
-            toast.custom(t => (
-              <div onClick={() => toast.dismiss(t.id)} style={{
-                display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-                background: '#1e293b', border: '1px solid rgba(220,38,38,0.35)',
-                borderLeft: '3px solid #dc2626', borderRadius: 10,
-                padding: '0.875rem 1.125rem', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                cursor: 'pointer', maxWidth: 340,
-              }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem' }}>❌</div>
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.2rem' }}>Upload rejected</div>
-                  <div style={{ fontSize: '0.75rem', color: '#f1f5f9', lineHeight: 1.4, marginBottom: '0.2rem' }}>{String(row.name)}</div>
-                  {!!row.review_note && (
-                    <div style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.45)' }}>{String(row.review_note)}</div>
-                  )}
-                </div>
-              </div>
-            ), { duration: 6000, position: 'top-right' });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [user]);
-
   if (booting) return null;
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const allowed    = TAB_ACCESS[user.role] ?? [];
   const visibleNav = NAV_ITEMS.filter(n => allowed.includes(n.key));
-  const defaultPath = visibleNav[0]?.path ?? '/dashboard';
+  const defaultPath = visibleNav[0]?.path ?? '/merl-reporting';
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
-  // On the dashboard, the tree hero leads the page — it sits above the header, so
-  // the whole shell scrolls as one column (elsewhere the header stays fixed and
-  // only <main> scrolls).
-  const isDashboard = location.pathname === '/' || location.pathname.startsWith('/dashboard');
 
   return (
-    <div className="app-shell scrollbar-thin" style={{ display: 'flex', flexDirection: 'column', overflowX: 'hidden', overflowY: isDashboard ? 'auto' : 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
-      {isDashboard && <DashboardHero />}
+    <div className="app-shell scrollbar-thin" style={{ display: 'flex', flexDirection: 'column', overflowX: 'hidden', overflowY: 'hidden', fontFamily: 'var(--font-ui)', background: 'var(--cream)' }}>
 
       {/* Top navigation */}
       <header className="topnav" style={{
@@ -579,25 +452,14 @@ export default function App() {
         </div>
 
         <main style={{
-          flex: isDashboard ? '0 0 auto' : 1, overflowY: isDashboard ? 'visible' : 'auto',
+          flex: 1, overflowY: 'auto',
           background: 'var(--cream)',
           backgroundImage: `url(${PATTERN_WATERMARK})`, backgroundSize: '150px',
         }} className="scrollbar-thin">
           <ErrorBoundary key={location.pathname}>
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
-              <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/framework" element={allowed.includes('framework') ? <StrategicActivities user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/registration" element={allowed.includes('registration') ? <ProjectRegistration user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/results-framework" element={allowed.includes('registration') ? <ResultsFramework user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/progress" element={allowed.includes('progress') ? <ActivityProgress user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={allowed.includes('merl') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/gallery"   element={allowed.includes('gallery')   ? <Gallery user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/files"     element={allowed.includes('files')     ? <ProjectFiles user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/project/:code" element={allowed.includes('files')  ? <ProjectDashboard user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/datasets"  element={allowed.includes('datasets')  ? <Datasets user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/analysis"  element={allowed.includes('analysis')  ? <Analysis /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/reports"   element={allowed.includes('reports')   ? <Reports /> : <Navigate to={defaultPath} replace />} />
               <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="*"          element={<Navigate to={defaultPath} replace />} />
             </Routes>
