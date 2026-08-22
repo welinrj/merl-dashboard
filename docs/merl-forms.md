@@ -20,7 +20,7 @@ tracks the implementation.
 |---|---|---|
 | FRM-01 | Project Registration | ✅ Implemented (Phase 1) |
 | FRM-02 | Results Framework Builder | ✅ Implemented (Phase 1) |
-| FRM-03 | Monthly Activity Progress | ⬜ Planned |
+| FRM-03 | Monthly Activity Progress | ✅ Implemented (Phase 2) |
 | FRM-04 | Indicator Reporting | ⬜ Planned |
 | FRM-05 | Budget & Financial Progress | ⬜ Planned |
 | FRM-06 | Risk & Issue Register | ⬜ Planned |
@@ -63,6 +63,31 @@ Migrations `0008_project_registration.sql` and `0009_results_framework.sql`:
 - New form labels are bilingual **English + French** (`i18n.js`), with a header
   EN/FR switcher. Option values (climate themes, SDGs, etc.) are kept as their
   canonical English government/UN wording.
+
+## Phase 2 — FRM-03 Monthly Activity Progress
+
+Migration `0028_activity_progress.sql` adds `merl.activity_progress` — one row per
+project activity per reporting period — following the same conventions as
+Phase 1:
+
+- Auto short code `RPT-##` via `merl.next_code()`; scoped to a project (derived
+  from the parent activity).
+- Captures the standardised progress data the ToR needs for **real-time KPIs**:
+  progress rating (traffic light), % complete, a progress narrative, **GEDSI-
+  disaggregated beneficiaries reached** (female / male / other, plus persons
+  with disability and youth), period expenditure, issues, **lessons learned**
+  (the "learnings and experiences" the ToR calls out) and next steps.
+- Writes go through role-gated `SECURITY DEFINER` RPCs
+  (`create_/update_/delete_activity_progress`) with a
+  submit-for-review / approve-or-return workflow
+  (`submit_activity_progress_for_review`, `review_activity_progress`); reads via
+  `public.v_activity_progress`. Audit trigger attached.
+
+Frontend: **Registration** and **Progress** are now wired into the top nav
+(previously the FRM-01/02 pages existed but were never routed). `pages/
+ActivityProgress.jsx` (FRM-03) lists and captures a project's progress reports;
+it is also reachable from the "Progress reports" action on each row of the
+Registration list. Labels are bilingual EN/FR (Bislama falls back to EN).
 
 ## Known follow-ups
 
