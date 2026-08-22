@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 import { ClipboardCheck, CheckCircle2, RotateCcw, Eye, Unlock, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
+import PageHeader from '../components/ui/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
 
 const REVIEWER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 const STATUS = {
@@ -115,13 +117,11 @@ export default function ReviewApproval({ user }) {
 
   return (
     <div className="page-pad" style={{ maxWidth: 1200 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
-        <ClipboardCheck size={22} style={{ color: 'var(--green-700)' }} />
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem,4vw,1.9rem)', fontWeight: 800, margin: 0 }}>Review &amp; Approval</h1>
-      </div>
-      <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', margin: '0 0 1rem' }}>
-        Reporting-period submissions across the portfolio. The DoCC M&amp;E Officer reviews, returns for correction, and approves.
-      </p>
+      <PageHeader
+        icon={ClipboardCheck}
+        title="Review & Approval"
+        subtitle="Reporting-period submissions across the portfolio. The DoCC M&E Officer reviews, returns for correction, and approves."
+      />
 
       {!canReview && (
         <div className="card" style={{ padding: '0.7rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-2)' }}>
@@ -163,8 +163,10 @@ export default function ReviewApproval({ user }) {
               {loading ? (
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>Loading…</td></tr>
               ) : visible.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>
-                  {filter === 'queue' ? 'Nothing awaiting review.' : 'No reporting periods.'}
+                <tr><td colSpan={6} style={{ padding: 0 }}>
+                  <EmptyState icon={CheckCircle2}
+                    title={filter === 'queue' ? 'No reports awaiting review' : 'No reporting periods'}
+                    description={filter === 'queue' ? "You're up to date — nothing needs your review right now." : 'Reporting periods will appear here once projects begin reporting.'} />
                 </td></tr>
               ) : visible.map(r => {
                 const p = projById[r.project_id];

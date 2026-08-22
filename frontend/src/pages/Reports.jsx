@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FileBarChart, Printer } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
+import PageHeader from '../components/ui/PageHeader';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 
 const REPORT_TYPES = [
@@ -92,13 +93,13 @@ export default function Reports() {
         }
       `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }} className="rp-noprint">
-        <FileBarChart size={22} style={{ color: 'var(--green-700)' }} />
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem,4vw,1.9rem)', fontWeight: 700, margin: 0 }}>Reports</h1>
+      <div className="rp-noprint">
+        <PageHeader
+          icon={FileBarChart}
+          title="Reports"
+          subtitle="Generated automatically from the standardised MERL dataset. Use Print to save as PDF."
+        />
       </div>
-      <p className="rp-muted rp-noprint" style={{ margin: '0.35rem 0 0.8rem' }}>
-        Generated automatically from the standardised MERL dataset. Use Print to save as PDF.
-      </p>
 
       {/* Controls */}
       <div className="rp-noprint" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
