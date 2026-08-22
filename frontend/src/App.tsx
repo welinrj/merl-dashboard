@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Settings, LogOut, ChevronDown, Bell, Menu, MoreHorizontal,
-  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck, ClipboardList,
+  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck, ClipboardList, FileBarChart,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import Dashboards from './pages/Dashboards';
 import ProjectSetup from './pages/ProjectSetup';
 import MerlReporting from './pages/MerlReporting';
+import Reports from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
 import { LogoCloud } from './components/logo-cloud';
@@ -68,17 +69,18 @@ async function loadProfile(): Promise<AppUser | null> {
 // (project-setup wizard, dashboards and report generators) are rebuilt in
 // follow-up work.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['dashboards', 'setup', 'merl', 'admin'],
-  ROLE_DOCC_SENIOR:  ['dashboards', 'setup', 'merl'],
-  ROLE_DOCC_MEO:     ['dashboards', 'setup', 'merl'],
-  ROLE_PROJ_MANAGER: ['dashboards', 'setup', 'merl'],
-  ROLE_FIELD_STAFF:  ['dashboards', 'merl'],
+  ROLE_ADMIN:        ['dashboards', 'setup', 'merl', 'reports', 'admin'],
+  ROLE_DOCC_SENIOR:  ['dashboards', 'setup', 'merl', 'reports'],
+  ROLE_DOCC_MEO:     ['dashboards', 'setup', 'merl', 'reports'],
+  ROLE_PROJ_MANAGER: ['dashboards', 'setup', 'merl', 'reports'],
+  ROLE_FIELD_STAFF:  ['dashboards', 'merl', 'reports'],
 };
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboards', path: '/dashboards',    label: 'Dashboards',     Icon: LayoutDashboard },
   { key: 'setup',      path: '/project-setup', label: 'Project Setup',  Icon: ClipboardList   },
   { key: 'merl',       path: '/merl-reporting', label: 'MERL',          Icon: ClipboardCheck  },
+  { key: 'reports',    path: '/reports',        label: 'Reports',        Icon: FileBarChart    },
   { key: 'admin',      path: '/admin',          label: 'Administration', Icon: Settings        },
 ];
 
@@ -466,6 +468,7 @@ export default function App() {
               <Route path="/dashboards" element={allowed.includes('dashboards') ? <Dashboards /> : <Navigate to={defaultPath} replace />} />
               <Route path="/project-setup" element={allowed.includes('setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={allowed.includes('merl') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/reports" element={allowed.includes('reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
               <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="*"          element={<Navigate to={defaultPath} replace />} />
             </Routes>
