@@ -15,6 +15,7 @@ import {
   ClipboardList, Check, Plus, Pencil, Trash2, ChevronRight, X, ArrowLeft, ArrowRight, FolderPlus,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { confirmDialog, promptDialog } from '../lib/confirm';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
 
@@ -297,31 +298,37 @@ function ProfileStep({ project, users, onSaved }) {
 // ── Step 2: Results Framework (Objective → Outcome → Output) ─────────────────
 function ResultsStep({ projectId, objectives, outcomes, outputs, reload }) {
   const addObjective = async () => {
-    const s = window.prompt('Objective statement:'); if (!s) return;
+    const s = await promptDialog({ title:'New objective', label:'Objective statement', multiline:true, required:true,
+      placeholder:'e.g. Strengthen community resilience to climate hazards' });
+    if (s == null) return;
     const { error } = await supabase.rpc('create_objective', { p_project_id: projectId, p_statement: s });
-    if (error) return toast.error(error.message); reload();
+    if (error) { toast.error(error.message); return; } reload();
   };
   const addOutcome = async (objId) => {
-    const s = window.prompt('Outcome statement:'); if (!s) return;
+    const s = await promptDialog({ title:'New outcome', label:'Outcome statement', multiline:true, required:true });
+    if (s == null) return;
     const { error } = await supabase.rpc('create_outcome', { p_objective_id: objId, p_statement: s });
-    if (error) return toast.error(error.message); reload();
+    if (error) { toast.error(error.message); return; } reload();
   };
   const addOutput = async (ocId) => {
-    const s = window.prompt('Output statement:'); if (!s) return;
+    const s = await promptDialog({ title:'New output', label:'Output statement', multiline:true, required:true });
+    if (s == null) return;
     const { error } = await supabase.rpc('create_output', { p_outcome_id: ocId, p_statement: s });
-    if (error) return toast.error(error.message); reload();
+    if (error) { toast.error(error.message); return; } reload();
   };
   const editNode = async (kind, row) => {
-    const s = window.prompt(`Edit ${kind} statement:`, row.statement); if (s == null) return;
+    const s = await promptDialog({ title:`Edit ${kind}`, label:`${kind[0].toUpperCase()}${kind.slice(1)} statement`,
+      multiline:true, required:true, defaultValue: row.statement });
+    if (s == null) return;
     const rpc = kind === 'objective' ? 'update_objective' : kind === 'outcome' ? 'update_outcome' : 'update_output';
     const { error } = await supabase.rpc(rpc, { p_id: row.id, p_statement: s });
-    if (error) return toast.error(error.message); reload();
+    if (error) { toast.error(error.message); return; } reload();
   };
   const delNode = async (kind, row) => {
-    if (!window.confirm(`Delete ${kind} ${row.code}? Child records are removed too.`)) return;
+    if (!(await confirmDialog({ title:`Delete ${kind}`, message:`Delete ${kind} ${row.code}? Child records are removed too. This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const rpc = kind === 'objective' ? 'delete_objective' : kind === 'outcome' ? 'delete_outcome' : 'delete_output';
     const { error } = await supabase.rpc(rpc, { p_id: row.id });
-    if (error) return toast.error(error.message); reload();
+    if (error) { toast.error(error.message); return; } reload();
   };
   const rowStyle = { display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.3rem 0' };
   const codeChip = (c, bg) => ({ fontSize: '0.68rem', fontWeight: 700, color: '#fff', background: bg, padding: '0.12rem 0.4rem', borderRadius: 6, flexShrink: 0, marginTop: 2 });
@@ -378,7 +385,7 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, reload }) {
 function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, users, reload }) {
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
-    if (!window.confirm(`Delete indicator ${row.code}?`)) return;
+    if (!(await confirmDialog({ title:'Delete indicator', message:`Delete indicator ${row.code}? This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_indicator', { p_id: row.id });
     if (error) return toast.error(error.message); reload();
   };
@@ -489,7 +496,7 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
 function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
-    if (!window.confirm(`Delete activity ${row.code}?`)) return;
+    if (!(await confirmDialog({ title:'Delete activity', message:`Delete activity ${row.code}? This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_activity', { p_id: row.id });
     if (error) return toast.error(error.message); reload();
   };
@@ -602,7 +609,7 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
 function LocationsStep({ projectId, locations, reload }) {
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
-    if (!window.confirm('Delete this location?')) return;
+    if (!(await confirmDialog({ title:'Delete location', message:'Delete this location? This cannot be undone.', confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_location', { p_id: row.id });
     if (error) return toast.error(error.message); reload();
   };
