@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FolderOpen, Database,
   Activity, FileBarChart, Settings, LogOut, Target, Images,
   ChevronRight, ChevronDown, Bell, Menu, MoreHorizontal, Eye, EyeOff, AlertCircle, ShieldCheck,
-  Mail, Lock,
+  Mail, Lock, ClipboardList, ClipboardCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,9 @@ import { useTranslation } from 'react-i18next';
 import Dashboard   from './pages/Dashboard';
 import DashboardHero from './components/DashboardHero';
 import StrategicActivities from './pages/StrategicActivities';
+import ProjectRegistration from './pages/ProjectRegistration';
+import ResultsFramework from './pages/ResultsFramework';
+import ActivityProgress from './pages/ActivityProgress';
 import Gallery     from './pages/Gallery';
 import ProjectFiles from './pages/ProjectFiles';
 import ProjectDashboard from './pages/ProjectDashboard';
@@ -72,16 +75,18 @@ async function loadProfile(): Promise<AppUser | null> {
 
 // ── Tab access map ────────────────────────────────────────────────────────────
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['dashboard', 'framework', 'gallery', 'files', 'datasets', 'analysis', 'reports', 'admin'],
-  ROLE_DOCC_SENIOR:  ['dashboard', 'framework', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
-  ROLE_DOCC_MEO:     ['dashboard', 'framework', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
-  ROLE_PROJ_MANAGER: ['dashboard', 'framework', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
+  ROLE_ADMIN:        ['dashboard', 'framework', 'registration', 'progress', 'gallery', 'files', 'datasets', 'analysis', 'reports', 'admin'],
+  ROLE_DOCC_SENIOR:  ['dashboard', 'framework', 'registration', 'progress', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
+  ROLE_DOCC_MEO:     ['dashboard', 'framework', 'registration', 'progress', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
+  ROLE_PROJ_MANAGER: ['dashboard', 'framework', 'registration', 'progress', 'gallery', 'files', 'datasets', 'analysis', 'reports'],
   ROLE_FIELD_STAFF:  ['gallery', 'files', 'datasets', 'analysis'],
 };
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard',    path: '/dashboard',    label: 'Dashboard',      Icon: LayoutDashboard },
   { key: 'framework',    path: '/framework',    label: 'Framework',      Icon: Target          },
+  { key: 'registration', path: '/registration', label: 'Registration',   Icon: ClipboardList   },
+  { key: 'progress',     path: '/progress',     label: 'Progress',       Icon: ClipboardCheck  },
   { key: 'gallery',      path: '/gallery',      label: 'Gallery',        Icon: Images          },
   { key: 'files',        path: '/files',        label: 'Project Files',  Icon: FolderOpen      },
   { key: 'datasets',     path: '/datasets',     label: 'Data',           Icon: Database        },
@@ -581,6 +586,9 @@ export default function App() {
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboard" element={allowed.includes('dashboard') ? <Dashboard /> : <Navigate to={defaultPath} replace />} />
               <Route path="/framework" element={allowed.includes('framework') ? <StrategicActivities user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/registration" element={allowed.includes('registration') ? <ProjectRegistration user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/results-framework" element={allowed.includes('registration') ? <ResultsFramework user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/progress" element={allowed.includes('progress') ? <ActivityProgress user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/gallery"   element={allowed.includes('gallery')   ? <Gallery user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/files"     element={allowed.includes('files')     ? <ProjectFiles user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/project/:code" element={allowed.includes('files')  ? <ProjectDashboard user={user} /> : <Navigate to={defaultPath} replace />} />

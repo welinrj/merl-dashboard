@@ -101,6 +101,22 @@ export const ACTIVITY_STATUS = [
   { value: 'cancelled',   label: 'Cancelled' },
 ];
 
+// ── Progress rating / traffic light (FRM-03) ─────────────────────────────────
+export const PROGRESS_RATING = [
+  { value: 'on_track',  label: 'On Track' },
+  { value: 'at_risk',   label: 'At Risk' },
+  { value: 'off_track', label: 'Off Track' },
+  { value: 'completed', label: 'Completed' },
+];
+
+// ── Progress-report review workflow status (FRM-03) ───────────────────────────
+export const REPORT_STATUS = [
+  { value: 'draft',          label: 'Draft' },
+  { value: 'pending_review', label: 'Pending review' },
+  { value: 'approved',       label: 'Approved' },
+  { value: 'returned',       label: 'Returned' },
+];
+
 // ── Indicator link level (FRM-02 §4) ─────────────────────────────────────────
 export const LINKED_LEVEL = [
   { value: 'objective', label: 'Objective' },

@@ -426,6 +426,11 @@ export default function ProjectRegistration({ user }) {
                       style={{ padding: '0.4rem 0.7rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       {t('registration.resultsFramework')} <ChevronRight size={13} />
                     </button>
+                    <button className="btn-secondary" onClick={() => navigate(`/progress?project=${p.id}`)}
+                      title={t('registration.progressReports')}
+                      style={{ padding: '0.4rem 0.7rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      {t('registration.progressReports')} <ChevronRight size={13} />
+                    </button>
                   </div>
                 </div>
 
