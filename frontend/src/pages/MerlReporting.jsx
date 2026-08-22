@@ -22,7 +22,9 @@ import {
 } from '../lib/docc/reporting';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
-const APPROVER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_SENIOR', 'ROLE_DOCC_MEO'];
+// The DoCC M&E Officer is the official Reviewer/Approver; System Administrator
+// retains an emergency override. Other roles cannot review or approve.
+const APPROVER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 
 const toNull = (v) => (v === '' || v === undefined ? null : v);
 const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(v));

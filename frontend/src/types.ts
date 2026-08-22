@@ -5,12 +5,15 @@
 
 // ── User & Auth ───────────────────────────────────────────────────────────────
 
+// The five official user types. Internal keys are stable; DB enum values are
+// system_admin / docc_me_officer / project_manager / data_entry_officer / viewer
+// (see supabaseClient.ts for the mapping).
 export type UserRole =
-  | 'ROLE_ADMIN'
-  | 'ROLE_DOCC_SENIOR'
-  | 'ROLE_DOCC_MEO'
-  | 'ROLE_PROJ_MANAGER'
-  | 'ROLE_FIELD_STAFF';
+  | 'ROLE_ADMIN'         // System Administrator
+  | 'ROLE_DOCC_MEO'      // DoCC M&E Officer (Reviewer / Approver)
+  | 'ROLE_PROJ_MANAGER'  // Project Manager / Project Focal Point
+  | 'ROLE_DATA_ENTRY'    // Data Entry / Project Officer
+  | 'ROLE_VIEWER';       // Viewer / Executive
 
 export interface AppUser {
   id: number | string;
