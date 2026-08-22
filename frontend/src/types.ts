@@ -32,6 +32,7 @@ export type NavKey =
   | 'registration'
   | 'projects'
   | 'progress'
+  | 'setup'
   | 'merl'
   | 'analysis'
   | 'reports'

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import {
   Settings, LogOut, ChevronDown, Bell, Menu, MoreHorizontal,
-  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck,
+  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck, ClipboardList,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import ProjectSetup from './pages/ProjectSetup';
 import MerlReporting from './pages/MerlReporting';
 import AdminPanel  from './pages/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -66,16 +67,17 @@ async function loadProfile(): Promise<AppUser | null> {
 // (project-setup wizard, dashboards and report generators) are rebuilt in
 // follow-up work.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
-  ROLE_ADMIN:        ['merl', 'admin'],
-  ROLE_DOCC_SENIOR:  ['merl'],
-  ROLE_DOCC_MEO:     ['merl'],
-  ROLE_PROJ_MANAGER: ['merl'],
+  ROLE_ADMIN:        ['setup', 'merl', 'admin'],
+  ROLE_DOCC_SENIOR:  ['setup', 'merl'],
+  ROLE_DOCC_MEO:     ['setup', 'merl'],
+  ROLE_PROJ_MANAGER: ['setup', 'merl'],
   ROLE_FIELD_STAFF:  ['merl'],
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'merl',  path: '/merl-reporting', label: 'MERL',           Icon: ClipboardCheck },
-  { key: 'admin', path: '/admin',          label: 'Administration', Icon: Settings       },
+  { key: 'setup', path: '/project-setup',   label: 'Project Setup',  Icon: ClipboardList  },
+  { key: 'merl',  path: '/merl-reporting',  label: 'MERL',           Icon: ClipboardCheck },
+  { key: 'admin', path: '/admin',           label: 'Administration', Icon: Settings       },
 ];
 
 // ── Login screen ──────────────────────────────────────────────────────────────
@@ -459,6 +461,7 @@ export default function App() {
           <ErrorBoundary key={location.pathname}>
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
+              <Route path="/project-setup" element={allowed.includes('setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={allowed.includes('merl') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/admin"     element={allowed.includes('admin')     ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="*"          element={<Navigate to={defaultPath} replace />} />
