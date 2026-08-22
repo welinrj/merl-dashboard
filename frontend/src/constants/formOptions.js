@@ -98,6 +98,7 @@ export const ACTIVITY_STATUS = [
   { value: 'in_progress', label: 'In Progress' },
   { value: 'completed',   label: 'Completed' },
   { value: 'delayed',     label: 'Delayed' },
+  { value: 'on_hold',     label: 'On Hold' },
   { value: 'cancelled',   label: 'Cancelled' },
 ];
 
@@ -123,4 +124,114 @@ export const LINKED_LEVEL = [
   { value: 'outcome',   label: 'Outcome' },
   { value: 'output',    label: 'Output' },
   { value: 'activity',  label: 'Activity' },
+];
+
+// =============================================================================
+// DoCC Standardised MERL Form — additional controlled vocabularies (Forms 3–12)
+// =============================================================================
+
+// ── Indicator level (Form 3) ─────────────────────────────────────────────────
+export const INDICATOR_LEVEL = [
+  { value: 'impact',  label: 'Impact' },
+  { value: 'outcome', label: 'Outcome' },
+  { value: 'output',  label: 'Output' },
+  { value: 'process', label: 'Process/Activity' },
+];
+
+// ── Reporting frequency (Form 3) — extends FREQUENCY with DoCC options ────────
+export const REPORTING_FREQUENCY = [
+  { value: 'Monthly',     label: 'Monthly' },
+  { value: 'Quarterly',   label: 'Quarterly' },
+  { value: 'Six-monthly', label: 'Six-monthly' },
+  { value: 'Annual',      label: 'Annual' },
+  { value: 'Ad hoc',      label: 'Ad hoc' },
+];
+
+// ── Indicator performance status (Form 4) ────────────────────────────────────
+export const PERFORMANCE_STATUS = [
+  { value: 'on_track',           label: 'On Track' },
+  { value: 'attention_required', label: 'Attention Required' },
+  { value: 'off_track',          label: 'Off Track' },
+  { value: 'target_achieved',    label: 'Target Achieved' },
+  { value: 'no_data',            label: 'No Data' },
+];
+
+// ── Risk / issue (Form 9) ────────────────────────────────────────────────────
+export const RISK_TYPE = [
+  { value: 'risk',  label: 'Risk' },
+  { value: 'issue', label: 'Issue' },
+];
+
+export const RISK_CATEGORY = [
+  { value: 'financial',     label: 'Financial' },
+  { value: 'technical',     label: 'Technical' },
+  { value: 'operational',   label: 'Operational' },
+  { value: 'environmental', label: 'Environmental' },
+  { value: 'social_gedsi',  label: 'Social / GEDSI' },
+  { value: 'governance',    label: 'Governance' },
+  { value: 'procurement',   label: 'Procurement' },
+  { value: 'safeguards',    label: 'Safeguards' },
+  { value: 'other',         label: 'Other' },
+];
+
+export const RISK_STATUS = [
+  { value: 'open',       label: 'Open' },
+  { value: 'monitoring', label: 'Monitoring' },
+  { value: 'escalated',  label: 'Escalated' },
+  { value: 'resolved',   label: 'Resolved' },
+  { value: 'closed',     label: 'Closed' },
+];
+
+export const LIKELIHOOD_IMPACT = [1, 2, 3, 4, 5].map(n => ({ value: n, label: String(n) }));
+
+// ── Evidence register (Form 12) ──────────────────────────────────────────────
+export const DOCUMENT_TYPE = [
+  { value: 'attendance_list',   label: 'Attendance List' },
+  { value: 'photograph',        label: 'Photograph' },
+  { value: 'monitoring_report', label: 'Monitoring Report' },
+  { value: 'survey_data',       label: 'Survey / Data' },
+  { value: 'financial_report',  label: 'Financial Report' },
+  { value: 'contract',          label: 'Contract' },
+  { value: 'completion_report', label: 'Completion Report' },
+  { value: 'evaluation',        label: 'Evaluation' },
+  { value: 'map',               label: 'Map' },
+  { value: 'other',             label: 'Other' },
+];
+
+export const VERIFICATION_STATUS = [
+  { value: 'pending',    label: 'Pending' },
+  { value: 'verified',   label: 'Verified' },
+  { value: 'rejected',   label: 'Rejected' },
+  { value: 'superseded', label: 'Superseded' },
+];
+
+// ── Reporting period submission & approval (Form 11) ─────────────────────────
+export const PERIOD_TYPE = [
+  { value: 'monthly',     label: 'Monthly' },
+  { value: 'quarterly',   label: 'Quarterly' },
+  { value: 'six_monthly', label: 'Six-monthly' },
+  { value: 'annual',      label: 'Annual' },
+  { value: 'final',       label: 'Final' },
+  { value: 'ad_hoc',      label: 'Ad hoc' },
+];
+
+export const SUBMISSION_STATUS = [
+  { value: 'draft',     label: 'Draft' },
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'returned',  label: 'Returned' },
+  { value: 'reviewed',  label: 'Reviewed' },
+  { value: 'approved',  label: 'Approved' },
+];
+
+// ── DoCC project operational status (Form 1) ─────────────────────────────────
+export const DOCC_PROJECT_STATUS = [
+  { value: 'pipeline',    label: 'Pipeline' },
+  { value: 'approved',    label: 'Approved' },
+  { value: 'not_started', label: 'Not Started' },
+  { value: 'on_track',    label: 'On Track' },
+  { value: 'at_risk',     label: 'At Risk' },
+  { value: 'delayed',     label: 'Delayed' },
+  { value: 'suspended',   label: 'Suspended' },
+  { value: 'completed',   label: 'Completed' },
+  { value: 'closed',      label: 'Closed' },
 ];
