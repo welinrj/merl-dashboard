@@ -44,11 +44,13 @@ const countBy = (rows, keyFn) => {
 };
 const sum = (rows, f) => rows.reduce((a, r) => a + (Number(f(r)) || 0), 0);
 
-export default function Dashboards() {
-  const [tab, setTab] = useState('portfolio');
+export default function Dashboards({ initialTab }) {
+  const [tab, setTab] = useState(initialTab || 'portfolio');
   const [d, setD] = useState(null); // loaded datasets
   const [projectId, setProjectId] = useState('');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
 
   useEffect(() => {
     (async () => {
