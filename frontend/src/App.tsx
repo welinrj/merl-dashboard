@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-
 import {
   LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin,
   AlertTriangle, FolderOpen, FileBarChart, Settings, LogOut, Bell, Menu,
-  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock,
+  Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -13,6 +13,7 @@ import ProjectSetup from './pages/ProjectSetup';
 import MerlReporting from './pages/MerlReporting';
 import Reports from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
+import ReviewApproval from './pages/ReviewApproval';
 import ErrorBoundary from './components/ErrorBoundary';
 import { DashboardFilterProvider, useDashboardFilters } from './lib/dashboardFilters';
 import { supabase, toAppRole } from './supabaseClient';
@@ -79,6 +80,7 @@ const NAV_ITEMS: SideItem[] = [
   { key: 'locations',  path: '/analytics/geographic', label: 'Locations',            Icon: MapPin,          head: 'Geographic Coverage' },
   { key: 'risks',      path: '/analytics/risks',      label: 'Risks & Issues',       Icon: AlertTriangle,   head: 'Risks & Issues' },
   { key: 'reports',    path: '/reports',              label: 'Reports',              Icon: FileBarChart,    head: 'Reports' },
+  { key: 'review',     path: '/review',               label: 'Review & Approval',    Icon: ClipboardCheck,  head: 'Review & Approval' },
   { key: 'documents',  path: '/merl-reporting',       label: 'Documents',            Icon: FolderOpen,      head: 'Documents & Evidence' },
   { key: 'admin',      path: '/admin',                label: 'Administration',       Icon: Settings,        head: 'Administration' },
 ];
@@ -86,9 +88,9 @@ const NAV_ITEMS: SideItem[] = [
 // Navigation by role (spec §18). Functions a role can't use are hidden.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
   // System Administrator — full portal incl. Administration
-  ROLE_ADMIN:        ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents', 'admin'],
-  // DoCC M&E Officer — portfolio-wide MERL (Review & Approval lives in Activities/Reports); no Administration
-  ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
+  ROLE_ADMIN:        ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'review', 'documents', 'admin'],
+  // DoCC M&E Officer — portfolio-wide MERL + Review & Approval; no Administration
+  ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'review', 'documents'],
   // Project Manager — assigned projects only (route data is project-scoped by RLS)
   ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
   // Data Entry / Project Officer — data entry for assigned projects; no approval/admin
@@ -100,7 +102,7 @@ const TAB_ACCESS: Record<UserRole, NavKey[]> = {
 // Which access key gates each real route.
 const ROUTE_GATE: Record<string, NavKey> = {
   '/dashboards': 'overview', '/project-setup': 'projects', '/merl-reporting': 'activities',
-  '/reports': 'reports', '/admin': 'admin',
+  '/reports': 'reports', '/review': 'review', '/admin': 'admin',
 };
 
 // Map an /analytics/:lens segment to a Dashboards tab.
@@ -427,6 +429,7 @@ export default function App() {
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/reports" element={gate('/reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/review" element={gate('/review') ? <ReviewApproval user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/admin" element={gate('/admin') ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="*" element={<Navigate to={defaultPath} replace />} />
             </Routes>

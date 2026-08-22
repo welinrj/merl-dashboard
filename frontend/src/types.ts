@@ -39,6 +39,7 @@ export type NavKey =
   | 'setup'
   | 'merl'
   | 'reports'
+  | 'review'
   | 'admin';
 
 export interface NavItem {
