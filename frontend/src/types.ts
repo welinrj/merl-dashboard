@@ -25,6 +25,7 @@ export interface AppUser {
 
 export type NavKey =
   | 'dashboard'
+  | 'dashboards'
   | 'framework'
   | 'gallery'
   | 'files'
