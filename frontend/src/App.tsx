@@ -18,9 +18,6 @@ import { DashboardFilterProvider, useDashboardFilters } from './lib/dashboardFil
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavKey } from './types';
 
-// Official DoCC emblem (base-aware) for the sidebar brand.
-const DOCC_LOGO = `${import.meta.env.BASE_URL}docc-logo-compact.png`;
-
 // Sidebar item shape (richer than the old NavItem: carries the header title).
 interface SideItem {
   key: NavKey; path: string; label: string;
@@ -351,11 +348,9 @@ export default function App() {
       {/* ── Sidebar ── */}
       <aside className={`dsh-side${sidebarOpen ? ' open' : ''}`}>
         <div className="dsh-brand">
-          <img src={DOCC_LOGO} alt="Department of Climate Change" />
-          <div style={{ minWidth: 0 }}>
-            <div className="dsh-brand-dept">Dept. of Climate Change</div>
-            <div className="dsh-brand-title">MERL Dashboard</div>
-          </div>
+          <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
+          <div className="dsh-brand-dept">Department of<br />Climate Change (DoCC)</div>
+          <div className="dsh-brand-title">MERL Dashboard</div>
         </div>
         <nav className="dsh-nav" aria-label="Primary">
           {visibleNav.map(({ key, path, label, Icon }) => (
@@ -448,20 +443,24 @@ function SidebarQuickFilters() {
   return (
     <div className="dsh-qf">
       <div className="dsh-qf-h">Filter Quick Links</div>
-      <select value={filters.fy} onChange={e => patch({ fy: e.target.value })} aria-label="Financial Year">
-        <option value="">Financial Year</option>
+      <label htmlFor="qf-fy">Financial Year</label>
+      <select id="qf-fy" value={filters.fy} onChange={e => patch({ fy: e.target.value })}>
+        <option value="">All</option>
         {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
       </select>
-      <select value={filters.partner} onChange={e => patch({ partner: e.target.value })} aria-label="Funding Partner">
-        <option value="">Funding Partner</option>
+      <label htmlFor="qf-partner">Funding Partner</label>
+      <select id="qf-partner" value={filters.partner} onChange={e => patch({ partner: e.target.value })}>
+        <option value="">All</option>
         {partners.map(p => <option key={p} value={p}>{p}</option>)}
       </select>
-      <select value={filters.theme} onChange={e => patch({ theme: e.target.value })} aria-label="Theme / Sector">
-        <option value="">Theme / Sector</option>
+      <label htmlFor="qf-theme">Theme / Sector</label>
+      <select id="qf-theme" value={filters.theme} onChange={e => patch({ theme: e.target.value })}>
+        <option value="">All</option>
         {themes.map(t => <option key={t} value={t}>{t}</option>)}
       </select>
-      <select value={filters.province} onChange={e => patch({ province: e.target.value })} aria-label="Province">
-        <option value="">Province</option>
+      <label htmlFor="qf-prov">Province</label>
+      <select id="qf-prov" value={filters.province} onChange={e => patch({ province: e.target.value })}>
+        <option value="">All</option>
         {provinces.map(p => <option key={p} value={p}>{p}</option>)}
       </select>
       <button className="dsh-qf-clear" onClick={reset}>Clear Filters</button>
