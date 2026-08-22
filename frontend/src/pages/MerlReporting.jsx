@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  ClipboardCheck, Plus, Pencil, Trash2, Send, CheckCircle2, RotateCcw, X, AlertTriangle,
+  ClipboardCheck, Plus, Pencil, Trash2, Send, CheckCircle2, RotateCcw, X, AlertTriangle, Lock, Unlock,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -309,10 +309,25 @@ export default function MerlReporting({ user }) {
   };
 
   const periodAction = async (rpc, id, decision) => {
-    const params = decision ? { p_id: id, p_decision: decision, p_comments: null } : { p_id: id };
+    let params;
+    if (rpc === 'reopen_reporting_period') {
+      // Reopening an approved period requires a reason (recorded in the audit trail).
+      const reason = window.prompt('Reason for reopening this approved reporting period (required):');
+      if (reason == null || !reason.trim()) return;
+      params = { p_id: id, p_reason: reason.trim() };
+    } else if (decision === 'return') {
+      // Returning for correction requires a comment explaining what to fix.
+      const comment = window.prompt('Comment explaining what needs correction (required):');
+      if (comment == null || !comment.trim()) return;
+      params = { p_id: id, p_decision: decision, p_comments: comment.trim() };
+    } else if (decision) {
+      params = { p_id: id, p_decision: decision, p_comments: null };
+    } else {
+      params = { p_id: id };
+    }
     const { error } = await supabase.rpc(rpc, params);
     if (error) { toast.error(error.message); return; }
-    toast.success('Updated');
+    toast.success(rpc === 'reopen_reporting_period' ? 'Reporting period reopened' : 'Updated');
     loadContext(projectId);
   };
 
@@ -381,6 +396,15 @@ export default function MerlReporting({ user }) {
           <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#fff', background: STATUS_TINT[currentPeriodRow.submission_status] || '#64748b', padding: '0.2rem 0.55rem', borderRadius: 9999 }}>
             {OPT.labelOf(OPT.SUBMISSION_STATUS, currentPeriodRow.submission_status)}
           </span>
+          {currentPeriodRow.submission_status === 'approved' && (
+            <span title="Approved records are locked. The DoCC M&E Officer must reopen this period to make changes."
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 700, color: '#155e34', background: '#dcece2', border: '1px solid #16a34a55', padding: '0.2rem 0.55rem', borderRadius: 9999 }}>
+              <Lock size={12} /> Locked
+            </span>
+          )}
+          {currentPeriodRow.submission_status === 'returned' && currentPeriodRow.review_comments && (
+            <span style={{ fontSize: '0.72rem', color: '#8a6416' }}>Review note: {currentPeriodRow.review_comments}</span>
+          )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && (
               <button style={btn('#2563eb')} onClick={() => periodAction('submit_reporting_period', currentPeriodRow.id)}>
@@ -396,6 +420,11 @@ export default function MerlReporting({ user }) {
                   <RotateCcw size={14} /> Return
                 </button>
               </>
+            )}
+            {canApprove && currentPeriodRow.submission_status === 'approved' && (
+              <button style={btn('#7c3aed')} onClick={() => periodAction('reopen_reporting_period', currentPeriodRow.id)}>
+                <Unlock size={14} /> Reopen
+              </button>
             )}
           </div>
         </div>
@@ -424,8 +453,11 @@ export default function MerlReporting({ user }) {
           {canEdit && (
             <button style={btn('var(--green-700)')}
               onClick={() => setEditing({})}
-              disabled={activeModule.periodScoped && !activePeriod}
-              title={activeModule.periodScoped && !activePeriod ? 'Select or create a reporting period first' : ''}>
+              disabled={(activeModule.periodScoped && !activePeriod)
+                || (activeModule.periodScoped && currentPeriodRow?.submission_status === 'approved')}
+              title={activeModule.periodScoped && currentPeriodRow?.submission_status === 'approved'
+                ? 'This reporting period is approved and locked — the DoCC M&E Officer must reopen it to make changes'
+                : activeModule.periodScoped && !activePeriod ? 'Select or create a reporting period first' : ''}>
               <Plus size={15} /> Add
             </button>
           )}
