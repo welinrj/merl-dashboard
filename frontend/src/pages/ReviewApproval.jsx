@@ -11,16 +11,10 @@ import { ClipboardCheck, CheckCircle2, RotateCcw, Eye, Unlock, Clock, AlertTrian
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
-import EmptyState from '../components/ui/EmptyState';
+import DataTable from '../components/ui/DataTable';
+import StatusBadge from '../components/ui/StatusBadge';
 
 const REVIEWER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
-const STATUS = {
-  draft:     { label: 'Draft',        col: '#64748b', bg: '#eef2f6' },
-  submitted: { label: 'Submitted',    col: '#2563eb', bg: '#e6effe' },
-  reviewed:  { label: 'Under Review', col: '#7c3aed', bg: '#efe8fe' },
-  returned:  { label: 'Returned',     col: '#d97706', bg: '#fdefdc' },
-  approved:  { label: 'Approved',     col: '#16a34a', bg: '#dcece2' },
-};
 const fmtDate = s => s ? new Date(s).toLocaleDateString('en-VU', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 const isOverdue = r => r.period_end && r.submission_status !== 'approved' && new Date(r.period_end) < new Date();
 
@@ -151,68 +145,76 @@ export default function ReviewApproval({ user }) {
       </div>
 
       {/* Queue */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }} className="scrollbar-thin">
-          <table className="data-table" style={{ minWidth: 820, width: '100%' }}>
-            <thead>
-              <tr>
-                <th>Project</th><th>Reporting Period</th><th>Submitted By</th><th>Submitted</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>Loading…</td></tr>
-              ) : visible.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 0 }}>
-                  <EmptyState icon={CheckCircle2}
-                    title={filter === 'queue' ? 'No reports awaiting review' : 'No reporting periods'}
-                    description={filter === 'queue' ? "You're up to date — nothing needs your review right now." : 'Reporting periods will appear here once projects begin reporting.'} />
-                </td></tr>
-              ) : visible.map(r => {
-                const p = projById[r.project_id];
-                const st = STATUS[r.submission_status] ?? STATUS.draft;
-                const overdue = isOverdue(r);
-                return (
-                  <tr key={r.id}>
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: '0.8125rem' }}>{p?.code ?? '—'}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p?.name ?? ''}</div>
-                    </td>
-                    <td style={{ fontSize: '0.8rem' }}>
-                      {r.period_label}
-                      {overdue && <span style={{ marginLeft: 6, fontSize: '0.65rem', fontWeight: 700, color: '#b3402f', background: '#f6ded8', borderRadius: 9999, padding: '0.05rem 0.4rem' }}>OVERDUE</span>}
-                      {r.reopened_at && <span title={r.reopen_reason || ''} style={{ marginLeft: 6, fontSize: '0.65rem', fontWeight: 700, color: '#7c3aed', background: '#efe8fe', borderRadius: 9999, padding: '0.05rem 0.4rem' }}>REOPENED</span>}
-                    </td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>{r.reporting_officer_name ?? '—'}</td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{fmtDate(r.submitted_at)}</td>
-                    <td>
-                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: st.col, background: st.bg, borderRadius: 9999, padding: '0.15rem 0.55rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{st.label}</span>
-                      {r.submission_status === 'returned' && r.review_comments && (
-                        <div style={{ fontSize: '0.68rem', color: '#8a6416', marginTop: 3, maxWidth: 220 }}>“{r.review_comments}”</div>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {canReview && ['submitted', 'reviewed'].includes(r.submission_status) && (
-                        <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {r.submission_status === 'submitted' && (
-                            <button disabled={busy === r.id} onClick={() => doReview(r)} style={qbtn('#7c3aed')}><Eye size={13} /> Review</button>
-                          )}
-                          <button disabled={busy === r.id} onClick={() => doReturn(r)} style={qbtn('#d97706')}><RotateCcw size={13} /> Return</button>
-                          <button disabled={busy === r.id} onClick={() => doApprove(r)} style={qbtn('#16a34a')}><CheckCircle2 size={13} /> Approve</button>
-                        </span>
-                      )}
-                      {canReview && r.submission_status === 'approved' && (
-                        <button disabled={busy === r.id} onClick={() => doReopen(r)} style={qbtn('#7c3aed')}><Unlock size={13} /> Reopen</button>
-                      )}
-                      {(!canReview || ['draft'].includes(r.submission_status)) && <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        rows={visible}
+        keyField="id"
+        loading={loading}
+        minWidth={880}
+        searchPlaceholder="Search project, period or submitter…"
+        searchable={(r) => {
+          const p = projById[r.project_id];
+          return `${p?.code || ''} ${p?.name || ''} ${r.period_label || ''} ${r.reporting_officer_name || ''}`;
+        }}
+        empty={{
+          icon: CheckCircle2,
+          title: filter === 'queue' ? 'No reports awaiting review' : 'No reporting periods',
+          description: filter === 'queue'
+            ? "You're up to date — nothing needs your review right now."
+            : 'Reporting periods will appear here once projects begin reporting.',
+        }}
+        columns={[
+          { key: 'project', header: 'Project', sortable: true,
+            sortValue: (r) => projById[r.project_id]?.code || '',
+            render: (r) => {
+              const p = projById[r.project_id];
+              return (
+                <>
+                  <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: '0.8125rem' }}>{p?.code ?? '—'}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p?.name ?? ''}</div>
+                </>
+              );
+            } },
+          { key: 'period_label', header: 'Reporting Period', sortable: true,
+            render: (r) => (
+              <span style={{ fontSize: '0.8rem' }}>
+                {r.period_label}
+                {isOverdue(r) && <StatusBadge tone="danger" label="Overdue" />}
+                {r.reopened_at && <span title={r.reopen_reason || ''} style={{ marginLeft: 6 }}><StatusBadge tone="info" label="Reopened" /></span>}
+              </span>
+            ) },
+          { key: 'reporting_officer_name', header: 'Submitted By', sortable: true,
+            render: (r) => <span style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>{r.reporting_officer_name ?? '—'}</span> },
+          { key: 'submitted_at', header: 'Submitted', sortable: true,
+            render: (r) => <span style={{ fontSize: '0.78rem', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{fmtDate(r.submitted_at)}</span> },
+          { key: 'submission_status', header: 'Status', sortable: true,
+            render: (r) => (
+              <>
+                <StatusBadge status={r.submission_status} />
+                {r.submission_status === 'returned' && r.review_comments && (
+                  <div style={{ fontSize: '0.68rem', color: '#8a6416', marginTop: 3, maxWidth: 220 }}>“{r.review_comments}”</div>
+                )}
+              </>
+            ) },
+          { key: '_actions', header: 'Actions', align: 'right',
+            render: (r) => (
+              <span style={{ whiteSpace: 'nowrap' }}>
+                {canReview && ['submitted', 'reviewed'].includes(r.submission_status) && (
+                  <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {r.submission_status === 'submitted' && (
+                      <button disabled={busy === r.id} onClick={() => doReview(r)} style={qbtn('#7c3aed')}><Eye size={13} /> Review</button>
+                    )}
+                    <button disabled={busy === r.id} onClick={() => doReturn(r)} style={qbtn('#d97706')}><RotateCcw size={13} /> Return</button>
+                    <button disabled={busy === r.id} onClick={() => doApprove(r)} style={qbtn('#16a34a')}><CheckCircle2 size={13} /> Approve</button>
+                  </span>
+                )}
+                {canReview && r.submission_status === 'approved' && (
+                  <button disabled={busy === r.id} onClick={() => doReopen(r)} style={qbtn('#7c3aed')}><Unlock size={13} /> Reopen</button>
+                )}
+                {(!canReview || ['draft'].includes(r.submission_status)) && <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>}
+              </span>
+            ) },
+        ]}
+      />
     </div>
   );
 }
