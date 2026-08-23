@@ -62,7 +62,7 @@ export default function Dashboards({ initialTab }) {
       const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op] = await Promise.all([
         q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
         q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at'),
-        q('v_risks_issues', 'project_id, code, type, description, category, risk_rating, status, due_date, date_resolved, responsible_person'),
+        q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
         q('v_beneficiaries', 'project_id, total_direct, female, male, persons_with_disability, reporting_period'),
         q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code'),
         q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level'),
@@ -506,11 +506,28 @@ function Geographic({ d }) {
 }
 
 // ── Risks ────────────────────────────────────────────────────────────────────
+// 5x5 risk matrix band from likelihood x impact score (§37).
+function riskBand(score) {
+  if (score >= 15) return { key: 'critical', label: 'Critical', bg: '#b3402f', fg: '#fff' };
+  if (score >= 10) return { key: 'high', label: 'High', bg: '#e06636', fg: '#fff' };
+  if (score >= 5) return { key: 'medium', label: 'Medium', bg: '#e0a12a', fg: '#3a2e12' };
+  return { key: 'low', label: 'Low', bg: '#2f8f6b', fg: '#fff' };
+}
+
 function Risks({ d }) {
+  const [cell, setCell] = useState(null); // { l, i } selected matrix cell
   const open = d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status));
   const critical = d.risks.filter((r) => ['Critical', 'High'].includes(r.risk_rating));
   const overdue = d.risks.filter((r) => r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status));
   const resolved = d.risks.filter((r) => ['resolved', 'closed'].includes(r.status));
+
+  // Count active risks per (likelihood, impact) cell.
+  const active = d.risks.filter((r) => !['resolved', 'closed'].includes(r.status) && r.likelihood && r.impact);
+  const cellCount = (l, i) => active.filter((r) => Number(r.likelihood) === l && Number(r.impact) === i).length;
+  const tableRisks = cell
+    ? active.filter((r) => Number(r.likelihood) === cell.l && Number(r.impact) === cell.i)
+    : open;
+
   return (
     <>
       <div className="db-kpis">
@@ -519,16 +536,63 @@ function Risks({ d }) {
         <StatTile label="Overdue Actions" value={overdue.length} status={overdue.length ? 'red' : 'green'} icon={Clock} accent="#dc2626" />
         <StatTile label="Resolved" value={resolved.length} icon={FileCheck} accent="var(--green-700)" />
       </div>
+
+      {/* 5x5 Risk Matrix (§37) */}
+      <div className="db-card" style={{ marginTop: '1rem' }}>
+        <h3 className="db-h">Risk Matrix — Likelihood × Impact</h3>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+            <tbody>
+              {[5, 4, 3, 2, 1].map((i) => (
+                <tr key={i}>
+                  {i === 5 && <td rowSpan={5} style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 0.3rem' }}>Impact →</td>}
+                  <td style={{ fontWeight: 700, color: 'var(--text-3)', padding: '0 0.4rem', textAlign: 'right' }}>{i}</td>
+                  {[1, 2, 3, 4, 5].map((l) => {
+                    const n = cellCount(l, i);
+                    const band = riskBand(l * i);
+                    const sel = cell && cell.l === l && cell.i === i;
+                    return (
+                      <td key={l} style={{ padding: 2 }}>
+                        <button onClick={() => setCell(sel ? null : { l, i })}
+                          title={`Likelihood ${l} × Impact ${i} — ${band.label}`}
+                          style={{ width: 46, height: 40, border: sel ? '2px solid var(--ink)' : '1px solid rgba(0,0,0,0.08)', borderRadius: 6,
+                            background: band.bg, color: band.fg, fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', opacity: n === 0 ? 0.4 : 1 }}>
+                          {n || ''}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              <tr>
+                <td /><td />
+                {[1, 2, 3, 4, 5].map((l) => <td key={l} style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-3)', paddingTop: 2 }}>{l}</td>)}
+              </tr>
+              <tr><td /><td /><td colSpan={5} style={{ textAlign: 'center', fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingTop: 2 }}>Likelihood →</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.6rem', flexWrap: 'wrap', fontSize: '0.7rem', color: 'var(--text-3)' }}>
+          {['low', 'medium', 'high', 'critical'].map((k) => { const b = riskBand(k === 'low' ? 1 : k === 'medium' ? 6 : k === 'high' ? 12 : 20); return (
+            <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 11, height: 11, borderRadius: 3, background: b.bg }} />{b.label}</span>
+          ); })}
+          {cell && <button onClick={() => setCell(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer' }}>Clear cell filter ×</button>}
+        </div>
+      </div>
+
       <div className="db-2">
         <div className="db-card"><h3 className="db-h">By Category</h3><BarList rows={countBy(d.risks, (r) => OPT.labelOf(OPT.RISK_CATEGORY, r.category || 'other'))} total={d.risks.length} accent="#d97706" /></div>
         <div className="db-card"><h3 className="db-h">By Rating</h3><BarList rows={countBy(d.risks, (r) => r.risk_rating || 'Unrated')} total={d.risks.length} accent="#dc2626" /></div>
       </div>
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">Open risks &amp; issues</h3>
+        <h3 className="db-h">{cell ? `Risks at Likelihood ${cell.l} × Impact ${cell.i}` : 'Open risks & issues'}</h3>
+        {tableRisks.length === 0 ? (
+          <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>No risks in this cell.</p>
+        ) : (
         <div style={{ overflowX: 'auto' }}><table className="db-table">
           <thead><tr><th>ID</th><th>Type</th><th>Description</th><th>Rating</th><th>Due</th><th>Owner</th></tr></thead>
           <tbody>
-            {open.slice(0, 40).map((r) => (
+            {tableRisks.slice(0, 40).map((r) => (
               <tr key={r.code}>
                 <td>{r.code}</td><td>{OPT.labelOf(OPT.RISK_TYPE, r.type)}</td>
                 <td>{(r.description || '').slice(0, 60)}</td>
@@ -539,6 +603,7 @@ function Risks({ d }) {
             ))}
           </tbody>
         </table></div>
+        )}
       </div>
     </>
   );
