@@ -15,6 +15,7 @@ import StatTile from '../components/ui/StatTile';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
+import FilterBar from '../components/ui/FilterBar';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 
@@ -189,21 +190,44 @@ const perfTint = (s) => ({ on_track: '#16a34a', target_achieved: '#0891b2', atte
 
 // ── Executive Portfolio ──────────────────────────────────────────────────────
 function Portfolio({ d, onNavigate }) {
+  const [flt, setFlt] = useState({ status: '', theme: '', province: '', donor: '' });
+
+  // Distinct filter options from the loaded projects (§25).
+  const opts = useMemo(() => {
+    const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+    return {
+      provinces: uniq(d.projects.flatMap((p) => p.provinces || [])),
+      themes: uniq(d.projects.map((p) => p.category)),
+      donors: uniq(d.projects.map((p) => p.donor)),
+    };
+  }, [d]);
+
   const m = useMemo(() => {
-    const fin = latestByProject(d.financial);
-    const totalBudget = sum(d.projects, (p) => p.budget_vuv);
+    // Apply the global filters to the project set, then scope child data to it.
+    const projects = d.projects.filter((p) =>
+      (!flt.status || p.status === flt.status)
+      && (!flt.theme || p.category === flt.theme)
+      && (!flt.province || (p.provinces || []).includes(flt.province))
+      && (!flt.donor || p.donor === flt.donor));
+    const pid = new Set(projects.map((p) => p.id));
+    const within = (arr) => arr.filter((r) => pid.has(r.project_id));
+    const financial = within(d.financial), risks = within(d.risks), progress = within(d.progress);
+    const activities = within(d.activities), beneficiaries = within(d.beneficiaries), reporting = within(d.reporting);
+
+    const fin = latestByProject(financial);
+    const totalBudget = sum(projects, (p) => p.budget_vuv);
     const totalExp = [...fin.values()].reduce((a, r) => a + (Number(r.cumulative_expenditure) || 0), 0)
-      || sum(d.projects, (p) => p.spent_vuv);
-    const openRisks = d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status));
-    const overdue = d.risks.filter((r) => r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status));
-    const achieved = d.progress.filter((p) => p.achievement_pct != null);
+      || sum(projects, (p) => p.spent_vuv);
+    const openRisks = risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status));
+    const overdue = risks.filter((r) => r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status));
+    const achieved = progress.filter((p) => p.achievement_pct != null);
     const avgAch = achieved.length ? Math.round(achieved.reduce((a, r) => a + Number(r.achievement_pct), 0) / achieved.length) : null;
 
     // Attention Required (§31) — clickable management intelligence.
-    const atRiskDelayed = d.projects.filter((p) => ['at_risk', 'delayed'].includes(p.status)).length;
-    const offTrack = d.progress.filter((p) => p.performance_status === 'off_track').length;
-    const reportsOverdue = d.reporting.filter((r) => r.period_end && r.period_end < today() && r.submission_status !== 'approved').length;
-    const highRiskOverdue = d.risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
+    const atRiskDelayed = projects.filter((p) => ['at_risk', 'delayed'].includes(p.status)).length;
+    const offTrack = progress.filter((p) => p.performance_status === 'off_track').length;
+    const reportsOverdue = reporting.filter((r) => r.period_end && r.period_end < today() && r.submission_status !== 'approved').length;
+    const highRiskOverdue = risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
       && r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status)).length;
     const attention = [];
     if (atRiskDelayed) attention.push({ label: `${atRiskDelayed} project${atRiskDelayed === 1 ? '' : 's'} at risk or delayed`, tab: 'portfolio', tone: 'amber' });
@@ -213,10 +237,10 @@ function Portfolio({ d, onNavigate }) {
 
     // Physical vs financial progress (§32).
     const physAgg = {};
-    d.activities.forEach((a) => {
+    activities.forEach((a) => {
       if (a.physical_progress_pct != null) { const g = physAgg[a.project_id] || (physAgg[a.project_id] = { s: 0, n: 0 }); g.s += Number(a.physical_progress_pct); g.n += 1; }
     });
-    const pf = d.projects.map((p) => {
+    const pf = projects.map((p) => {
       const ph = physAgg[p.id] ? Math.round(physAgg[p.id].s / physAgg[p.id].n) : null;
       const f = fin.get(p.id);
       const finPct = f?.utilisation_pct != null ? Math.round(Number(f.utilisation_pct))
@@ -226,36 +250,53 @@ function Portfolio({ d, onNavigate }) {
     }).filter((r) => r.physical != null || r.financial != null);
 
     // Beneficiaries & GEDSI (§38). 0 is a real value — only null means "no data".
-    const bAny = (f) => d.beneficiaries.some((b) => b[f] != null);
-    const bSum = (f) => (bAny(f) ? d.beneficiaries.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
-    const bRows = d.beneficiaries.length;
+    const bAny = (f) => beneficiaries.some((b) => b[f] != null);
+    const bSum = (f) => (bAny(f) ? beneficiaries.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
+    const bRows = beneficiaries.length;
     const gedsi = {
       total: bSum('total_direct'), female: bSum('female'), male: bSum('male'),
       other: bSum('other_gender'), youth: bSum('youth'), pwd: bSum('persons_with_disability'),
       indirect: bSum('indirect'),
-      completeness: bRows ? Math.round(d.beneficiaries.filter((b) => b.female != null || b.male != null).length / bRows * 100) : null,
+      completeness: bRows ? Math.round(beneficiaries.filter((b) => b.female != null || b.male != null).length / bRows * 100) : null,
     };
 
     return {
       attention, pf, gedsi,
-      total: d.projects.length,
-      active: d.projects.filter((p) => ACTIVE_STATUSES.includes(p.status)).length,
-      completed: d.projects.filter((p) => ['completed', 'closed'].includes(p.status)).length,
-      atRisk: d.projects.filter((p) => p.status === 'at_risk').length,
-      delayed: d.projects.filter((p) => p.status === 'delayed').length,
+      total: projects.length,
+      active: projects.filter((p) => ACTIVE_STATUSES.includes(p.status)).length,
+      completed: projects.filter((p) => ['completed', 'closed'].includes(p.status)).length,
+      atRisk: projects.filter((p) => p.status === 'at_risk').length,
+      delayed: projects.filter((p) => p.status === 'delayed').length,
       totalBudget, totalExp, util: utilisationPct(totalBudget, totalExp),
-      actCompleted: d.activities.filter((a) => a.status === 'completed').length,
+      actCompleted: activities.filter((a) => a.status === 'completed').length,
       openRisks: openRisks.length, overdue: overdue.length,
-      beneficiaries: sum(d.beneficiaries, (b) => b.total_direct),
+      beneficiaries: sum(beneficiaries, (b) => b.total_direct),
       avgAch,
-      byProvince: countBy(d.projects, (p) => p.provinces || []),
-      byDonor: countBy(d.projects, (p) => p.donor),
-      byTheme: countBy(d.projects, (p) => p.category),
+      byProvince: countBy(projects, (p) => p.provinces || []),
+      byDonor: countBy(projects, (p) => p.donor),
+      byTheme: countBy(projects, (p) => p.category),
+      byStatus: countBy(projects, (p) => OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)),
     };
-  }, [d]);
+  }, [d, flt]);
 
   return (
     <>
+      <FilterBar
+        filters={[
+          { key: 'status', label: 'Status', value: flt.status, onChange: (v) => setFlt((s) => ({ ...s, status: v })),
+            options: [{ value: '', label: 'All statuses' }, ...OPT.DOCC_PROJECT_STATUS] },
+          { key: 'theme', label: 'Theme / Sector', value: flt.theme, onChange: (v) => setFlt((s) => ({ ...s, theme: v })),
+            options: [{ value: '', label: 'All themes' }, ...opts.themes.map((t) => ({ value: t, label: OPT.labelOf(OPT.CLIMATE_THEME, t) || t }))] },
+          { key: 'province', label: 'Province', value: flt.province, onChange: (v) => setFlt((s) => ({ ...s, province: v })),
+            options: [{ value: '', label: 'All provinces' }, ...opts.provinces.map((p) => ({ value: p, label: p }))] },
+          { key: 'donor', label: 'Funding Partner', value: flt.donor, onChange: (v) => setFlt((s) => ({ ...s, donor: v })),
+            options: [{ value: '', label: 'All partners' }, ...opts.donors.map((x) => ({ value: x, label: x }))] },
+        ]}
+        onReset={() => setFlt({ status: '', theme: '', province: '', donor: '' })}
+      />
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', margin: '0.6rem 0' }}>
+        Showing <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} projects
+      </div>
       <div className="db-kpis">
         <StatTile label="Total Projects" value={m.total} icon={FolderKanban} accent="var(--green-600)" />
         <StatTile label="Active" value={m.active} sub={`${m.completed} completed`} icon={Activity} accent="#2563eb" />
@@ -322,7 +363,7 @@ function Portfolio({ d, onNavigate }) {
       </div>
       <div className="db-2">
         <div className="db-card"><h3 className="db-h">Projects by Theme / Sector</h3><BarList rows={m.byTheme} total={m.total} accent="#7c3aed" /></div>
-        <div className="db-card"><h3 className="db-h">Projects by Status</h3><BarList rows={countBy(d.projects, (p) => OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status))} total={m.total} accent="#0891b2" /></div>
+        <div className="db-card"><h3 className="db-h">Projects by Status</h3><BarList rows={m.byStatus} total={m.total} accent="#0891b2" /></div>
       </div>
 
       {/* Physical vs Financial progress (§32) */}
