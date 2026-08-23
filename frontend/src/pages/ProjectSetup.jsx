@@ -12,10 +12,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  ClipboardList, Check, Plus, Pencil, Trash2, ChevronRight, X, ArrowLeft, ArrowRight, FolderPlus,
+  ClipboardList, Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight, FolderPlus,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
+import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
 
@@ -89,6 +90,7 @@ export default function ProjectSetup({ user }) {
     activities: activities.length > 0,
     locations: locations.length > 0,
   };
+  const setupPct = Math.round((Object.values(completion).filter(Boolean).length / STEPS.length) * 100);
 
   const stepIndex = STEPS.findIndex((s) => s.key === step);
   const goPrev = () => setStep(STEPS[Math.max(0, stepIndex - 1)].key);
@@ -121,13 +123,21 @@ export default function ProjectSetup({ user }) {
         @media (max-width:640px){.ps-grid{grid-template-columns:1fr}.ps-desktop{display:none}.ps-cards{display:block}}
       `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <ClipboardList size={22} style={{ color: 'var(--green-700)' }} />
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem,4vw,1.9rem)', fontWeight: 700, margin: 0 }}>Project Setup</h1>
-      </div>
-      <p style={{ color: 'var(--text-2)', margin: '0.35rem 0 1rem', fontSize: '0.9rem' }}>
-        Register a project and build its results framework, indicators, activities and locations. Periodic monitoring is entered later under MERL Reporting.
-      </p>
+      <PageHeader
+        icon={ClipboardList}
+        title="Project Setup"
+        subtitle="Register a project and build its results framework, indicators, activities and locations. Periodic monitoring is entered later under MERL Reporting."
+        actions={project ? (
+          <div style={{ textAlign: 'right', minWidth: 170 }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: setupPct === 100 ? 'var(--green-700)' : 'var(--text-3)' }}>
+              Setup {setupPct}% complete
+            </div>
+            <div style={{ width: '100%', height: 7, background: 'var(--surface-1)', borderRadius: 9999, marginTop: 5, overflow: 'hidden' }}>
+              <div style={{ width: `${setupPct}%`, height: '100%', background: setupPct === 100 ? 'var(--green-600)' : 'var(--gold-500)', transition: 'width 0.25s' }} />
+            </div>
+          </div>
+        ) : null}
+      />
 
       {/* Project selector */}
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -173,7 +183,7 @@ export default function ProjectSetup({ user }) {
         )}
         {step === 'results' && project && (
           <ResultsStep projectId={projectId} objectives={objectives} outcomes={outcomes} outputs={outputs}
-            users={users} reload={() => loadFramework(projectId)} />
+            indicators={indicators} activities={activities} users={users} reload={() => loadFramework(projectId)} />
         )}
         {step === 'indicators' && project && (
           <IndicatorsStep projectId={projectId} indicators={indicators} objectives={objectives}
@@ -296,7 +306,9 @@ function ProfileStep({ project, users, onSaved }) {
 }
 
 // ── Step 2: Results Framework (Objective → Outcome → Output) ─────────────────
-function ResultsStep({ projectId, objectives, outcomes, outputs, reload }) {
+function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = [], activities = [], reload }) {
+  const [collapsed, setCollapsed] = useState({});
+  const toggle = (id) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const addObjective = async () => {
     const s = await promptDialog({ title:'New objective', label:'Objective statement', multiline:true, required:true,
       placeholder:'e.g. Strengthen community resilience to climate hazards' });
@@ -346,13 +358,22 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, reload }) {
         <button style={btn('var(--green-700)')} onClick={addObjective}><Plus size={14} /> Objective</button>
       </div>
       {objectives.length === 0 && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No objectives yet. Add the first project objective.</p>}
-      {objectives.map((obj) => (
+      {objectives.map((obj) => {
+        const isCollapsed = collapsed[obj.id];
+        const ocCount = outcomes.filter((oc) => oc.objective_id === obj.id).length;
+        return (
         <div key={obj.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.75rem', marginBottom: '0.6rem' }}>
           <div style={rowStyle}>
+            <button onClick={() => toggle(obj.id)} aria-label={isCollapsed ? 'Expand' : 'Collapse'} aria-expanded={!isCollapsed}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0, marginTop: 1, flexShrink: 0 }}>
+              {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+            </button>
             <span style={codeChip(obj.code, 'var(--green-700)')}>{obj.code}</span>
             <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{obj.statement}</span>
+            {isCollapsed && ocCount > 0 && <span style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: 3 }}>{ocCount} outcome{ocCount === 1 ? '' : 's'}</span>}
             {actions('objective', obj)}
           </div>
+          {!isCollapsed && (
           <div style={{ marginLeft: '1rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.7rem' }}>
             {outcomes.filter((oc) => oc.objective_id === obj.id).map((oc) => (
               <div key={oc.id} style={{ marginTop: '0.35rem' }}>
@@ -362,21 +383,32 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, reload }) {
                   {actions('outcome', oc)}
                 </div>
                 <div style={{ marginLeft: '1rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.7rem' }}>
-                  {outputs.filter((op) => op.outcome_id === oc.id).map((op) => (
+                  {outputs.filter((op) => op.outcome_id === oc.id).map((op) => {
+                    const ic = indicators.filter((i) => i.output_id === op.id).length;
+                    const ac = activities.filter((a) => a.output_id === op.id).length;
+                    return (
                     <div key={op.id} style={rowStyle}>
                       <span style={codeChip(op.code, '#7c3aed')}>{op.code}</span>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>{op.statement}</span>
+                      {(ic > 0 || ac > 0) && (
+                        <span style={{ fontSize: '0.64rem', color: 'var(--text-3)', marginTop: 3, whiteSpace: 'nowrap' }}>
+                          {ic} ind · {ac} act
+                        </span>
+                      )}
                       {actions('output', op)}
                     </div>
-                  ))}
+                    );
+                  })}
                   <button onClick={() => addOutput(oc.id)} style={{ ...ghostBtn, padding: '0.2rem 0.5rem', marginTop: '0.25rem', fontSize: '0.72rem' }}><Plus size={12} /> Output</button>
                 </div>
               </div>
             ))}
             <button onClick={() => addOutcome(obj.id)} style={{ ...ghostBtn, padding: '0.25rem 0.55rem', marginTop: '0.4rem', fontSize: '0.75rem' }}><Plus size={12} /> Outcome</button>
           </div>
+          )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
