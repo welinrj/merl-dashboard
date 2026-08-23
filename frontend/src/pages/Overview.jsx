@@ -15,7 +15,7 @@ import {
 import {
   FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, Ban, Flag, Wallet,
   Printer, MapPin, ArrowRight, ClipboardCheck, Send, RotateCcw, Clock, Eye,
-  Users, User, Baby, Accessibility, AlertCircle, ShieldCheck, Archive, CircleDollarSign, ListChecks,
+  Users, Venus, Mars, PersonStanding, Accessibility, AlertCircle, ShieldCheck, Archive, CircleDollarSign, ListChecks,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -173,9 +173,9 @@ export default function Overview({ user }) {
   const bAny = (f) => bens.some((b) => b[f] != null);
   const bSum = (f) => (bAny(f) ? bens.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
   const gedsi = [
-    { key: 'female', label: 'Female', icon: User, value: bSum('female'), color: '#7c3aed' },
-    { key: 'male', label: 'Male', icon: User, value: bSum('male'), color: BLUE },
-    { key: 'youth', label: 'Youth', icon: Baby, value: bSum('youth'), color: '#e0a12a' },
+    { key: 'female', label: 'Female', icon: Venus, value: bSum('female'), color: '#7c3aed' },
+    { key: 'male', label: 'Male', icon: Mars, value: bSum('male'), color: BLUE },
+    { key: 'youth', label: 'Youth', icon: PersonStanding, value: bSum('youth'), color: '#e0a12a' },
     { key: 'persons_with_disability', label: 'Persons w/ disability', icon: Accessibility, value: bSum('persons_with_disability'), color: '#22a565' },
     { key: 'other_gender', label: 'Other / N.R.', icon: Users, value: bSum('other_gender'), color: '#0e8f8a' },
   ];
