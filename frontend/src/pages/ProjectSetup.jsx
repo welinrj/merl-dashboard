@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   ClipboardList, Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight, FolderPlus,
+  CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
@@ -91,6 +92,25 @@ export default function ProjectSetup({ user }) {
     locations: locations.length > 0,
   };
   const setupPct = Math.round((Object.values(completion).filter(Boolean).length / STEPS.length) * 100);
+
+  // Readiness for MERL reporting (§16): concrete, clickable setup issues.
+  const issues = useMemo(() => {
+    if (!project) return [];
+    const out = [];
+    if (objectives.length === 0) out.push({ label: 'Add at least one objective', step: 'results' });
+    if (outcomes.length === 0) out.push({ label: 'Add at least one outcome', step: 'results' });
+    if (outputs.length === 0) out.push({ label: 'Add at least one output', step: 'results' });
+    if (indicators.length === 0) out.push({ label: 'Configure at least one indicator', step: 'indicators' });
+    const noBaseline = indicators.filter((i) => i.baseline_value == null).length;
+    if (noBaseline) out.push({ label: `${noBaseline} indicator${noBaseline === 1 ? '' : 's'} missing a baseline`, step: 'indicators' });
+    const noTarget = indicators.filter((i) => i.target_value == null && !i.is_qualitative).length;
+    if (noTarget) out.push({ label: `${noTarget} indicator${noTarget === 1 ? '' : 's'} missing a target`, step: 'indicators' });
+    const noFreq = indicators.filter((i) => !i.frequency).length;
+    if (noFreq) out.push({ label: `${noFreq} indicator${noFreq === 1 ? '' : 's'} missing a reporting frequency`, step: 'indicators' });
+    if (activities.length === 0) out.push({ label: 'Add at least one activity', step: 'activities' });
+    if (locations.length === 0) out.push({ label: 'Add at least one location', step: 'locations' });
+    return out;
+  }, [project, objectives, outcomes, outputs, indicators, activities, locations]);
 
   const stepIndex = STEPS.findIndex((s) => s.key === step);
   const goPrev = () => setStep(STEPS[Math.max(0, stepIndex - 1)].key);
@@ -173,6 +193,32 @@ export default function ProjectSetup({ user }) {
         <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-2)' }}>
           Editing <strong>{project.code}</strong> — {project.name}
           <span style={{ marginLeft: '0.5rem', color: 'var(--text-3)' }}>({OPT.labelOf(OPT.DOCC_PROJECT_STATUS, project.status)})</span>
+        </div>
+      )}
+
+      {project && (
+        <div className="card" style={{ padding: '0.75rem 0.9rem', marginBottom: '0.75rem', borderLeft: `3px solid ${issues.length ? 'var(--gold-500)' : 'var(--green-600)'}` }}>
+          {issues.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--green-700)', fontWeight: 700, fontSize: '0.85rem' }}>
+              <CheckCircle2 size={16} /> Ready for MERL Reporting
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#8a6416', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.4rem' }}>
+                <AlertTriangle size={16} /> {issues.length} setup issue{issues.length === 1 ? '' : 's'} require attention
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                {issues.map((it, i) => (
+                  <li key={i} style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>
+                    <button onClick={() => setStep(it.step)}
+                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--green-700)', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}>
+                      {it.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
 
