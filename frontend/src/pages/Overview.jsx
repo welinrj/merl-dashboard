@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import {
   FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, Ban, Flag, Wallet,
-  Users, Printer, MapPin, ArrowRight,
+  Users, Printer, MapPin, ArrowRight, ClipboardCheck, Send, RotateCcw, Clock, Eye,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -76,7 +76,7 @@ const countBy = (rows, keyFn) => {
   return [...m.entries()].sort((a, b) => b[1] - a[1]);
 };
 
-export default function Overview() {
+export default function Overview({ user }) {
   const nav = useNavigate();
   const { filters, setFilter, reset, active } = useDashboardFilters();
   const [d, setD] = useState(null);
@@ -194,8 +194,66 @@ export default function Overview() {
 
   const exportPrint = () => window.print();
 
+  // ── Role-aware Action Center (§52-57) ───────────────────────────────────────
+  // Uses the RLS-scoped reporting rows (already limited to what this user may
+  // see), so counts reflect the signed-in user's own remit without extra queries.
+  const role = user?.role;
+  const isReviewer = role === 'ROLE_ADMIN' || role === 'ROLE_DOCC_MEO';
+  const isEditor = isReviewer || role === 'ROLE_PROJ_MANAGER' || role === 'ROLE_DATA_ENTRY';
+  const rp = d.reporting;
+  const nowIso = iso(today());
+  const actions = [];
+  if (isReviewer) {
+    const awaiting = rp.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
+    actions.push({ key: 'review', icon: Eye, accent: '#2563eb', value: awaiting,
+      label: awaiting === 1 ? 'Report awaiting your review' : 'Reports awaiting your review',
+      cta: 'Open review queue', to: '/review', primary: true });
+  }
+  if (isEditor) {
+    const returned = rp.filter((r) => r.submission_status === 'returned').length;
+    const drafts = rp.filter((r) => r.submission_status === 'draft').length;
+    if (returned) actions.push({ key: 'returned', icon: RotateCcw, accent: '#d97706', value: returned,
+      label: returned === 1 ? 'Period returned for correction' : 'Periods returned for correction',
+      cta: 'Fix & resubmit', to: '/merl-reporting' });
+    actions.push({ key: 'drafts', icon: Send, accent: '#0e7490', value: drafts,
+      label: drafts === 1 ? 'Draft period to submit' : 'Draft periods to submit',
+      cta: 'Continue reporting', to: '/merl-reporting', primary: !isReviewer });
+  }
+  const overdue = rp.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < nowIso).length;
+  if (overdue && isEditor) actions.push({ key: 'overdue', icon: Clock, accent: '#b3402f', value: overdue,
+    label: overdue === 1 ? 'Reporting period overdue' : 'Reporting periods overdue',
+    cta: 'View reporting', to: '/merl-reporting' });
+  const firstName = (user?.name || '').trim().split(/\s+/)[0] || '';
+
   return (
     <div className="ov">
+      {/* Role-aware welcome + Action Center */}
+      <div className="ov-actionband rp-noprint">
+        <div className="ov-welcome">
+          <h1>{firstName ? `Welcome back, ${firstName}` : 'Welcome back'}</h1>
+          <p>{isReviewer ? 'Portfolio overview and reports awaiting your review.'
+            : isEditor ? 'Your portfolio overview and reporting tasks.'
+            : 'Portfolio overview across all monitored projects.'}</p>
+        </div>
+        {actions.length > 0 && (
+          <div className="ov-actions">
+            {actions.map((a) => (
+              <button key={a.key} className={`ov-action${a.primary ? ' primary' : ''}${a.value === 0 ? ' quiet' : ''}`}
+                onClick={() => nav(a.to)} aria-label={`${a.value} ${a.label} — ${a.cta}`}>
+                <span className="ov-action-ic" style={{ background: `color-mix(in srgb, ${a.accent} 15%, #fff)`, color: a.accent }}>
+                  <a.icon size={18} />
+                </span>
+                <span className="ov-action-txt">
+                  <span className="ov-action-val">{a.value}</span>
+                  <span className="ov-action-lbl">{a.label}</span>
+                </span>
+                <span className="ov-action-cta">{a.cta} <ArrowRight size={13} /></span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Global filter bar */}
       <div className="ov-filters rp-noprint">
         <FilterSelect label="Financial Year" value={filters.fy} onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />

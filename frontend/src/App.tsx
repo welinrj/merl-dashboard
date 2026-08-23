@@ -424,7 +424,7 @@ export default function App() {
           <ErrorBoundary key={location.pathname}>
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
-              <Route path="/dashboards" element={gate('/dashboards') ? <Overview /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/dashboards" element={gate('/dashboards') ? <Overview user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analytics/:lens" element={allowed.includes('overview') ? <AnalyticsRoute /> : <Navigate to={defaultPath} replace />} />
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
