@@ -8,7 +8,7 @@
  *  - POST requests when offline            → Queue via BackgroundSync (or localStorage fallback)
  */
 
-const CACHE_VERSION  = 'v1';
+const CACHE_VERSION  = 'v2';
 const STATIC_CACHE   = `merl-static-${CACHE_VERSION}`;
 const API_CACHE      = `merl-api-${CACHE_VERSION}`;
 const SYNC_TAG       = 'merl-bg-sync';
@@ -63,6 +63,13 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(handleOfflineWrite(request));
     }
     return; // let online writes pass through normally
+  }
+
+  // ── GeoJSON (map data): NetworkFirst so it never goes stale at a stable URL,
+  //    with cache fallback for offline. (Must precede the static-asset rule.) ──
+  if (url.pathname.endsWith('.geojson')) {
+    event.respondWith(networkFirst(request, STATIC_CACHE));
+    return;
   }
 
   // ── Static assets: CacheFirst ──
@@ -316,7 +323,9 @@ setInterval(async () => {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function isStaticAsset(pathname) {
-  return /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|geojson)$/.test(pathname);
+  // NOTE: .geojson is intentionally excluded — it is map DATA that can change at a
+  // stable URL, so it is served NetworkFirst above rather than CacheFirst here.
+  return /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/.test(pathname);
 }
 
 function isSWREndpoint(pathname) {
