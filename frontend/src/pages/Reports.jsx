@@ -6,12 +6,14 @@
 // Report types: Project Progress, Portfolio Performance, Indicator Performance,
 // Financial Performance, Geographic/Provincial, Funding Partner/Donor.
 // =============================================================================
-import { useEffect, useMemo, useState } from 'react';
-import { FileBarChart, Printer } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FileBarChart, Printer, History, Clock } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
+
+const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('en-VU', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
 
 const REPORT_TYPES = [
   { key: 'project',    label: 'Project Progress Report' },
@@ -36,6 +38,15 @@ export default function Reports() {
   const [province, setProvince] = useState('');
   const [donor, setDonor] = useState('');
   const [period, setPeriod] = useState('');
+  const [runs, setRuns] = useState([]);
+
+  // Report Library (§48-51): recent official report generations, portfolio-wide.
+  const loadRuns = useCallback(async () => {
+    const { data } = await supabase.from('v_report_runs').select('*')
+      .order('generated_at', { ascending: false }).limit(20);
+    setRuns(data ?? []);
+  }, []);
+  useEffect(() => { loadRuns(); }, [loadRuns]);
 
   useEffect(() => {
     (async () => {
@@ -70,6 +81,27 @@ export default function Reports() {
   const donors = [...new Set(d.projects.map((p) => p.donor).filter(Boolean))];
   const provinces = ['TORBA', 'SANMA', 'PENAMA', 'MALAMPA', 'SHEFA', 'TAFEA'];
 
+  // "Data as at" (§76): latest timestamp across the datasets this report reads.
+  const times = [d.reporting, d.progress, d.financial, d.beneficiaries, d.risks, d.learning, d.activities]
+    .flat().flatMap((r) => [r?.updated_at, r?.created_at]).filter(Boolean).map((t) => new Date(t).getTime());
+  const dataAsAt = times.length ? new Date(Math.max(...times)) : null;
+  const generatedAt = new Date();
+
+  // Log the generation to the Report Library, then print. Logging is best-effort
+  // and never blocks the report from printing.
+  const generate = async () => {
+    const label = REPORT_TYPES.find((r) => r.key === type)?.label;
+    const { error } = await supabase.rpc('log_report_run', {
+      p_report_type: type,
+      p_report_label: label,
+      p_project_id: type === 'project' ? (projectId || null) : null,
+      p_reporting_period: period || null,
+      p_params: { province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
+    });
+    if (!error) loadRuns();
+    window.print();
+  };
+
   return (
     <div className="page-pad" style={{ maxWidth: 960, margin: '0 auto' }}>
       <style>{`
@@ -84,6 +116,12 @@ export default function Reports() {
         .rp-t th{background:#f4f6f5;font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;color:#555}
         .rp-narr{font-size:.85rem;line-height:1.5;white-space:pre-wrap;margin:.2rem 0}
         .rp-muted{color:#888;font-size:.82rem}
+        .rp-stamp{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.4rem;font-size:.72rem;color:#666;padding-bottom:.6rem;margin-bottom:.9rem;border-bottom:1px solid #eee}
+        .rp-stamp b{color:#333}
+        .rl-t{width:100%;border-collapse:collapse;font-size:.82rem}
+        .rl-t th,.rl-t td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+        .rl-t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);background:var(--green-50)}
+        .rl-t tbody tr:last-child td{border-bottom:none}
         @media (max-width:640px){.rp-meta{grid-template-columns:1fr}.rp-doc{padding:1.1rem}}
         @media print{
           body *{visibility:hidden !important}
@@ -139,18 +177,55 @@ export default function Reports() {
           <label className="field-label">Reporting period</label>
           <input className="field-input" placeholder="e.g. 2026-Q1" value={period} onChange={(e) => setPeriod(e.target.value)} />
         </div>
-        <button onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 8, border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
+        <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 8, border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> Print / PDF
         </button>
       </div>
 
       <div className="rp-doc rp-print">
+        <div className="rp-stamp">
+          <span>Generated: <b>{fmtDateTime(generatedAt)}</b></span>
+          <span>Data as at: <b>{dataAsAt ? fmtDateTime(dataAsAt) : '—'}</b></span>
+        </div>
         {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} />}
         {type === 'portfolio' && <Portfolio d={d} period={period} />}
         {type === 'indicator' && <IndicatorReport d={d} period={period} />}
         {type === 'financial' && <FinancialReport d={d} period={period} />}
         {type === 'geographic' && <GeographicReport d={d} province={province} period={period} />}
         {type === 'donor' && <DonorReport d={d} donor={donor} period={period} />}
+      </div>
+
+      {/* Report Library (§48-51): audit trail of official reports generated */}
+      <div className="rp-noprint" style={{ marginTop: '1.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+          <History size={18} style={{ color: 'var(--green-700)' }} />
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>Report Library</h2>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginLeft: '0.25rem' }}>Recently generated reports</span>
+        </div>
+        {runs.length === 0 ? (
+          <div className="card" style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-3)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <Clock size={15} /> No reports generated yet. Use Print / PDF above to produce one — it will be logged here.
+          </div>
+        ) : (
+          <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+            <table className="rl-t">
+              <thead>
+                <tr><th>Report</th><th>Scope</th><th>Period</th><th>Generated by</th><th>When</th></tr>
+              </thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr key={r.id}>
+                    <td><b>{r.report_label || r.report_type}</b></td>
+                    <td>{r.project_code ? `${r.project_code}` : (r.params?.province || r.params?.donor || 'Portfolio')}</td>
+                    <td>{r.reporting_period || '—'}</td>
+                    <td>{r.generated_by_name || '—'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(r.generated_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
