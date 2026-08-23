@@ -234,7 +234,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         /* Vanuatu island silhouette over the transition (supplied vu.svg, recoloured
            teal via mask so its paths are used unmodified). Positioned inside the
            photo and pulled left with a negative offset so it straddles the seam. */
-        .lg2-map{ position:absolute; left:-13%; top:8%; height:80%; width:26%; z-index:4; opacity:.82;
+        .lg2-map{ position:absolute; left:-7%; top:8%; height:80%; width:24%; z-index:4; opacity:.82;
           -webkit-mask:url("${VU_MAP}") no-repeat center/contain; mask:url("${VU_MAP}") no-repeat center/contain;
           background-color:#0B8B87; }
         /* subtle decorative radar rings behind the map */
@@ -249,7 +249,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         /* Tablet */
         @media (max-width:1100px){
           .lg2-left{ flex-basis:46%; max-width:46%; padding:2.5rem; }
-          .lg2-map{ left:-10%; width:24%; opacity:.72; }
+          .lg2-map{ left:-5%; width:22%; opacity:.72; }
           .lg2-rings span:nth-child(4){ display:none; }
         }
         /* Mobile — stack: photo/brand header on top, form below. Map + rings stay
