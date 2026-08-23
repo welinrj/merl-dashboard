@@ -166,29 +166,30 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
       <style>{`
         .lg2-root{
           --nv:#08233C; --tl:#008C88; --tld:#00736F; --tx:#172B3A; --mut:#65758A; --bd:#D7DEE7;
-          position:relative; min-height:100vh; min-height:100dvh; display:flex;
+          position:relative; min-height:100vh; min-height:100dvh; height:100dvh; display:flex;
           font-family:var(--font-ui); background:#fff; color:var(--tx); overflow:hidden;
         }
-        /* LEFT — white login area */
-        .lg2-left{ flex:0 0 40%; max-width:40%; background:#fff; display:flex; align-items:center;
-          justify-content:center; padding:3rem 3.5rem; z-index:3; }
-        .lg2-inner{ width:100%; max-width:430px; }
-        .lg2-brand{ display:flex; align-items:center; gap:.85rem; margin-bottom:2.75rem; }
-        .lg2-crest{ width:64px; height:64px; object-fit:contain; flex-shrink:0; }
-        .lg2-brand-country{ font-size:1.1rem; font-weight:800; letter-spacing:.02em; color:var(--nv); line-height:1.1; }
-        .lg2-brand-dept{ font-size:.9rem; font-weight:600; color:var(--tx); margin-top:.15rem; }
-        .lg2-brand-gov{ font-size:.78rem; color:var(--mut); margin-top:.05rem; }
-        .lg2-title{ font-family:var(--font-display); font-size:clamp(2.6rem,4.4vw,3.6rem); font-weight:800;
+        /* LEFT — white login area (narrower; content anchored upper/middle-left) */
+        .lg2-left{ position:relative; flex:0 0 37%; max-width:37%; background:#fff; display:flex;
+          flex-direction:column; justify-content:flex-start;
+          padding:clamp(2.4rem,6vh,3.4rem) clamp(2rem,3.2vw,4rem) 5.5rem; z-index:3; }
+        .lg2-inner{ width:100%; max-width:420px; }
+        .lg2-brand{ display:flex; align-items:center; gap:.85rem; margin-bottom:clamp(1.4rem,4.5vh,2.5rem); }
+        .lg2-crest{ width:60px; height:60px; object-fit:contain; flex-shrink:0; }
+        .lg2-brand-country{ font-size:1.05rem; font-weight:800; letter-spacing:.02em; color:var(--nv); line-height:1.1; }
+        .lg2-brand-dept{ font-size:.88rem; font-weight:600; color:var(--tx); margin-top:.15rem; }
+        .lg2-brand-gov{ font-size:.76rem; color:var(--mut); margin-top:.05rem; }
+        .lg2-title{ font-family:var(--font-display); font-size:clamp(48px,4.2vw,64px); font-weight:800;
           letter-spacing:-.02em; color:var(--nv); margin:0; line-height:1; }
-        .lg2-underline{ width:68px; height:4px; border-radius:2px; background:var(--tl); margin:1.1rem 0 1.1rem; }
-        .lg2-descriptor{ display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; font-size:.92rem;
-          font-weight:600; color:var(--tx); margin-bottom:2.5rem; }
-        .lg2-dot{ width:5px; height:5px; border-radius:50%; background:var(--tl); display:inline-block; }
-        .lg2-signin{ font-family:var(--font-display); font-size:1.05rem; font-weight:700; color:var(--tx); margin:0 0 1.1rem; }
-        .lg2-form{ display:flex; flex-direction:column; gap:1rem; }
+        .lg2-underline{ width:72px; height:4px; border-radius:2px; background:var(--tl); margin:clamp(.8rem,1.6vh,1.1rem) 0; }
+        .lg2-descriptor{ display:flex; align-items:center; gap:.55rem; flex-wrap:nowrap; white-space:nowrap;
+          font-size:clamp(.82rem,1vw,.92rem); font-weight:600; color:var(--tx); margin-bottom:clamp(1.2rem,3.4vh,2rem); }
+        .lg2-dot{ width:5px; height:5px; border-radius:50%; background:var(--tl); display:inline-block; flex-shrink:0; }
+        .lg2-signin{ font-family:var(--font-display); font-size:1.02rem; font-weight:700; color:var(--tx); margin:0 0 clamp(.8rem,1.6vh,1.05rem); }
+        .lg2-form{ display:flex; flex-direction:column; gap:clamp(.7rem,1.4vh,.95rem); }
         .lg2-field{ position:relative; }
         .lg2-ficon{ position:absolute; left:.9rem; top:50%; transform:translateY(-50%); color:var(--mut); display:flex; pointer-events:none; }
-        .lg2-input{ width:100%; height:54px; padding:0 2.9rem 0 2.9rem; border:1px solid var(--bd); border-radius:9px;
+        .lg2-input{ width:100%; height:58px; padding:0 2.9rem 0 2.9rem; border:1px solid var(--bd); border-radius:9px;
           font-size:.95rem; font-family:var(--font-ui); color:var(--tx); background:#fff; outline:none;
           transition:border-color .15s, box-shadow .15s; }
         .lg2-input::placeholder{ color:var(--mut); }
@@ -202,65 +203,79 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         .lg2-keep input{ width:16px; height:16px; accent-color:var(--tl); }
         .lg2-alert{ display:flex; align-items:flex-start; gap:.5rem; background:#fef2f2; border:1px solid #fca5a5;
           border-radius:8px; padding:.65rem .8rem; color:#991b1b; font-size:.83rem; line-height:1.4; }
-        .lg2-submit{ width:100%; height:56px; margin-top:.3rem; border:none; border-radius:9px; cursor:pointer;
+        .lg2-submit{ width:100%; height:56px; margin-top:clamp(.2rem,.8vh,.4rem); border:none; border-radius:9px; cursor:pointer;
           background:var(--tl); color:#fff; font-size:1rem; font-weight:700; font-family:var(--font-ui);
           transition:background .15s; }
         .lg2-submit:hover:not(:disabled){ background:var(--tld); }
         .lg2-submit:disabled{ opacity:.65; cursor:default; }
-        .lg2-secure{ display:flex; align-items:center; gap:.5rem; margin-top:1.4rem; font-size:.85rem; color:var(--nv); }
+        .lg2-secure{ display:flex; align-items:center; gap:.5rem; margin-top:24px; font-size:.85rem; color:var(--nv); }
         .lg2-secure svg{ color:var(--tl); flex-shrink:0; }
-        .lg2-foot{ margin-top:2.25rem; font-size:.76rem; color:var(--mut); line-height:1.55; }
-        .lg2-attr{ margin-top:.5rem; font-size:.68rem; color:#9aa7b5; }
+        .lg2-foot{ position:absolute; left:clamp(2rem,3.2vw,4rem); bottom:clamp(20px,3vh,28px); margin:0;
+          font-size:.75rem; color:var(--mut); line-height:1.5; }
+        .lg2-attr{ margin-top:.4rem; font-size:.66rem; color:#9aa7b5; max-width:34ch; }
         .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
-        /* RIGHT — Tanna photograph */
-        .lg2-photo{ position:relative; flex:1 1 60%; min-height:100vh; min-height:100dvh;
-          background-color:#3a3632; background-position:center; background-size:cover; background-repeat:no-repeat;
+        /* RIGHT — Tanna photograph (more visible; crop tuned) */
+        .lg2-photo{ position:relative; flex:1 1 63%; height:100%;
+          background-color:#3a3632; background-position:55% center; background-size:cover; background-repeat:no-repeat;
           background-image:url("${TANNA_PHOTO}");
           background-image:-webkit-image-set(url("${TANNA_WEBP}") type("image/webp"), url("${TANNA_PHOTO}") type("image/jpeg"));
           background-image:image-set(url("${TANNA_WEBP}") type("image/webp"), url("${TANNA_PHOTO}") type("image/jpeg")); }
-        /* soft white-to-photo transition bleeding across the seam */
+        /* soft, shorter white-to-photo transition — strongest only near the seam */
         .lg2-fade{ position:absolute; inset:0; pointer-events:none; z-index:2; background:linear-gradient(
-          to right, #ffffff 0%, #ffffff 6%, rgba(255,255,255,.96) 16%, rgba(255,255,255,.70) 27%,
-          rgba(255,255,255,.20) 40%, rgba(255,255,255,0) 50%); }
+          to right, rgba(255,255,255,.99) 0%, rgba(255,255,255,.92) 7%, rgba(255,255,255,.60) 16%,
+          rgba(255,255,255,.20) 26%, rgba(255,255,255,0) 36%); }
         /* subtle darkening at the bottom-right only, for tagline readability */
         .lg2-photo::after{ content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
-          background:linear-gradient(300deg, rgba(8,35,60,.42) 0%, rgba(8,35,60,0) 34%); }
-        .lg2-tagline{ position:absolute; right:3rem; bottom:2.6rem; z-index:3; display:flex; flex-direction:column;
-          gap:.15rem; padding-left:1rem; border-left:3px solid var(--tl); color:#fff;
-          font-size:clamp(1.05rem,1.6vw,1.5rem); font-weight:600; line-height:1.28;
-          text-shadow:0 1px 6px rgba(0,0,0,.35); }
+          background:linear-gradient(to top left, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 38%); }
+        .lg2-tagline{ position:absolute; right:clamp(40px,5vw,85px); bottom:clamp(38px,6vh,70px); z-index:3;
+          display:flex; flex-direction:column; gap:.12rem; padding-left:1rem; border-left:3px solid var(--tl); color:#fff;
+          font-size:clamp(1rem,1.5vw,1.4rem); font-weight:600; line-height:1.3; text-shadow:0 1px 6px rgba(0,0,0,.4); }
 
-        /* Vanuatu island silhouette over the transition (supplied vu.svg, recoloured
-           teal via mask so its paths are used unmodified). Positioned inside the
-           photo and pulled left with a negative offset so it straddles the seam. */
-        .lg2-map{ position:absolute; left:-12%; top:6%; height:88%; width:52%; z-index:4; opacity:.82;
+        /* Vanuatu island silhouette (supplied vu.svg, recoloured teal via mask so its
+           paths are used unmodified). Moved right into the transition, taller, subtler.
+           Rings sit behind the fade so they dissolve over the white area. */
+        .lg2-map{ position:absolute; left:-2%; top:8vh; height:78vh; max-height:800px; width:42%; z-index:4; opacity:.72;
           -webkit-mask:url("${VU_MAP}") no-repeat center/contain; mask:url("${VU_MAP}") no-repeat center/contain;
           background-color:#0B8B87; }
-        /* subtle decorative radar rings behind the map */
-        .lg2-rings{ position:absolute; left:14%; top:38%; z-index:2; pointer-events:none; }
-        .lg2-rings span{ position:absolute; border:1px solid rgba(255,255,255,.30); border-radius:50%;
+        .lg2-rings{ position:absolute; left:16%; top:46%; z-index:1; pointer-events:none; }
+        .lg2-rings span{ position:absolute; border:1px solid rgba(255,255,255,.28); border-radius:50%;
           left:50%; top:50%; transform:translate(-50%,-50%); }
         .lg2-rings span:nth-child(1){ width:260px; height:260px; }
-        .lg2-rings span:nth-child(2){ width:460px; height:460px; }
-        .lg2-rings span:nth-child(3){ width:660px; height:660px; border-color:rgba(255,255,255,.22); }
-        .lg2-rings span:nth-child(4){ width:860px; height:860px; border-color:rgba(255,255,255,.16); }
+        .lg2-rings span:nth-child(2){ width:460px; height:460px; border-color:rgba(255,255,255,.22); }
+        .lg2-rings span:nth-child(3){ width:660px; height:660px; border-color:rgba(255,255,255,.16); }
+        .lg2-rings span:nth-child(4){ width:860px; height:860px; border-color:rgba(255,255,255,.12); }
 
-        /* Tablet */
-        @media (max-width:1100px){
-          .lg2-left{ flex-basis:46%; max-width:46%; padding:2.5rem; }
-          .lg2-map{ left:-12%; width:50%; height:86%; opacity:.72; }
+        /* Landscape tablet / iPad — keep the desktop composition but tighten scale
+           so the whole page fits one viewport (no clipped footer/tagline). */
+        @media (min-width:900px) and (max-width:1200px) and (orientation:landscape){
+          .lg2-left{ flex-basis:42%; max-width:42%; padding:clamp(1.6rem,4vh,2.4rem) 2.2rem 4.75rem; }
+          .lg2-inner{ max-width:390px; }
+          .lg2-title{ font-size:clamp(40px,4vw,52px); }
+          .lg2-brand{ margin-bottom:clamp(1rem,3vh,1.6rem); }
+          .lg2-crest{ width:52px; height:52px; }
+          .lg2-input{ height:52px; }
+          .lg2-submit{ height:52px; }
+          .lg2-secure{ margin-top:18px; }
+          .lg2-map{ height:70vh; left:-4%; width:44%; }
+        }
+        /* Portrait tablet */
+        @media (max-width:1100px) and (min-width:821px){
+          .lg2-left{ flex-basis:42%; max-width:42%; }
+          .lg2-map{ left:-4%; width:44%; opacity:.7; }
           .lg2-rings span:nth-child(4){ display:none; }
         }
-        /* Mobile — stack: photo/brand header on top, form below. Map + rings stay
-           inside the (short) photo header so they never overlap the form. */
+        /* Mobile — stack; allow the page to scroll (no fixed viewport clipping).
+           Map + rings stay inside the short photo header so they never touch the form. */
         @media (max-width:820px){
-          .lg2-root{ flex-direction:column; }
+          .lg2-root{ flex-direction:column; height:auto; min-height:100dvh; overflow:auto; }
           .lg2-left{ flex:1 1 auto; max-width:100%; padding:2rem 1.4rem 2.5rem; }
           .lg2-inner{ max-width:460px; margin:0 auto; }
-          .lg2-photo{ flex:0 0 auto; min-height:0; height:240px; order:-1; }
+          .lg2-descriptor{ flex-wrap:wrap; white-space:normal; }
+          .lg2-foot{ position:static; margin-top:1.75rem; }
+          .lg2-photo{ flex:0 0 auto; height:240px; order:-1; }
           .lg2-fade{ background:linear-gradient(to bottom, rgba(255,255,255,0) 52%, rgba(255,255,255,.88) 86%, #fff 100%); }
-          .lg2-map{ left:auto; right:8%; top:8%; height:76%; width:30%; opacity:.8; }
+          .lg2-map{ left:auto; right:8%; top:8%; height:76%; max-height:none; width:30%; opacity:.8; }
           .lg2-rings{ left:auto; right:16%; top:42%; }
           .lg2-rings span:nth-child(3),.lg2-rings span:nth-child(4){ display:none; }
           .lg2-tagline{ right:1.2rem; bottom:1rem; font-size:1rem; }
