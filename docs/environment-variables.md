@@ -59,3 +59,42 @@ are the values Government ICT must set and protect (see migration runbook
    when an administrator leaves.
 4. After rotating `JWT_SECRET`, regenerate `ANON_KEY`/`SERVICE_ROLE_KEY`,
    update the application `.env`, and rebuild the frontend image.
+
+## 5. How the frontend connects to the backend
+
+The frontend talks **directly** to Supabase (PostgREST + GoTrue). The client
+is created in `frontend/src/supabaseClient.ts`, which resolves the backend in
+this order:
+
+1. `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` if set at build time; else
+2. built-in fallbacks pointing at the staging project
+   (`ndntvncboeajanipafeq.supabase.co`).
+
+Because Vite inlines these at build time, a deployment targets whichever
+backend was configured **when the bundle was built**. To point the app at a
+different backend, set the two variables and rebuild.
+
+Access control is enforced server-side by Row-Level Security, so the anon key
+is safe in the browser; each signed-in user reads/writes through their own JWT.
+
+### Verifying the connection
+
+Run the built-in check (uses the same URL/key resolution as the app):
+
+```bash
+cd frontend
+npm run check:supabase
+# or against a specific backend:
+VITE_SUPABASE_URL=https://<project>.supabase.co \
+VITE_SUPABASE_ANON_KEY=<anon-key> npm run check:supabase
+```
+
+It reports three checks and exits non-zero if any fail:
+
+- **Auth service reachable** — `GET /auth/v1/health` returns 200 (project is live).
+- **Anon API key accepted** — `GET /auth/v1/settings` returns 200 (key is valid).
+- **Data API (PostgREST) reachable** — `GET /rest/v1/` is routed (data layer up).
+
+A green run confirms the frontend↔backend link; if the app still shows empty
+dashboards afterwards, that means the database has no operational data yet, not
+a broken connection.
