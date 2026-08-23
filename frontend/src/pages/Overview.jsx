@@ -417,7 +417,7 @@ function STATUS_BUCKETS_LABEL(k) {
 }
 
 // ── Presentational pieces ─────────────────────────────────────────────────────
-function Kpi({ icon: Icon, accent, label, value, sub, small }) {
+function Kpi({ icon: Icon, label, value, sub, small }) {
   return (
     <div className="ov-kpi">
       <div style={{ minWidth: 0 }}>
@@ -425,7 +425,7 @@ function Kpi({ icon: Icon, accent, label, value, sub, small }) {
         <div className="ov-kpi-value" style={{ fontSize: small ? '1.35rem' : '1.7rem' }}>{value}</div>
         {sub && <div className="ov-kpi-sub">{sub}</div>}
       </div>
-      <span className="ov-kpi-ic" style={{ background: `color-mix(in srgb, ${accent} 15%, #fff)`, color: accent }}><Icon size={20} /></span>
+      <span className="ov-kpi-ic" aria-hidden="true"><Icon size={18} /></span>
     </div>
   );
 }
