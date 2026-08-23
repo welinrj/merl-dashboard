@@ -234,22 +234,22 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         /* Vanuatu island silhouette over the transition (supplied vu.svg, recoloured
            teal via mask so its paths are used unmodified). Positioned inside the
            photo and pulled left with a negative offset so it straddles the seam. */
-        .lg2-map{ position:absolute; left:-7%; top:8%; height:80%; width:24%; z-index:4; opacity:.82;
+        .lg2-map{ position:absolute; left:-12%; top:6%; height:88%; width:52%; z-index:4; opacity:.82;
           -webkit-mask:url("${VU_MAP}") no-repeat center/contain; mask:url("${VU_MAP}") no-repeat center/contain;
           background-color:#0B8B87; }
         /* subtle decorative radar rings behind the map */
-        .lg2-rings{ position:absolute; left:6%; top:36%; z-index:2; pointer-events:none; }
+        .lg2-rings{ position:absolute; left:14%; top:38%; z-index:2; pointer-events:none; }
         .lg2-rings span{ position:absolute; border:1px solid rgba(255,255,255,.30); border-radius:50%;
           left:50%; top:50%; transform:translate(-50%,-50%); }
-        .lg2-rings span:nth-child(1){ width:180px; height:180px; }
-        .lg2-rings span:nth-child(2){ width:340px; height:340px; }
-        .lg2-rings span:nth-child(3){ width:520px; height:520px; border-color:rgba(255,255,255,.22); }
-        .lg2-rings span:nth-child(4){ width:720px; height:720px; border-color:rgba(255,255,255,.16); }
+        .lg2-rings span:nth-child(1){ width:260px; height:260px; }
+        .lg2-rings span:nth-child(2){ width:460px; height:460px; }
+        .lg2-rings span:nth-child(3){ width:660px; height:660px; border-color:rgba(255,255,255,.22); }
+        .lg2-rings span:nth-child(4){ width:860px; height:860px; border-color:rgba(255,255,255,.16); }
 
         /* Tablet */
         @media (max-width:1100px){
           .lg2-left{ flex-basis:46%; max-width:46%; padding:2.5rem; }
-          .lg2-map{ left:-5%; width:22%; opacity:.72; }
+          .lg2-map{ left:-12%; width:50%; height:86%; opacity:.72; }
           .lg2-rings span:nth-child(4){ display:none; }
         }
         /* Mobile — stack: photo/brand header on top, form below. Map + rings stay
