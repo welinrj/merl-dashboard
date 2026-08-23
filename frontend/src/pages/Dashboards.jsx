@@ -16,6 +16,7 @@ import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
 import FilterBar from '../components/ui/FilterBar';
+import VanuatuMap from '../components/VanuatuMap';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 
@@ -554,30 +555,48 @@ function Financial({ d }) {
 
 // ── Geographic ───────────────────────────────────────────────────────────────
 function Geographic({ d }) {
-  const byProvince = countBy(d.locations, (l) => l.province);
-  const byIsland = countBy(d.locations, (l) => l.island);
-  const byAC = countBy(d.locations, (l) => l.area_council);
+  const [province, setProvince] = useState(null);
+  const locs = province ? d.locations.filter((l) => l.province === province) : d.locations;
+  const provinceCounts = Object.fromEntries(countBy(d.locations, (l) => l.province)); // { province: sites }
+  const byIsland = countBy(locs, (l) => l.island);
+  const byAC = countBy(locs, (l) => l.area_council);
   const benByProvince = (() => {
     const m = new Map();
     for (const l of d.locations) if (l.province) m.set(l.province, (m.get(l.province) || 0) + (Number(l.beneficiaries) || 0));
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   })();
-  const withCoords = d.locations.filter((l) => l.latitude != null && l.longitude != null);
+  const withCoords = locs.filter((l) => l.latitude != null && l.longitude != null);
   return (
     <>
       <div className="db-kpis">
-        <StatTile label="Sites" value={d.locations.length} icon={MapPin} accent="var(--green-700)" />
-        <StatTile label="Provinces" value={byProvince.length} icon={MapPin} accent="#2563eb" />
+        <StatTile label="Sites" value={locs.length} icon={MapPin} accent="var(--green-700)" />
+        <StatTile label="Provinces" value={Object.keys(provinceCounts).length} icon={MapPin} accent="#2563eb" />
         <StatTile label="Area Councils" value={byAC.length} icon={MapPin} accent="#7c3aed" />
         <StatTile label="Geo-tagged" value={withCoords.length} sub="with coordinates" icon={MapPin} accent="#0891b2" />
       </div>
-      <div className="db-2">
-        <div className="db-card"><h3 className="db-h">Sites by Province</h3><BarList rows={byProvince} total={d.locations.length} /></div>
-        <div className="db-card"><h3 className="db-h">Beneficiaries by Province</h3><BarList rows={benByProvince} accent="#7c3aed" /></div>
+
+      {/* Vanuatu geographic dashboard (§36) — click a province to filter. */}
+      <div className="db-card" style={{ marginTop: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h3 className="db-h" style={{ margin: 0 }}>Sites across Vanuatu</h3>
+          {province && (
+            <button onClick={() => setProvince(null)} style={{ background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>
+              {province} · clear ×
+            </button>
+          )}
+        </div>
+        <div style={{ marginTop: '0.6rem' }}>
+          <VanuatuMap counts={provinceCounts} nationalCount={d.locations.length}
+            selected={province} onSelect={(p) => setProvince((prev) => (prev === p ? null : p))} />
+        </div>
       </div>
+
       <div className="db-2">
-        <div className="db-card"><h3 className="db-h">Sites by Island</h3><BarList rows={byIsland} accent="#2563eb" /></div>
-        <div className="db-card"><h3 className="db-h">Sites by Area Council</h3><BarList rows={byAC} accent="#0891b2" /></div>
+        <div className="db-card"><h3 className="db-h">Beneficiaries by Province</h3><BarList rows={benByProvince} accent="#7c3aed" /></div>
+        <div className="db-card"><h3 className="db-h">Sites by Island{province ? ` · ${province}` : ''}</h3><BarList rows={byIsland} accent="#2563eb" /></div>
+      </div>
+      <div className="db-card" style={{ marginTop: '1rem' }}>
+        <h3 className="db-h">Sites by Area Council{province ? ` · ${province}` : ''}</h3><BarList rows={byAC} accent="#0891b2" />
       </div>
     </>
   );
