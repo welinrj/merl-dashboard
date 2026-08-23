@@ -581,7 +581,34 @@
 .ov-kpi-sub { font-size: .68rem; color: var(--text-3); }
 
 .ov-grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: .9rem; margin-bottom: 1rem; }
+.ov-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-bottom: 1rem; }
 .ov-bottom { display: grid; grid-template-columns: 1fr 30%; gap: .9rem; }
+
+/* Beneficiaries / Risks KPI-tile cards */
+.ov-kpihead { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; flex-wrap: wrap; }
+.ov-kpihead-ic { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ov-kpihead-val { font-family: var(--font-display); font-size: 2rem; font-weight: 800; line-height: 1; color: var(--navy-900); }
+.ov-kpihead-lbl { font-size: .8rem; color: var(--text-3); }
+.ov-tiles { display: grid; gap: .5rem; }
+.ov-tiles.b5 { grid-template-columns: repeat(5, minmax(0,1fr)); }
+.ov-tiles.r4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.ov-tile { border: 1px solid var(--border); border-radius: 8px; padding: .55rem .45rem .5rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .1rem; min-width: 0; }
+.ov-tile-ic { display: flex; margin-bottom: .1rem; }
+.ov-tile-val { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; line-height: 1; color: var(--text-1); }
+.ov-tile-lbl { font-size: .68rem; color: var(--text-3); line-height: 1.15; }
+.ov-tile-pct { font-size: .8rem; font-weight: 700; margin-top: .05rem; }
+.ov-tile-bar { width: 100%; height: 3px; border-radius: 2px; background: var(--surface-2); overflow: hidden; margin-top: .3rem; }
+.ov-tile-bar > div { height: 100%; border-radius: 2px; }
+
+/* KPI summary strip — one wide card, equal columns with subtle dividers */
+.ov-strip { display: grid; grid-template-columns: repeat(5,1fr); background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); margin-bottom: 1rem; overflow: hidden; }
+.ov-strip-item { display: flex; flex-direction: column; gap: .15rem; padding: .9rem 1.05rem; border-left: 1px solid var(--border); }
+.ov-strip-item:first-child { border-left: none; }
+.ov-strip-top { display: flex; align-items: center; gap: .5rem; }
+.ov-strip-val { font-family: var(--font-display); font-size: 1.45rem; font-weight: 800; line-height: 1; color: var(--navy-900); }
+.ov-strip-lbl { font-size: .74rem; color: var(--text-3); }
+.ov-strip-link { display: inline-flex; align-items: center; gap: .2rem; background: none; border: none; padding: 0; margin-top: .1rem; cursor: pointer; font-size: .72rem; font-weight: 700; color: var(--navy-active); }
+.ov-strip-link:hover { text-decoration: underline; }
 .ov-panel { background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
 .ov-panel-h { padding: .8rem .9rem .3rem; }
 .ov-panel-title { font-size: .9rem; font-weight: 700; color: var(--text-1); }
@@ -600,8 +627,26 @@
 @keyframes ovShimmer { 0% { background-position: 100% 0 } 100% { background-position: -100% 0 } }
 
 /* Responsive */
-@media (max-width: 1200px) { .ov-grid4 { grid-template-columns: repeat(2,1fr); } .ov-kpis { grid-template-columns: repeat(3,1fr); } }
-@media (max-width: 900px)  { .ov-bottom { grid-template-columns: 1fr; } }
+@media (max-width: 1200px) {
+  .ov-grid4 { grid-template-columns: repeat(2,1fr); }
+  .ov-kpis { grid-template-columns: repeat(3,1fr); }
+  .ov-tiles.b5 { grid-template-columns: repeat(3,1fr); }
+  .ov-tiles.r4 { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 1000px) {
+  .ov-strip { grid-template-columns: repeat(3,1fr); }
+  .ov-strip-item:nth-child(3n+1) { border-left: none; }
+  .ov-strip-item:nth-child(n+4) { border-top: 1px solid var(--border); }
+}
+@media (max-width: 900px)  { .ov-bottom { grid-template-columns: 1fr; } .ov-2 { grid-template-columns: 1fr; } }
+@media (max-width: 620px) {
+  .ov-strip { grid-template-columns: repeat(2,1fr); }
+  .ov-strip-item { border-left: none; }
+  .ov-strip-item:nth-child(n+3) { border-top: 1px solid var(--border); }
+}
+@media (max-width: 520px) {
+  .ov-tiles.b5, .ov-tiles.r4 { grid-template-columns: repeat(2,1fr); }
+}
 @media (max-width: 760px) {
   .dsh-side { position: fixed; z-index: 60; height: 100dvh; transform: translateX(-100%); transition: transform .2s ease; box-shadow: var(--shadow-lg); }
   .dsh-side.open { transform: translateX(0); }

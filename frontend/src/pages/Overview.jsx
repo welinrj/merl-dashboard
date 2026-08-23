@@ -15,6 +15,7 @@ import {
 import {
   FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, Ban, Flag, Wallet,
   Printer, MapPin, ArrowRight, ClipboardCheck, Send, RotateCcw, Clock, Eye,
+  Users, User, Baby, Accessibility, AlertCircle, ShieldCheck, Archive, CircleDollarSign, ListChecks,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -172,11 +173,11 @@ export default function Overview({ user }) {
   const bAny = (f) => bens.some((b) => b[f] != null);
   const bSum = (f) => (bAny(f) ? bens.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
   const gedsi = [
-    { key: 'female', label: 'Female', value: bSum('female'), color: '#7c3aed' },
-    { key: 'male', label: 'Male', value: bSum('male'), color: BLUE },
-    { key: 'other_gender', label: 'Other / N.R.', value: bSum('other_gender'), color: '#94a3b8' },
-    { key: 'youth', label: 'Youth', value: bSum('youth'), color: '#e0a12a' },
-    { key: 'persons_with_disability', label: 'Persons w/ disability', value: bSum('persons_with_disability'), color: '#22a565' },
+    { key: 'female', label: 'Female', icon: User, value: bSum('female'), color: '#7c3aed' },
+    { key: 'male', label: 'Male', icon: User, value: bSum('male'), color: BLUE },
+    { key: 'youth', label: 'Youth', icon: Baby, value: bSum('youth'), color: '#e0a12a' },
+    { key: 'persons_with_disability', label: 'Persons w/ disability', icon: Accessibility, value: bSum('persons_with_disability'), color: '#22a565' },
+    { key: 'other_gender', label: 'Other / N.R.', icon: Users, value: bSum('other_gender'), color: '#0e8f8a' },
   ];
   const hasGedsi = gedsi.some((g) => g.value != null);
 
@@ -233,6 +234,20 @@ export default function Overview({ user }) {
     label: overdue === 1 ? 'Reporting period overdue' : 'Reporting periods overdue',
     cta: 'View reporting', to: '/merl-reporting' });
   const firstName = (user?.name || '').trim().split(/\s+/)[0] || '';
+
+  // Risk status tiles (reuse risksData: High / Medium / Low / Closed).
+  const RISK_ICON = { High: AlertTriangle, Medium: AlertCircle, Low: ShieldCheck, Closed: Archive };
+  const riskTiles = risksData.map((r) => ({ ...r, icon: RISK_ICON[r.name] }));
+
+  // KPI summary strip — all values from the (filtered) live data.
+  const overdueActs = acts.filter((a) => a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < nowIso).length;
+  const strip = [
+    { key: 'active', icon: ClipboardCheck, value: total - byBucket.completed, label: 'Active Projects', cta: 'View projects', to: '/analytics/portfolio', accent: '#22a565' },
+    { key: 'prov', icon: MapPin, value: Object.keys(provinceCounts).length, label: 'Provinces', cta: 'View locations', to: '/analytics/geographic', accent: BLUE },
+    { key: 'budget', icon: CircleDollarSign, value: fmtVUV(totalBudget).replace('VUV ', ''), label: 'Total Budget (VUV)', cta: 'View finances', to: '/analytics/financial', accent: '#7c3aed' },
+    { key: 'acts', icon: ListChecks, value: acts.length, label: 'Activities', cta: 'View workplan', to: '/merl-reporting', accent: '#0e8f8a' },
+    { key: 'overdue', icon: Clock, value: overdueActs, label: 'Overdue Activities', cta: 'View workplan', to: '/merl-reporting', accent: '#b3402f' },
+  ];
 
   return (
     <div className="ov">
@@ -325,13 +340,13 @@ export default function Overview({ user }) {
         </Panel>
       </div>
 
-      {/* Analytics row 2 */}
-      <div className="ov-grid4">
-        <Panel title="Results Progress (Indicators)" footer={<FooterLink label="View all indicators" onClick={() => nav('/analytics/results')} />}>
+      {/* Analytics row 2 — Indicators status + trend */}
+      <div className="ov-2">
+        <Panel title="Indicators Status" footer={<FooterLink label="View all indicators" onClick={() => nav('/analytics/results')} />}>
           <Donut data={perfData} center={[totalIndicators, 'Indicators']} />
           <Legend items={perfData} total={perfData.reduce((a, s) => a + s.value, 0)} />
         </Panel>
-        <Panel title="Progress Trend (All Indicators)" footer={<FooterLink label="View trend analysis" onClick={() => nav('/analytics/results')} />}>
+        <Panel title="Results Trend" footer={<FooterLink label="View trend analysis" onClick={() => nav('/analytics/results')} />}>
           {trendData.length === 0 ? <NoData label="No reported progress yet" /> : (
             <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -346,38 +361,54 @@ export default function Overview({ user }) {
             </div>
           )}
         </Panel>
+      </div>
+
+      {/* Analytics row 3 — Beneficiaries + Risks as icon KPI tiles */}
+      <div className="ov-2">
         <Panel title="Beneficiaries Reached" footer={<FooterLink label="View beneficiaries" onClick={() => nav('/analytics/geographic')} />}>
-          <div style={{ display: 'flex', flexDirection: 'column', height: 200, gap: '0.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-              <span style={{ fontSize: '1.7rem', fontWeight: 800, lineHeight: 1, fontFamily: 'var(--font-display)', color: 'var(--text-1)' }}>{totalBen ? totalBen.toLocaleString() : '0'}</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>total direct beneficiaries</span>
-            </div>
-            {!hasGedsi ? (
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-3)', marginTop: '0.4rem' }}>No disaggregated data reported.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.2rem' }}>
-                {gedsi.map((g) => {
-                  const p = g.value != null && totalBen ? Math.round((g.value / totalBen) * 100) : null;
-                  return (
-                    <div key={g.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', width: 128, flexShrink: 0 }}>{g.label}</span>
-                      <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--surface-2)', overflow: 'hidden' }}>
-                        <div style={{ width: `${p == null ? 0 : Math.min(100, p)}%`, height: '100%', background: g.color }} />
-                      </div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)', width: 62, textAlign: 'right', flexShrink: 0 }}>
-                        {g.value == null ? '—' : g.value.toLocaleString()}{p != null ? ` (${p}%)` : ''}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+          <div className="ov-kpihead">
+            <span className="ov-kpihead-ic" style={{ background: 'color-mix(in srgb, #7c3aed 12%, #fff)', color: '#7c3aed' }}><Users size={22} /></span>
+            <span className="ov-kpihead-val">{totalBen ? totalBen.toLocaleString() : '0'}</span>
+            <span className="ov-kpihead-lbl">Total direct beneficiaries</span>
           </div>
+          {!hasGedsi ? (
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-3)', marginTop: '0.5rem' }}>No disaggregated data reported.</div>
+          ) : (
+            <div className="ov-tiles b5">
+              {gedsi.map((g) => (
+                <KpiTile key={g.key} icon={g.icon} value={g.value} label={g.label}
+                  pct={g.value != null && totalBen ? Math.round((g.value / totalBen) * 100) : null} accent={g.color} />
+              ))}
+            </div>
+          )}
         </Panel>
         <Panel title="Risks Overview" footer={<FooterLink label="View risks register" onClick={() => nav('/analytics/risks')} />}>
-          <Donut data={risksData} center={[totalRisks, 'Risks']} />
-          <Legend items={risksData} total={totalRisks} />
+          <div className="ov-kpihead">
+            <span className="ov-kpihead-ic" style={{ background: 'color-mix(in srgb, #16a34a 12%, #fff)', color: '#16a34a' }}><ShieldCheck size={22} /></span>
+            <span className="ov-kpihead-val">{totalRisks}</span>
+            <span className="ov-kpihead-lbl">Total Risks</span>
+          </div>
+          <div className="ov-tiles r4">
+            {riskTiles.map((r) => (
+              <KpiTile key={r.name} icon={r.icon} value={r.value} label={r.name}
+                pct={totalRisks ? `${((r.value / totalRisks) * 100).toFixed(1)}%` : '0.0%'} accent={r.color} />
+            ))}
+          </div>
         </Panel>
+      </div>
+
+      {/* KPI summary strip */}
+      <div className="ov-strip">
+        {strip.map((s) => (
+          <div key={s.key} className="ov-strip-item">
+            <div className="ov-strip-top">
+              <span className="ov-strip-ic" style={{ color: s.accent }}><s.icon size={22} /></span>
+              <span className="ov-strip-val">{s.value}</span>
+            </div>
+            <span className="ov-strip-lbl">{s.label}</span>
+            <button className="ov-strip-link" onClick={() => nav(s.to)}>{s.cta} <ArrowRight size={12} /></button>
+          </div>
+        ))}
       </div>
 
       {/* Recent updates + milestones */}
@@ -442,6 +473,22 @@ function Kpi({ icon: Icon, label, value, sub, small }) {
         {sub && <div className="ov-kpi-sub">{sub}</div>}
       </div>
       <span className="ov-kpi-ic" aria-hidden="true"><Icon size={18} /></span>
+    </div>
+  );
+}
+
+// Compact icon KPI tile used for the beneficiary + risk breakdowns. `pct` may be
+// a number (rendered as N%) or a preformatted string (e.g. "12.5%"); null → "—".
+function KpiTile({ icon: Icon, value, label, pct, accent }) {
+  const pctText = pct == null ? '—' : (typeof pct === 'number' ? `${pct}%` : pct);
+  const barW = pct == null ? 0 : Math.min(100, Math.max(0, parseFloat(pct) || 0));
+  return (
+    <div className="ov-tile" style={{ background: `color-mix(in srgb, ${accent} 4%, #fff)`, borderColor: `color-mix(in srgb, ${accent} 28%, var(--border))` }}>
+      <span className="ov-tile-ic" style={{ color: accent }} aria-hidden="true"><Icon size={20} /></span>
+      <span className="ov-tile-val">{value == null ? '—' : (typeof value === 'number' ? value.toLocaleString() : value)}</span>
+      <span className="ov-tile-lbl">{label}</span>
+      <span className="ov-tile-pct" style={{ color: pct == null ? 'var(--text-3)' : accent }}>{pctText}</span>
+      <div className="ov-tile-bar"><div style={{ width: `${barW}%`, background: accent }} /></div>
     </div>
   );
 }
