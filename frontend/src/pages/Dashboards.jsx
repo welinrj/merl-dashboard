@@ -12,6 +12,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import StatTile from '../components/ui/StatTile';
+import PageHeader from '../components/ui/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import { SkeletonCard } from '../components/ui/LoadingSkeleton';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 
@@ -82,8 +85,23 @@ export default function Dashboards({ initialTab }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Data freshness (§76): latest approved reporting period.
+  const dataAsAt = useMemo(() => {
+    const approved = (d?.reporting || []).filter((r) => r.submission_status === 'approved' && r.period_end);
+    if (!approved.length) return null;
+    const latest = approved.map((r) => r.period_end).sort().pop();
+    return new Date(latest).toLocaleDateString('en-VU', { year: 'numeric', month: 'short', day: 'numeric' });
+  }, [d]);
+
   if (loading || !d) {
-    return <div className="page-pad"><p style={{ color: 'var(--text-3)' }}>Loading dashboards…</p></div>;
+    return (
+      <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <PageHeader icon={LayoutDashboard} title="Dashboards" subtitle="Portfolio monitoring across the L&D programme." />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.7rem' }}>
+          {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -103,11 +121,20 @@ export default function Dashboards({ initialTab }) {
         @media (max-width:420px){.db-kpis{grid-template-columns:1fr}}
       `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-        <LayoutDashboard size={22} style={{ color: 'var(--green-700)' }} />
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem,4vw,1.9rem)', fontWeight: 700, margin: 0 }}>Dashboards</h1>
-      </div>
+      <PageHeader
+        icon={LayoutDashboard}
+        title="Dashboards"
+        subtitle="Portfolio monitoring across the L&D programme."
+        actions={dataAsAt ? (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Data as at: <strong style={{ color: 'var(--text-2)' }}>{dataAsAt}</strong></span>
+        ) : null}
+      />
 
+      {d.projects.length === 0 ? (
+        <EmptyState icon={FolderKanban} title="No project data available"
+          description="Register your first project to begin portfolio monitoring." />
+      ) : (
+      <>
       <div className="db-tabs">
         {TABS.map(({ key, label, Icon }) => (
           <button key={key} className={`db-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
@@ -132,6 +159,8 @@ export default function Dashboards({ initialTab }) {
       {tab === 'geographic' && <Geographic d={d} />}
       {tab === 'risks' && <Risks d={d} />}
       {tab === 'reporting' && <Reporting d={d} />}
+      </>
+      )}
     </div>
   );
 }
