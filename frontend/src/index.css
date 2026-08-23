@@ -619,33 +619,44 @@
 .ovx-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); padding: .9rem 1rem; display: flex; flex-direction: column; min-width: 0; }
 .ovx-card-h { display: flex; align-items: center; gap: .4rem; font-size: .74rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: var(--text-2); margin-bottom: .6rem; }
 
-/* Row 1 — headline KPIs (4th card wider) */
-.ovx-kpis { display: grid; grid-template-columns: 1fr 1fr 1fr 1.55fr; gap: .75rem; }
+/* Level 1 — primary executive KPIs (4th card slightly wider for the breakdown) */
+.ovx-kpis { display: grid; grid-template-columns: 1fr 1fr 1fr 1.45fr; gap: .75rem; }
 .ovx-kpi2 { justify-content: space-between; gap: .45rem; }
+.ovx-kpiprog { height: 6px; border-radius: 4px; background: var(--surface-2); overflow: hidden; margin-top: .5rem; }
+.ovx-kpiprog > div { height: 100%; border-radius: 4px; }
 .ovx-kpi-top { display: flex; align-items: center; gap: .7rem; }
 .ovx-kpi-ic { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--green-700); background: color-mix(in srgb, var(--green-600) 12%, var(--white)); }
 .ovx-kpi-ic.solid { background: var(--green-600); color: #fff; }
 .ovx-kpi-label { font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); }
 .ovx-kpi-val { font-family: var(--font-display); font-size: clamp(1.3rem, 1.9vw, 1.7rem); font-weight: 800; line-height: 1.05; color: var(--navy-900); }
 .ovx-kpi-sub { font-size: .72rem; color: var(--text-2); margin-top: .1rem; }
-.ovx-kpi-link, .ovx-cardlink { display: inline-flex; align-items: center; gap: .25rem; align-self: flex-start; background: none; border: none; padding: .1rem 0 0; margin-top: .35rem; cursor: pointer; font-size: .72rem; font-weight: 700; color: var(--green-700); }
-.ovx-cardlink { align-self: center; margin-top: auto; padding-top: .45rem; }
+.ovx-kpi-link, .ovx-cardlink { display: inline-flex; align-items: center; gap: .25rem; align-self: flex-start; background: none; border: none; padding: .1rem 0 0; margin-top: auto; cursor: pointer; font-size: .72rem; font-weight: 700; color: var(--green-700); }
+.ovx-kpi-link { padding-top: .5rem; }
+.ovx-cardlink { align-self: center; padding-top: .45rem; }
 .ovx-kpi-link:hover, .ovx-cardlink:hover { text-decoration: underline; }
 .ovx-kpi2, .ovx-bene { position: relative; }
 .ovx-kpi2:hover, .ovx-bene:hover { border-color: color-mix(in srgb, var(--green-600) 45%, var(--border)); }
-.ovx-bene { gap: .3rem; }
+.ovx-bene { gap: .35rem; }
 .ovx-bene-top { display: flex; align-items: center; gap: .7rem; }
 .ovx-bene-val { font-size: clamp(1.5rem, 2.1vw, 1.95rem); }
-.ovx-gender { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .1rem; }
-.ovx-gender-cell { display: inline-flex; align-items: center; gap: .3rem; font-size: .72rem; color: var(--text-3); flex-wrap: wrap; }
-.ovx-gender-cell b { font-family: var(--font-display); font-size: .95rem; font-weight: 800; color: var(--navy-900); }
-.ovx-split { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-2); margin-top: .05rem; }
-.ovx-split > div { height: 100%; }
-.ovx-bene-mini { display: flex; gap: 1.1rem; margin-top: .15rem; }
-.ovx-bene-mini span { display: flex; flex-direction: column; font-size: .66rem; line-height: 1.15; color: var(--text-3); }
-.ovx-bene-mini b { font-family: var(--font-display); font-size: 1rem; font-weight: 800; color: var(--navy-900); }
+.ovx-benerow { display: flex; justify-content: space-between; gap: .4rem; margin-top: .35rem; }
+.ovx-bene-cell { display: flex; flex-direction: column; align-items: flex-start; gap: .05rem; min-width: 0; }
+.ovx-bene-cell b { font-family: var(--font-display); font-size: 1.02rem; font-weight: 800; color: var(--navy-900); line-height: 1.1; }
+.ovx-bene-cell i { font-size: .64rem; font-style: normal; color: var(--text-3); white-space: nowrap; }
 
-/* Row 2 — performance + attention */
+/* Level 2 — geographic footprint + implementation performance */
+.ovx-mapperf { display: grid; grid-template-columns: 1.42fr 1fr; gap: .75rem; }
+.ovx-locwrap { display: flex; gap: 1rem; align-items: center; flex: 1; }
+.ovx-loc .ovx-provmap { flex: 0 0 auto; }
+.ovx-impl { display: flex; align-items: center; gap: .9rem; }
+.ovx-impl > div:first-child { flex: 0 0 128px; }
+.ovx-impl .ovx-status-legend { flex: 1; display: flex; flex-direction: column; gap: .18rem; min-width: 0; }
+.ovx-impl-prog { margin-top: .7rem; }
+.ovx-impl-prog-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: .3rem; }
+.ovx-impl-prog-h span { font-size: .78rem; font-weight: 700; color: var(--text-2); }
+.ovx-impl-prog-h b { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; color: var(--navy-900); }
+
+/* Level 3 — supporting analytics */
 .ovx-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .ovx-perf { display: flex; flex-direction: column; gap: .55rem; }
 .ovx-perf-row { display: grid; grid-template-columns: 18px 1fr 1.6fr 44px; align-items: center; gap: .6rem; }
@@ -678,6 +689,9 @@
 .ovx-prov-row { display: grid; grid-template-columns: 9px 1fr auto auto; align-items: center; gap: .5rem; padding: .28rem .3rem; border: none; background: none; border-radius: 6px; cursor: pointer; text-align: left; }
 .ovx-prov-row:hover { background: var(--surface-1); }
 .ovx-prov-row.sel { background: var(--green-50); }
+.ovx-prov-row.nat { cursor: default; }
+.ovx-prov-row.nat:hover { background: none; }
+.ovx-prov-row.nat .ovx-prov-name { color: var(--text-3); }
 .ovx-prov-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green-600); }
 .ovx-prov-name { font-size: .78rem; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ovx-prov-proj { font-size: .73rem; color: var(--text-2); text-align: right; white-space: nowrap; }
@@ -705,11 +719,14 @@
 /* Responsive: tablets/phones stack normally */
 @media (max-width: 1000px) {
   .ovx-kpis { grid-template-columns: 1fr 1fr; }
+  .ovx-mapperf { grid-template-columns: 1fr; }
   .ovx-2 { grid-template-columns: 1fr; }
   .ovx-3 { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .ovx-kpis { grid-template-columns: 1fr; }
+  .ovx-locwrap { flex-direction: column; align-items: stretch; }
+  .ovx-loc .ovx-provmap { align-self: center; }
 }
 .ov-panel { background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
 .ov-panel-h { padding: .8rem .9rem .3rem; }

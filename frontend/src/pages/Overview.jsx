@@ -16,7 +16,7 @@ import {
   FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, Ban, Flag, Wallet,
   Printer, MapPin, ArrowRight, ClipboardCheck, Send, RotateCcw, Clock, Eye,
   Users, Venus, Mars, PersonStanding, Accessibility, AlertCircle, ShieldCheck, Archive, CircleDollarSign, ListChecks,
-  Target, FileCheck, CalendarClock, FileText, FolderOpen, RefreshCw, TrendingUp,
+  Target, FileCheck, CalendarClock, FileText, FolderOpen, RefreshCw, TrendingUp, Activity,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -242,6 +242,17 @@ export default function Overview({ user }) {
     return { f: fv, m: mv, fp: s ? Math.round((fv / s) * 100) : 0, mp: s ? Math.round((mv / s) * 100) : 0 };
   })();
 
+  // Overall implementation progress = mean of the latest indicator achievement %.
+  const achVals = prog.filter((r) => r.achievement_pct != null).map((r) => Number(r.achievement_pct));
+  const overallProgress = achVals.length ? Math.round(achVals.reduce((a, b) => a + b, 0) / achVals.length) : null;
+  // Compact beneficiary breakdown (only categories that actually have data).
+  const beneMini = [
+    { key: 'female', icon: Venus, label: 'Female', value: gedsi[0].value, color: '#db2777' },
+    { key: 'male', icon: Mars, label: 'Male', value: gedsi[1].value, color: BLUE },
+    { key: 'youth', icon: PersonStanding, label: 'Youth', value: gedsi[2].value, color: '#e0a12a' },
+    { key: 'pwd', icon: Accessibility, label: 'Disability', value: gedsi[3].value, color: '#22a565' },
+  ].filter((x) => x.value != null);
+
   // Beneficiaries reached per province (project → provinces → direct beneficiaries).
   const provById = new Map(d.projects.map((p) => [p.id, p.provinces || []]));
   const provBen = {};
@@ -283,14 +294,14 @@ export default function Overview({ user }) {
         </div>
       </div>
 
-      {/* Row 1 — headline KPIs (Beneficiaries wider) */}
+      {/* Level 1 — primary executive KPIs: Projects · Total Funding · Disbursed · Beneficiaries */}
       <div className="ovx-kpis">
-        <HeadKpi icon={FolderOpen} label="Active Projects" value={activeProjects}
-          sub={`${completed} completed`} linkLabel="View projects" onClick={() => nav('/analytics/portfolio')} />
-        <HeadKpi icon={CircleDollarSign} label="Total Budget" value={fmtVUV(totalBudget).replace('VUV', 'VT')}
-          sub={`${util}% disbursed`} linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
-        <HeadKpi icon={MapPin} label="Provinces Reached" value={`${provincesReached} / ${provincesTotal}`}
-          sub={provincesReached >= provincesTotal ? 'All provinces' : 'Provincial coverage'} linkLabel="View coverage" onClick={() => nav('/analytics/geographic')} />
+        <HeadKpi icon={FolderOpen} label="Projects" value={total}
+          sub={`${activeProjects} active · ${completed} completed`} linkLabel="View projects" onClick={() => nav('/analytics/portfolio')} />
+        <HeadKpi icon={CircleDollarSign} label="Total Funding" value={fmtVUV(totalBudget).replace('VUV', 'VT')}
+          sub={donors.length ? `${donors.length} funding partner${donors.length === 1 ? '' : 's'}` : 'Committed budget'} linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
+        <HeadKpi icon={Wallet} label="Disbursed" value={fmtVUV(totalExp).replace('VUV', 'VT')}
+          sub={`${util}% of total funding`} progress={util} progressColor="#7c3aed" linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
         <div className="ovx-card ovx-bene">
           <div className="ovx-bene-top">
             <span className="ovx-kpi-ic solid" aria-hidden="true"><Users size={22} /></span>
@@ -299,28 +310,76 @@ export default function Overview({ user }) {
               <div className="ovx-kpi-val ovx-bene-val">{totalBen ? totalBen.toLocaleString() : '0'}</div>
             </div>
           </div>
-          {genderSplit && (
-            <>
-              <div className="ovx-gender">
-                <span className="ovx-gender-cell"><Venus size={15} style={{ color: '#db2777' }} /><b>{genderSplit.fp}%</b><span>{genderSplit.f.toLocaleString()} Women</span></span>
-                <span className="ovx-gender-cell"><Mars size={15} style={{ color: BLUE }} /><b>{genderSplit.mp}%</b><span>{genderSplit.m.toLocaleString()} Men</span></span>
-              </div>
-              <div className="ovx-split" aria-hidden="true">
-                <div style={{ width: `${genderSplit.fp}%`, background: '#db2777' }} />
-                <div style={{ width: `${genderSplit.mp}%`, background: BLUE }} />
-              </div>
-            </>
+          {beneMini.length > 0 && (
+            <div className="ovx-benerow">
+              {beneMini.map((b) => (
+                <span key={b.key} className="ovx-bene-cell">
+                  <b.icon size={15} style={{ color: b.color }} aria-hidden="true" />
+                  <b>{b.value.toLocaleString()}</b>
+                  <i>{b.label}</i>
+                </span>
+              ))}
+            </div>
           )}
-          <div className="ovx-bene-mini">
-            {gedsi[2].value != null && <span><b>{gedsi[2].value.toLocaleString()}</b>Youth</span>}
-            {gedsi[3].value != null && <span><b>{gedsi[3].value.toLocaleString()}</b>Persons with disabilities</span>}
-            {gedsi[4].value != null && <span><b>{gedsi[4].value.toLocaleString()}</b>Other / N.R.</span>}
-          </div>
           <button className="ovx-kpi-link" onClick={() => nav('/analytics/geographic')}>View beneficiaries <ArrowRight size={13} /></button>
         </div>
       </div>
 
-      {/* Row 2 — Portfolio Performance + Needs Attention */}
+      {/* Level 2 — geographic footprint + implementation performance */}
+      <div className="ovx-mapperf">
+        <div className="ovx-card ovx-loc">
+          <div className="ovx-card-h"><MapPin size={16} /> Project Locations</div>
+          <div className="ovx-locwrap">
+            <div className="ovx-provmap">
+              <VanuatuMapMini counts={provinceCounts} selected={filters.province} onSelect={(pv) => setFilter('province', pv)} width={150} height={300} />
+            </div>
+            <div className="ovx-prov">
+              {PROVINCE_LIST.map((pv) => (
+                <button key={pv} className={`ovx-prov-row${filters.province === pv ? ' sel' : ''}`} onClick={() => setFilter('province', pv)}>
+                  <span className="ovx-prov-dot" />
+                  <span className="ovx-prov-name">{pv}</span>
+                  <span className="ovx-prov-proj">{provinceCounts[pv] || 0} projects</span>
+                  <span className="ovx-prov-ben">{(provBen[pv] || 0).toLocaleString()}</span>
+                </button>
+              ))}
+              {nationalCount > 0 && (
+                <div className="ovx-prov-row nat">
+                  <span className="ovx-prov-dot" style={{ background: 'var(--text-3)' }} />
+                  <span className="ovx-prov-name">National / multi-province</span>
+                  <span className="ovx-prov-proj">{nationalCount} projects</span>
+                  <span className="ovx-prov-ben" />
+                </div>
+              )}
+            </div>
+          </div>
+          <button className="ovx-cardlink" onClick={() => nav('/analytics/geographic')}>View coverage <ArrowRight size={13} /></button>
+        </div>
+        <div className="ovx-card">
+          <div className="ovx-card-h"><Activity size={16} /> Implementation Performance</div>
+          <div className="ovx-impl">
+            <Donut size={128} data={statusData} center={[total, 'Total']} onSlice={(s) => setFilter('status', s.key)} />
+            <div className="ovx-status-legend">
+              {statusData.map((s) => (
+                <button key={s.key} className="ovx-leg-row" onClick={() => setFilter('status', s.key)}>
+                  <span className="ovx-leg-dot" style={{ background: s.color }} />
+                  <span className="ovx-leg-name">{s.name}</span>
+                  <b className="ovx-leg-val">{s.value}</b>
+                  <span className="ovx-leg-pct">{pct(s.value, total)}%</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {overallProgress != null && (
+            <div className="ovx-impl-prog">
+              <div className="ovx-impl-prog-h"><span>Overall Progress</span><b>{overallProgress}%</b></div>
+              <div className="ovx-perf-bar"><div style={{ width: `${Math.min(100, overallProgress)}%`, background: '#22a565' }} /></div>
+            </div>
+          )}
+          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>View performance details <ArrowRight size={13} /></button>
+        </div>
+      </div>
+
+      {/* Level 3 — supporting analytics */}
       <div className="ovx-2">
         <div className="ovx-card">
           <div className="ovx-card-h"><TrendingUp size={16} /> Portfolio Performance</div>
@@ -351,65 +410,26 @@ export default function Overview({ user }) {
         </div>
       </div>
 
-      {/* Row 3 — Project Status + Provincial Coverage + Recent / Upcoming */}
-      <div className="ovx-3">
-        <div className="ovx-card">
-          <div className="ovx-card-h">Project Status</div>
-          <div className="ovx-status">
-            <Donut size={108} data={statusData} center={[total, 'Total']} onSlice={(s) => setFilter('status', s.key)} />
-            <div className="ovx-status-legend">
-              {statusData.map((s) => (
-                <button key={s.key} className="ovx-leg-row" onClick={() => setFilter('status', s.key)}>
-                  <span className="ovx-leg-dot" style={{ background: s.color }} />
-                  <span className="ovx-leg-name">{s.name}</span>
-                  <b className="ovx-leg-val">{s.value}</b>
-                  <span className="ovx-leg-pct">{pct(s.value, total)}%</span>
-                </button>
-              ))}
-            </div>
+      <div className="ovx-card">
+        <div className="ovx-card-h"><FileText size={16} /> Recent Activity &amp; Upcoming Reports</div>
+        {reportRows.length === 0 ? <NoData label="Nothing due soon" height={120} /> : (
+          <div className="ovx-rtbl-wrap">
+            <table className="ovx-rtbl">
+              <thead><tr><th>Item</th><th>Project</th><th>Due date</th><th>Status</th></tr></thead>
+              <tbody>
+                {reportRows.map((r) => (
+                  <tr key={r.id} onClick={() => nav('/analytics/reporting')}>
+                    <td className="ovx-rt-item"><FileText size={13} /> <span>{r.item}</span></td>
+                    <td className="ovx-rt-proj">{r.project || '—'}</td>
+                    <td className="ovx-rt-due">{fmtDate(r.due)}</td>
+                    <td><span className={`ovx-badge tone-${r.status.tone}`}>{r.status.label}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/portfolio')}>View all projects <ArrowRight size={13} /></button>
-        </div>
-        <div className="ovx-card">
-          <div className="ovx-card-h">Provincial Coverage</div>
-          <div className="ovx-provwrap">
-            <div className="ovx-provmap">
-              <VanuatuMapMini counts={provinceCounts} selected={filters.province} onSelect={(pv) => setFilter('province', pv)} width={132} height={264} />
-            </div>
-            <div className="ovx-prov">
-              {PROVINCE_LIST.map((pv, i) => (
-                <button key={pv} className={`ovx-prov-row${filters.province === pv ? ' sel' : ''}`} onClick={() => setFilter('province', pv)}>
-                  <span className="ovx-prov-dot" />
-                  <span className="ovx-prov-name">{pv}</span>
-                  <span className="ovx-prov-proj">{provinceCounts[pv] || 0} projects</span>
-                  <span className="ovx-prov-ben">{(provBen[pv] || 0).toLocaleString()}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/geographic')}>View provincial details <ArrowRight size={13} /></button>
-        </div>
-        <div className="ovx-card">
-          <div className="ovx-card-h">Recent Activity &amp; Upcoming Reports</div>
-          {reportRows.length === 0 ? <NoData label="Nothing due soon" height={140} /> : (
-            <div className="ovx-rtbl-wrap">
-              <table className="ovx-rtbl">
-                <thead><tr><th>Item</th><th>Project</th><th>Due date</th><th>Status</th></tr></thead>
-                <tbody>
-                  {reportRows.map((r) => (
-                    <tr key={r.id} onClick={() => nav('/analytics/reporting')}>
-                      <td className="ovx-rt-item"><FileText size={13} /> <span>{r.item}</span></td>
-                      <td className="ovx-rt-proj">{r.project || '—'}</td>
-                      <td className="ovx-rt-due">{fmtDate(r.due)}</td>
-                      <td><span className={`ovx-badge tone-${r.status.tone}`}>{r.status.label}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/reporting')}>View all reports <ArrowRight size={13} /></button>
-        </div>
+        )}
+        <button className="ovx-cardlink" onClick={() => nav('/analytics/reporting')}>View all reports <ArrowRight size={13} /></button>
       </div>
 
       <div className="ovx-updated"><RefreshCw size={12} /> Last updated: {dataAsAt}</div>
@@ -417,8 +437,9 @@ export default function Overview({ user }) {
   );
 }
 
-// Compact headline KPI card (Row 1): icon badge, label, value, sub + footer link.
-function HeadKpi({ icon: Icon, label, value, sub, linkLabel, onClick }) {
+// Compact headline KPI card (Level 1): icon badge, label, value, sub, optional
+// progress bar (used to fold disbursement % into the financial KPI) + footer link.
+function HeadKpi({ icon: Icon, label, value, sub, progress, progressColor, linkLabel, onClick }) {
   return (
     <div className="ovx-card ovx-kpi2">
       <div className="ovx-kpi-top">
@@ -429,6 +450,9 @@ function HeadKpi({ icon: Icon, label, value, sub, linkLabel, onClick }) {
           {sub && <div className="ovx-kpi-sub">{sub}</div>}
         </div>
       </div>
+      {progress != null && (
+        <div className="ovx-kpiprog"><div style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: progressColor || '#22a565' }} /></div>
+      )}
       <button className="ovx-kpi-link" onClick={onClick}>{linkLabel} <ArrowRight size={13} /></button>
     </div>
   );
