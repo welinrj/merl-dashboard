@@ -39,9 +39,12 @@
   --ring:      rgba(14,110,110,0.16); /* teal focus glow */
   /* Layered elevation (ambient + key light), warm-tinted to match the cream
      palette — gives surfaces a real sense of depth / lift ("3D" effect). */
-  --shadow-sm: 0 1px 2px rgba(28,21,18,0.06), 0 1px 3px rgba(28,21,18,0.05);
-  --shadow-md: 0 2px 5px rgba(28,21,18,0.06), 0 10px 20px -6px rgba(28,21,18,0.14);
-  --shadow-lg: 0 6px 14px rgba(28,21,18,0.08), 0 26px 50px -12px rgba(28,21,18,0.22);
+  /* Restrained elevation — a government information system should feel stable,
+     not floating. Borders do most of the work; shadows are subtle. --shadow-lg
+     is reserved for true overlays (dropdowns, modals). */
+  --shadow-sm: 0 1px 2px rgba(28,21,18,0.05);
+  --shadow-md: 0 1px 2px rgba(28,21,18,0.05);
+  --shadow-lg: 0 6px 20px -6px rgba(28,21,18,0.18);
   /* A faint top highlight that reads as a light catching the raised edge. */
   --edge-hi: inset 0 1px 0 rgba(255,255,255,0.75);
   --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
@@ -81,30 +84,23 @@
   .card {
     background: var(--white);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 8px;
     padding: 1.375rem;
-    /* Raised elevation + a soft top highlight so cards float above the page. */
-    box-shadow: var(--shadow-md), var(--edge-hi);
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    /* Flat, bordered surface — subtle shadow only. */
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s ease;
   }
-  /* Opt-in extra lift for clickable cards. */
+  /* Clickable cards get a slightly stronger border on hover — no lift. */
   .card-hover:hover {
-    box-shadow: var(--shadow-lg), var(--edge-hi);
     border-color: var(--green-200);
-    transform: translateY(-3px);
   }
   .card-accent { border-left: 3px solid var(--green-500); }
   .card-gold   { border-left: 3px solid var(--gold-500); }
 
-  /* KPI stat tiles: raised surfaces with a soft top highlight that lift on hover
-     — the core of the "3D" depth treatment for headline figures. */
+  /* KPI stat tiles: flat bordered surfaces (no float / lift). */
   .stat-tile {
-    box-shadow: var(--shadow-md), var(--edge-hi);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-  }
-  .stat-tile:hover {
-    box-shadow: var(--shadow-lg), var(--edge-hi);
-    transform: translateY(-3px);
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s ease;
   }
 
   .section-title {
@@ -124,31 +120,25 @@
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center;
-    gap: 0.4rem; border-radius: 10px; padding: 0.5rem 1rem;
+    gap: 0.4rem; border-radius: 6px; padding: 0.5rem 1rem;
     font-size: 0.8125rem; font-weight: 600; font-family: var(--font-ui);
     line-height: 1; letter-spacing: -0.01em;
-    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.05s;
+    transition: background 0.15s, border-color 0.15s;
     cursor: pointer; border: none; white-space: nowrap;
   }
-  /* Raised, tactile buttons: a soft drop shadow + inner top highlight, pressing
-     down on :active. */
-  .btn:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--shadow-sm); }
-  .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
-  .btn-primary {
-    background: var(--green-600); color: var(--white);
-    box-shadow: 0 2px 5px rgba(12,91,89,0.28), inset 0 1px 0 rgba(255,255,255,0.18);
-  }
-  .btn-primary:hover:not(:disabled) { background: var(--green-700); box-shadow: 0 5px 12px rgba(12,91,89,0.32), inset 0 1px 0 rgba(255,255,255,0.18); transform: translateY(-1px); }
+  /* Flat buttons — colour change on hover, no lift or glow. */
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+  .btn-primary { background: var(--green-600); color: var(--white); }
+  .btn-primary:hover:not(:disabled) { background: var(--green-700); }
   .btn-secondary {
     background: var(--white); color: var(--text-1);
-    border: 1.5px solid var(--border);
-    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
   }
-  .btn-secondary:hover:not(:disabled) { background: var(--green-50); border-color: var(--green-200); box-shadow: var(--shadow-md); transform: translateY(-1px); }
-  .btn-gold { background: var(--gold-500); color: var(--ink); box-shadow: 0 2px 5px rgba(224,161,42,0.30), inset 0 1px 0 rgba(255,255,255,0.30); }
-  .btn-gold:hover:not(:disabled) { background: var(--gold-400); box-shadow: 0 5px 12px rgba(224,161,42,0.34), inset 0 1px 0 rgba(255,255,255,0.30); transform: translateY(-1px); }
-  .btn-danger { background: var(--red-600); color: var(--white); box-shadow: 0 2px 5px rgba(146,44,31,0.28), inset 0 1px 0 rgba(255,255,255,0.16); }
-  .btn-danger:hover:not(:disabled) { background: var(--red-700); box-shadow: 0 5px 12px rgba(146,44,31,0.32); transform: translateY(-1px); }
+  .btn-secondary:hover:not(:disabled) { background: var(--surface-1); border-color: var(--border-strong); }
+  .btn-gold { background: var(--gold-500); color: var(--ink); }
+  .btn-gold:hover:not(:disabled) { background: var(--gold-400); }
+  .btn-danger { background: var(--red-600); color: var(--white); }
+  .btn-danger:hover:not(:disabled) { background: var(--red-700); }
 
   .field-label {
     display: block; font-size: 0.6875rem; font-weight: 700;
@@ -157,7 +147,7 @@
   }
   .field-input {
     width: 100%; padding: 0.6rem 0.875rem;
-    border: 1.5px solid var(--border); border-radius: 10px;
+    border: 1px solid var(--border); border-radius: 6px;
     font-size: 0.875rem; font-family: var(--font-ui);
     color: var(--text-1); background: var(--white); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -348,7 +338,7 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 0.15rem; padding: 0.4rem 0.2rem 0.35rem;
     background: none; border: none; cursor: pointer; text-decoration: none;
-    color: var(--text-3); border-radius: 12px;
+    color: var(--text-3); border-radius: 8px;
     transition: color 0.15s, background 0.15s;
   }
   .bottomnav-item span {
@@ -370,7 +360,7 @@
     padding: 0.85rem 0.9rem 1rem;
   }
   .activity-card {
-    border: 1px solid var(--border); border-radius: 14px; background: var(--white);
+    border: 1px solid var(--border); border-radius: 8px; background: var(--white);
     padding: 0.9rem 1rem; box-shadow: var(--shadow-sm);
   }
   .activity-card-head {
@@ -532,7 +522,7 @@
 .dsh-bell { position: relative; background: none; border: none; cursor: pointer; color: var(--text-3); display: flex; }
 .dsh-bell-badge { position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 9999px; background: var(--red-600); color: #fff; font-size: .58rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .dsh-user { display: flex; align-items: center; gap: .5rem; background: none; border: none; cursor: pointer; padding: .1rem; }
-.dsh-avatar { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg,var(--green-600),var(--green-500)); color: #fff; font-size: .78rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.dsh-avatar { width: 36px; height: 36px; border-radius: 8px; background: var(--navy-800); color: #fff; font-size: .78rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .dsh-user-meta { text-align: left; line-height: 1.15; }
 .dsh-user-name { font-size: .8rem; font-weight: 700; color: var(--text-1); }
 .dsh-user-role { font-size: .68rem; color: var(--text-3); }
@@ -544,7 +534,7 @@
 .gs-trigger-lbl { font-weight: 500; }
 .gs-kbd { font-family: var(--font-ui); font-size: .62rem; font-weight: 700; color: var(--text-3); background: var(--white); border: 1px solid var(--border); border-radius: 5px; padding: .1rem .3rem; white-space: nowrap; }
 .gs-overlay { position: fixed; inset: 0; z-index: 80; background: rgba(15,23,42,.4); display: flex; align-items: flex-start; justify-content: center; padding: 10vh 1rem 1rem; }
-.gs-panel { width: min(620px, 100%); background: var(--white); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column; max-height: 70vh; }
+.gs-panel { width: min(620px, 100%); background: var(--white); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column; max-height: 70vh; }
 .gs-input-row { display: flex; align-items: center; gap: .6rem; padding: .85rem 1rem; border-bottom: 1px solid var(--border); }
 .gs-input { flex: 1; border: none; outline: none; font-size: .95rem; background: none; color: var(--text-1); min-width: 0; }
 .gs-results { overflow-y: auto; padding: .4rem; }
@@ -559,7 +549,7 @@
 
 /* Overview grid */
 .ov { padding: 1rem 1.2rem 2rem; max-width: 1500px; margin: 0 auto; }
-.ov-filters { display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-end; background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: .7rem .8rem; margin-bottom: 1rem; }
+.ov-filters { display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-end; background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: .7rem .8rem; margin-bottom: 1rem; }
 .ov-fsel { display: flex; flex-direction: column; gap: .2rem; }
 .ov-fsel span { font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); }
 .ov-fsel select { border: 1px solid var(--border); border-radius: 8px; padding: .38rem .5rem; font-size: .78rem; background: var(--white); min-width: 120px; }
@@ -572,7 +562,7 @@
 .ov-welcome h1 { font-family: var(--font-display); font-size: clamp(1.25rem, 3vw, 1.6rem); font-weight: 800; color: var(--navy-900); margin: 0; letter-spacing: -.01em; }
 .ov-welcome p { font-size: .85rem; color: var(--text-3); margin: .2rem 0 0; }
 .ov-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .7rem; margin-top: .9rem; }
-.ov-action { display: flex; align-items: center; gap: .7rem; text-align: left; background: var(--white); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-sm); padding: .8rem .9rem; cursor: pointer; min-width: 0; }
+.ov-action { display: flex; align-items: center; gap: .7rem; text-align: left; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); padding: .8rem .9rem; cursor: pointer; min-width: 0; }
 .ov-action:hover { border-color: var(--navy-active); }
 .ov-action.primary { border-color: var(--navy-active); box-shadow: 0 0 0 1px var(--navy-active) inset; }
 .ov-action.quiet { opacity: .72; }
@@ -584,7 +574,7 @@
 @media (max-width: 520px) { .ov-actions { grid-template-columns: 1fr; } .ov-action-cta { display: none; } }
 
 .ov-kpis { display: grid; grid-template-columns: repeat(6,1fr); gap: .7rem; margin-bottom: 1rem; }
-.ov-kpi { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--white); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-sm); padding: .85rem .95rem; min-width: 0; }
+.ov-kpi { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); padding: .85rem .95rem; min-width: 0; }
 .ov-kpi-ic { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ov-kpi-label { font-size: .8rem; font-weight: 700; color: var(--navy-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ov-kpi-value { font-family: var(--font-display); font-weight: 800; color: var(--navy-900); line-height: 1.05; margin: .1rem 0; }
@@ -592,7 +582,7 @@
 
 .ov-grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: .9rem; margin-bottom: 1rem; }
 .ov-bottom { display: grid; grid-template-columns: 1fr 30%; gap: .9rem; }
-.ov-panel { background: var(--white); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+.ov-panel { background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
 .ov-panel-h { padding: .8rem .9rem .3rem; }
 .ov-panel-title { font-size: .9rem; font-weight: 700; color: var(--text-1); }
 .ov-panel-sub { font-size: .7rem; color: var(--text-3); }
