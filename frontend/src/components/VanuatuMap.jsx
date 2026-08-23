@@ -12,6 +12,55 @@ const PROVINCE_ORDER = ['Torba', 'Sanma', 'Penama', 'Malampa', 'Shefa', 'Tafea']
 
 const W = 150, H = 300, PAD = 8;
 
+// Standalone accurate Vanuatu province choropleth (map only, no province cards).
+// Used by the compact Overview panel; the geometry is the same bundled GeoJSON.
+export function VanuatuMapMini({ counts = {}, selected, onSelect, width = 92, height = 150 }) {
+  const [features, setFeatures] = useState(null);
+  const [hover, setHover] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    fetch(GEO_URL).then((r) => r.json()).then((d) => { if (alive) setFeatures(d.features || []); }).catch(() => setFeatures([]));
+    return () => { alive = false; };
+  }, []);
+  const { paths, bbox } = useMemo(() => {
+    if (!features || !features.length) return { paths: [], bbox: null };
+    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    const rings = features.map((f) => {
+      const g = f.geometry; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+      const outer = polys.map((poly) => poly[0]);
+      outer.flat().forEach(([lon, lat]) => {
+        if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon;
+        if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+      });
+      return { name: f.properties?.NAME_1, outer };
+    });
+    const bb = { minLon, maxLon, minLat, maxLat };
+    return { paths: rings.map((r) => ({ name: r.name, d: r.outer.map((ring) => ringToPath(ring, bb)).join(' ') })), bbox: bb };
+  }, [features]);
+  const max = Math.max(1, ...Object.values(counts));
+  const fill = (name) => {
+    const c = counts[name] || 0;
+    if (c === 0) return 'var(--surface-2)';
+    const t = 0.25 + 0.6 * (c / max);
+    return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
+  };
+  if (!bbox) return <div style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.7rem' }}>Map…</div>;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={width} height={height} role="img" aria-label="Projects by province map of Vanuatu" style={{ maxWidth: '100%', flexShrink: 0 }}>
+      {paths.map((p) => {
+        const isSel = selected === p.name;
+        return (
+          <path key={p.name} d={p.d} fill={fill(p.name)} stroke={isSel ? 'var(--green-800)' : 'var(--white)'}
+            strokeWidth={isSel ? 2 : 1} style={{ cursor: onSelect ? 'pointer' : 'default', opacity: hover && hover !== p.name ? 0.6 : 1, transition: 'opacity .15s' }}
+            onMouseEnter={() => setHover(p.name)} onMouseLeave={() => setHover(null)} onClick={() => onSelect?.(p.name)}>
+            <title>{p.name}: {counts[p.name] || 0} project(s)</title>
+          </path>
+        );
+      })}
+    </svg>
+  );
+}
+
 function ringToPath(ring, bbox) {
   const { minLon, maxLon, minLat, maxLat } = bbox;
   const sx = (W - 2 * PAD) / Math.max(1e-6, maxLon - minLon);
