@@ -37,9 +37,13 @@ const IS_STAGING = import.meta.env.VITE_APP_ENV !== 'production';
 // project path (/merl-dashboard/) as well as at the site root. HashRouter
 // keeps the document at BASE_URL on every route, so this stays correct.
 const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
-// Faded scenic backdrop for the sign-in brand panel. To use a real
-// photograph instead, drop a file in public/ and point LOGIN_BG at it.
-const LOGIN_BG = `${import.meta.env.BASE_URL}vanuatu-login-bg.svg`;
+// Login background. A short, muted, compressed climate/landscape clip provides
+// the only cinematic moment in the app; drop it at public/login-bg.mp4 and it is
+// used automatically. Until then (and as the poster / reduced-motion / mobile
+// fallback) LOGIN_POSTER is shown over a solid navy backdrop, so the screen
+// always reads as a credible secure government sign-in.
+const LOGIN_VIDEO  = `${import.meta.env.BASE_URL}login-bg.mp4`;
+const LOGIN_POSTER = `${import.meta.env.BASE_URL}vanuatu-login-bg.svg`;
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const ROLES: Record<UserRole, string> = {
@@ -119,10 +123,12 @@ interface LoginScreenProps {
 }
 
 function LoginScreen({ onLogin }: LoginScreenProps) {
-  const [email, setEmail]       = useState('');
+  const [email, setEmail]       = useState(() => { try { return localStorage.getItem('docc.email') || ''; } catch { return ''; } });
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [remember, setRemember] = useState(() => { try { return localStorage.getItem('docc.email') != null; } catch { return false; } });
   const [error, setError]       = useState('');
+  const [notice, setNotice]     = useState('');
   const [loading, setLoading]   = useState(false);
 
   // Supabase Auth credential check — direct email/password sign-in.
@@ -130,6 +136,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setNotice('');
     try {
       const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr) {
@@ -142,174 +149,164 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         setError('No active platform profile is linked to this account. Contact the system administrator.');
         return;
       }
+      // "Remember me" keeps the email prefilled on this device only (never the password).
+      try {
+        if (remember) localStorage.setItem('docc.email', email);
+        else localStorage.removeItem('docc.email');
+      } catch { /* storage unavailable — non-fatal */ }
       onLogin(profile);
     } finally {
       setLoading(false);
     }
   };
 
+  // Forgot password — trigger a Supabase reset email. The response is intentionally
+  // generic so it never reveals whether an account exists.
+  const handleForgot = async () => {
+    setError('');
+    if (!email) { setError('Enter your email address first, then select “Forgot password”.'); return; }
+    await supabase.auth.resetPasswordForEmail(email);
+    setNotice('If an account exists for that email, a password reset link has been sent.');
+  };
+
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   return (
     <div className="lg-root">
       <style>{`
-        .lg-root{position:relative;min-height:100vh;min-height:100dvh;display:flex;font-family:var(--font-ui);background:var(--cream);color:var(--text-1)}
-        .lg-flagbar{position:absolute;top:0;left:0;right:0;height:5px;z-index:20;background:linear-gradient(90deg,var(--red-600) 0 33.33%,var(--gold-500) 33.33% 66.66%,var(--green-600) 66.66% 100%)}
-        .lg-flagrule{width:72px;height:3px;border-radius:2px;margin:.15rem auto 0;background:linear-gradient(90deg,var(--red-500) 0 33%,var(--gold-400) 33% 66%,var(--green-500) 66% 100%)}
-        .lg-brand{position:relative;width:44%;max-width:560px;flex-shrink:0;overflow:hidden;color:#fff;background:linear-gradient(158deg,var(--green-800) 0%,var(--green-900) 48%,var(--ink) 100%);display:flex;flex-direction:column}
-        .lg-photo{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;transform:scale(1.02)}
-        .lg-anim{position:absolute;inset:0;z-index:0;width:100%;height:100%;pointer-events:none}
-        .lg-frond--l{transform-box:fill-box;transform-origin:0% 0%}
-        .lg-frond--r{transform-box:fill-box;transform-origin:100% 0%}
-        @media (prefers-reduced-motion:no-preference){
-          .lg-frond--l{animation:lgSwayL 7s ease-in-out infinite alternate}
-          .lg-frond--r{animation:lgSwayR 8.5s ease-in-out infinite alternate}
-          .lg-glow{animation:lgBreathe 8s ease-in-out infinite}
-          .lg-wave--1{animation:lgDrift1 9s ease-in-out infinite alternate}
-          .lg-wave--2{animation:lgDrift2 11s ease-in-out infinite alternate}
-        }
-        @keyframes lgSwayL{from{transform:rotate(-2deg)}to{transform:rotate(2.6deg)}}
-        @keyframes lgSwayR{from{transform:rotate(2deg)}to{transform:rotate(-2.6deg)}}
-        @keyframes lgBreathe{0%,100%{opacity:.4}50%{opacity:.8}}
-        @keyframes lgDrift1{from{transform:translateX(-16px)}to{transform:translateX(16px)}}
-        @keyframes lgDrift2{from{transform:translateX(12px)}to{transform:translateX(-14px)}}
-        .lg-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(157deg,rgba(6,24,15,.9) 0%,rgba(10,45,30,.5) 42%,rgba(4,7,5,.9) 100%)}
-        .lg-brand__texture{position:absolute;inset:0;z-index:2;opacity:.05;pointer-events:none;background-image:radial-gradient(circle at 18% 30%,var(--gold-400) 1px,transparent 1px),radial-gradient(circle at 78% 68%,var(--gold-400) 1px,transparent 1px);background-size:46px 46px}
-        .lg-brand__bar{position:relative;display:flex;align-items:center;gap:.6rem;padding:1.05rem 2.75rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:.6875rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-400)}
-        .lg-brand__bar::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold-400);box-shadow:0 0 10px var(--gold-400)}
-        .lg-brand__body{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2.5rem 2.75rem;gap:1.75rem}
-        .lg-crest{width:min(460px,82%);aspect-ratio:1;display:flex;align-items:center;justify-content:center}
-        .lg-crest img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4))}
-        .lg-ident__k{font-size:.6875rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-400)}
-        .lg-ident__d{font-size:1rem;font-weight:600;color:rgba(255,255,255,.92);margin-top:.15rem}
-        .lg-title{font-family:var(--font-display);font-size:2.4rem;line-height:1.08;letter-spacing:-.03em;font-weight:600;color:#fff;margin:0}
-        .lg-sub{font-size:.95rem;line-height:1.6;color:rgba(255,255,255,.62);max-width:40ch;margin:0}
-        .lg-trust{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.7rem}
-        .lg-trust li{display:flex;align-items:center;gap:.6rem;font-size:.8125rem;color:rgba(255,255,255,.8)}
-        .lg-trust svg{color:var(--gold-400);flex-shrink:0}
-        .lg-fund{position:relative;margin:0 2.75rem 2.25rem;padding:1rem 1.25rem;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
-        .lg-fund__k{font-size:.625rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:.25rem}
-        .lg-fund__a{font-size:.875rem;font-weight:600;color:rgba(255,255,255,.9)}
-        .lg-fund__b{font-size:.8125rem;color:rgba(255,255,255,.55)}
-        .lg-main{flex:1;display:flex;align-items:center;justify-content:center;padding:2.5rem 1.5rem}
-        .lg-card{width:100%;max-width:400px}
-        .lg-mobile-brand{display:none}
-        .lg-mobile-brand__crest{width:44px;height:44px;border-radius:10px;flex-shrink:0;padding:6px;background:var(--green-800);display:flex;align-items:center;justify-content:center}
-        .lg-mobile-brand__crest img{width:100%;height:100%;object-fit:contain}
-        .lg-eyebrow{display:inline-flex;align-items:center;gap:.4rem;font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green-700);margin-bottom:.85rem}
-        .lg-h2{font-family:var(--font-display);font-size:1.75rem;font-weight:600;letter-spacing:-.025em;color:var(--text-1);margin:0 0 .4rem}
-        .lg-lead{color:var(--text-2);font-size:.9rem;margin:0 0 1.75rem;line-height:1.5}
+        .lg-root{position:relative;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;font-family:var(--font-ui);background:var(--navy-900);color:#fff;overflow:hidden}
+        .lg-flagbar{position:absolute;top:0;left:0;right:0;height:4px;z-index:20;background:linear-gradient(90deg,var(--red-600) 0 33.33%,var(--gold-500) 33.33% 66.66%,var(--green-600) 66.66% 100%)}
+        /* Video fills the viewport; a solid navy sits behind it as the base so the
+           screen is credible before the clip loads or when it is absent. */
+        .lg-video{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover}
+        .lg-overlay{position:absolute;inset:0;z-index:1;background:rgba(11,31,58,.62)}
+        .lg-content{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;gap:clamp(2rem,6vw,5rem);padding:2.5rem 1.5rem;flex-wrap:wrap}
+        .lg-ident{max-width:34rem;color:#fff}
+        .lg-ident__crest{width:64px;height:64px;margin-bottom:1.25rem}
+        .lg-ident__crest img{width:100%;height:100%;object-fit:contain}
+        .lg-ident__gov{font-size:.75rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+        .lg-ident__dept{font-size:1.05rem;font-weight:600;color:#fff;margin-top:.1rem}
+        .lg-ident__title{font-family:var(--font-display);font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.1;letter-spacing:-.02em;font-weight:700;color:#fff;margin:1.4rem 0 .6rem}
+        .lg-ident__sub{font-size:1rem;line-height:1.55;color:rgba(255,255,255,.78);max-width:36ch;margin:0}
+        .lg-card{width:100%;max-width:400px;background:var(--white);color:var(--text-1);border:1px solid rgba(15,23,42,.08);border-radius:8px;box-shadow:0 8px 28px rgba(8,15,30,.28);padding:2rem}
+        .lg-card__mobile{display:none}
+        .lg-h2{font-family:var(--font-display);font-size:1.4rem;font-weight:700;letter-spacing:-.01em;color:var(--text-1);margin:0 0 .3rem}
+        .lg-lead{color:var(--text-2);font-size:.85rem;margin:0 0 1.5rem;line-height:1.5}
         .lg-ifield{position:relative}
-        .lg-ifield>.lg-ficon{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none;display:flex}
-        .lg-input{padding-left:2.5rem !important}
-        .lg-eye{position:absolute;right:.4rem;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:none;border:none;cursor:pointer;color:var(--text-3);border-radius:7px}
-        .lg-eye:hover{color:var(--text-2);background:var(--green-50)}
-        .lg-alert{display:flex;align-items:flex-start;gap:.5rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:.7rem .875rem;color:#991b1b;font-size:.8125rem;line-height:1.4}
-        .lg-submit{width:100%;padding:.8rem;font-size:.9375rem;font-weight:600;border-radius:9px;border:none;cursor:pointer;color:#fff;background:linear-gradient(180deg,var(--green-700),var(--green-800));box-shadow:var(--shadow-sm);transition:filter .18s ease,box-shadow .18s ease}
-        .lg-submit:hover:not(:disabled){filter:brightness(1.07);box-shadow:var(--shadow-md)}
+        .lg-ifield>.lg-ficon{position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none;display:flex}
+        .lg-input{padding-left:2.4rem !important}
+        .lg-eye{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:none;border:none;cursor:pointer;color:var(--text-3);border-radius:6px}
+        .lg-eye:hover{color:var(--text-2);background:var(--surface-1)}
+        .lg-optionrow{display:flex;align-items:center;justify-content:space-between;gap:.5rem;font-size:.8rem}
+        .lg-remember{display:inline-flex;align-items:center;gap:.4rem;color:var(--text-2);cursor:pointer}
+        .lg-remember input{width:15px;height:15px;accent-color:var(--navy-active)}
+        .lg-forgot{background:none;border:none;padding:0;cursor:pointer;color:var(--navy-active);font-size:.8rem;font-weight:600}
+        .lg-forgot:hover{text-decoration:underline}
+        .lg-alert{display:flex;align-items:flex-start;gap:.5rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:.65rem .8rem;color:#991b1b;font-size:.8rem;line-height:1.4}
+        .lg-info{display:flex;align-items:flex-start;gap:.5rem;background:var(--surface-1);border:1px solid var(--border);border-radius:6px;padding:.65rem .8rem;color:var(--text-2);font-size:.8rem;line-height:1.4}
+        .lg-submit{width:100%;padding:.75rem;font-size:.9rem;font-weight:600;border-radius:6px;border:none;cursor:pointer;color:#fff;background:var(--navy-active);transition:background .18s ease}
+        .lg-submit:hover:not(:disabled){background:#2a61d8}
         .lg-submit:disabled{opacity:.6;cursor:default}
-        .lg-notice{display:flex;align-items:flex-start;gap:.55rem;margin-top:1.5rem;padding:.75rem .9rem;border-radius:9px;background:var(--green-50);border:1px solid var(--green-100);font-size:.75rem;line-height:1.45;color:var(--text-2)}
-        .lg-notice svg{color:var(--green-700);flex-shrink:0;margin-top:1px}
-        .lg-foot{margin-top:1.1rem;text-align:center;font-size:.75rem;color:var(--text-3)}
-        @media (max-width:860px){.lg-brand{display:none}.lg-mobile-brand{display:flex;align-items:center;gap:.7rem;justify-content:center;margin-bottom:1.75rem;padding-bottom:1.4rem;border-bottom:1px solid var(--border)}}
-        @media (prefers-reduced-motion:reduce){.lg-submit{transition:none}}
+        .lg-foot{position:relative;z-index:2;text-align:center;padding:1rem;font-size:.75rem;color:rgba(255,255,255,.7)}
+        .lg-foot a{color:rgba(255,255,255,.85);text-decoration:none;margin:0 .4rem}
+        .lg-foot a:hover{text-decoration:underline}
+        @media (max-width:820px){
+          .lg-ident{display:none}
+          .lg-card__mobile{display:flex;align-items:center;gap:.7rem;margin-bottom:1.5rem;padding-bottom:1.2rem;border-bottom:1px solid var(--border)}
+          .lg-card__mobile img{width:40px;height:40px;object-fit:contain;flex-shrink:0}
+        }
       `}</style>
       <div className="lg-flagbar" />
-      {/* ── Brand panel ── */}
-      <aside className="lg-brand">
-        <div className="lg-photo" style={{ backgroundImage: `url(${LOGIN_BG})` }} />
-        <svg className="lg-anim" viewBox="0 0 1000 1400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-          <defs>
-            <radialGradient id="lgGlow" cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stopColor="#ffe6ad" stopOpacity="0.5" />
-              <stop offset="1" stopColor="#ffe6ad" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          <ellipse className="lg-glow" cx="500" cy="900" rx="150" ry="150" fill="url(#lgGlow)" />
-          <ellipse className="lg-wave lg-wave--1" cx="430" cy="1040" rx="230" ry="26" fill="#cfe8dd" opacity="0.06" />
-          <ellipse className="lg-wave lg-wave--2" cx="580" cy="1150" rx="270" ry="30" fill="#cfe8dd" opacity="0.05" />
-          <g className="lg-frond lg-frond--l" fill="#06160f" opacity="0.92">
-            <path d="M-40 -20 C 150 60 250 150 300 300 C 250 210 150 150 40 130 C 170 150 250 230 280 340 C 210 250 120 210 20 210 C 150 240 210 320 230 400 C 150 300 60 280 -30 300 Z" />
-          </g>
-          <g className="lg-frond lg-frond--r" fill="#06160f" opacity="0.9">
-            <path d="M1040 -30 C 860 50 770 150 720 300 C 780 210 880 150 990 132 C 840 152 760 240 740 350 C 820 250 910 220 1010 220 C 870 250 810 330 795 410 C 880 300 970 285 1050 305 Z" />
-          </g>
-        </svg>
-        <div className="lg-overlay" />
-        <div className="lg-brand__texture" />
-        <div className="lg-brand__body">
-          <div className="lg-crest">
-            <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
-          </div>
-          <div>
-            <div className="lg-ident__k">Republic of Vanuatu</div>
-            <div className="lg-ident__d">Department of Climate Change</div>
-            <div className="lg-flagrule" />
-          </div>
+
+      {/* Cinematic climate video background (login only). Falls back to the poster
+          over solid navy; not autoplayed under reduced-motion. */}
+      <video className="lg-video" poster={LOGIN_POSTER}
+        autoPlay={!reduceMotion} muted loop playsInline preload="metadata"
+        aria-hidden="true" tabIndex={-1}>
+        <source src={LOGIN_VIDEO} type="video/mp4" />
+      </video>
+      <div className="lg-overlay" />
+
+      <div className="lg-content">
+        {/* Identity block */}
+        <div className="lg-ident">
+          <div className="lg-ident__crest"><img src={CREST} alt="Coat of arms of the Republic of Vanuatu" /></div>
+          <div className="lg-ident__gov">Government of Vanuatu</div>
+          <div className="lg-ident__dept">Department of Climate Change</div>
+          <h1 className="lg-ident__title">DoCC MERL Dashboard</h1>
+          <p className="lg-ident__sub">Monitoring, Evaluation, Reporting &amp; Learning for Climate Action in Vanuatu</p>
         </div>
-      </aside>
 
-      {/* ── Sign-in panel ── */}
-      <div className="lg-main">
+        {/* Sign-in card */}
         <div className="lg-card">
-          <div className="lg-mobile-brand">
-            <div className="lg-mobile-brand__crest">
-              <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
-            </div>
+          <div className="lg-card__mobile">
+            <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
             <div>
-              <div style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--green-700)' }}>Republic of Vanuatu</div>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-1)' }}>Department of Climate Change</div>
+              <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)' }}>Government of Vanuatu</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-1)' }}>Department of Climate Change</div>
             </div>
           </div>
 
-          {/* ── Sign in: credentials ── */}
-          <div className="lg-eyebrow"><Lock size={13} /> Secure sign-in</div>
-          <h2 className="lg-h2">Welcome back</h2>
-          <p className="lg-lead">Sign in with your official DoCC credentials to continue to the MERL platform.</p>
+          <h2 className="lg-h2">Sign in</h2>
+          <p className="lg-lead">Use your authorised DoCC MERL account.</p>
 
           <form onSubmit={handleCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label className="field-label" htmlFor="lg-email">Email address</label>
-                  <div className="lg-ifield">
-                    <span className="lg-ficon"><Mail size={16} /></span>
-                    <input id="lg-email" type="email" value={email}
-                      onChange={e => { setEmail(e.target.value); setError(''); }}
-                      className="field-input lg-input" placeholder="you@example.gov.vu"
-                      autoComplete="username" required />
-                  </div>
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="lg-pass">Password</label>
-                  <div className="lg-ifield">
-                    <span className="lg-ficon"><Lock size={16} /></span>
-                    <input id="lg-pass" type={showPass ? 'text' : 'password'}
-                      value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
-                      className="field-input lg-input" style={{ paddingRight: '2.75rem' }}
-                      placeholder="Enter your password" autoComplete="current-password" required />
-                    <button type="button" className="lg-eye"
-                      aria-label={showPass ? 'Hide password' : 'Show password'}
-                      onClick={() => setShowPass(!showPass)}>
-                      {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="lg-alert" role="alert">
-                    <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />{error}
-                  </div>
-                )}
-
-                <button type="submit" className="lg-submit" disabled={loading} style={{ marginTop: '0.25rem' }}>
-                  {loading ? 'Signing in…' : 'Sign in'}
+            <div>
+              <label className="field-label" htmlFor="lg-email">Email</label>
+              <div className="lg-ifield">
+                <span className="lg-ficon"><Mail size={16} /></span>
+                <input id="lg-email" type="email" value={email}
+                  onChange={e => { setEmail(e.target.value); setError(''); }}
+                  className="field-input lg-input" placeholder="you@example.gov.vu"
+                  autoComplete="username" required />
+              </div>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="lg-pass">Password</label>
+              <div className="lg-ifield">
+                <span className="lg-ficon"><Lock size={16} /></span>
+                <input id="lg-pass" type={showPass ? 'text' : 'password'}
+                  value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
+                  className="field-input lg-input" style={{ paddingRight: '2.6rem' }}
+                  placeholder="Enter your password" autoComplete="current-password" required />
+                <button type="button" className="lg-eye"
+                  aria-label={showPass ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPass(!showPass)}>
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
-              </form>
+              </div>
+            </div>
 
-          <div className="lg-notice">
-            <ShieldCheck size={15} />
-            <span>Authorised access only. Activity on this official Government of Vanuatu system is monitored and audited. Unauthorised use is prohibited.</span>
-          </div>
-          <p className="lg-foot">Vanuatu L&amp;D Fund Development Project · Built by Vanua Spatial Solutions</p>
+            <div className="lg-optionrow">
+              <label className="lg-remember">
+                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
+                Remember me
+              </label>
+              <button type="button" className="lg-forgot" onClick={handleForgot}>Forgot password</button>
+            </div>
+
+            {error && (
+              <div className="lg-alert" role="alert">
+                <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />{error}
+              </div>
+            )}
+            {notice && !error && (
+              <div className="lg-info" role="status">
+                <ShieldCheck size={15} style={{ flexShrink: 0, marginTop: 1, color: 'var(--green-700)' }} />{notice}
+              </div>
+            )}
+
+            <button type="submit" className="lg-submit" disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
         </div>
       </div>
+
+      <footer className="lg-foot">
+        Department of Climate Change · Government of Vanuatu
+      </footer>
     </div>
   );
 }
