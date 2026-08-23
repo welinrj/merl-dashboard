@@ -7,12 +7,31 @@
 // =============================================================================
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { ClipboardCheck, CheckCircle2, RotateCcw, Eye, Unlock, Clock, AlertTriangle } from 'lucide-react';
+import { ClipboardCheck, CheckCircle2, RotateCcw, Eye, Unlock, Clock, AlertTriangle, X, FileText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
 import DataTable from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
+
+// Read-only modules summarised in the review drawer so the officer can see what
+// they are approving before they act. Period-scoped modules are matched on the
+// period label; risks & issues are project-scoped.
+const fmtNum = (v) => (v == null ? '—' : Number(v).toLocaleString('en-VU'));
+const REVIEW_SECTIONS = [
+  { key: 'indicator_progress', label: 'Indicator Progress', form: 'Form 4', view: 'v_indicator_progress', periodScoped: true,
+    line: (r) => `${r.indicator_code || '—'} · cumulative ${fmtNum(r.cumulative_actual)}${r.achievement_pct != null ? ` · ${Math.round(r.achievement_pct)}%` : ''}` },
+  { key: 'financial_progress', label: 'Financial Progress', form: 'Form 6', view: 'v_financial_progress', periodScoped: true,
+    line: (r) => `Cumulative exp. ${fmtNum(r.cumulative_expenditure)}${r.utilisation_pct != null ? ` · ${Math.round(r.utilisation_pct)}% utilised` : ''}` },
+  { key: 'beneficiaries', label: 'Beneficiaries & GEDSI', form: 'Form 8', view: 'v_beneficiaries', periodScoped: true,
+    line: (r) => `${r.location || 'All'} · direct ${fmtNum(r.total_direct)} (F ${fmtNum(r.female)} / M ${fmtNum(r.male)} / PWD ${fmtNum(r.persons_with_disability)})` },
+  { key: 'learning_updates', label: 'Achievements & Learning', form: 'Form 10', view: 'v_learning_updates', periodScoped: true,
+    line: (r) => (r.key_achievements || r.major_results || r.lessons_learned || 'Recorded').slice(0, 120) },
+  { key: 'evidence', label: 'Evidence', form: 'Form 12', view: 'v_evidence', periodScoped: true,
+    line: (r) => `${r.title || '—'}${r.verification_status ? ` · ${r.verification_status}` : ''}` },
+  { key: 'risks_issues', label: 'Risks & Issues', form: 'Form 9', view: 'v_risks_issues', periodScoped: false,
+    line: (r) => `${r.code || ''} ${(r.description || '').slice(0, 80)}${r.risk_rating ? ` · ${r.risk_rating}` : ''}`.trim() },
+];
 
 const REVIEWER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 const fmtDate = s => s ? new Date(s).toLocaleDateString('en-VU', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
@@ -39,6 +58,7 @@ export default function ReviewApproval({ user }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('queue'); // queue | all | approved
   const [busy, setBusy] = useState(null);
+  const [detail, setDetail] = useState(null); // reporting-period row open in the review drawer
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,6 +103,7 @@ export default function ReviewApproval({ user }) {
     setBusy(null);
     if (error) { toast.error(error.message); return; }
     toast.success(okMsg);
+    setDetail(null);
     load();
   };
 
@@ -197,24 +218,145 @@ export default function ReviewApproval({ user }) {
             ) },
           { key: '_actions', header: 'Actions', align: 'right',
             render: (r) => (
-              <span style={{ whiteSpace: 'nowrap' }}>
+              <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
+                {r.submission_status !== 'draft' && (
+                  <button onClick={() => setDetail(r)} style={qbtn('#475569')}><FileText size={13} /> View</button>
+                )}
                 {canReview && ['submitted', 'reviewed'].includes(r.submission_status) && (
-                  <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <>
                     {r.submission_status === 'submitted' && (
                       <button disabled={busy === r.id} onClick={() => doReview(r)} style={qbtn('#7c3aed')}><Eye size={13} /> Review</button>
                     )}
                     <button disabled={busy === r.id} onClick={() => doReturn(r)} style={qbtn('#d97706')}><RotateCcw size={13} /> Return</button>
                     <button disabled={busy === r.id} onClick={() => doApprove(r)} style={qbtn('#16a34a')}><CheckCircle2 size={13} /> Approve</button>
-                  </span>
+                  </>
                 )}
                 {canReview && r.submission_status === 'approved' && (
                   <button disabled={busy === r.id} onClick={() => doReopen(r)} style={qbtn('#7c3aed')}><Unlock size={13} /> Reopen</button>
                 )}
-                {(!canReview || ['draft'].includes(r.submission_status)) && <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>}
+                {(!canReview && r.submission_status === 'draft') && <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>}
               </span>
             ) },
         ]}
       />
+
+      {detail && (
+        <SubmissionDrawer
+          row={detail}
+          project={projById[detail.project_id]}
+          canReview={canReview}
+          busy={busy === detail.id}
+          onClose={() => setDetail(null)}
+          onReview={() => doReview(detail)}
+          onReturn={() => doReturn(detail)}
+          onApprove={() => doApprove(detail)}
+          onReopen={() => doReopen(detail)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Read-only review drawer: loads the reported records for a period across all
+// modules so the officer can see what they are approving before acting.
+function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, onReturn, onApprove, onReopen }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    setData(null);
+    Promise.all(REVIEW_SECTIONS.map(async (s) => {
+      let q = supabase.from(s.view).select('*').eq('project_id', row.project_id);
+      if (s.periodScoped) q = q.eq('reporting_period', row.period_label);
+      const { data: rows } = await q;
+      return [s.key, rows ?? []];
+    })).then((entries) => { if (alive) setData(Object.fromEntries(entries)); });
+    return () => { alive = false; };
+  }, [row.project_id, row.period_label]);
+
+  const status = row.submission_status;
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Reporting period detail"
+      style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.4)' }} />
+      <div style={{ position: 'relative', width: 'min(560px, 100%)', maxWidth: '100%', height: '100%', background: 'var(--surface-1, var(--white))',
+        boxShadow: '-8px 0 24px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <div style={{ padding: '1rem 1.1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 700 }}>{project?.code ?? '—'}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-1)' }}>{project?.name ?? ''}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-2)' }}>{row.period_label}</span>
+              <StatusBadge status={status} />
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4, flexShrink: 0 }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Meta */}
+        <div style={{ padding: '0.75rem 1.1rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-2)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem 0.75rem' }}>
+          <span>Submitted by: <strong style={{ color: 'var(--text-1)' }}>{row.reporting_officer_name ?? '—'}</strong></span>
+          <span>Submitted: <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.submitted_at)}</strong></span>
+          {row.period_start && <span>Period: <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.period_start)} – {fmtDate(row.period_end)}</strong></span>}
+          {row.reopened_at && <span style={{ color: '#8a6416' }}>Reopened: {fmtDate(row.reopened_at)}</span>}
+        </div>
+
+        {status === 'returned' && row.review_comments && (
+          <div style={{ margin: '0.75rem 1.1rem 0', padding: '0.6rem 0.8rem', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, fontSize: '0.78rem', color: '#8a6416' }}>
+            <strong>Returned for correction:</strong> {row.review_comments}
+          </div>
+        )}
+
+        {/* Sections */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0.9rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+          {data == null ? (
+            <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Loading reported data…</p>
+          ) : REVIEW_SECTIONS.map((s) => {
+            const rows = data[s.key] || [];
+            return (
+              <div key={s.key}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                  <strong style={{ fontSize: '0.82rem', color: 'var(--text-1)' }}>{s.label}</strong>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{s.form}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 700, color: rows.length ? 'var(--green-700)' : 'var(--text-3)' }}>
+                    {rows.length} record{rows.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                {rows.length === 0 ? (
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-3)', fontStyle: 'italic', paddingLeft: '0.1rem' }}>No data reported</div>
+                ) : (
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    {rows.slice(0, 8).map((r) => (
+                      <li key={r.id} style={{ fontSize: '0.78rem', color: 'var(--text-2)', padding: '0.35rem 0.55rem', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 7 }}>
+                        {s.line(r)}
+                      </li>
+                    ))}
+                    {rows.length > 8 && <li style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>+ {rows.length - 8} more…</li>}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Actions */}
+        {canReview && ['submitted', 'reviewed', 'approved'].includes(status) && (
+          <div style={{ padding: '0.8rem 1.1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {['submitted', 'reviewed'].includes(status) && (
+              <>
+                {status === 'submitted' && <button disabled={busy} onClick={onReview} style={qbtn('#7c3aed')}><Eye size={14} /> Mark under review</button>}
+                <button disabled={busy} onClick={onReturn} style={qbtn('#d97706')}><RotateCcw size={14} /> Return</button>
+                <button disabled={busy} onClick={onApprove} style={qbtn('#16a34a')}><CheckCircle2 size={14} /> Approve & lock</button>
+              </>
+            )}
+            {status === 'approved' && <button disabled={busy} onClick={onReopen} style={qbtn('#7c3aed')}><Unlock size={14} /> Reopen</button>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
