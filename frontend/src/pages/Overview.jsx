@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import {
   FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, Ban, Flag, Wallet,
-  Users, Printer, MapPin, ArrowRight, ClipboardCheck, Send, RotateCcw, Clock, Eye,
+  Printer, MapPin, ArrowRight, ClipboardCheck, Send, RotateCcw, Clock, Eye,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -88,7 +88,7 @@ export default function Overview({ user }) {
         q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, updated_at'),
         q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at'),
         q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
-        q('v_beneficiaries', 'project_id, total_direct, female'),
+        q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
         q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
         q('v_project_indicators', 'project_id, id'),
         q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
@@ -168,8 +168,17 @@ export default function Overview({ user }) {
   })();
   const totalRisks = risks.length;
   const totalBen = sum(bens, (b) => b.total_direct);
-  const femaleBen = sum(bens, (b) => b.female);
-  const femalePct = bens.some((b) => b.female != null) && totalBen ? pct(femaleBen, totalBen) : null;
+  // Beneficiary disaggregation (§38): 0 is a real value — only null means "no data".
+  const bAny = (f) => bens.some((b) => b[f] != null);
+  const bSum = (f) => (bAny(f) ? bens.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
+  const gedsi = [
+    { key: 'female', label: 'Female', value: bSum('female'), color: '#7c3aed' },
+    { key: 'male', label: 'Male', value: bSum('male'), color: BLUE },
+    { key: 'other_gender', label: 'Other / N.R.', value: bSum('other_gender'), color: '#94a3b8' },
+    { key: 'youth', label: 'Youth', value: bSum('youth'), color: '#e0a12a' },
+    { key: 'persons_with_disability', label: 'Persons w/ disability', value: bSum('persons_with_disability'), color: '#22a565' },
+  ];
+  const hasGedsi = gedsi.some((g) => g.value != null);
 
   // Recent updates (latest 6) + milestones (next 30 days)
   const updatedByOf = (pid) => {
@@ -338,24 +347,31 @@ export default function Overview({ user }) {
           )}
         </Panel>
         <Panel title="Beneficiaries Reached" footer={<FooterLink label="View beneficiaries" onClick={() => nav('/analytics/geographic')} />}>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: 200, gap: '0.4rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span style={{ width: 40, height: 40, borderRadius: '50%', background: '#dcfce7', color: '#22a565', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} /></span>
-              <div>
-                <div style={{ fontSize: '1.9rem', fontWeight: 800, lineHeight: 1, fontFamily: 'var(--font-display)' }}>{totalBen ? totalBen.toLocaleString() : '0'}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Total beneficiaries</div>
+          <div style={{ display: 'flex', flexDirection: 'column', height: 200, gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.7rem', fontWeight: 800, lineHeight: 1, fontFamily: 'var(--font-display)', color: 'var(--text-1)' }}>{totalBen ? totalBen.toLocaleString() : '0'}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>total direct beneficiaries</span>
+            </div>
+            {!hasGedsi ? (
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-3)', marginTop: '0.4rem' }}>No disaggregated data reported.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.2rem' }}>
+                {gedsi.map((g) => {
+                  const p = g.value != null && totalBen ? Math.round((g.value / totalBen) * 100) : null;
+                  return (
+                    <div key={g.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', width: 128, flexShrink: 0 }}>{g.label}</span>
+                      <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--surface-2)', overflow: 'hidden' }}>
+                        <div style={{ width: `${p == null ? 0 : Math.min(100, p)}%`, height: '100%', background: g.color }} />
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)', width: 62, textAlign: 'right', flexShrink: 0 }}>
+                        {g.value == null ? '—' : g.value.toLocaleString()}{p != null ? ` (${p}%)` : ''}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-            <div style={{ marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
-              {femalePct == null ? (
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>No disaggregated data</div>
-              ) : (
-                <>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1, color: '#22a565' }}>{femalePct}%</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Female beneficiaries</div>
-                </>
-              )}
-            </div>
+            )}
           </div>
         </Panel>
         <Panel title="Risks Overview" footer={<FooterLink label="View risks register" onClick={() => nav('/analytics/risks')} />}>
