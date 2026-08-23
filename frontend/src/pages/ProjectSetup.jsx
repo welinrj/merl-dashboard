@@ -16,7 +16,7 @@ import {
   CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { confirmDialog, promptDialog } from '../lib/confirm';
+import { confirmDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
@@ -352,36 +352,12 @@ function ProfileStep({ project, users, onSaved }) {
 }
 
 // ── Step 2: Results Framework (Objective → Outcome → Output) ─────────────────
-function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = [], activities = [], reload }) {
+function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = [], activities = [], users = [], reload }) {
   const [collapsed, setCollapsed] = useState({});
+  const [editing, setEditing] = useState(null); // { kind, parentId, row }
   const toggle = (id) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
-  const addObjective = async () => {
-    const s = await promptDialog({ title:'New objective', label:'Objective statement', multiline:true, required:true,
-      placeholder:'e.g. Strengthen community resilience to climate hazards' });
-    if (s == null) return;
-    const { error } = await supabase.rpc('create_objective', { p_project_id: projectId, p_statement: s });
-    if (error) { toast.error(error.message); return; } reload();
-  };
-  const addOutcome = async (objId) => {
-    const s = await promptDialog({ title:'New outcome', label:'Outcome statement', multiline:true, required:true });
-    if (s == null) return;
-    const { error } = await supabase.rpc('create_outcome', { p_objective_id: objId, p_statement: s });
-    if (error) { toast.error(error.message); return; } reload();
-  };
-  const addOutput = async (ocId) => {
-    const s = await promptDialog({ title:'New output', label:'Output statement', multiline:true, required:true });
-    if (s == null) return;
-    const { error } = await supabase.rpc('create_output', { p_outcome_id: ocId, p_statement: s });
-    if (error) { toast.error(error.message); return; } reload();
-  };
-  const editNode = async (kind, row) => {
-    const s = await promptDialog({ title:`Edit ${kind}`, label:`${kind[0].toUpperCase()}${kind.slice(1)} statement`,
-      multiline:true, required:true, defaultValue: row.statement });
-    if (s == null) return;
-    const rpc = kind === 'objective' ? 'update_objective' : kind === 'outcome' ? 'update_outcome' : 'update_output';
-    const { error } = await supabase.rpc(rpc, { p_id: row.id, p_statement: s });
-    if (error) { toast.error(error.message); return; } reload();
-  };
+  const openAdd = (kind, parentId) => setEditing({ kind, parentId, row: null });
+  const openEdit = (kind, row) => setEditing({ kind, row });
   const delNode = async (kind, row) => {
     if (!(await confirmDialog({ title:`Delete ${kind}`, message:`Delete ${kind} ${row.code}? Child records are removed too. This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const rpc = kind === 'objective' ? 'delete_objective' : kind === 'outcome' ? 'delete_outcome' : 'delete_output';
@@ -392,7 +368,7 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
   const codeChip = (c, bg) => ({ fontSize: '0.68rem', fontWeight: 700, color: '#fff', background: bg, padding: '0.12rem 0.4rem', borderRadius: 6, flexShrink: 0, marginTop: 2 });
   const actions = (kind, row) => (
     <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-      <button onClick={() => editNode(kind, row)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={13} /></button>
+      <button onClick={() => openEdit(kind, row)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={13} /></button>
       <button onClick={() => delNode(kind, row)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={13} /></button>
     </span>
   );
@@ -401,7 +377,7 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <h3 style={{ margin: 0, fontSize: '1rem' }}>Results Framework <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 2</span></h3>
-        <button style={btn('var(--green-700)')} onClick={addObjective}><Plus size={14} /> Objective</button>
+        <button style={btn('var(--green-700)')} onClick={() => openAdd('objective')}><Plus size={14} /> Objective</button>
       </div>
       {objectives.length === 0 && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No objectives yet. Add the first project objective.</p>}
       {objectives.map((obj) => {
@@ -445,17 +421,72 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
                     </div>
                     );
                   })}
-                  <button onClick={() => addOutput(oc.id)} style={{ ...ghostBtn, padding: '0.2rem 0.5rem', marginTop: '0.25rem', fontSize: '0.72rem' }}><Plus size={12} /> Output</button>
+                  <button onClick={() => openAdd('output', oc.id)} style={{ ...ghostBtn, padding: '0.2rem 0.5rem', marginTop: '0.25rem', fontSize: '0.72rem' }}><Plus size={12} /> Output</button>
                 </div>
               </div>
             ))}
-            <button onClick={() => addOutcome(obj.id)} style={{ ...ghostBtn, padding: '0.25rem 0.55rem', marginTop: '0.4rem', fontSize: '0.75rem' }}><Plus size={12} /> Outcome</button>
+            <button onClick={() => openAdd('outcome', obj.id)} style={{ ...ghostBtn, padding: '0.25rem 0.55rem', marginTop: '0.4rem', fontSize: '0.75rem' }}><Plus size={12} /> Outcome</button>
           </div>
           )}
         </div>
         );
       })}
+      {editing && (
+        <ResultModal editing={editing} projectId={projectId} users={users}
+          onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
+      )}
     </div>
+  );
+}
+
+// Objective / Outcome / Output form modal (§18-20), using the existing
+// create_/update_ RPC parameters (climate theme, expected outcome, notes,
+// responsible officer, status). No schema change required.
+function ResultModal({ editing, projectId, users, onClose, onSaved }) {
+  const { kind, parentId, row } = editing;
+  const base = kind === 'objective'
+    ? { statement: '', climate_theme: '', expected_outcome: '', notes: '', status: '' }
+    : { statement: '', responsible_officer_id: '', status: '' };
+  const [v, setV] = useState({ ...base, ...(row?.id ? row : {}) });
+  const dirty = useDirty(v);
+  const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
+  const save = async () => {
+    if (!v.statement.trim()) { toast.error('Statement is required'); return; }
+    const S = v.statement.trim();
+    let res;
+    if (kind === 'objective') {
+      res = row?.id
+        ? await supabase.rpc('update_objective', { p_id: row.id, p_statement: S, p_climate_theme: v.climate_theme || null, p_expected_outcome: v.expected_outcome || null, p_notes: v.notes || null, p_status: v.status || null })
+        : await supabase.rpc('create_objective', { p_project_id: projectId, p_statement: S, p_climate_theme: v.climate_theme || null, p_expected_outcome: v.expected_outcome || null, p_notes: v.notes || null });
+    } else if (kind === 'outcome') {
+      res = row?.id
+        ? await supabase.rpc('update_outcome', { p_id: row.id, p_statement: S, p_responsible_officer_id: v.responsible_officer_id || null, p_status: v.status || null })
+        : await supabase.rpc('create_outcome', { p_objective_id: parentId, p_statement: S, p_responsible_officer_id: v.responsible_officer_id || null });
+    } else {
+      res = row?.id
+        ? await supabase.rpc('update_output', { p_id: row.id, p_statement: S, p_responsible_officer_id: v.responsible_officer_id || null, p_status: v.status || null })
+        : await supabase.rpc('create_output', { p_outcome_id: parentId, p_statement: S, p_responsible_officer_id: v.responsible_officer_id || null });
+    }
+    if (res.error) { toast.error(res.error.message); return; }
+    toast.success(row?.id ? 'Saved' : 'Added');
+    onSaved();
+  };
+  const title = `${row?.id ? 'Edit' : 'New'} ${kind}`;
+  return (
+    <Modal title={title.charAt(0).toUpperCase() + title.slice(1)} onClose={onClose} onSave={save} saveLabel={row?.id ? 'Save' : 'Add'} dirty={dirty}>
+      <Field label="Statement" className="ps-full">
+        <textarea className="field-input" rows={2} value={v.statement} onChange={set('statement')} />
+      </Field>
+      {kind === 'objective' && <>
+        <Field label="Climate theme"><Select value={v.climate_theme ?? ''} onChange={set('climate_theme')} options={OPT.CLIMATE_THEME} allowBlank /></Field>
+        <Field label="Expected outcome" className="ps-full"><input className="field-input" value={v.expected_outcome ?? ''} onChange={set('expected_outcome')} /></Field>
+        <Field label="Notes" className="ps-full"><textarea className="field-input" rows={2} value={v.notes ?? ''} onChange={set('notes')} /></Field>
+      </>}
+      {(kind === 'outcome' || kind === 'output') && (
+        <Field label="Responsible officer"><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={users.map((u) => ({ value: u.id, label: u.full_name }))} allowBlank /></Field>
+      )}
+      {row?.id && <Field label="Status"><Select value={v.status ?? ''} onChange={set('status')} options={OPT.RECORD_STATUS} allowBlank /></Field>}
+    </Modal>
   );
 }
 
