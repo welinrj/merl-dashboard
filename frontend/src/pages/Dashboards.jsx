@@ -63,7 +63,7 @@ export default function Dashboards({ initialTab }) {
         q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
         q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at'),
         q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
-        q('v_beneficiaries', 'project_id, total_direct, female, male, persons_with_disability, reporting_period'),
+        q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, other_vulnerable, indirect, reporting_period'),
         q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code'),
         q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level'),
         q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, reporting_period, final_target, created_at'),
@@ -225,8 +225,19 @@ function Portfolio({ d, onNavigate }) {
       return { code: p.code, physical: ph, financial: finPct, variance };
     }).filter((r) => r.physical != null || r.financial != null);
 
+    // Beneficiaries & GEDSI (§38). 0 is a real value — only null means "no data".
+    const bAny = (f) => d.beneficiaries.some((b) => b[f] != null);
+    const bSum = (f) => (bAny(f) ? d.beneficiaries.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
+    const bRows = d.beneficiaries.length;
+    const gedsi = {
+      total: bSum('total_direct'), female: bSum('female'), male: bSum('male'),
+      other: bSum('other_gender'), youth: bSum('youth'), pwd: bSum('persons_with_disability'),
+      indirect: bSum('indirect'),
+      completeness: bRows ? Math.round(d.beneficiaries.filter((b) => b.female != null || b.male != null).length / bRows * 100) : null,
+    };
+
     return {
-      attention, pf,
+      attention, pf, gedsi,
       total: d.projects.length,
       active: d.projects.filter((p) => ACTIVE_STATUSES.includes(p.status)).length,
       completed: d.projects.filter((p) => ['completed', 'closed'].includes(p.status)).length,
@@ -276,6 +287,32 @@ function Portfolio({ d, onNavigate }) {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Beneficiaries & GEDSI (§38) */}
+      {m.gedsi.total != null && (
+        <div className="db-card" style={{ marginTop: '1rem' }}>
+          <h3 className="db-h" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Users size={15} style={{ color: '#7c3aed' }} /> Beneficiaries &amp; GEDSI
+            {m.gedsi.completeness != null && (
+              <span style={{ marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 600, color: m.gedsi.completeness >= 75 ? 'var(--green-700)' : 'var(--gold-500)' }}>
+                Disaggregation completeness: {m.gedsi.completeness}%
+              </span>
+            )}
+          </h3>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-1)' }}>
+            {m.gedsi.total.toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-3)' }}>total direct beneficiaries</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.6rem', marginTop: '0.75rem' }}>
+            {[['Female', m.gedsi.female], ['Male', m.gedsi.male], ['Other / N.R.', m.gedsi.other], ['Youth', m.gedsi.youth], ['Persons w/ disability', m.gedsi.pwd], ['Indirect', m.gedsi.indirect]].map(([lbl, val]) => (
+              <div key={lbl} style={{ background: 'var(--surface-1)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-1)' }}>{val != null ? val.toLocaleString() : '—'}</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', margin: '0.5rem 0 0' }}>A dash (—) means the field was not reported; 0 is a reported value.</p>
         </div>
       )}
 
