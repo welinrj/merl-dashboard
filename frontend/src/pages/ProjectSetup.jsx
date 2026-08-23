@@ -10,6 +10,7 @@
 // Shows a completion tick per section (Enter once -> structured data).
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ClipboardList, Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight, FolderPlus,
@@ -67,6 +68,17 @@ export default function ProjectSetup({ user }) {
     loadProjects();
     supabase.rpc('list_assignable_users').then(({ data }) => setUsers(data ?? []));
   }, [loadProjects]);
+
+  // Deep-link from Global Search (§59): ?project=<id> selects that project.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const pid = searchParams.get('project');
+    if (pid && projects.some((p) => p.id === pid)) {
+      setProjectId(pid);
+      setStep('results');
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, projects, setSearchParams]);
 
   const loadFramework = useCallback(async (pid) => {
     if (!pid) { setObjectives([]); setOutcomes([]); setOutputs([]); setIndicators([]); setActivities([]); setLocations([]); return; }

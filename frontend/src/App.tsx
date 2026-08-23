@@ -15,6 +15,7 @@ import Reports from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
 import ReviewApproval from './pages/ReviewApproval';
 import ErrorBoundary from './components/ErrorBoundary';
+import GlobalSearch from './components/GlobalSearch';
 import { DashboardFilterProvider, useDashboardFilters } from './lib/dashboardFilters';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavKey } from './types';
@@ -380,6 +381,7 @@ export default function App() {
             {activeItem.sub && <div className="dsh-head-sub">{activeItem.sub}</div>}
           </div>
           <div className="dsh-head-actions">
+            <GlobalSearch />
             {IS_STAGING && (
               <span style={{ fontSize: '0.72rem', color: 'var(--green-700)', padding: '0.25rem 0.6rem', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 9999, fontWeight: 700 }}>Staging</span>
             )}
