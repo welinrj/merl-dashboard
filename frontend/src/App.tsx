@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin,
-  AlertTriangle, FolderOpen, FileBarChart, Settings, LogOut, Bell, Menu,
+  AlertTriangle, FolderOpen, FileBarChart, Settings, LogOut, Menu,
   Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,7 @@ import AdminPanel  from './pages/AdminPanel';
 import ReviewApproval from './pages/ReviewApproval';
 import ErrorBoundary from './components/ErrorBoundary';
 import GlobalSearch from './components/GlobalSearch';
+import NotificationBell from './components/NotificationBell';
 import { DashboardFilterProvider, useDashboardFilters } from './lib/dashboardFilters';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavKey } from './types';
@@ -394,7 +395,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <button className="dsh-bell" title="Notifications" aria-label="Notifications"><Bell size={19} /></button>
+            <NotificationBell user={user} />
             <div style={{ position: 'relative' }}>
               <button className="dsh-user" onClick={() => setUserMenuOpen(o => !o)} aria-label="Account menu">
                 <span className="dsh-avatar">{initials}</span>
