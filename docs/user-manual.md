@@ -19,7 +19,8 @@ managing projects) are in the [Administrator Manual](admin-manual.md).
 7. [Analysis and Maps](#7-analysis-and-maps)
 8. [Reports](#8-reports)
 9. [Language: English / French](#9-language-english--french)
-10. [Getting Help](#10-getting-help)
+10. [Search, Notifications and Your Action Center](#10-search-notifications-and-your-action-center)
+11. [Getting Help](#11-getting-help)
 
 ---
 
@@ -134,6 +135,12 @@ Every submitted dataset goes through review before it counts:
   returned datasets show the reviewer's comment explaining what to fix.
 - Approved data feeds the Dashboard, Analysis, and Reports immediately.
 
+Reviewers can open any submission with **View** to see everything reported for
+the period — indicator progress, financial figures, beneficiaries, achievements,
+evidence and risks — in one panel, then **Review**, **Return** or **Approve**
+without leaving it. Approving locks the period; it can later be reopened (with a
+recorded reason) if a correction is needed.
+
 ## 7. Analysis and Maps
 
 The **Analysis** module lets you:
@@ -159,12 +166,54 @@ reporting templates:
 Reports only include approved data, so generate them after the relevant
 datasets have cleared review.
 
+Every generated report carries a **Generated** timestamp and a **Data as at**
+stamp (the most recent date in the underlying data), so a printed or saved
+report always shows how current it was.
+
+**Report Library.** Below the report, the **Report Library** lists recently
+generated reports across the portfolio — the report type, its scope, the
+reporting period, who generated it, and when — giving an at-a-glance audit
+trail of official reporting.
+
 ## 9. Language: English / French
 
 Use the language switcher (EN/FR) in the header to change the interface
 language at any time. Your choice is remembered on that browser.
 
-## 10. Getting Help
+## 10. Search, Notifications and Your Action Center
+
+Three tools help you move around the portal and stay on top of your work. Each
+only ever shows information you already have permission to see.
+
+### 10.1 Global search
+
+Use the **Search** box in the header — or press **⌘K** (Mac) / **Ctrl-K**
+(Windows) anywhere — to find any project, indicator or activity by its code or
+name. Move through the results with the **↑ / ↓** arrow keys, open one with
+**Enter**, or click it; **Esc** closes the search. Choosing a result takes you
+straight to that project.
+
+### 10.2 Notifications
+
+The **bell** in the header shows a count of items that need attention and lists
+them when opened:
+
+- **DoCC M&E Officer / System Administrator** — reporting periods awaiting your
+  review.
+- **Project Manager / Data Entry Officer** — periods returned for correction
+  (with the reviewer's note) and any overdue reporting periods.
+
+Click a notification to jump to the right workspace. When there is nothing
+outstanding it shows "You're all caught up."
+
+### 10.3 Your action center
+
+The **Overview** greets you by name and shows an **Action Center** — cards for
+your next actions based on your role (reports to review, drafts to submit,
+periods returned for correction, overdue reporting). Each card links to where
+the work is done.
+
+## 11. Getting Help
 
 1. **Returned dataset or data question** → your M&E Officer.
 2. **Cannot log in / wrong role / password reset** → the system
