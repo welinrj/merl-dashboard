@@ -373,7 +373,9 @@ export default function Overview({ user }) {
         <div className="ovx-card">
           <div className="ovx-card-h">Provincial Coverage</div>
           <div className="ovx-provwrap">
-            <VanuatuMapMini counts={provinceCounts} selected={filters.province} onSelect={(pv) => setFilter('province', pv)} width={78} height={142} />
+            <div className="ovx-provmap">
+              <VanuatuMapMini counts={provinceCounts} selected={filters.province} onSelect={(pv) => setFilter('province', pv)} width={132} height={264} />
+            </div>
             <div className="ovx-prov">
               {PROVINCE_LIST.map((pv, i) => (
                 <button key={pv} className={`ovx-prov-row${filters.province === pv ? ' sel' : ''}`} onClick={() => setFilter('province', pv)}>
