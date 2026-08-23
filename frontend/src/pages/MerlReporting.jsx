@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
+import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import {
   achievementPct, variance as calcVariance, performanceStatus, remainingBalance,
@@ -250,6 +251,21 @@ export default function MerlReporting({ user }) {
 
   useEffect(() => { loadRecords(); setEditing(null); }, [loadRecords]);
 
+  // Per-section completion for the active reporting period (§40): count records
+  // in each period-scoped module for this project + period.
+  const [sections, setSections] = useState({});
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    if (!projectId || !activePeriod) { setSections({}); return undefined; }
+    let alive = true;
+    const scoped = MODULES.filter((mm) => mm.periodScoped);
+    Promise.all(scoped.map((mm) => supabase.from(mm.view).select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId).eq('reporting_period', activePeriod)
+      .then(({ count }) => [mm.key, count || 0])))
+      .then((entries) => { if (alive) setSections(Object.fromEntries(entries)); });
+    return () => { alive = false; };
+  }, [projectId, activePeriod, refreshKey]);
+
   const dynamicOptions = (key) => {
     const src = key === 'indicators' ? indicators : key === 'activities' ? activities : [];
     return src.map((o) => ({ value: o.id, label: `${o.code} · ${o.name}` }));
@@ -283,6 +299,7 @@ export default function MerlReporting({ user }) {
     toast.success(editing?.id ? 'Updated' : 'Added');
     setEditing(null);
     loadRecords();
+    setRefreshKey((k) => k + 1);
     if (m.periodScoped) loadContext(projectId);
   };
 
@@ -292,6 +309,7 @@ export default function MerlReporting({ user }) {
     if (error) { toast.error(error.message); return; }
     toast.success('Deleted');
     loadRecords();
+    setRefreshKey((k) => k + 1);
   };
 
   // ── Reporting period workflow (Form 11) ─────────────────────────────────────
@@ -335,6 +353,14 @@ export default function MerlReporting({ user }) {
 
   const currentPeriodRow = periods.find((p) => p.period_label === activePeriod);
 
+  // Period completion (§40): which period-scoped modules have at least one record
+  // for the active period, and an overall completion % for the header.
+  const scopedModules = useMemo(() => MODULES.filter((m) => m.periodScoped), []);
+  const completion = useMemo(() => {
+    const done = scopedModules.filter((m) => (sections[m.key] || 0) > 0).length;
+    return { done, total: scopedModules.length, pct: scopedModules.length ? Math.round((done / scopedModules.length) * 100) : 0 };
+  }, [scopedModules, sections]);
+
   return (
     <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
       <style>{`
@@ -356,16 +382,11 @@ export default function MerlReporting({ user }) {
         .mr-card-row span:first-child{color:var(--text-3)}
       `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <ClipboardCheck size={22} style={{ color: 'var(--green-700)' }} />
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem,4vw,1.9rem)', fontWeight: 700, margin: 0 }}>
-          MERL Reporting
-        </h1>
-      </div>
-      <p style={{ color: 'var(--text-2)', margin: '0.35rem 0 1rem', fontSize: '0.9rem' }}>
-        Periodic monitoring entries for the DoCC Standardised MERL form. Data entered here flows to the
-        dashboards and generated reports.
-      </p>
+      <PageHeader
+        icon={ClipboardCheck}
+        title="MERL Reporting"
+        subtitle="Periodic monitoring entries for the DoCC Standardised MERL form. Data entered here flows to the dashboards and generated reports."
+      />
 
       {/* Project + period bar */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -429,6 +450,50 @@ export default function MerlReporting({ user }) {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Period completion overview (§40) — which sections have data for this period */}
+      {currentPeriodRow && (
+        <div style={{ marginTop: '0.75rem', padding: '0.8rem 0.9rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--white)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+            <div>
+              <strong style={{ fontSize: '0.85rem', color: 'var(--text-1)' }}>Period completion</strong>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.4rem' }}>
+                {completion.done} of {completion.total} sections have data
+              </span>
+            </div>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 800, color: completion.pct === 100 ? '#16a34a' : 'var(--text-1)' }}>
+              {completion.pct}%
+            </span>
+          </div>
+          <div style={{ height: 8, borderRadius: 9999, background: 'var(--green-50)', overflow: 'hidden', marginBottom: '0.7rem' }}>
+            <div style={{ width: `${completion.pct}%`, height: '100%', borderRadius: 9999, background: completion.pct === 100 ? '#16a34a' : 'var(--green-600)', transition: 'width .3s' }} />
+          </div>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {scopedModules.map((m) => {
+              const has = (sections[m.key] || 0) > 0;
+              return (
+                <button key={m.key} onClick={() => setTab(m.key)}
+                  title={has ? `${sections[m.key]} record(s) this period` : 'No data yet for this period'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: 9999,
+                    fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+                    border: `1px solid ${has ? '#16a34a55' : 'var(--border)'}`,
+                    background: has ? '#dcece2' : 'var(--white)', color: has ? '#155e34' : 'var(--text-3)' }}>
+                  {has
+                    ? <CheckCircle2 size={13} />
+                    : <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid var(--text-3)', display: 'inline-block' }} />}
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && completion.done < completion.total && (
+            <p style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', fontSize: '0.72rem', color: 'var(--text-2)', margin: '0.7rem 0 0' }}>
+              <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+              <span>You can submit at any point, but sections without data will be reported as empty for this period.</span>
+            </p>
+          )}
         </div>
       )}
 
