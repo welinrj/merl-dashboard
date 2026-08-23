@@ -460,6 +460,9 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
 }
 
 // ── Step 3: Indicators ───────────────────────────────────────────────────────
+const qualTag = { marginLeft: 6, fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-3)', background: 'var(--surface-1)', borderRadius: 4, padding: '0.05rem 0.35rem', textTransform: 'uppercase', letterSpacing: '0.04em' };
+const miniChip = { fontSize: '0.72rem', color: 'var(--text-2)', background: 'var(--surface-1)', borderRadius: 6, padding: '0.15rem 0.45rem' };
+
 function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, users, reload }) {
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
@@ -476,13 +479,18 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
       {indicators.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No indicators yet.</p> : (
         <div className="ps-desktop" style={{ overflowX: 'auto' }}>
           <table className="ps-table">
-            <thead><tr><th>Code</th><th>Name</th><th>Level</th><th>Baseline</th><th>Target</th><th></th></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Level</th><th>Linked</th><th>Unit</th><th>Baseline</th><th>Target</th><th>Frequency</th><th></th></tr></thead>
             <tbody>
               {indicators.map((i) => (
                 <tr key={i.id}>
-                  <td>{i.code}</td><td>{i.name}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>{i.code}</td>
+                  <td>{i.name}{i.is_qualitative && <span style={qualTag}>Qualitative</span>}</td>
                   <td>{OPT.labelOf(OPT.INDICATOR_LEVEL, i.indicator_level)}</td>
-                  <td>{i.baseline_value ?? '—'}</td><td>{i.target_value ?? '—'}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-3)' }}>{i.linked_code ?? '—'}</td>
+                  <td>{i.unit ?? '—'}</td>
+                  <td>{i.baseline_value ?? '—'}</td>
+                  <td>{i.target_value ?? '—'}</td>
+                  <td>{i.frequency ? OPT.labelOf(OPT.REPORTING_FREQUENCY, i.frequency) : '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button onClick={() => setEditing(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} /></button>
                     <button onClick={() => del(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} /></button>
@@ -497,9 +505,19 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
         <div className="ps-cards">
           {indicators.map((i) => (
             <div className="ps-card" key={i.id}>
-              <strong>{i.code}</strong> · {i.name}
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Baseline {i.baseline_value ?? '—'} → Target {i.target_value ?? '—'}</div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+              <div><strong style={{ fontFamily: 'var(--font-mono)' }}>{i.code}</strong> · {i.name}{i.is_qualitative && <span style={qualTag}>Qualitative</span>}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 2 }}>
+                {OPT.labelOf(OPT.INDICATOR_LEVEL, i.indicator_level)}{i.linked_code ? ` · ${i.linked_code}` : ''}
+                {i.frequency ? ` · ${OPT.labelOf(OPT.REPORTING_FREQUENCY, i.frequency)}` : ''}
+              </div>
+              {/* baseline -> target (§21). Achievement/current come from reporting, not setup. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.8rem' }}>
+                <span style={miniChip}>Baseline: <strong>{i.baseline_value ?? '—'}</strong></span>
+                <span style={{ color: 'var(--text-3)' }}>→</span>
+                <span style={miniChip}>Target: <strong>{i.target_value ?? '—'}</strong></span>
+                {i.unit && <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{i.unit}</span>}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                 <button onClick={() => setEditing(i)} style={btn('#475569', { padding: '0.3rem 0.6rem' })}><Pencil size={13} /> Edit</button>
                 <button onClick={() => del(i)} style={btn('#dc2626', { padding: '0.3rem 0.6rem' })}><Trash2 size={13} /> Delete</button>
               </div>
