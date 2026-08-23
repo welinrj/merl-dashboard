@@ -152,7 +152,7 @@ export default function Dashboards({ initialTab }) {
         </div>
       )}
 
-      {tab === 'portfolio' && <Portfolio d={d} />}
+      {tab === 'portfolio' && <Portfolio d={d} onNavigate={setTab} />}
       {tab === 'project' && <ProjectView d={d} projectId={projectId} />}
       {tab === 'results' && <Results d={d} />}
       {tab === 'financial' && <Financial d={d} />}
@@ -188,7 +188,7 @@ function BarList({ rows, total, accent = 'var(--green-600)' }) {
 const perfTint = (s) => ({ on_track: '#16a34a', target_achieved: '#0891b2', attention_required: '#d97706', off_track: '#dc2626', no_data: '#94a3b8' }[s] || '#94a3b8');
 
 // ── Executive Portfolio ──────────────────────────────────────────────────────
-function Portfolio({ d }) {
+function Portfolio({ d, onNavigate }) {
   const m = useMemo(() => {
     const fin = latestByProject(d.financial);
     const totalBudget = sum(d.projects, (p) => p.budget_vuv);
@@ -198,7 +198,35 @@ function Portfolio({ d }) {
     const overdue = d.risks.filter((r) => r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status));
     const achieved = d.progress.filter((p) => p.achievement_pct != null);
     const avgAch = achieved.length ? Math.round(achieved.reduce((a, r) => a + Number(r.achievement_pct), 0) / achieved.length) : null;
+
+    // Attention Required (§31) — clickable management intelligence.
+    const atRiskDelayed = d.projects.filter((p) => ['at_risk', 'delayed'].includes(p.status)).length;
+    const offTrack = d.progress.filter((p) => p.performance_status === 'off_track').length;
+    const reportsOverdue = d.reporting.filter((r) => r.period_end && r.period_end < today() && r.submission_status !== 'approved').length;
+    const highRiskOverdue = d.risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
+      && r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status)).length;
+    const attention = [];
+    if (atRiskDelayed) attention.push({ label: `${atRiskDelayed} project${atRiskDelayed === 1 ? '' : 's'} at risk or delayed`, tab: 'portfolio', tone: 'amber' });
+    if (offTrack) attention.push({ label: `${offTrack} indicator${offTrack === 1 ? '' : 's'} off track`, tab: 'results', tone: 'red' });
+    if (reportsOverdue) attention.push({ label: `${reportsOverdue} report${reportsOverdue === 1 ? '' : 's'} overdue`, tab: 'reporting', tone: 'red' });
+    if (highRiskOverdue) attention.push({ label: `${highRiskOverdue} high-risk action${highRiskOverdue === 1 ? '' : 's'} overdue`, tab: 'risks', tone: 'red' });
+
+    // Physical vs financial progress (§32).
+    const physAgg = {};
+    d.activities.forEach((a) => {
+      if (a.physical_progress_pct != null) { const g = physAgg[a.project_id] || (physAgg[a.project_id] = { s: 0, n: 0 }); g.s += Number(a.physical_progress_pct); g.n += 1; }
+    });
+    const pf = d.projects.map((p) => {
+      const ph = physAgg[p.id] ? Math.round(physAgg[p.id].s / physAgg[p.id].n) : null;
+      const f = fin.get(p.id);
+      const finPct = f?.utilisation_pct != null ? Math.round(Number(f.utilisation_pct))
+        : (p.budget_vuv ? Math.round(utilisationPct(p.budget_vuv, p.spent_vuv)) : null);
+      const variance = (ph != null && finPct != null) ? finPct - ph : null;
+      return { code: p.code, physical: ph, financial: finPct, variance };
+    }).filter((r) => r.physical != null || r.financial != null);
+
     return {
+      attention, pf,
       total: d.projects.length,
       active: d.projects.filter((p) => ACTIVE_STATUSES.includes(p.status)).length,
       completed: d.projects.filter((p) => ['completed', 'closed'].includes(p.status)).length,
@@ -231,6 +259,26 @@ function Portfolio({ d }) {
         <StatTile label="Overdue Actions" value={m.overdue} status={m.overdue ? 'red' : 'green'} icon={Clock} accent="#dc2626" />
         <StatTile label="Completed Projects" value={m.completed} icon={FileCheck} accent="var(--green-700)" />
       </div>
+
+      {/* Attention Required (§31) */}
+      {m.attention.length > 0 && (
+        <div className="db-card" style={{ marginTop: '1rem', borderLeft: '3px solid var(--gold-500)' }}>
+          <h3 className="db-h" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <AlertTriangle size={15} style={{ color: 'var(--gold-500)' }} /> Attention Required
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+            {m.attention.map((a, i) => (
+              <button key={i} onClick={() => onNavigate?.(a.tab)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: '0.25rem 0', font: 'inherit', color: 'var(--text-1)' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: a.tone === 'red' ? 'var(--red-600)' : 'var(--gold-500)' }} />
+                <span style={{ fontSize: '0.83rem' }}>{a.label}</span>
+                <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--green-700)', fontWeight: 700 }}>View →</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="db-2">
         <div className="db-card"><h3 className="db-h">Projects by Province</h3><BarList rows={m.byProvince} total={m.total} /></div>
         <div className="db-card"><h3 className="db-h">Projects by Donor</h3><BarList rows={m.byDonor} total={m.total} accent="#2563eb" /></div>
@@ -239,6 +287,37 @@ function Portfolio({ d }) {
         <div className="db-card"><h3 className="db-h">Projects by Theme / Sector</h3><BarList rows={m.byTheme} total={m.total} accent="#7c3aed" /></div>
         <div className="db-card"><h3 className="db-h">Projects by Status</h3><BarList rows={countBy(d.projects, (p) => OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status))} total={m.total} accent="#0891b2" /></div>
       </div>
+
+      {/* Physical vs Financial progress (§32) */}
+      {m.pf.length > 0 && (
+        <div className="db-card" style={{ marginTop: '1rem' }}>
+          <h3 className="db-h">Physical vs Financial Progress</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="db-table">
+              <thead><tr><th>Project</th><th>Physical</th><th>Financial</th><th>Variance</th></tr></thead>
+              <tbody>
+                {m.pf.map((r) => {
+                  const flag = r.variance != null && Math.abs(r.variance) >= 25;
+                  return (
+                    <tr key={r.code}>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>{r.code}</td>
+                      <td>{r.physical != null ? `${r.physical}%` : '—'}</td>
+                      <td>{r.financial != null ? `${r.financial}%` : '—'}</td>
+                      <td style={{ fontWeight: 700, color: flag ? 'var(--red-600)' : 'var(--text-2)' }}>
+                        {r.variance != null ? `${r.variance > 0 ? '+' : ''}${r.variance} pp` : '—'}
+                        {flag && <span style={{ marginLeft: 6, fontSize: '0.62rem', color: 'var(--red-700)', background: 'var(--red-100)', borderRadius: 9999, padding: '0.05rem 0.4rem' }}>CHECK</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', margin: '0.5rem 0 0' }}>
+            Financial minus physical progress. A large gap (±25pp) is flagged for review — it is a prompt to check, not a conclusion.
+          </p>
+        </div>
+      )}
     </>
   );
 }
