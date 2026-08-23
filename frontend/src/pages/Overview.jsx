@@ -16,6 +16,7 @@ import {
   FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, Ban, Flag, Wallet,
   Printer, MapPin, ArrowRight, ClipboardCheck, Send, RotateCcw, Clock, Eye,
   Users, Venus, Mars, PersonStanding, Accessibility, AlertCircle, ShieldCheck, Archive, CircleDollarSign, ListChecks,
+  Target, FileCheck, CalendarClock,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -204,256 +205,175 @@ export default function Overview({ user }) {
 
   const exportPrint = () => window.print();
 
-  // ── Role-aware Action Center (§52-57) ───────────────────────────────────────
-  // Uses the RLS-scoped reporting rows (already limited to what this user may
-  // see), so counts reflect the signed-in user's own remit without extra queries.
-  const role = user?.role;
-  const isReviewer = role === 'ROLE_ADMIN' || role === 'ROLE_DOCC_MEO';
-  const isEditor = isReviewer || role === 'ROLE_PROJ_MANAGER' || role === 'ROLE_DATA_ENTRY';
-  const rp = d.reporting;
-  const nowIso = iso(today());
-  const actions = [];
-  if (isReviewer) {
-    const awaiting = rp.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
-    actions.push({ key: 'review', icon: Eye, accent: '#2563eb', value: awaiting,
-      label: awaiting === 1 ? 'Report awaiting your review' : 'Reports awaiting your review',
-      cta: 'Open review queue', to: '/review', primary: true });
-  }
-  if (isEditor) {
-    const returned = rp.filter((r) => r.submission_status === 'returned').length;
-    const drafts = rp.filter((r) => r.submission_status === 'draft').length;
-    if (returned) actions.push({ key: 'returned', icon: RotateCcw, accent: '#d97706', value: returned,
-      label: returned === 1 ? 'Period returned for correction' : 'Periods returned for correction',
-      cta: 'Fix & resubmit', to: '/merl-reporting' });
-    actions.push({ key: 'drafts', icon: Send, accent: '#0e7490', value: drafts,
-      label: drafts === 1 ? 'Draft period to submit' : 'Draft periods to submit',
-      cta: 'Continue reporting', to: '/merl-reporting', primary: !isReviewer });
-  }
-  const overdue = rp.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < nowIso).length;
-  if (overdue && isEditor) actions.push({ key: 'overdue', icon: Clock, accent: '#b3402f', value: overdue,
-    label: overdue === 1 ? 'Reporting period overdue' : 'Reporting periods overdue',
-    cta: 'View reporting', to: '/merl-reporting' });
-  const firstName = (user?.name || '').trim().split(/\s+/)[0] || '';
+  // ── Derived headline + performance metrics (all from existing calcs) ────────
+  const completed = byBucket.completed;
+  const activeProjects = total - completed;
+  const totalExp = [...latestFin.values()].reduce((a, f) => a + (Number(f.cumulative_expenditure) || 0), 0);
+  const util = totalBudget ? Math.round((totalExp / totalBudget) * 100) : 0;
+  const provincesReached = Object.keys(provinceCounts).length;
+  const provincesTotal = PROVINCE_LIST.length;
 
-  // Risk status tiles (reuse risksData: High / Medium / Low / Closed).
-  const RISK_ICON = { High: AlertTriangle, Medium: AlertCircle, Low: ShieldCheck, Closed: Archive };
-  const riskTiles = risksData.map((r) => ({ ...r, icon: RISK_ICON[r.name] }));
+  const onTrackInd = perfData[0].value, offTrackInd = perfData[2].value;
+  const actsDone = acts.filter((a) => a.status === 'completed').length;
+  const now2 = iso(today());
+  const overdueActs = acts.filter((a) => a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < now2).length;
+  const repsApproved = reps.filter((r) => r.submission_status === 'approved').length;
+  const repsOverdue = reps.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < now2).length;
+  const repsAwaiting = reps.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
+  const pctOf = (n, dv) => (dv ? Math.round((n / dv) * 100) : 0);
 
-  // KPI summary strip — all values from the (filtered) live data.
-  const overdueActs = acts.filter((a) => a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < nowIso).length;
-  const strip = [
-    { key: 'active', icon: ClipboardCheck, value: total - byBucket.completed, label: 'Active Projects', cta: 'View projects', to: '/analytics/portfolio', accent: '#22a565' },
-    { key: 'prov', icon: MapPin, value: Object.keys(provinceCounts).length, label: 'Provinces', cta: 'View locations', to: '/analytics/geographic', accent: BLUE },
-    { key: 'budget', icon: CircleDollarSign, value: fmtVUV(totalBudget).replace('VUV ', ''), label: 'Total Budget (VUV)', cta: 'View finances', to: '/analytics/financial', accent: '#7c3aed' },
-    { key: 'acts', icon: ListChecks, value: acts.length, label: 'Activities', cta: 'View workplan', to: '/merl-reporting', accent: '#0e8f8a' },
-    { key: 'overdue', icon: Clock, value: overdueActs, label: 'Overdue Activities', cta: 'View workplan', to: '/merl-reporting', accent: '#b3402f' },
+  const perf = [
+    { key: 'ind', icon: Target, label: 'Indicators on track', frac: `${onTrackInd}/${totalIndicators}`, pct: pctOf(onTrackInd, totalIndicators), color: '#22a565' },
+    { key: 'act', icon: ListChecks, label: 'Activities completed', frac: `${actsDone}/${acts.length}`, pct: pctOf(actsDone, acts.length), color: BLUE },
+    { key: 'bud', icon: Wallet, label: 'Budget utilisation', frac: fmtVUV(totalExp).replace('VUV ', ''), pct: util, color: '#7c3aed' },
+    { key: 'rep', icon: FileCheck, label: 'Reporting compliance', frac: `${repsApproved}/${reps.length}`, pct: pctOf(repsApproved, reps.length), color: '#0e8f8a' },
   ];
+  const toneColor = { crit: '#b3402f', warn: '#d97706', ok: '#22a565' };
+  const attn = [
+    { key: 'ovr', icon: Clock, label: 'Overdue reports', value: repsOverdue, to: '/merl-reporting', tone: repsOverdue ? 'crit' : 'ok' },
+    { key: 'off', icon: AlertTriangle, label: 'Indicators off track', value: offTrackInd, to: '/analytics/results', tone: offTrackInd ? 'warn' : 'ok' },
+    { key: 'del', icon: CalendarClock, label: 'Delayed activities', value: overdueActs, to: '/merl-reporting', tone: overdueActs ? 'warn' : 'ok' },
+    { key: 'rev', icon: Eye, label: 'Awaiting review', value: repsAwaiting, to: '/review', tone: repsAwaiting ? 'warn' : 'ok' },
+  ];
+  const genderSplit = (() => {
+    const f = gedsi[0].value, m = gedsi[1].value;
+    if (f == null && m == null) return null;
+    const fv = f || 0, mv = m || 0, s = fv + mv;
+    return { f: fv, m: mv, fp: s ? Math.round((fv / s) * 100) : 0, mp: s ? Math.round((mv / s) * 100) : 0 };
+  })();
 
   return (
-    <div className="ov">
-      {/* Role-aware welcome + Action Center */}
-      <div className="ov-actionband rp-noprint">
-        <div className="ov-welcome">
-          <h1>{firstName ? `Welcome back, ${firstName}` : 'Welcome back'}</h1>
-          <p>{isReviewer ? 'Portfolio overview and reports awaiting your review.'
-            : isEditor ? 'Your portfolio overview and reporting tasks.'
-            : 'Portfolio overview across all monitored projects.'}</p>
+    <div className="ovx">
+      {/* Header — title + filters */}
+      <div className="ovx-head rp-noprint">
+        <div className="ovx-title">
+          <h1>Dashboard Overview</h1>
+          <p>Portfolio monitoring, evaluation &amp; reporting · Data as at <b>{dataAsAt}</b></p>
         </div>
-        {actions.length > 0 && (
-          <div className="ov-actions">
-            {actions.map((a) => (
-              <button key={a.key} className={`ov-action${a.primary ? ' primary' : ''}${a.value === 0 ? ' quiet' : ''}`}
-                onClick={() => nav(a.to)} aria-label={`${a.value} ${a.label} — ${a.cta}`}>
-                <span className="ov-action-ic" style={{ background: `color-mix(in srgb, ${a.accent} 15%, #fff)`, color: a.accent }}>
-                  <a.icon size={18} />
-                </span>
-                <span className="ov-action-txt">
-                  <span className="ov-action-val">{a.value}</span>
-                  <span className="ov-action-lbl">{a.label}</span>
-                </span>
-                <span className="ov-action-cta">{a.cta} <ArrowRight size={13} /></span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Global filter bar */}
-      <div className="ov-filters rp-noprint">
-        <FilterSelect label="Financial Year" value={filters.fy} onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
-        <FilterSelect label="Project Status" value={filters.status} onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((k) => ({ value: k, label: STATUS_BUCKETS_LABEL(k) }))} />
-        <FilterSelect label="Theme / Sector" value={filters.theme} onChange={(v) => setFilter('theme', v)} options={themes.map((t) => ({ value: t, label: t }))} />
-        <FilterSelect label="Province" value={filters.province} onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} />
-        <FilterSelect label="Funding Partner" value={filters.partner} onChange={(v) => setFilter('partner', v)} options={donors.map((x) => ({ value: x, label: x }))} />
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Data as at: <b style={{ color: 'var(--text-2)' }}>{dataAsAt}</b></span>
-          <button className="ov-btn-ghost" onClick={reset} disabled={!active}>Reset Filters</button>
+        <div className="ovx-filters">
+          <FilterSelect label="Financial Year" value={filters.fy} onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
+          <FilterSelect label="Status" value={filters.status} onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((k) => ({ value: k, label: STATUS_BUCKETS_LABEL(k) }))} />
+          <FilterSelect label="Theme" value={filters.theme} onChange={(v) => setFilter('theme', v)} options={themes.map((t) => ({ value: t, label: t }))} />
+          <FilterSelect label="Province" value={filters.province} onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} />
+          <FilterSelect label="Partner" value={filters.partner} onChange={(v) => setFilter('partner', v)} options={donors.map((x) => ({ value: x, label: x }))} />
+          <button className="ov-btn-ghost" onClick={reset} disabled={!active}>Reset</button>
           <button className="ov-btn" onClick={exportPrint}><Printer size={14} /> Export</button>
         </div>
       </div>
 
-      {/* KPI row */}
-      <div className="ov-kpis">
-        <Kpi icon={FolderKanban} accent={KPI_ACCENT.total} label="Total Projects" value={total} sub={active ? 'Matching filters' : 'All active projects'} />
-        <Kpi icon={CheckCircle2} accent={KPI_ACCENT.on_track} label="On Track" value={byBucket.on_track} sub={`${pct1(byBucket.on_track, total)} of total`} />
-        <Kpi icon={AlertTriangle} accent={KPI_ACCENT.at_risk} label="At Risk / Delayed" value={byBucket.at_risk} sub={`${pct1(byBucket.at_risk, total)} of total`} />
-        <Kpi icon={Ban} accent={KPI_ACCENT.not_started} label="Not Started" value={byBucket.not_started} sub={`${pct1(byBucket.not_started, total)} of total`} />
-        <Kpi icon={Flag} accent={KPI_ACCENT.completed} label="Completed" value={byBucket.completed} sub={`${pct1(byBucket.completed, total)} of total`} />
-        <Kpi icon={Wallet} accent={KPI_ACCENT.budget} label="Total Approved Budget" value={fmtVUV(totalBudget)} sub="Across all projects" small />
-      </div>
-
-      {/* Analytics row 1 */}
-      <div className="ov-grid4">
-        <Panel title="Projects by Status" footer={<FooterLink label="View all projects" onClick={() => nav('/analytics/portfolio')} />}>
-          <Donut data={statusData} center={[total, 'Projects']} onSlice={(s) => setFilter('status', s.key)} />
-          <Legend items={statusData.map((s) => ({ ...s, onClick: () => setFilter('status', s.key) }))} total={total} />
-        </Panel>
-        <Panel title="Projects by Theme / Sector" footer={<FooterLink label="View full breakdown" onClick={() => nav('/analytics/portfolio')} />}>
-          {themeData.length === 0 ? <NoData /> : (
-            <div style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={themeData} layout="vertical" margin={{ left: 8, right: 64, top: 4, bottom: 4 }}>
-                  <CartesianGrid horizontal={false} stroke="var(--border)" />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={116} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [`${v} (${pct1(v, total)})`, 'Projects']} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} fill={BLUE} cursor="pointer"
-                    onClick={(e) => { const n = e?.name ?? e?.payload?.name; if (n) setFilter('theme', n); }}>
-                    <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: 'var(--text-2)' }}
-                      formatter={(v) => `${v} (${pct1(v, total)})`} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+      {/* Row 1 — headline KPIs (Beneficiaries wider) */}
+      <div className="ovx-kpis">
+        <HeadKpi icon={FolderKanban} accent={BLUE} label="Active Projects" value={activeProjects}
+          sub={`${completed} completed · ${total} total`} onClick={() => nav('/analytics/portfolio')} />
+        <HeadKpi icon={Wallet} accent="#7c3aed" label="Total Budget" value={fmtVUV(totalBudget)}
+          sub={`${util}% utilised`} onClick={() => nav('/analytics/financial')} />
+        <HeadKpi icon={MapPin} accent="#22a565" label="Provinces Reached" value={`${provincesReached} / ${provincesTotal}`}
+          sub={provincesReached >= provincesTotal ? 'All provinces' : 'Provincial coverage'} onClick={() => nav('/analytics/geographic')} />
+        <div className="ovx-card ovx-bene" role="button" tabIndex={0} onClick={() => nav('/analytics/geographic')}
+          onKeyDown={(e) => { if (e.key === 'Enter') nav('/analytics/geographic'); }}>
+          <div className="ovx-bene-top">
+            <span className="ovx-kpi-ic" style={{ color: '#7c3aed' }}><Users size={20} /></span>
+            <div style={{ minWidth: 0 }}>
+              <div className="ovx-kpi-val">{totalBen ? totalBen.toLocaleString() : '0'}</div>
+              <div className="ovx-kpi-label">Beneficiaries reached</div>
             </div>
-          )}
-        </Panel>
-        <Panel title="Projects by Province" footer={<FooterLink label="View on map" icon={MapPin} onClick={() => nav('/analytics/geographic')} />}>
-          <VanuatuMap counts={provinceCounts} nationalCount={nationalCount} selected={filters.province} onSelect={(name) => setFilter('province', name)} />
-        </Panel>
-        <Panel title="Budget Overview (VUV)" footer={<FooterLink label="View finance" onClick={() => nav('/analytics/financial')} />}>
-          {budgetByCategory.length === 0 ? <NoData /> : (
+          </div>
+          {genderSplit && (
             <>
-              <Donut data={budgetByCategory} center={[fmtCompact(totalBudget), 'VUV Total']} valueFmt={fmtCompact} />
-              <Legend items={budgetByCategory} total={totalBudget} valueFmt={fmtCompact} />
+              <div className="ovx-split" aria-hidden="true">
+                <div style={{ width: `${genderSplit.fp}%`, background: '#7c3aed' }} />
+                <div style={{ width: `${genderSplit.mp}%`, background: BLUE }} />
+              </div>
+              <div className="ovx-split-lbl">
+                <span><Venus size={12} style={{ color: '#7c3aed' }} /> Female {genderSplit.f.toLocaleString()}</span>
+                <span><Mars size={12} style={{ color: BLUE }} /> Male {genderSplit.m.toLocaleString()}</span>
+              </div>
             </>
           )}
-        </Panel>
+          <div className="ovx-bene-mini">
+            {gedsi[2].value != null && <span><PersonStanding size={13} style={{ color: '#e0a12a' }} /> Youth {gedsi[2].value.toLocaleString()}</span>}
+            {gedsi[3].value != null && <span><Accessibility size={13} style={{ color: '#22a565' }} /> PWD {gedsi[3].value.toLocaleString()}</span>}
+          </div>
+        </div>
       </div>
 
-      {/* Analytics row 2 — Indicators status + trend */}
-      <div className="ov-2">
-        <Panel title="Indicators Status" footer={<FooterLink label="View all indicators" onClick={() => nav('/analytics/results')} />}>
-          <Donut data={perfData} center={[totalIndicators, 'Indicators']} />
-          <Legend items={perfData} total={perfData.reduce((a, s) => a + s.value, 0)} />
-        </Panel>
-        <Panel title="Results Trend" footer={<FooterLink label="View trend analysis" onClick={() => nav('/analytics/results')} />}>
-          {trendData.length === 0 ? <NoData label="No reported progress yet" /> : (
-            <div style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData} margin={{ left: -10, right: 12, top: 8, bottom: 4 }}>
-                  <CartesianGrid stroke="var(--border)" />
-                  <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
-                  <Tooltip formatter={(v) => [`${v}%`, 'Avg achievement']} />
-                  <Line type="monotone" dataKey="pct" stroke={BLUE} strokeWidth={2.5} dot={{ r: 3, fill: BLUE }} label={{ fontSize: 10, position: 'top', fill: 'var(--text-2)', formatter: (v) => `${v}%` }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </Panel>
-      </div>
-
-      {/* Analytics row 3 — Beneficiaries + Risks as icon KPI tiles */}
-      <div className="ov-2">
-        <Panel title="Beneficiaries Reached" footer={<FooterLink label="View beneficiaries" onClick={() => nav('/analytics/geographic')} />}>
-          <div className="ov-kpihead">
-            <span className="ov-kpihead-ic" style={{ background: 'color-mix(in srgb, #7c3aed 12%, #fff)', color: '#7c3aed' }}><Users size={22} /></span>
-            <span className="ov-kpihead-val">{totalBen ? totalBen.toLocaleString() : '0'}</span>
-            <span className="ov-kpihead-lbl">Total direct beneficiaries</span>
-          </div>
-          {!hasGedsi ? (
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-3)', marginTop: '0.5rem' }}>No disaggregated data reported.</div>
-          ) : (
-            <div className="ov-tiles b5">
-              {gedsi.map((g) => (
-                <KpiTile key={g.key} icon={g.icon} value={g.value} label={g.label}
-                  pct={g.value != null && totalBen ? Math.round((g.value / totalBen) * 100) : null} accent={g.color} />
-              ))}
-            </div>
-          )}
-        </Panel>
-        <Panel title="Risks Overview" footer={<FooterLink label="View risks register" onClick={() => nav('/analytics/risks')} />}>
-          <div className="ov-kpihead">
-            <span className="ov-kpihead-ic" style={{ background: 'color-mix(in srgb, #16a34a 12%, #fff)', color: '#16a34a' }}><ShieldCheck size={22} /></span>
-            <span className="ov-kpihead-val">{totalRisks}</span>
-            <span className="ov-kpihead-lbl">Total Risks</span>
-          </div>
-          <div className="ov-tiles r4">
-            {riskTiles.map((r) => (
-              <KpiTile key={r.name} icon={r.icon} value={r.value} label={r.name}
-                pct={totalRisks ? `${((r.value / totalRisks) * 100).toFixed(1)}%` : '0.0%'} accent={r.color} />
+      {/* Row 2 — Portfolio Performance + Needs Attention */}
+      <div className="ovx-2">
+        <div className="ovx-card">
+          <div className="ovx-card-h">Portfolio Performance</div>
+          <div className="ovx-perf">
+            {perf.map((p) => (
+              <div key={p.key} className="ovx-perf-row">
+                <span className="ovx-perf-ic" style={{ color: p.color }}><p.icon size={16} /></span>
+                <span className="ovx-perf-lbl">{p.label}</span>
+                <div className="ovx-perf-bar"><div style={{ width: `${Math.min(100, p.pct)}%`, background: p.color }} /></div>
+                <span className="ovx-perf-val">{p.pct}%</span>
+                <span className="ovx-perf-frac">{p.frac}</span>
+              </div>
             ))}
           </div>
-        </Panel>
-      </div>
-
-      {/* KPI summary strip */}
-      <div className="ov-strip">
-        {strip.map((s) => (
-          <div key={s.key} className="ov-strip-item">
-            <div className="ov-strip-top">
-              <span className="ov-strip-ic" style={{ color: s.accent }}><s.icon size={22} /></span>
-              <span className="ov-strip-val">{s.value}</span>
-            </div>
-            <span className="ov-strip-lbl">{s.label}</span>
-            <button className="ov-strip-link" onClick={() => nav(s.to)}>{s.cta} <ArrowRight size={12} /></button>
+        </div>
+        <div className="ovx-card">
+          <div className="ovx-card-h">Needs Attention</div>
+          <div className="ovx-attn">
+            {attn.map((a) => (
+              <button key={a.key} className="ovx-attn-row" onClick={() => nav(a.to)}>
+                <span className="ovx-attn-ic" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)', background: a.value ? `color-mix(in srgb, ${toneColor[a.tone]} 12%, #fff)` : 'var(--surface-1)' }}><a.icon size={16} /></span>
+                <span className="ovx-attn-lbl">{a.label}</span>
+                <span className="ovx-attn-val" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>{a.value}</span>
+                <ArrowRight size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+              </button>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* Recent updates + milestones */}
-      <div className="ov-bottom">
-        <Panel title="Recent Project Updates" footer={<FooterLink label="View all projects" onClick={() => nav('/analytics/portfolio')} />}>
-          {recent.length === 0 ? <NoData label="No projects match the current filters" /> : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="ov-table">
-                <thead><tr><th>Project ID</th><th>Title</th><th>Status</th><th>Progress</th><th>Budget (VUV)</th><th>Last Updated</th><th>Updated By</th></tr></thead>
-                <tbody>
-                  {recent.map((p) => (
-                    <tr key={p.id}>
-                      <td style={{ fontWeight: 600 }}>{p.code}</td>
-                      <td>{p.name}</td>
-                      <td><StatusBadge status={p.status} /></td>
-                      <td><Progress value={p.progress} /></td>
-                      <td>{fmtVUV(p.budget_vuv).replace('VUV ', '')}</td>
-                      <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{p.updated_at ? p.updated_at.slice(0, 10) : '—'}</td>
-                      <td style={{ color: 'var(--text-2)' }}>{p.updatedBy}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Panel>
-        <Panel title="Upcoming Milestones" subtitle="Next 30 Days" footer={<FooterLink label="View all milestones" onClick={() => nav('/analytics/reporting')} />}>
-          {milestones.length === 0 ? <NoData label="Nothing due in the next 30 days" /> : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {milestones.map((m, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', padding: '0.5rem 0', borderBottom: i < milestones.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: ['#22a565', BLUE, '#e0a12a', '#7c3aed'][i % 4], flexShrink: 0 }} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: BLUE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.subtitle}</div>
-                  </div>
-                  <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 34 }}>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 800, lineHeight: 1, color: 'var(--text-1)' }}>{m.date.getDate()}</div>
-                    <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em', color: '#22a565' }}>{m.date.toLocaleString('en', { month: 'short' }).toUpperCase()}</div>
-                  </div>
-                </div>
+      {/* Row 3 — Project Status + Provincial Coverage + Recent / Upcoming */}
+      <div className="ovx-3">
+        <div className="ovx-card">
+          <div className="ovx-card-h">Project Status</div>
+          <Donut size={108} data={statusData} center={[total, 'Projects']} onSlice={(s) => setFilter('status', s.key)} />
+          <Legend items={statusData.map((s) => ({ ...s, onClick: () => setFilter('status', s.key) }))} total={total} />
+        </div>
+        <div className="ovx-card">
+          <div className="ovx-card-h">Provincial Coverage</div>
+          <div className="ovx-prov">
+            {PROVINCE_LIST.map((pv) => (
+              <button key={pv} className={`ovx-prov-row${filters.province === pv ? ' sel' : ''}`} onClick={() => setFilter('province', pv)}>
+                <span>{pv}</span><b>{provinceCounts[pv] || 0}</b>
+              </button>
+            ))}
+            {nationalCount > 0 && <div className="ovx-prov-row nat"><span>National</span><b>{nationalCount}</b></div>}
+          </div>
+        </div>
+        <div className="ovx-card">
+          <div className="ovx-card-h">Recent Activity &amp; Upcoming Reports</div>
+          {milestones.length === 0 ? <NoData label="Nothing due soon" /> : (
+            <div className="ovx-feed">
+              {milestones.slice(0, 4).map((m, i) => (
+                <button key={i} className="ovx-feed-row" onClick={() => nav('/analytics/reporting')}>
+                  <span className="ovx-feed-date"><b>{m.date.getDate()}</b>{m.date.toLocaleString('en', { month: 'short' }).toUpperCase()}</span>
+                  <span className="ovx-feed-txt"><span className="ovx-feed-title">{m.title}</span><span className="ovx-feed-sub">{m.subtitle}</span></span>
+                </button>
               ))}
             </div>
           )}
-        </Panel>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Compact headline KPI card (Row 1).
+function HeadKpi({ icon: Icon, accent, label, value, sub, onClick }) {
+  return (
+    <div className="ovx-card ovx-kpi2" role="button" tabIndex={0} onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter') onClick?.(); }}>
+      <span className="ovx-kpi-ic" style={{ color: accent }} aria-hidden="true"><Icon size={20} /></span>
+      <div style={{ minWidth: 0 }}>
+        <div className="ovx-kpi-val">{value}</div>
+        <div className="ovx-kpi-label">{label}</div>
+        {sub && <div className="ovx-kpi-sub">{sub}</div>}
       </div>
     </div>
   );
@@ -517,14 +437,15 @@ function FilterSelect({ label, value, onChange, options }) {
     </label>
   );
 }
-function Donut({ data, center, onSlice, valueFmt }) {
+function Donut({ data, center, onSlice, valueFmt, size = 180 }) {
   const totalVal = data.reduce((a, s) => a + s.value, 0);
+  const outer = Math.round(size * 0.43), inner = Math.round(size * 0.3);
   return (
-    <div style={{ position: 'relative', height: 180 }}>
-      {totalVal === 0 ? <NoData /> : (
+    <div style={{ position: 'relative', height: size }}>
+      {totalVal === 0 ? <NoData height={size} /> : (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius={54} outerRadius={78} paddingAngle={2}
+            <Pie data={data} dataKey="value" nameKey="name" innerRadius={inner} outerRadius={outer} paddingAngle={2}
               onClick={(e) => { if (onSlice && e) onSlice(e.payload ?? e); }} cursor={onSlice ? 'pointer' : 'default'}>
               {data.map((s, i) => <Cell key={i} fill={s.color || '#0e6e6e'} />)}
             </Pie>
@@ -533,8 +454,8 @@ function Donut({ data, center, onSlice, valueFmt }) {
         </ResponsiveContainer>
       )}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-        <div style={{ fontSize: '1.35rem', fontWeight: 800, fontFamily: 'var(--font-display)', lineHeight: 1 }}>{center[0]}</div>
-        <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{center[1]}</div>
+        <div style={{ fontSize: size < 150 ? '1.15rem' : '1.35rem', fontWeight: 800, fontFamily: 'var(--font-display)', lineHeight: 1 }}>{center[0]}</div>
+        <div style={{ fontSize: '0.66rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{center[1]}</div>
       </div>
     </div>
   );
@@ -569,8 +490,8 @@ function Progress({ value }) {
     </div>
   );
 }
-function NoData({ label = 'No data' }) {
-  return <div style={{ height: 180, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', gap: '0.3rem' }}><CircleDashed size={22} /><span style={{ fontSize: '0.8rem' }}>{label}</span></div>;
+function NoData({ label = 'No data', height = 180 }) {
+  return <div style={{ height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', gap: '0.3rem' }}><CircleDashed size={20} /><span style={{ fontSize: '0.8rem' }}>{label}</span></div>;
 }
 
 function EmptyPortfolio() {
