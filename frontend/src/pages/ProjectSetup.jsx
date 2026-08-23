@@ -9,7 +9,7 @@
 // Reads through the public.v_* views; writes through the SECURITY DEFINER RPCs.
 // Shows a completion tick per section (Enter once -> structured data).
 // =============================================================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import {
   ClipboardList, Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight, FolderPlus,
@@ -523,6 +523,7 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
     responsible_officer_id: '', objective_id: '', outcome_id: '', output_id: '', is_qualitative: false, higher_is_better: true,
   };
   const [v, setV] = useState({ ...base, ...(initial?.id ? initial : {}) });
+  const dirty = useDirty(v);
   useEffect(() => setV({ ...base, ...(initial?.id ? initial : {}) }), [initial?.id]); // eslint-disable-line
   const set = (k, t) => (e) => setV((s) => ({ ...s, [k]: t === 'checkbox' ? e.target.checked : e.target.value }));
   const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
@@ -545,7 +546,7 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
     onSaved();
   };
   return (
-    <Modal title={`${initial?.id ? 'Edit' : 'Add'} indicator`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'}>
+    <Modal title={`${initial?.id ? 'Edit' : 'Add'} indicator`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
       <Field className="ps-full" label="Indicator Name *"><input className="field-input" value={v.name} onChange={set('name')} /></Field>
       <Field label="Level"><Select value={v.indicator_level ?? ''} onChange={set('indicator_level')} options={OPT.INDICATOR_LEVEL} allowBlank /></Field>
       <Field label="Unit of Measurement"><input className="field-input" value={v.unit ?? ''} onChange={set('unit')} /></Field>
@@ -636,6 +637,7 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
     issue_delay: '', next_action: '', next_action_due: '',
   };
   const [v, setV] = useState({ ...base, ...(initial?.id ? initial : {}) });
+  const dirty = useDirty(v);
   useEffect(() => setV({ ...base, ...(initial?.id ? initial : {}) }), [initial?.id]); // eslint-disable-line
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setProvince = (e) => setV((s) => ({ ...s, province: e.target.value, island: '', area_council: '' }));
@@ -659,7 +661,7 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
     onSaved();
   };
   return (
-    <Modal title={`${initial?.id ? 'Edit' : 'Add'} activity`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'}>
+    <Modal title={`${initial?.id ? 'Edit' : 'Add'} activity`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
       <Field className="ps-full" label="Activity Title *"><input className="field-input" value={v.name} onChange={set('name')} /></Field>
       <Field label="Linked Output *"><Select value={v.output_id} onChange={set('output_id')} options={outputs.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} /></Field>
       <Field label="Linked Outcome"><Select value={v.outcome_id ?? ''} onChange={set('outcome_id')} options={outcomes.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
@@ -739,6 +741,7 @@ function LocationsStep({ projectId, locations, reload }) {
 function LocationForm({ projectId, initial, onClose, onSaved }) {
   const base = { province: '', island: '', area_council: '', community: '', latitude: '', longitude: '', intervention: '', status: '', beneficiaries: '' };
   const [v, setV] = useState({ ...base, ...(initial?.id ? initial : {}) });
+  const dirty = useDirty(v);
   useEffect(() => setV({ ...base, ...(initial?.id ? initial : {}) }), [initial?.id]); // eslint-disable-line
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setProvince = (e) => setV((s) => ({ ...s, province: e.target.value, island: '', area_council: '' }));
@@ -753,7 +756,7 @@ function LocationForm({ projectId, initial, onClose, onSaved }) {
     onSaved();
   };
   return (
-    <Modal title={`${initial?.id ? 'Edit' : 'Add'} location`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'}>
+    <Modal title={`${initial?.id ? 'Edit' : 'Add'} location`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
       <Field label="Province"><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
       <Field label="Island"><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
       <Field label="Area Council"><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
@@ -784,18 +787,33 @@ function Select({ value, onChange, options, allowBlank }) {
     </select>
   );
 }
-function Modal({ title, children, onClose, onSave, saveLabel }) {
+// Returns true once the form value differs from its initial snapshot (§22).
+function useDirty(v) {
+  const ref = useRef();
+  if (ref.current === undefined) ref.current = JSON.stringify(v);
+  return JSON.stringify(v) !== ref.current;
+}
+
+function Modal({ title, children, onClose, onSave, saveLabel, dirty }) {
+  // Unsaved-changes guard (§22): confirm before discarding edits.
+  const guardedClose = async () => {
+    if (dirty && !(await confirmDialog({
+      title: 'Discard changes?', message: 'You have unsaved changes. Discard them?',
+      confirmLabel: 'Discard changes', cancelLabel: 'Stay',
+    }))) return;
+    onClose();
+  };
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }} onClick={guardedClose}>
       <div style={{ background: 'var(--white)', borderRadius: 14, width: '100%', maxWidth: 760, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
           <strong style={{ fontSize: '1rem' }}>{title}</strong>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} /></button>
+          <button onClick={guardedClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} /></button>
         </div>
         <div className="ps-grid">{children}</div>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
           <button style={btn('var(--green-700)')} onClick={onSave}>{saveLabel}</button>
-          <button style={ghostBtn} onClick={onClose}>Cancel</button>
+          <button style={ghostBtn} onClick={guardedClose}>Cancel</button>
         </div>
       </div>
     </div>
