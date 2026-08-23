@@ -575,7 +575,7 @@
 
 .ov-kpis { display: grid; grid-template-columns: repeat(6,1fr); gap: .7rem; margin-bottom: 1rem; }
 .ov-kpi { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); padding: .85rem .95rem; min-width: 0; }
-.ov-kpi-ic { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ov-kpi-ic { color: var(--text-3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; align-self: flex-start; }
 .ov-kpi-label { font-size: .8rem; font-weight: 700; color: var(--navy-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ov-kpi-value { font-family: var(--font-display); font-weight: 800; color: var(--navy-900); line-height: 1.05; margin: .1rem 0; }
 .ov-kpi-sub { font-size: .68rem; color: var(--text-3); }
