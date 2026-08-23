@@ -548,6 +548,22 @@
 .ov-btn-ghost { display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem; font-size: .78rem; font-weight: 600; border-radius: 8px; border: 1px solid var(--navy-active); cursor: pointer; color: var(--navy-active); background: var(--white); }
 .ov-btn-ghost:disabled { opacity: .45; cursor: default; border-color: var(--border); color: var(--text-3); }
 
+/* Role-aware welcome + action center */
+.ov-actionband { margin-bottom: 1rem; }
+.ov-welcome h1 { font-family: var(--font-display); font-size: clamp(1.25rem, 3vw, 1.6rem); font-weight: 800; color: var(--navy-900); margin: 0; letter-spacing: -.01em; }
+.ov-welcome p { font-size: .85rem; color: var(--text-3); margin: .2rem 0 0; }
+.ov-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .7rem; margin-top: .9rem; }
+.ov-action { display: flex; align-items: center; gap: .7rem; text-align: left; background: var(--white); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-sm); padding: .8rem .9rem; cursor: pointer; min-width: 0; }
+.ov-action:hover { border-color: var(--navy-active); }
+.ov-action.primary { border-color: var(--navy-active); box-shadow: 0 0 0 1px var(--navy-active) inset; }
+.ov-action.quiet { opacity: .72; }
+.ov-action-ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ov-action-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.ov-action-val { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; line-height: 1; color: var(--navy-900); }
+.ov-action-lbl { font-size: .74rem; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; }
+.ov-action-cta { display: inline-flex; align-items: center; gap: .2rem; font-size: .72rem; font-weight: 700; color: var(--navy-active); flex-shrink: 0; white-space: nowrap; }
+@media (max-width: 520px) { .ov-actions { grid-template-columns: 1fr; } .ov-action-cta { display: none; } }
+
 .ov-kpis { display: grid; grid-template-columns: repeat(6,1fr); gap: .7rem; margin-bottom: 1rem; }
 .ov-kpi { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--white); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-sm); padding: .85rem .95rem; min-width: 0; }
 .ov-kpi-ic { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
