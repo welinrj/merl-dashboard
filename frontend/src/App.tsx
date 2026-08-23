@@ -45,6 +45,7 @@ const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
 //   public/login-tanna.jpg  (or .webp — update the path below if you convert it)
 //   public/vu.svg
 const TANNA_PHOTO = `${import.meta.env.BASE_URL}login-tanna.jpg`;
+const TANNA_WEBP  = `${import.meta.env.BASE_URL}login-tanna.webp`;
 const VU_MAP      = `${import.meta.env.BASE_URL}vu.svg`;
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
@@ -214,7 +215,10 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 
         /* RIGHT — Tanna photograph */
         .lg2-photo{ position:relative; flex:1 1 60%; min-height:100vh; min-height:100dvh;
-          background:#3a3632 url("${TANNA_PHOTO}") center/cover no-repeat; }
+          background-color:#3a3632; background-position:center; background-size:cover; background-repeat:no-repeat;
+          background-image:url("${TANNA_PHOTO}");
+          background-image:-webkit-image-set(url("${TANNA_WEBP}") type("image/webp"), url("${TANNA_PHOTO}") type("image/jpeg"));
+          background-image:image-set(url("${TANNA_WEBP}") type("image/webp"), url("${TANNA_PHOTO}") type("image/jpeg")); }
         /* soft white-to-photo transition bleeding across the seam */
         .lg2-fade{ position:absolute; inset:0; pointer-events:none; z-index:2; background:linear-gradient(
           to right, #ffffff 0%, #ffffff 6%, rgba(255,255,255,.96) 16%, rgba(255,255,255,.70) 27%,
