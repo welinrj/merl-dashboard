@@ -30,7 +30,6 @@ export type NavKey =
   | 'overview'
   | 'projects'
   | 'results'
-  | 'indicators'
   | 'activities'
   | 'finances'
   | 'locations'

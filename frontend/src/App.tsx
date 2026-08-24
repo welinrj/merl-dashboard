@@ -24,6 +24,9 @@ import type { AppUser, UserRole, NavKey } from './types';
 // Sidebar item shape (richer than the old NavItem: carries the header title).
 interface SideItem {
   key: NavKey; path: string; label: string;
+  // Optional query string. Two entries may share a pathname and be told apart
+  // by this — Documents & Evidence opens MERL Reporting on its Evidence module.
+  search?: string;
   Icon: React.ComponentType<{ size?: number | string }>;
   head: string; sub?: string;
 }
@@ -75,35 +78,52 @@ async function loadProfile(): Promise<AppUser | null> {
   };
 }
 
-// ── Sidebar navigation (matches the approved sample) ───────────────────────────
-// Analytical lenses (Results/Indicators/Finances/Locations/Risks) open the
-// tabbed analytics dashboard; Projects/Activities/Documents open the DoCC data
-// pages; Overview is the executive dashboard.
+// ── Sidebar navigation ────────────────────────────────────────────────────────
+// Every entry is named for what it actually opens, and each opens somewhere
+// distinct. Three used not to:
+//
+//   · "Indicators" and "Results Framework" both resolved to the same Dashboards
+//     tab (LENS_TO_TAB maps indicators -> results), so one is now the single
+//     "Results & Indicators" entry. /analytics/indicators still resolves, so
+//     existing bookmarks keep working.
+//   · "Activities & Workplan" opened the periodic reporting workspace, which
+//     has no activities module at all — activities are Form 5, in Project
+//     Setup. It is now "MERL Reporting", which is what it is.
+//   · "Documents" pointed at the same route as the entry above it and landed on
+//     Indicator Progress. It now deep-links to the Evidence module.
+//
+// The analytics entries are read-only lenses; the records behind them are
+// entered in Project Setup and MERL Reporting.
 const NAV_ITEMS: SideItem[] = [
-  { key: 'overview',   path: '/dashboards',           label: 'Overview',             Icon: LayoutDashboard, head: 'MERL Project Portfolio Dashboard', sub: 'Monitoring, Evaluation, Reporting & Learning' },
-  { key: 'projects',   path: '/project-setup',        label: 'Projects',             Icon: FolderKanban,    head: 'Project Setup' },
-  { key: 'results',    path: '/analytics/results',    label: 'Results Framework',    Icon: Target,          head: 'Results Framework' },
-  { key: 'indicators', path: '/analytics/indicators', label: 'Indicators',           Icon: Activity,        head: 'Indicators' },
-  { key: 'activities', path: '/merl-reporting',       label: 'Activities & Workplan', Icon: ListChecks,     head: 'Activities & Workplan' },
-  { key: 'finances',   path: '/analytics/financial',  label: 'Finances',             Icon: Wallet,          head: 'Finances' },
-  { key: 'locations',  path: '/analytics/geographic', label: 'Locations',            Icon: MapPin,          head: 'Geographic Coverage' },
-  { key: 'risks',      path: '/analytics/risks',      label: 'Risks & Issues',       Icon: AlertTriangle,   head: 'Risks & Issues' },
-  { key: 'reports',    path: '/reports',              label: 'Reports',              Icon: FileBarChart,    head: 'Reports' },
-  { key: 'review',     path: '/review',               label: 'Review & Approval',    Icon: ClipboardCheck,  head: 'Review & Approval' },
-  { key: 'documents',  path: '/merl-reporting',       label: 'Documents',            Icon: FolderOpen,      head: 'Documents & Evidence' },
-  { key: 'admin',      path: '/admin',                label: 'Administration',       Icon: Settings,        head: 'Administration' },
+  { key: 'overview',   path: '/dashboards',           label: 'Overview',              Icon: LayoutDashboard, head: 'MERL Project Portfolio Dashboard', sub: 'Monitoring, Evaluation, Reporting & Learning' },
+  { key: 'projects',   path: '/project-setup',        label: 'Project Setup',         Icon: FolderKanban,    head: 'Project Setup' },
+  // One analytics entry per Dashboards tab. These are read-only lenses on the
+  // portfolio — the data behind them is entered in Project Setup and MERL
+  // Reporting — so they are named for the analysis, not the record they show.
+  { key: 'results',    path: '/analytics/results',    label: 'Results & Indicators',  Icon: Target,          head: 'Results & Indicators' },
+  { key: 'finances',   path: '/analytics/financial',  label: 'Financial Analysis',    Icon: Wallet,          head: 'Financial Analysis' },
+  { key: 'locations',  path: '/analytics/geographic', label: 'Geographic Coverage',   Icon: MapPin,          head: 'Geographic Coverage' },
+  { key: 'risks',      path: '/analytics/risks',      label: 'Risk Analysis',         Icon: AlertTriangle,   head: 'Risk Analysis' },
+  // The periodic reporting workspace: Forms 4, 6, 8, 9, 10 and 12 against a
+  // reporting period. Documents & Evidence is the same workspace opened on its
+  // Evidence module rather than a second, identical destination.
+  { key: 'activities', path: '/merl-reporting',       label: 'MERL Reporting',        Icon: ListChecks,      head: 'MERL Reporting' },
+  { key: 'documents',  path: '/merl-reporting',       label: 'Documents & Evidence',  search: '?module=evidence', Icon: FolderOpen, head: 'Documents & Evidence' },
+  { key: 'reports',    path: '/reports',              label: 'Reports',               Icon: FileBarChart,    head: 'Reports' },
+  { key: 'review',     path: '/review',               label: 'Review & Approval',     Icon: ClipboardCheck,  head: 'Review & Approval' },
+  { key: 'admin',      path: '/admin',                label: 'Administration',        Icon: Settings,        head: 'Administration' },
 ];
 
 // Navigation by role (spec §18). Functions a role can't use are hidden.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
   // System Administrator — full portal incl. Administration
-  ROLE_ADMIN:        ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'review', 'documents', 'admin'],
+  ROLE_ADMIN:        ['overview', 'projects', 'results', 'activities', 'finances', 'locations', 'risks', 'reports', 'review', 'documents', 'admin'],
   // DoCC M&E Officer — portfolio-wide MERL + Review & Approval; no Administration
-  ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'review', 'documents'],
+  ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'activities', 'finances', 'locations', 'risks', 'reports', 'review', 'documents'],
   // Project Manager — assigned projects only (route data is project-scoped by RLS)
-  ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'indicators', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
+  ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
   // Data Entry / Project Officer — data entry for assigned projects; no approval/admin
-  ROLE_DATA_ENTRY:   ['overview', 'projects', 'indicators', 'activities', 'locations', 'risks', 'documents'],
+  ROLE_DATA_ENTRY:   ['overview', 'projects', 'results', 'activities', 'locations', 'risks', 'documents'],
   // Viewer / Executive — read-only overview, projects, results and reports
   ROLE_VIEWER:       ['overview', 'projects', 'results', 'reports'],
 };
@@ -404,7 +424,10 @@ export default function App() {
   const visibleNav = NAV_ITEMS.filter(n => allowed.includes(n.key));
   const defaultPath = visibleNav[0]?.path ?? '/dashboards';
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
-  const activeItem = NAV_ITEMS.find(n => n.path === location.pathname)
+  // Match the query string too: Documents & Evidence and MERL Reporting share a
+  // pathname and are distinguished only by ?module=.
+  const activeItem = NAV_ITEMS.find(n => n.path === location.pathname && (n.search ?? '') === location.search)
+    ?? NAV_ITEMS.find(n => n.path === location.pathname && !n.search)
     ?? (location.pathname.startsWith('/analytics') ? NAV_ITEMS.find(n => n.key === 'results') : undefined)
     ?? NAV_ITEMS.find(n => n.key === 'overview')!;
   const gate = (path: string) => allowed.includes(ROUTE_GATE[path]);
@@ -422,9 +445,10 @@ export default function App() {
           <div className="dsh-brand-title">MERL Dashboard</div>
         </div>
         <nav className="dsh-nav" aria-label="Primary">
-          {visibleNav.map(({ key, path, label, Icon }) => (
-            <NavLink key={key} to={path} onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) => (isActive ? 'active' : '')}>
+          {visibleNav.map(({ key, path, label, search, Icon }) => (
+            <NavLink key={key} to={{ pathname: path, search: search ?? '' }}
+              onClick={() => setSidebarOpen(false)}
+              className={key === activeItem.key ? 'active' : ''}>
               <Icon size={16} aria-hidden="true" />{label}
             </NavLink>
           ))}
