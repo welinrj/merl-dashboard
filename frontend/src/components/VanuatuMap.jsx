@@ -54,8 +54,10 @@ export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSele
   const max = Math.max(1, ...Object.values(counts));
   const fill = (name) => {
     const c = counts[name] || 0;
-    if (c === 0) return 'var(--surface-2)';
-    const t = 0.25 + 0.6 * (c / max);
+    // Bolder teal ramp so the islands read clearly against the sea panel;
+    // provinces with no projects still show as distinct (lighter) land.
+    if (c === 0) return 'color-mix(in srgb, var(--green-700) 22%, #ffffff)';
+    const t = 0.55 + 0.45 * (c / max);
     return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
   };
   if (!vb) return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.7rem' }}>Map…</div>;
@@ -66,7 +68,8 @@ export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSele
         const isSel = selected === p.name;
         const isHover = hover === p.name;
         return (
-          <path key={p.name} d={p.d} fill={fill(p.name)} stroke={isSel || isHover ? 'var(--green-800)' : 'var(--white)'}
+          <path key={p.name} d={p.d} fill={fill(p.name)}
+            stroke={isSel || isHover ? 'var(--green-800)' : 'color-mix(in srgb, var(--green-800) 45%, #ffffff)'}
             strokeWidth={isSel || isHover ? 2 : 1} vectorEffect="non-scaling-stroke"
             style={{ cursor: onSelect ? 'pointer' : 'default', opacity: hover && !isHover && !isSel ? 0.55 : 1, transition: 'opacity .15s, stroke .15s' }}
             onMouseEnter={() => setHover(p.name)} onMouseLeave={() => setHover(null)} onClick={() => onSelect?.(p.name)}>
