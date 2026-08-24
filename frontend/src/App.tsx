@@ -365,9 +365,8 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         <div className="lg2-rings" aria-hidden="true"><span /><span /><span /><span /></div>
         <div className="lg2-map" aria-hidden="true" />
         <div className="lg2-tagline">
-          <span>Better data.</span>
-          <span>Better decisions.</span>
-          <span>Stronger communities.</span>
+          <span>Loss &amp; Damage Fund</span>
+          <span>Development Project</span>
         </div>
       </div>
     </div>
