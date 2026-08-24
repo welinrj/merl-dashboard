@@ -327,33 +327,8 @@ export default function Overview({ user }) {
 
       {/* Level 2 — geographic footprint + implementation performance */}
       <div className="ovx-mapperf">
-        <div className="ovx-card ovx-loc">
-          <div className="ovx-card-h"><MapPin size={16} /> Project Locations</div>
-          <div className="ovx-locwrap">
-            <div className="ovx-provmap">
-              <VanuatuMapMini counts={provinceCounts} selected={filters.province} onSelect={(pv) => setFilter('province', pv)} width={150} height={300} />
-            </div>
-            <div className="ovx-prov">
-              {PROVINCE_LIST.map((pv) => (
-                <button key={pv} className={`ovx-prov-row${filters.province === pv ? ' sel' : ''}`} onClick={() => setFilter('province', pv)}>
-                  <span className="ovx-prov-dot" />
-                  <span className="ovx-prov-name">{pv}</span>
-                  <span className="ovx-prov-proj">{provinceCounts[pv] || 0} projects</span>
-                  <span className="ovx-prov-ben">{(provBen[pv] || 0).toLocaleString()}</span>
-                </button>
-              ))}
-              {nationalCount > 0 && (
-                <div className="ovx-prov-row nat">
-                  <span className="ovx-prov-dot" style={{ background: 'var(--text-3)' }} />
-                  <span className="ovx-prov-name">National / multi-province</span>
-                  <span className="ovx-prov-proj">{nationalCount} projects</span>
-                  <span className="ovx-prov-ben" />
-                </div>
-              )}
-            </div>
-          </div>
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/geographic')}>View coverage <ArrowRight size={13} /></button>
-        </div>
+        <ProjectLocations counts={provinceCounts} provBen={provBen} nationalCount={nationalCount}
+          selected={filters.province} onSelect={(pv) => setFilter('province', pv)} onView={() => nav('/analytics/geographic')} />
         <div className="ovx-card">
           <div className="ovx-card-h"><Activity size={16} /> Implementation Performance</div>
           <div className="ovx-impl">
@@ -437,6 +412,45 @@ export default function Overview({ user }) {
   );
 }
 
+// Project Locations card: large Vanuatu map (≈40%) beside a compact province
+// table (≈60%). Hover is linked both ways; clicking drives the shared province
+// filter. Local hover state keeps map/list highlighting off the page re-render.
+function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, onView }) {
+  const [hover, setHover] = useState(null);
+  return (
+    <div className="ovx-card ovx-loc">
+      <div className="ovx-card-h"><MapPin size={16} /> Project Locations</div>
+      <div className="ovx-locwrap">
+        <div className="ovx-locmap">
+          <VanuatuMapMini counts={counts} selected={selected} hovered={hover} onHover={setHover}
+            onSelect={onSelect} />
+        </div>
+        <table className="ovx-provtbl">
+          <thead><tr><th>Province</th><th>Projects</th><th>Beneficiaries</th></tr></thead>
+          <tbody>
+            {PROVINCE_LIST.map((pv) => (
+              <tr key={pv} className={`${selected === pv ? 'sel' : ''}${hover === pv ? ' hov' : ''}`}
+                onClick={() => onSelect(pv)} onMouseEnter={() => setHover(pv)} onMouseLeave={() => setHover(null)}>
+                <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: fillDot(counts[pv] || 0, counts) }} /><span className="ovx-provtbl-nm">{pv}</span></td>
+                <td className="ovx-provtbl-num">{counts[pv] || 0}</td>
+                <td className="ovx-provtbl-num">{(provBen[pv] || 0).toLocaleString()}</td>
+              </tr>
+            ))}
+            {nationalCount > 0 && (
+              <tr className="nat">
+                <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: 'var(--text-3)' }} /><span className="ovx-provtbl-nm">National / multi-province</span></td>
+                <td className="ovx-provtbl-num">{nationalCount}</td>
+                <td className="ovx-provtbl-num">—</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <button className="ovx-cardlink" onClick={onView}>View coverage <ArrowRight size={13} /></button>
+    </div>
+  );
+}
+
 // Compact headline KPI card (Level 1): icon badge, label, value, sub, optional
 // progress bar (used to fold disbursement % into the financial KPI) + footer link.
 function HeadKpi({ icon: Icon, label, value, sub, progress, progressColor, linkLabel, onClick }) {
@@ -460,6 +474,14 @@ function HeadKpi({ icon: Icon, label, value, sub, progress, progressColor, linkL
 
 function STATUS_BUCKETS_LABEL(k) {
   return { on_track: 'On Track', at_risk: 'At Risk / Delayed', not_started: 'Not Started', completed: 'Completed' }[k] || k;
+}
+
+// Province dot colour — matches the map choropleth shading (green by project count).
+function fillDot(c, counts) {
+  if (!c) return 'var(--surface-2)';
+  const max = Math.max(1, ...Object.values(counts));
+  const t = 0.25 + 0.6 * (c / max);
+  return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
 }
 
 // ── Presentational pieces ─────────────────────────────────────────────────────
