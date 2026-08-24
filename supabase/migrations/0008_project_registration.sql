@@ -324,7 +324,12 @@ END;
 $$;
 
 -- 5. Rebuild the public read view --------------------------------------------
-CREATE OR REPLACE VIEW public.v_projects
+-- DROP first: this rebuild inserts `acronym` into the middle of the column list
+-- that migration 0007 defined, and CREATE OR REPLACE VIEW can only append
+-- columns, never reorder or insert. Without the drop the whole chain fails to
+-- replay on an empty database ("cannot change name of view column ...").
+DROP VIEW IF EXISTS public.v_projects CASCADE;
+CREATE VIEW public.v_projects
 WITH (security_invoker = on) AS
 SELECT
     p.id, p.code, p.name, p.category, p.lead_agency, p.description,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
+import { dbErrorMessage } from '../lib/dbError';
 
 // The five official user types. `id` is the DB enum value (merl.user_role).
 const DB_ROLES = [
@@ -76,7 +77,7 @@ function AssignProjectsModal({ user, onClose }) {
       ? await supabase.rpc('unassign_user_project', { p_user_id: user.id, p_project_id: projectId })
       : await supabase.rpc('assign_user_project', { p_user_id: user.id, p_project_id: projectId, p_assignment_type: user.role === 'project_manager' ? 'manager' : 'data_entry' });
     setBusy(null);
-    if (error) { setErr(error.message); return; }
+    if (error) { setErr(dbErrorMessage(error)); return; }
     setAssigned(prev => { const n = new Set(prev); if (isOn) n.delete(projectId); else n.add(projectId); return n; });
   };
 
@@ -130,7 +131,7 @@ function UsersTab() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from('v_admin_users').select('*').order('full_name');
-    if (error) setErr(error.message); else { setUsers(data || []); setErr(''); }
+    if (error) setErr(dbErrorMessage(error)); else { setUsers(data || []); setErr(''); }
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -143,7 +144,7 @@ function UsersTab() {
       p_role: form.role, p_organisation: form.organisation.trim() || null,
     });
     setBusy(false);
-    if (error) { setErr(error.message); return; }
+    if (error) { setErr(dbErrorMessage(error)); return; }
     setCred({ email: form.email.trim().toLowerCase(), password: data });
     setForm({ email: '', full_name: '', role: 'data_entry_officer', organisation: '' });
     setShowForm(false);
@@ -154,7 +155,7 @@ function UsersTab() {
     setBusy(true); setErr('');
     const { data, error } = await supabase.rpc('admin_reset_password', { p_id: u.id });
     setBusy(false);
-    if (error) { setErr(error.message); return; }
+    if (error) { setErr(dbErrorMessage(error)); return; }
     setCred({ email: u.email, password: data });
   };
 
@@ -162,7 +163,7 @@ function UsersTab() {
     setBusy(true); setErr('');
     const { error } = await supabase.rpc('admin_set_active', { p_id: u.id, p_active: !u.active });
     setBusy(false);
-    if (error) setErr(error.message); else load();
+    if (error) setErr(dbErrorMessage(error)); else load();
   };
 
   const removeUser = async (u) => {
@@ -170,7 +171,7 @@ function UsersTab() {
     setBusy(true); setErr('');
     const { error } = await supabase.rpc('admin_delete_user', { p_id: u.id });
     setBusy(false);
-    if (error) setErr(error.message); else load();
+    if (error) setErr(dbErrorMessage(error)); else load();
   };
 
   return (
@@ -331,7 +332,7 @@ function ProjectsTab() {
   const load = useCallback(async () => {
     setLoading(true); setErr('');
     const { data, error: e } = await supabase.from('v_projects').select('*').order('code');
-    if (e) setErr(e.message);
+    if (e) setErr(dbErrorMessage(e));
     else setProjects(data ?? []);
     setLoading(false);
   }, []);
@@ -385,7 +386,7 @@ function ProjectsTab() {
       : await supabase.rpc('admin_create_project', { p_code: form.code.trim().toUpperCase(), ...common });
 
     setBusy(false);
-    if (resp.error) { setError(resp.error.message); return; }
+    if (resp.error) { setError(dbErrorMessage(resp.error)); return; }
     closeForm();
     load();
   };
@@ -395,7 +396,7 @@ function ProjectsTab() {
     const { error: e } = await supabase.rpc('admin_delete_project', { p_id: p.id });
     setBusy(false);
     setConfirmDel(null);
-    if (e) { setErr(e.message); return; }
+    if (e) { setErr(dbErrorMessage(e)); return; }
     load();
   };
 
@@ -710,7 +711,7 @@ function AuditTab() {
       p_action: action || null,
       p_search: search || null,
     });
-    if (error) { setErr(error.message); setRows([]); setTotal(0); }
+    if (error) { setErr(dbErrorMessage(error)); setRows([]); setTotal(0); }
     else {
       setRows(data ?? []);
       setTotal(data?.[0]?.total_count ?? 0);
@@ -841,7 +842,7 @@ function SystemTab() {
   const load = useCallback(async () => {
     setLoading(true); setErr('');
     const { data, error } = await supabase.rpc('system_status');
-    if (error) setErr(error.message);
+    if (error) setErr(dbErrorMessage(error));
     else setStatus(data);
     setLoading(false);
   }, []);
