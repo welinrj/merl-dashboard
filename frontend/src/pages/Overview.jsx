@@ -478,9 +478,9 @@ function STATUS_BUCKETS_LABEL(k) {
 
 // Province dot colour — matches the map choropleth shading (green by project count).
 function fillDot(c, counts) {
-  if (!c) return 'var(--surface-2)';
+  if (!c) return 'color-mix(in srgb, var(--green-700) 22%, #ffffff)';
   const max = Math.max(1, ...Object.values(counts));
-  const t = 0.25 + 0.6 * (c / max);
+  const t = 0.55 + 0.45 * (c / max);
   return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
 }
 
