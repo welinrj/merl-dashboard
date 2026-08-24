@@ -7,9 +7,13 @@
 //     subtitle="Reporting-period submissions across the portfolio."
 //     breadcrumb={[{ label:'Projects', to:'/project-setup' }, { label:'PRJ-0004' }]}
 //     actions={<button className="btn-primary">Save</button>} />
+//
+// No icon slot by design — see the note above the component.
 import { NavLink } from 'react-router-dom';
 
-export default function PageHeader({ title, subtitle, breadcrumb, actions, icon: Icon }) {
+// A page title does not need an icon to be understood — the heading carries the
+// hierarchy. `icon` is intentionally not part of this component's API.
+export default function PageHeader({ title, subtitle, breadcrumb, actions }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
       gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
@@ -28,11 +32,8 @@ export default function PageHeader({ title, subtitle, breadcrumb, actions, icon:
             ))}
           </nav>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-          {Icon && <Icon size={22} style={{ color: 'var(--green-700)', flexShrink: 0 }} aria-hidden="true" />}
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.35rem, 3.5vw, 1.7rem)', fontWeight: 700,
-            letterSpacing: '-0.01em', color: 'var(--text-1)', margin: 0 }}>{title}</h1>
-        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.35rem, 3.5vw, 1.7rem)', fontWeight: 700,
+          letterSpacing: '-0.01em', color: 'var(--text-1)', margin: 0 }}>{title}</h1>
         {subtitle && (
           <p style={{ fontSize: '0.85rem', color: 'var(--text-3)', margin: '0.3rem 0 0', maxWidth: 640, lineHeight: 1.5 }}>{subtitle}</p>
         )}

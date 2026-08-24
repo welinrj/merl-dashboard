@@ -12,12 +12,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, LineChart, Line, Tooltip, ResponsiveContainer, CartesianGrid, LabelList,
 } from 'recharts';
-import {
-  FolderKanban, CheckCircle2, AlertTriangle, CircleDashed, Ban, Flag, Wallet,
-  Printer, MapPin, ArrowRight, ClipboardCheck, Send, RotateCcw, Clock, Eye,
-  Users, Venus, Mars, PersonStanding, Accessibility, AlertCircle, ShieldCheck, Archive, CircleDollarSign, ListChecks,
-  Target, FileCheck, CalendarClock, FileText, FolderOpen, RefreshCw, TrendingUp, Activity,
-} from 'lucide-react';
+// Three icons on this page, each doing a job no label can do as well:
+// AlertTriangle marks the section that needs action, Printer labels the export
+// control, ArrowRight shows direction on "view more" links. The KPIs, section
+// headings, performance rows and attention rows carry no symbols.
+import { AlertTriangle, Printer, ArrowRight } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
@@ -26,6 +25,7 @@ import {
   useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
 } from '../lib/dashboardFilters';
 import KpiCard from '../components/ui/KpiCard';
+import Gedsi from '../components/ui/Gedsi';
 
 // ── Semantic colours (matched to the approved sample) ─────────────────────────
 const BLUE = '#2f6df0';
@@ -175,11 +175,11 @@ export default function Overview({ user }) {
   const bAny = (f) => bens.some((b) => b[f] != null);
   const bSum = (f) => (bAny(f) ? bens.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
   const gedsi = [
-    { key: 'female', label: 'Female', icon: Venus, value: bSum('female'), color: '#7c3aed' },
-    { key: 'male', label: 'Male', icon: Mars, value: bSum('male'), color: BLUE },
-    { key: 'youth', label: 'Youth', icon: PersonStanding, value: bSum('youth'), color: '#e0a12a' },
-    { key: 'persons_with_disability', label: 'Persons w/ disability', icon: Accessibility, value: bSum('persons_with_disability'), color: '#22a565' },
-    { key: 'other_gender', label: 'Other / N.R.', icon: Users, value: bSum('other_gender'), color: '#0e8f8a' },
+    { key: 'female', label: 'Female', value: bSum('female'), color: '#7c3aed' },
+    { key: 'male', label: 'Male', value: bSum('male'), color: BLUE },
+    { key: 'youth', label: 'Youth', value: bSum('youth'), color: '#e0a12a' },
+    { key: 'persons_with_disability', label: 'Persons w/ disability', value: bSum('persons_with_disability'), color: '#22a565' },
+    { key: 'other_gender', label: 'Other / N.R.', value: bSum('other_gender'), color: '#0e8f8a' },
   ];
   const hasGedsi = gedsi.some((g) => g.value != null);
 
@@ -224,17 +224,17 @@ export default function Overview({ user }) {
   const pctOf = (n, dv) => (dv ? Math.round((n / dv) * 100) : 0);
 
   const perf = [
-    { key: 'ind', icon: Target, label: 'Indicators on track', frac: `${onTrackInd}/${totalIndicators}`, pct: pctOf(onTrackInd, totalIndicators), color: '#22a565' },
-    { key: 'act', icon: ListChecks, label: 'Activities completed', frac: `${actsDone}/${acts.length}`, pct: pctOf(actsDone, acts.length), color: BLUE },
-    { key: 'bud', icon: Wallet, label: 'Budget utilisation', frac: fmtVUV(totalExp).replace('VUV ', ''), pct: util, color: '#7c3aed' },
-    { key: 'rep', icon: FileCheck, label: 'Reporting compliance', frac: `${repsApproved}/${reps.length}`, pct: pctOf(repsApproved, reps.length), color: '#0e8f8a' },
+    { key: 'ind', label: 'Indicators on track', frac: `${onTrackInd}/${totalIndicators}`, pct: pctOf(onTrackInd, totalIndicators), color: '#22a565' },
+    { key: 'act', label: 'Activities completed', frac: `${actsDone}/${acts.length}`, pct: pctOf(actsDone, acts.length), color: BLUE },
+    { key: 'bud', label: 'Budget utilisation', frac: fmtVUV(totalExp).replace('VUV ', ''), pct: util, color: '#7c3aed' },
+    { key: 'rep', label: 'Reporting compliance', frac: `${repsApproved}/${reps.length}`, pct: pctOf(repsApproved, reps.length), color: '#0e8f8a' },
   ];
   const toneColor = { crit: '#b3402f', warn: '#d97706', ok: '#22a565' };
   const attn = [
-    { key: 'ovr', icon: Clock, label: 'Overdue reports', value: repsOverdue, to: '/merl-reporting', tone: repsOverdue ? 'crit' : 'ok' },
-    { key: 'off', icon: AlertTriangle, label: 'Indicators off track', value: offTrackInd, to: '/analytics/results', tone: offTrackInd ? 'warn' : 'ok' },
-    { key: 'del', icon: CalendarClock, label: 'Delayed activities', value: overdueActs, to: '/merl-reporting', tone: overdueActs ? 'warn' : 'ok' },
-    { key: 'rev', icon: Eye, label: 'Awaiting review', value: repsAwaiting, to: '/review', tone: repsAwaiting ? 'warn' : 'ok' },
+    { key: 'ovr', label: 'Overdue reports', value: repsOverdue, to: '/merl-reporting', tone: repsOverdue ? 'crit' : 'ok' },
+    { key: 'off', label: 'Indicators off track', value: offTrackInd, to: '/analytics/results', tone: offTrackInd ? 'warn' : 'ok' },
+    { key: 'del', label: 'Delayed activities', value: overdueActs, to: '/merl-reporting', tone: overdueActs ? 'warn' : 'ok' },
+    { key: 'rev', label: 'Awaiting review', value: repsAwaiting, to: '/review', tone: repsAwaiting ? 'warn' : 'ok' },
   ];
   const genderSplit = (() => {
     const f = gedsi[0].value, m = gedsi[1].value;
@@ -247,11 +247,13 @@ export default function Overview({ user }) {
   const achVals = prog.filter((r) => r.achievement_pct != null).map((r) => Number(r.achievement_pct));
   const overallProgress = achVals.length ? Math.round(achVals.reduce((a, b) => a + b, 0) / achVals.length) : null;
   // Compact beneficiary breakdown (only categories that actually have data).
+  // One institutional colour across the set — these categories are being
+  // compared, not colour-coded, so four different hues would only add noise.
   const beneMini = [
-    { key: 'female', icon: Venus, label: 'Female', value: gedsi[0].value, color: '#db2777' },
-    { key: 'male', icon: Mars, label: 'Male', value: gedsi[1].value, color: BLUE },
-    { key: 'youth', icon: PersonStanding, label: 'Youth', value: gedsi[2].value, color: '#e0a12a' },
-    { key: 'pwd', icon: Accessibility, label: 'Disability', value: gedsi[3].value, color: '#22a565' },
+    { key: 'female', sym: 'female', label: 'Female', value: gedsi[0].value },
+    { key: 'male', sym: 'male', label: 'Male', value: gedsi[1].value },
+    { key: 'youth', sym: 'youth', label: 'Youth', value: gedsi[2].value },
+    { key: 'pwd', sym: 'disability', label: 'Disability', value: gedsi[3].value },
   ].filter((x) => x.value != null);
 
   // Beneficiaries reached per province (project → provinces → direct beneficiaries).
@@ -297,20 +299,22 @@ export default function Overview({ user }) {
 
       {/* Level 1 — primary executive KPIs: Projects · Total Funding · Disbursed · Beneficiaries */}
       <div className="ovx-kpis">
-        <KpiCard icon={FolderOpen} label="Projects" value={total} accent="var(--green-600)"
+        <KpiCard label="Projects" value={total}
           sub={`${activeProjects} active · ${completed} completed`} linkLabel="View projects" onClick={() => nav('/analytics/portfolio')} />
-        <KpiCard icon={CircleDollarSign} label="Total Funding" value={fmtVUV(totalBudget).replace('VUV', 'VT')} accent="var(--green-600)"
+        <KpiCard label="Total Funding" value={fmtVUV(totalBudget).replace('VUV', 'VT')}
           sub={donors.length ? `${donors.length} funding partner${donors.length === 1 ? '' : 's'}` : 'Committed budget'} linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
-        <KpiCard icon={Wallet} label="Disbursed" value={fmtVUV(totalExp).replace('VUV', 'VT')} accent="var(--green-600)"
-          sub={`${util}% of total funding`} progress={util} progressColor="var(--green-600)" linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
-        <KpiCard icon={Users} label="Beneficiaries" value={totalBen ? totalBen.toLocaleString() : '0'} accent="var(--green-600)" solid
+        <KpiCard label="Disbursed" value={fmtVUV(totalExp).replace('VUV', 'VT')}
+          sub={`${util}% of total funding`} progress={util} linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
+        {/* The one KPI carrying symbols: the GEDSI split is read by comparing
+            categories, which the shared pictogram family makes faster. */}
+        <KpiCard label="Beneficiaries" value={totalBen ? totalBen.toLocaleString() : '0'}
           linkLabel="View beneficiaries" onClick={() => nav('/analytics/geographic')}>
           {beneMini.length > 0 && (
             <div className="flex items-start justify-between gap-2">
               {beneMini.map((b) => (
                 <span key={b.key} className="flex min-w-0 flex-col items-start gap-0.5">
-                  <span className="flex items-center gap-1" style={{ color: b.color }}>
-                    <b.icon size={14} aria-hidden="true" />
+                  <span className="flex items-center gap-1 text-[var(--green-700)]">
+                    <Gedsi name={b.sym} size={14} />
                     <b className="text-[1rem] font-extrabold leading-none text-[var(--navy-900)]" style={{ fontFamily: 'var(--font-display)' }}>{b.value.toLocaleString()}</b>
                   </span>
                   <i className="whitespace-nowrap text-[0.64rem] not-italic text-[var(--text-3)]">{b.label}</i>
@@ -326,7 +330,7 @@ export default function Overview({ user }) {
         <ProjectLocations counts={provinceCounts} provBen={provBen} nationalCount={nationalCount}
           selected={filters.province} onSelect={(pv) => setFilter('province', pv)} onView={() => nav('/analytics/geographic')} />
         <div className="ovx-card">
-          <div className="ovx-card-h"><Activity size={16} /> Implementation Performance</div>
+          <div className="ovx-card-h">Implementation Performance</div>
           <div className="ovx-impl">
             <Donut size={128} data={statusData} center={[total, 'Total']} onSlice={(s) => setFilter('status', s.key)} />
             <div className="ovx-status-legend">
@@ -353,13 +357,12 @@ export default function Overview({ user }) {
       {/* Level 3 — supporting analytics */}
       <div className="ovx-2">
         <div className="ovx-card">
-          <div className="ovx-card-h"><TrendingUp size={16} /> Portfolio Performance</div>
+          <div className="ovx-card-h">Portfolio Performance</div>
           <div className="ovx-perf">
             {perf.map((p) => (
               <div key={p.key} className="ovx-perf-row">
-                <span className="ovx-perf-ic" style={{ color: p.color }}><p.icon size={16} /></span>
                 <span className="ovx-perf-lbl">{p.label}</span>
-                <div className="ovx-perf-bar"><div style={{ width: `${Math.min(100, p.pct)}%`, background: p.color }} /></div>
+                <div className="ovx-perf-bar"><div style={{ width: `${Math.min(100, p.pct)}%`, background: 'var(--green-600)' }} /></div>
                 <span className="ovx-perf-val">{p.pct}%</span>
               </div>
             ))}
@@ -367,11 +370,12 @@ export default function Overview({ user }) {
           <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>View performance details <ArrowRight size={13} /></button>
         </div>
         <div className="ovx-card">
-          <div className="ovx-card-h"><AlertTriangle size={16} style={{ color: '#d97706' }} /> Needs Attention</div>
+          <div className="ovx-card-h"><AlertTriangle size={16} style={{ color: '#d97706', flexShrink: 0 }} aria-hidden="true" /> Needs Attention</div>
+          {/* No per-row icon chip: the section heading above carries the one
+              warning triangle, and each count carries its own tone. */}
           <div className="ovx-attn">
             {attn.map((a) => (
               <button key={a.key} className="ovx-attn-row" onClick={() => nav(a.to)}>
-                <span className="ovx-attn-ic" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)', background: a.value ? `color-mix(in srgb, ${toneColor[a.tone]} 12%, #fff)` : 'var(--surface-1)' }}><a.icon size={16} /></span>
                 <span className="ovx-attn-val" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>{a.value}</span>
                 <span className="ovx-attn-lbl">{a.label}</span>
                 <span className="ovx-attn-link" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>View all <ArrowRight size={12} /></span>
@@ -382,7 +386,7 @@ export default function Overview({ user }) {
       </div>
 
       <div className="ovx-card">
-        <div className="ovx-card-h"><FileText size={16} /> Recent Activity &amp; Upcoming Reports</div>
+        <div className="ovx-card-h">Recent Activity &amp; Upcoming Reports</div>
         {reportRows.length === 0 ? <NoData label="Nothing due soon" height={120} /> : (
           <div className="ovx-rtbl-wrap">
             <table className="ovx-rtbl">
@@ -390,7 +394,7 @@ export default function Overview({ user }) {
               <tbody>
                 {reportRows.map((r) => (
                   <tr key={r.id} onClick={() => nav('/analytics/reporting')}>
-                    <td className="ovx-rt-item"><FileText size={13} /> <span>{r.item}</span></td>
+                    <td className="ovx-rt-item"><span>{r.item}</span></td>
                     <td className="ovx-rt-proj">{r.project || '—'}</td>
                     <td className="ovx-rt-due">{fmtDate(r.due)}</td>
                     <td><span className={`ovx-badge tone-${r.status.tone}`}>{r.status.label}</span></td>
@@ -403,7 +407,7 @@ export default function Overview({ user }) {
         <button className="ovx-cardlink" onClick={() => nav('/analytics/reporting')}>View all reports <ArrowRight size={13} /></button>
       </div>
 
-      <div className="ovx-updated"><RefreshCw size={12} /> Last updated: {dataAsAt}</div>
+      <div className="ovx-updated">Last updated: {dataAsAt}</div>
     </div>
   );
 }
@@ -415,7 +419,7 @@ function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, 
   const [hover, setHover] = useState(null);
   return (
     <div className="ovx-card ovx-loc">
-      <div className="ovx-card-h"><MapPin size={16} /> Project Locations</div>
+      <div className="ovx-card-h">Project Locations</div>
       <div className="ovx-locwrap">
         <div className="ovx-locmap">
           <VanuatuMapMini counts={counts} selected={selected} hovered={hover} onHover={setHover}
@@ -460,34 +464,6 @@ function fillDot(c, counts) {
 }
 
 // ── Presentational pieces ─────────────────────────────────────────────────────
-function Kpi({ icon: Icon, label, value, sub, small }) {
-  return (
-    <div className="ov-kpi">
-      <div style={{ minWidth: 0 }}>
-        <div className="ov-kpi-label">{label}</div>
-        <div className="ov-kpi-value" style={{ fontSize: small ? '1.35rem' : '1.7rem' }}>{value}</div>
-        {sub && <div className="ov-kpi-sub">{sub}</div>}
-      </div>
-      <span className="ov-kpi-ic" aria-hidden="true"><Icon size={18} /></span>
-    </div>
-  );
-}
-
-// Compact icon KPI tile used for the beneficiary + risk breakdowns. `pct` may be
-// a number (rendered as N%) or a preformatted string (e.g. "12.5%"); null → "—".
-function KpiTile({ icon: Icon, value, label, pct, accent }) {
-  const pctText = pct == null ? '—' : (typeof pct === 'number' ? `${pct}%` : pct);
-  const barW = pct == null ? 0 : Math.min(100, Math.max(0, parseFloat(pct) || 0));
-  return (
-    <div className="ov-tile" style={{ background: `color-mix(in srgb, ${accent} 4%, #fff)`, borderColor: `color-mix(in srgb, ${accent} 28%, var(--border))` }}>
-      <span className="ov-tile-ic" style={{ color: accent }} aria-hidden="true"><Icon size={20} /></span>
-      <span className="ov-tile-val">{value == null ? '—' : (typeof value === 'number' ? value.toLocaleString() : value)}</span>
-      <span className="ov-tile-lbl">{label}</span>
-      <span className="ov-tile-pct" style={{ color: pct == null ? 'var(--text-3)' : accent }}>{pctText}</span>
-      <div className="ov-tile-bar"><div style={{ width: `${barW}%`, background: accent }} /></div>
-    </div>
-  );
-}
 function Panel({ title, subtitle, children, footer }) {
   return (
     <div className="ov-panel">
@@ -498,9 +474,6 @@ function Panel({ title, subtitle, children, footer }) {
       {footer && <div className="ov-panel-f">{footer}</div>}
     </div>
   );
-}
-function FooterLink({ label, onClick, icon: Icon }) {
-  return <button className="ov-flink" onClick={onClick}>{Icon && <Icon size={13} />}{label} <ArrowRight size={13} /></button>;
 }
 function FilterSelect({ label, value, onChange, options }) {
   return (
@@ -567,7 +540,7 @@ function Progress({ value }) {
   );
 }
 function NoData({ label = 'No data', height = 180 }) {
-  return <div style={{ height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', gap: '0.3rem' }}><CircleDashed size={20} /><span style={{ fontSize: '0.8rem' }}>{label}</span></div>;
+  return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}><span style={{ fontSize: '0.8rem' }}>{label}</span></div>;
 }
 
 function EmptyPortfolio() {
@@ -575,7 +548,6 @@ function EmptyPortfolio() {
   return (
     <div className="ov" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
       <div style={{ textAlign: 'center', maxWidth: 440 }}>
-        <span style={{ display: 'inline-flex', width: 64, height: 64, borderRadius: 16, background: 'var(--green-50)', color: 'var(--green-700)', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}><FolderKanban size={30} /></span>
         <h2 style={{ margin: '0 0 0.4rem' }}>No project data available</h2>
         <p style={{ color: 'var(--text-2)', margin: '0 0 1.2rem' }}>Add your first project to begin monitoring MERL performance.</p>
         <button className="ov-btn" onClick={() => nav('/project-setup')}>Add a project</button>
