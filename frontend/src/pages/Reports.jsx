@@ -177,7 +177,7 @@ export default function Reports() {
           <label className="field-label">Reporting period</label>
           <input className="field-input" placeholder="e.g. 2026-Q1" value={period} onChange={(e) => setPeriod(e.target.value)} />
         </div>
-        <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 8, border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
+        <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> Print / PDF
         </button>
       </div>
