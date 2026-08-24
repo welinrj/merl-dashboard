@@ -17,7 +17,7 @@ import ReviewApproval from './pages/ReviewApproval';
 import ErrorBoundary from './components/ErrorBoundary';
 import GlobalSearch from './components/GlobalSearch';
 import NotificationBell from './components/NotificationBell';
-import { DashboardFilterProvider, useDashboardFilters } from './lib/dashboardFilters';
+import { DashboardFilterProvider } from './lib/dashboardFilters';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavKey } from './types';
 
@@ -430,7 +430,6 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
-        <SidebarQuickFilters />
       </aside>
 
       {/* ── Main column ── */}
@@ -501,42 +500,6 @@ export default function App() {
       </div>
     </div>
     </DashboardFilterProvider>
-  );
-}
-
-// Sidebar "Filter Quick Links" — bound to the shared dashboard filter context.
-function SidebarQuickFilters() {
-  const { filters, patch, reset } = useDashboardFilters();
-  const nowY = new Date().getFullYear();
-  const years = [nowY + 1, nowY, nowY - 1, nowY - 2, nowY - 3];
-  const provinces = ['TORBA', 'SANMA', 'PENAMA', 'MALAMPA', 'SHEFA', 'TAFEA'];
-  const themes = ['Climate Change Adaptation', 'Climate Change Mitigation', 'Loss and Damage', 'Community Resilience Building', 'Disaster Risk Reduction', 'Nature-based Solutions', 'Other'];
-  const partners = ['Government of Vanuatu', 'MFAT', 'GCF', 'GEF', 'UNDP', 'SPC', 'World Bank', 'ADB', 'Other'];
-  return (
-    <div className="dsh-qf">
-      <div className="dsh-qf-h">Filter Quick Links</div>
-      <label htmlFor="qf-fy">Financial Year</label>
-      <select id="qf-fy" value={filters.fy} onChange={e => patch({ fy: e.target.value })}>
-        <option value="">All</option>
-        {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
-      </select>
-      <label htmlFor="qf-partner">Funding Partner</label>
-      <select id="qf-partner" value={filters.partner} onChange={e => patch({ partner: e.target.value })}>
-        <option value="">All</option>
-        {partners.map(p => <option key={p} value={p}>{p}</option>)}
-      </select>
-      <label htmlFor="qf-theme">Theme / Sector</label>
-      <select id="qf-theme" value={filters.theme} onChange={e => patch({ theme: e.target.value })}>
-        <option value="">All</option>
-        {themes.map(t => <option key={t} value={t}>{t}</option>)}
-      </select>
-      <label htmlFor="qf-prov">Province</label>
-      <select id="qf-prov" value={filters.province} onChange={e => patch({ province: e.target.value })}>
-        <option value="">All</option>
-        {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-      </select>
-      <button className="dsh-qf-clear" onClick={reset}>Clear Filters</button>
-    </div>
   );
 }
 
