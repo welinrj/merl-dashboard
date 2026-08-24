@@ -828,11 +828,13 @@ const resources = {
   },
 };
 
-// Vanuatu has three official languages: Bislama (national), English and French.
-// All three are carried here. The language picker offers all three; whatever is
-// not translated falls back to English rather than showing a raw key.
+// The portal is offered in English and French. Anything a locale does not
+// translate falls back to English rather than showing a raw key.
+//
+// A Bislama (`bi`) dictionary also exists in this file. It predates this change
+// and is deliberately left in place, but it is not offered in the picker — add
+// an entry here to bring it back.
 export const LANGUAGES = [
-  { code: 'bi', label: 'BI', name: 'Bislama' },
   { code: 'en', label: 'EN', name: 'English' },
   { code: 'fr', label: 'FR', name: 'Français' },
 ];
