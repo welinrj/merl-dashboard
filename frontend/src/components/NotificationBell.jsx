@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // One icon: the bell that opens the panel.
-import { Bell } from 'lucide-react';
+import { Bell } from './ui/icons';
 import { supabase } from '../supabaseClient';
 
 const REVIEWER = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];

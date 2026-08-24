@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 // One icon on this page: the warning triangle that marks Attention Required.
 // Every other metric, tab and heading is carried by its label and its number.
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import StatTile from '../components/ui/StatTile';
 import MetricStrip from '../components/ui/MetricStrip';

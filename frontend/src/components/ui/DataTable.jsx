@@ -13,7 +13,7 @@
 //     empty={{ title:'No projects', description:'Add one to begin.' }}
 //     toolbar={<FilterBar .../>} />
 import { useMemo, useState } from 'react';
-import { Search, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from './icons';
 import EmptyState from './EmptyState';
 import { SkeletonRows } from './LoadingSkeleton';
 

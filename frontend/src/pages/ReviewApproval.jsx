@@ -7,7 +7,7 @@
 // =============================================================================
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle2, RotateCcw, Eye, Unlock, AlertTriangle, X, FileText } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Eye, Unlock, AlertTriangle, X, FileText } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
