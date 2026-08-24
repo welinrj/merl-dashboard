@@ -10,6 +10,7 @@
 // RPCs from migration 0029.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, Send, CheckCircle2, RotateCcw, X, AlertTriangle, Info, Lock, Unlock,
@@ -232,7 +233,29 @@ export default function MerlReporting({ user }) {
   const [activities, setActivities] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [activePeriod, setActivePeriod] = useState('');
-  const [tab, setTab] = useState(MODULES[0].key);
+  // ?module=<key> opens a specific form directly. The sidebar's
+  // "Documents & Evidence" entry uses it to land on Evidence rather than on
+  // Indicator Progress, which is what made it indistinguishable from the
+  // "MERL Reporting" entry above it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get('module');
+  const [tab, setTab] = useState(
+    () => (MODULES.some((m) => m.key === requested) ? requested : MODULES[0].key));
+
+  // Follow the URL when it changes under us (sidebar click while already here).
+  useEffect(() => {
+    if (requested && MODULES.some((m) => m.key === requested) && requested !== tab) {
+      setTab(requested);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requested]);
+
+  // Keep the URL honest when the officer switches module by hand, so the
+  // address bar and the highlighted sidebar entry agree.
+  const selectTab = (key) => {
+    setTab(key);
+    setSearchParams(key === MODULES[0].key ? {} : { module: key }, { replace: true });
+  };
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null); // null = closed; {} = new; {...row} = edit
@@ -507,7 +530,7 @@ export default function MerlReporting({ user }) {
             {scopedModules.map((m) => {
               const has = (sections[m.key] || 0) > 0;
               return (
-                <button key={m.key} onClick={() => setTab(m.key)}
+                <button key={m.key} onClick={() => selectTab(m.key)}
                   title={has ? `${sections[m.key]} record(s) this period` : 'No data yet for this period'}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: 9999,
                     fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
@@ -537,7 +560,7 @@ export default function MerlReporting({ user }) {
       {/* Module tabs */}
       <div className="mr-tabs">
         {MODULES.map((m) => (
-          <button key={m.key} className={`mr-tab${tab === m.key ? ' active' : ''}`} onClick={() => setTab(m.key)}>
+          <button key={m.key} className={`mr-tab${tab === m.key ? ' active' : ''}`} onClick={() => selectTab(m.key)}>
             {m.label}
           </button>
         ))}
