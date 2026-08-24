@@ -613,30 +613,12 @@
 .ovx-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); padding: .9rem 1rem; display: flex; flex-direction: column; min-width: 0; }
 .ovx-card-h { display: flex; align-items: center; gap: .4rem; font-size: .74rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: var(--text-2); margin-bottom: .6rem; }
 
-/* Level 1 — primary executive KPIs (4th card slightly wider for the breakdown) */
+/* Level 1 — primary executive KPIs (4th card slightly wider for the breakdown).
+   The cards themselves are the Tailwind-styled <KpiCard> component; this grid
+   just lays them out and collapses at the shared breakpoints below. */
 .ovx-kpis { display: grid; grid-template-columns: 1fr 1fr 1fr 1.45fr; gap: .75rem; }
-.ovx-kpi2 { justify-content: space-between; gap: .45rem; }
-.ovx-kpiprog { height: 6px; border-radius: 4px; background: var(--surface-2); overflow: hidden; margin-top: .5rem; }
-.ovx-kpiprog > div { height: 100%; border-radius: 4px; }
-.ovx-kpi-top { display: flex; align-items: center; gap: .7rem; }
-.ovx-kpi-ic { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--green-700); background: color-mix(in srgb, var(--green-600) 12%, var(--white)); }
-.ovx-kpi-ic.solid { background: var(--green-600); color: #fff; }
-.ovx-kpi-label { font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); }
-.ovx-kpi-val { font-family: var(--font-display); font-size: clamp(1.3rem, 1.9vw, 1.7rem); font-weight: 800; line-height: 1.05; color: var(--navy-900); }
-.ovx-kpi-sub { font-size: .72rem; color: var(--text-2); margin-top: .1rem; }
-.ovx-kpi-link, .ovx-cardlink { display: inline-flex; align-items: center; gap: .25rem; align-self: flex-start; background: none; border: none; padding: .1rem 0 0; margin-top: auto; cursor: pointer; font-size: .72rem; font-weight: 700; color: var(--green-700); }
-.ovx-kpi-link { padding-top: .5rem; }
-.ovx-cardlink { align-self: center; padding-top: .45rem; }
-.ovx-kpi-link:hover, .ovx-cardlink:hover { text-decoration: underline; }
-.ovx-kpi2, .ovx-bene { position: relative; }
-.ovx-kpi2:hover, .ovx-bene:hover { border-color: color-mix(in srgb, var(--green-600) 45%, var(--border)); }
-.ovx-bene { gap: .35rem; }
-.ovx-bene-top { display: flex; align-items: center; gap: .7rem; }
-.ovx-bene-val { font-size: clamp(1.5rem, 2.1vw, 1.95rem); }
-.ovx-benerow { display: flex; justify-content: space-between; gap: .4rem; margin-top: .35rem; }
-.ovx-bene-cell { display: flex; flex-direction: column; align-items: flex-start; gap: .05rem; min-width: 0; }
-.ovx-bene-cell b { font-family: var(--font-display); font-size: 1.02rem; font-weight: 800; color: var(--navy-900); line-height: 1.1; }
-.ovx-bene-cell i { font-size: .64rem; font-style: normal; color: var(--text-3); white-space: nowrap; }
+.ovx-cardlink { display: inline-flex; align-items: center; gap: .25rem; align-self: center; background: none; border: none; padding: .45rem 0 0; margin-top: auto; cursor: pointer; font-size: .72rem; font-weight: 700; color: var(--green-700); }
+.ovx-cardlink:hover { text-decoration: underline; }
 
 /* Level 2 — geographic footprint + implementation performance */
 .ovx-mapperf { display: grid; grid-template-columns: 1.42fr 1fr; gap: .75rem; }
