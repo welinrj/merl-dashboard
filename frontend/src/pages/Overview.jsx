@@ -25,6 +25,7 @@ import { VanuatuMapMini } from '../components/VanuatuMap';
 import {
   useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
 } from '../lib/dashboardFilters';
+import KpiCard from '../components/ui/KpiCard';
 
 // ── Semantic colours (matched to the approved sample) ─────────────────────────
 const BLUE = '#2f6df0';
@@ -296,33 +297,28 @@ export default function Overview({ user }) {
 
       {/* Level 1 — primary executive KPIs: Projects · Total Funding · Disbursed · Beneficiaries */}
       <div className="ovx-kpis">
-        <HeadKpi icon={FolderOpen} label="Projects" value={total}
+        <KpiCard icon={FolderOpen} label="Projects" value={total} accent="var(--green-600)"
           sub={`${activeProjects} active · ${completed} completed`} linkLabel="View projects" onClick={() => nav('/analytics/portfolio')} />
-        <HeadKpi icon={CircleDollarSign} label="Total Funding" value={fmtVUV(totalBudget).replace('VUV', 'VT')}
+        <KpiCard icon={CircleDollarSign} label="Total Funding" value={fmtVUV(totalBudget).replace('VUV', 'VT')} accent={BLUE}
           sub={donors.length ? `${donors.length} funding partner${donors.length === 1 ? '' : 's'}` : 'Committed budget'} linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
-        <HeadKpi icon={Wallet} label="Disbursed" value={fmtVUV(totalExp).replace('VUV', 'VT')}
+        <KpiCard icon={Wallet} label="Disbursed" value={fmtVUV(totalExp).replace('VUV', 'VT')} accent="#7c3aed"
           sub={`${util}% of total funding`} progress={util} progressColor="#7c3aed" linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
-        <div className="ovx-card ovx-bene">
-          <div className="ovx-bene-top">
-            <span className="ovx-kpi-ic solid" aria-hidden="true"><Users size={22} /></span>
-            <div style={{ minWidth: 0 }}>
-              <div className="ovx-kpi-label">Beneficiaries</div>
-              <div className="ovx-kpi-val ovx-bene-val">{totalBen ? totalBen.toLocaleString() : '0'}</div>
-            </div>
-          </div>
+        <KpiCard icon={Users} label="Beneficiaries" value={totalBen ? totalBen.toLocaleString() : '0'} accent="var(--green-600)" solid
+          linkLabel="View beneficiaries" onClick={() => nav('/analytics/geographic')}>
           {beneMini.length > 0 && (
-            <div className="ovx-benerow">
+            <div className="flex items-start justify-between gap-2">
               {beneMini.map((b) => (
-                <span key={b.key} className="ovx-bene-cell">
-                  <b.icon size={15} style={{ color: b.color }} aria-hidden="true" />
-                  <b>{b.value.toLocaleString()}</b>
-                  <i>{b.label}</i>
+                <span key={b.key} className="flex min-w-0 flex-col items-start gap-0.5">
+                  <span className="flex items-center gap-1" style={{ color: b.color }}>
+                    <b.icon size={14} aria-hidden="true" />
+                    <b className="text-[1rem] font-extrabold leading-none text-[var(--navy-900)]" style={{ fontFamily: 'var(--font-display)' }}>{b.value.toLocaleString()}</b>
+                  </span>
+                  <i className="whitespace-nowrap text-[0.64rem] not-italic text-[var(--text-3)]">{b.label}</i>
                 </span>
               ))}
             </div>
           )}
-          <button className="ovx-kpi-link" onClick={() => nav('/analytics/geographic')}>View beneficiaries <ArrowRight size={13} /></button>
-        </div>
+        </KpiCard>
       </div>
 
       {/* Level 2 — geographic footprint + implementation performance */}
@@ -447,27 +443,6 @@ function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, 
         </table>
       </div>
       <button className="ovx-cardlink" onClick={onView}>View coverage <ArrowRight size={13} /></button>
-    </div>
-  );
-}
-
-// Compact headline KPI card (Level 1): icon badge, label, value, sub, optional
-// progress bar (used to fold disbursement % into the financial KPI) + footer link.
-function HeadKpi({ icon: Icon, label, value, sub, progress, progressColor, linkLabel, onClick }) {
-  return (
-    <div className="ovx-card ovx-kpi2">
-      <div className="ovx-kpi-top">
-        <span className="ovx-kpi-ic" aria-hidden="true"><Icon size={22} /></span>
-        <div style={{ minWidth: 0 }}>
-          <div className="ovx-kpi-label">{label}</div>
-          <div className="ovx-kpi-val">{value}</div>
-          {sub && <div className="ovx-kpi-sub">{sub}</div>}
-        </div>
-      </div>
-      {progress != null && (
-        <div className="ovx-kpiprog"><div style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: progressColor || '#22a565' }} /></div>
-      )}
-      <button className="ovx-kpi-link" onClick={onClick}>{linkLabel} <ArrowRight size={13} /></button>
     </div>
   );
 }
