@@ -30,12 +30,12 @@ export default function FilterBar({ filters = [], onReset, onExport, dataAsAt, r
           {right}
           {onExport && (
             <button onClick={onExport} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.7rem', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
-              <Download size={14} /> Export
+              <Download size={14} aria-hidden="true" /> Export
             </button>
           )}
           {onReset && active.length > 0 && (
             <button onClick={onReset} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.7rem', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
-              <RotateCcw size={14} /> Reset
+              <RotateCcw size={14} aria-hidden="true" /> Reset
             </button>
           )}
         </div>
@@ -50,7 +50,7 @@ export default function FilterBar({ filters = [], onReset, onExport, dataAsAt, r
                 {f.label}: {opt?.label ?? f.value}
                 <button onClick={() => f.onChange(f.multi ? [] : '')} aria-label={`Clear ${f.label} filter`}
                   style={{ display: 'inline-flex', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--green-700)', padding: 2 }}>
-                  <X size={12} />
+                  <X size={12} aria-hidden="true" />
                 </button>
               </span>
             );

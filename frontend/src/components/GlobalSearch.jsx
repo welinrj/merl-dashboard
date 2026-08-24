@@ -98,7 +98,7 @@ export default function GlobalSearch() {
   return (
     <>
       <button className="gs-trigger" onClick={() => setOpen(true)} aria-label="Search projects, indicators and activities">
-        <Search size={15} />
+        <Search size={15} aria-hidden="true" />
         <span className="gs-trigger-lbl">Search…</span>
         <kbd className="gs-kbd">{isMac ? '⌘' : 'Ctrl'} K</kbd>
       </button>
@@ -108,7 +108,7 @@ export default function GlobalSearch() {
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
           <div className="gs-panel" onKeyDown={onKeyDown}>
             <div className="gs-input-row">
-              <Search size={18} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+              <Search size={18} style={{ color: 'var(--text-3)', flexShrink: 0 }} aria-hidden="true" />
               <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)}
                 placeholder="Search projects, indicators, activities…" className="gs-input" aria-label="Search query" />
               <kbd className="gs-kbd">Esc</kbd>
@@ -129,13 +129,13 @@ export default function GlobalSearch() {
                       className={`gs-item${i === active ? ' active' : ''}`}
                       onMouseEnter={() => setActive(i)} onClick={() => go(r)}>
                       <span className="gs-item-ic" style={{ background: `color-mix(in srgb, ${g.accent} 15%, #fff)`, color: g.accent }}>
-                        <Icon size={16} />
+                        <Icon size={16} aria-hidden="true" />
                       </span>
                       <span className="gs-item-txt">
                         <span className="gs-item-name">{r.code ? `${r.code} · ` : ''}{r.name}</span>
                         <span className="gs-item-type">{g.label}</span>
                       </span>
-                      {i === active && <CornerDownLeft size={14} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}
+                      {i === active && <CornerDownLeft size={14} style={{ color: 'var(--text-3)', flexShrink: 0 }} aria-hidden="true" />}
                     </button>
                   );
                 })

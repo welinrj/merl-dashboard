@@ -10,7 +10,7 @@
 //       { key:'_actions', header:'', align:'right', render:r => <button/> },
 //     ]}
 //     rows={rows} keyField="id" searchable={['code','name']} loading={loading}
-//     empty={{ icon:Inbox, title:'No projects', description:'Add one to begin.' }}
+//     empty={{ title:'No projects', description:'Add one to begin.' }}
 //     toolbar={<FilterBar .../>} />
 import { useMemo, useState } from 'react';
 import { Search, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -104,7 +104,7 @@ export default function DataTable({
                     aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                       {c.header}
-                      {c.sortable && active && (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+                      {c.sortable && active && (sortDir === 'asc' ? <ArrowUp size={12} aria-hidden="true" /> : <ArrowDown size={12} aria-hidden="true" />)}
                     </span>
                   </th>
                 );
@@ -116,7 +116,7 @@ export default function DataTable({
               <tr><td colSpan={columns.length} style={{ padding: '0.5rem 0.9rem' }}><SkeletonRows rows={Math.min(pageSize, 6)} cols={columns.length} /></td></tr>
             ) : paged.length === 0 ? (
               <tr><td colSpan={columns.length} style={{ padding: 0 }}>
-                <EmptyState icon={empty?.icon} title={empty?.title || (query ? 'No matches' : 'No records')}
+                <EmptyState title={empty?.title || (query ? 'No matches' : 'No records')}
                   description={empty?.description || (query ? 'Try a different search.' : undefined)} action={empty?.action} />
               </td></tr>
             ) : paged.map((r) => (
@@ -145,12 +145,12 @@ export default function DataTable({
             <span>{total === 0 ? 0 : start + 1}–{Math.min(start + pageSize, total)} of {total}</span>
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={curPage <= 1}
               aria-label="Previous page" className="btn-secondary" style={{ padding: '0.25rem', borderRadius: 6, cursor: curPage <= 1 ? 'not-allowed' : 'pointer', opacity: curPage <= 1 ? 0.5 : 1 }}>
-              <ChevronLeft size={16} />
+              <ChevronLeft size={16} aria-hidden="true" />
             </button>
             <span style={{ minWidth: 60, textAlign: 'center' }}>Page {curPage}/{pageCount}</span>
             <button onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={curPage >= pageCount}
               aria-label="Next page" className="btn-secondary" style={{ padding: '0.25rem', borderRadius: 6, cursor: curPage >= pageCount ? 'not-allowed' : 'pointer', opacity: curPage >= pageCount ? 0.5 : 1 }}>
-              <ChevronRight size={16} />
+              <ChevronRight size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
