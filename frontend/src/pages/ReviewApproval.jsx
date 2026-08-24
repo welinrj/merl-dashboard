@@ -210,14 +210,14 @@ export default function ReviewApproval({ user }) {
                 {canReview && ['submitted', 'reviewed'].includes(r.submission_status) && (
                   <>
                     {r.submission_status === 'submitted' && (
-                      <button disabled={busy === r.id} onClick={() => doReview(r)} style={rowBtnSecondary}><Eye size={13} /> Review</button>
+                      <button disabled={busy === r.id} onClick={() => doReview(r)} style={{ ...rowBtnSecondary, ...(busy === r.id ? disabledBtn : null) }}><Eye size={13} /> Review</button>
                     )}
-                    <button disabled={busy === r.id} onClick={() => doReturn(r)} style={rowBtnWarning}><RotateCcw size={13} /> Return</button>
-                    <button disabled={busy === r.id} onClick={() => doApprove(r)} style={rowBtnPrimary}><CheckCircle2 size={13} /> Approve</button>
+                    <button disabled={busy === r.id} onClick={() => doReturn(r)} style={{ ...rowBtnWarning, ...(busy === r.id ? disabledBtn : null) }}><RotateCcw size={13} /> Return</button>
+                    <button disabled={busy === r.id} onClick={() => doApprove(r)} style={{ ...rowBtnPrimary, ...(busy === r.id ? disabledBtn : null) }}><CheckCircle2 size={13} /> Approve</button>
                   </>
                 )}
                 {canReview && r.submission_status === 'approved' && (
-                  <button disabled={busy === r.id} onClick={() => doReopen(r)} style={rowBtnSecondary}><Unlock size={13} /> Reopen</button>
+                  <button disabled={busy === r.id} onClick={() => doReopen(r)} style={{ ...rowBtnSecondary, ...(busy === r.id ? disabledBtn : null) }}><Unlock size={13} /> Reopen</button>
                 )}
                 {(!canReview && r.submission_status === 'draft') && <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>}
               </span>
@@ -333,12 +333,12 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
           <div style={{ padding: '0.8rem 1.1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {['submitted', 'reviewed'].includes(status) && (
               <>
-                {status === 'submitted' && <button disabled={busy} onClick={onReview} style={rowBtnSecondary}><Eye size={14} /> Mark under review</button>}
-                <button disabled={busy} onClick={onReturn} style={rowBtnWarning}><RotateCcw size={14} /> Return</button>
-                <button disabled={busy} onClick={onApprove} style={rowBtnPrimary}><CheckCircle2 size={14} /> Approve & lock</button>
+                {status === 'submitted' && <button disabled={busy} onClick={onReview} style={{ ...rowBtnSecondary, ...(busy ? disabledBtn : null) }}><Eye size={14} /> Mark under review</button>}
+                <button disabled={busy} onClick={onReturn} style={{ ...rowBtnWarning, ...(busy ? disabledBtn : null) }}><RotateCcw size={14} /> Return</button>
+                <button disabled={busy} onClick={onApprove} style={{ ...rowBtnPrimary, ...(busy ? disabledBtn : null) }}><CheckCircle2 size={14} /> Approve & lock</button>
               </>
             )}
-            {status === 'approved' && <button disabled={busy} onClick={onReopen} style={rowBtnSecondary}><Unlock size={14} /> Reopen</button>}
+            {status === 'approved' && <button disabled={busy} onClick={onReopen} style={{ ...rowBtnSecondary, ...(busy ? disabledBtn : null) }}><Unlock size={14} /> Reopen</button>}
           </div>
         )}
       </div>
@@ -353,6 +353,10 @@ const rowBtnBase = {
   display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem',
   borderRadius: 'var(--radius-control)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
 };
+// Inline style objects cannot express :disabled, so a button that is disabled
+// mid-request kept rendering at full strength — the officer got no sign their
+// click had registered. Spread this wherever `disabled` is set.
+const disabledBtn = { opacity: 0.45, cursor: 'not-allowed' };
 const rowBtnPrimary = { ...rowBtnBase, border: 'none', background: 'var(--green-600)', color: '#fff' };
 const rowBtnSecondary = { ...rowBtnBase, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--text-2)' };
 const rowBtnWarning = { ...rowBtnBase, border: '1px solid var(--border)', background: 'var(--white)', color: '#8a6416' };
