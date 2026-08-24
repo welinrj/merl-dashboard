@@ -8,7 +8,7 @@
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
 // One icon on this page: Printer, which labels the export control.
-import { Printer } from 'lucide-react';
+import { Printer } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';

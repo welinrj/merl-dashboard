@@ -8,7 +8,7 @@
 //       { key:'prov', label:'Province', value:prov, onChange:setProv, options:provinceOpts },
 //     ]}
 //     onReset={reset} onExport={exportCsv} dataAsAt="12 Aug 2026" />
-import { X, RotateCcw, Download } from 'lucide-react';
+import { X, RotateCcw, Download } from './icons';
 
 export default function FilterBar({ filters = [], onReset, onExport, dataAsAt, right }) {
   const active = filters.filter((f) => f.value != null && f.value !== '' && f.value !== 'all');

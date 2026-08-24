@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, Send, CheckCircle2, RotateCcw, X, AlertTriangle, Info, Lock, Unlock,
-} from 'lucide-react';
+} from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';

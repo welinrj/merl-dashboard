@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin,
   AlertTriangle, FolderOpen, FileBarChart, Settings, LogOut, Menu,
   Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck,
-} from 'lucide-react';
+} from './components/ui/icons';
 import { useTranslation } from 'react-i18next';
 
 import Overview from './pages/Overview';

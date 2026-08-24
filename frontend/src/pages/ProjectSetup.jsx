@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 import {
   Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight,
   CheckCircle2, AlertTriangle,
-} from 'lucide-react';
+} from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';

@@ -16,7 +16,7 @@ import {
 // AlertTriangle marks the section that needs action, Printer labels the export
 // control, ArrowRight shows direction on "view more" links. The KPIs, section
 // headings, performance rows and attention rows carry no symbols.
-import { AlertTriangle, Printer, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Printer, ArrowRight } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';

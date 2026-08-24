@@ -7,7 +7,7 @@
 // =============================================================================
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FolderKanban, Target, ListChecks, CornerDownLeft } from 'lucide-react';
+import { Search, FolderKanban, Target, ListChecks } from './ui/icons';
 import { supabase } from '../supabaseClient';
 
 const GROUPS = {
@@ -135,7 +135,7 @@ export default function GlobalSearch() {
                         <span className="gs-item-name">{r.code ? `${r.code} · ` : ''}{r.name}</span>
                         <span className="gs-item-type">{g.label}</span>
                       </span>
-                      {i === active && <CornerDownLeft size={14} style={{ color: 'var(--text-3)', flexShrink: 0 }} aria-hidden="true" />}
+                      {i === active && <span aria-hidden="true" style={{ color: 'var(--text-3)', flexShrink: 0, fontSize: '0.8rem', lineHeight: 1 }}>&crarr;</span>}
                     </button>
                   );
                 })

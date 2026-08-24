@@ -10,7 +10,8 @@
 //
 // House rules for this set, so it reads as one family rather than a grab bag:
 //   · one 24x24 viewBox, drawn on the same grid
-//   · stroke-only, 1.6 stroke width, round caps and joins, no fills
+//   · stroke-only, 1.5 stroke width, round caps and joins, no fills
+//     (1.5 matches Iconsax Linear, so the two families sit together)
 //   · currentColor throughout — the caller sets one institutional colour
 //   · a shared head + body skeleton; only the distinguishing detail changes
 //   · no cartoon faces, no gendered clothing tropes, no emoji, no colour circles
@@ -20,7 +21,7 @@ const BASE = {
   viewBox: '0 0 24 24',
   fill: 'none',
   stroke: 'currentColor',
-  strokeWidth: 1.6,
+  strokeWidth: 1.5,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
 };

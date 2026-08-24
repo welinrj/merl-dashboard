@@ -7,7 +7,7 @@
 // icon beside every metric is decoration, and a coloured circle around that
 // icon is the signature of a generic template. Where a metric genuinely needs
 // a symbol (the GEDSI beneficiary breakdown), the page passes it via `children`.
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight } from './icons';
 import { cn } from '@/lib/utils';
 
 export default function KpiCard({
