@@ -42,6 +42,10 @@ const btn = (bg, extra = {}) => ({
   color: '#fff', background: bg, ...extra,
 });
 const ghostBtn = { ...btn('var(--white)'), color: 'var(--text-2)', border: '1px solid var(--border)' };
+// These buttons are styled with inline style objects, which cannot express a
+// :disabled rule — so a disabled button kept rendering at full strength and read
+// as clickable. Spread this alongside the base style whenever `disabled` is set.
+const disabledBtn = { opacity: 0.45, cursor: 'not-allowed' };
 // Compact text-style row actions (edit/delete on cards) — a filled button per
 // row reads heavier than these actions need (spec §11/§12).
 const rowGhost = (extra = {}) => ({
@@ -135,6 +139,14 @@ export default function ProjectSetup({ user }) {
   const stepIndex = STEPS.findIndex((s) => s.key === step);
   const goPrev = () => setStep(STEPS[Math.max(0, stepIndex - 1)].key);
   const goNext = () => setStep(STEPS[Math.min(STEPS.length - 1, stepIndex + 1)].key);
+
+  // Why Next is unavailable, in the user's terms — every step after the profile
+  // writes against a project id, so there has to be a saved project first.
+  const atLastStep = stepIndex === STEPS.length - 1;
+  const nextBlockedReason = !project
+    ? 'Create the project to continue.'
+    : atLastStep ? 'Last step.' : null;
+  const nextDisabled = atLastStep || !project;
 
   if (!canEdit) {
     return (
@@ -266,12 +278,27 @@ export default function ProjectSetup({ user }) {
         )}
       </div>
 
-      {/* Wizard nav */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
-        <button style={ghostBtn} onClick={goPrev} disabled={stepIndex === 0}><ArrowLeft size={15} /> Previous</button>
-        <button style={btn('var(--green-700)')} onClick={goNext} disabled={stepIndex === STEPS.length - 1 || !project}>
-          Next <ArrowRight size={15} />
+      {/* Wizard nav.
+          Next is blocked until the profile is saved, because every later step
+          writes against a project id. It used to render in full solid teal
+          while disabled — inline styles cannot express :disabled — so it looked
+          clickable and simply did nothing. Both buttons now carry a visible
+          disabled state, and when Next is blocked the reason is written next to
+          it rather than left for the user to work out. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+        <button style={{ ...ghostBtn, ...(stepIndex === 0 ? disabledBtn : null) }}
+          onClick={goPrev} disabled={stepIndex === 0}>
+          <ArrowLeft size={15} aria-hidden="true" /> Previous
         </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginLeft: 'auto' }}>
+          {nextBlockedReason && (
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>{nextBlockedReason}</span>
+          )}
+          <button style={{ ...btn('var(--green-700)'), ...(nextDisabled ? disabledBtn : null) }}
+            onClick={goNext} disabled={nextDisabled} title={nextBlockedReason || undefined}>
+            Next <ArrowRight size={15} aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -364,7 +391,7 @@ function ProfileStep({ project, users, onSaved }) {
         <Field label="Est. Indirect Beneficiaries"><input type="number" className="field-input" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></Field>
       </div>
       <div style={{ marginTop: '1rem' }}>
-        <button style={btn('var(--green-700)')} onClick={save} disabled={saving}>{saving ? 'Saving…' : project ? 'Save changes' : 'Create project'}</button>
+        <button style={{ ...btn('var(--green-700)'), ...(saving ? disabledBtn : null) }} onClick={save} disabled={saving}>{saving ? 'Saving…' : project ? 'Save changes' : 'Create project'}</button>
       </div>
     </div>
   );
