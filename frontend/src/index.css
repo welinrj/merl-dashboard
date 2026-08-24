@@ -507,12 +507,6 @@
 .dsh-nav a.active svg { color: #fff; }
 .dsh-nav a svg { flex-shrink: 0; color: #7f93b3; }
 .dsh-nav a.active svg { color: #fff; }
-.dsh-qf { border-top: 1px solid rgba(255,255,255,.08); padding: .7rem .65rem 1rem; }
-.dsh-qf-h { font-size: .6rem; font-weight: 700; letter-spacing: .09em; color: #7f93b3; text-transform: uppercase; margin-bottom: .5rem; }
-.dsh-qf label { display: block; font-size: .62rem; font-weight: 600; color: #9fb2cd; margin: .35rem 0 .15rem; }
-.dsh-qf select { width: 100%; background: #fff; color: #1c2430; border: 1px solid var(--navy-700); border-radius: 7px; padding: .4rem .5rem; font-size: .76rem; }
-.dsh-qf-clear { width: 100%; margin-top: .7rem; background: #fff; color: var(--navy-900); border: none; border-radius: 7px; padding: .5rem; font-size: .78rem; font-weight: 700; cursor: pointer; }
-.dsh-qf-clear:hover { background: #e9eef6; }
 
 /* Header */
 .dsh-head { display: flex; align-items: center; gap: 1rem; padding: .8rem 1.2rem; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
