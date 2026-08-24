@@ -16,6 +16,7 @@ import {
 } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
+import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import {
@@ -101,6 +102,22 @@ const MODULES = [
       { name: 'comments', label: 'Comments', type: 'textarea' },
     ],
     note: 'Leave a count blank if it was not collected — a blank is stored as "no data", which is different from a recorded 0.',
+    // The gender split is a partition of the total; youth and disability are
+    // separate axes over the same people, so each is bounded on its own.
+    validate: (v) => {
+      const n = (x) => (x === '' || x == null ? 0 : Number(x));
+      if (v.total_direct === '' || v.total_direct == null) return null;
+      const total = Number(v.total_direct);
+      const split = n(v.female) + n(v.male) + n(v.other_gender);
+      if (split > total) {
+        return `Female, male and other add up to ${split}, more than the ${total} total direct beneficiaries.`;
+      }
+      if (n(v.youth) > total) return `Youth (${n(v.youth)}) cannot exceed the ${total} total direct beneficiaries.`;
+      if (n(v.persons_with_disability) > total) {
+        return `Persons with disabilities (${n(v.persons_with_disability)}) cannot exceed the ${total} total direct beneficiaries.`;
+      }
+      return null;
+    },
     columns: [
       { label: 'Period', get: (r) => r.reporting_period },
       { label: 'Location', get: (r) => r.location || '—' },
@@ -292,6 +309,10 @@ export default function MerlReporting({ user }) {
         toast.error(`${f.label} is required`); return;
       }
     }
+    // Cross-field rules the database also enforces, checked here first so the
+    // officer is told which figures disagree rather than seeing a constraint.
+    const problem = m.validate?.(values);
+    if (problem) { toast.error(problem); return; }
     const params = { p_id: editing?.id ?? null, p_project_id: projectId };
     if (m.periodScoped) params.p_reporting_period = activePeriod || null;
     for (const f of m.fields) {
@@ -308,7 +329,7 @@ export default function MerlReporting({ user }) {
       params.p_variance = calcVariance(values.actual_this_period, values.period_target);
     }
     const { error } = await supabase.rpc(m.rpc, params);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success(editing?.id ? 'Updated' : 'Added');
     setEditing(null);
     loadRecords();
@@ -319,7 +340,7 @@ export default function MerlReporting({ user }) {
   const deleteRecord = async (row) => {
     if (!(await confirmDialog({ title:'Delete record', message:'Delete this record? This cannot be undone.', confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc(activeModule.del, { p_id: row.id });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success('Deleted');
     loadRecords();
     setRefreshKey((k) => k + 1);
@@ -333,7 +354,7 @@ export default function MerlReporting({ user }) {
       p_period_type: toNull(values.period_type), p_period_start: toNull(values.period_start),
       p_period_end: toNull(values.period_end), p_reporting_officer_id: null,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success('Reporting period created');
     setNewPeriodOpen(false);
     setActivePeriod(values.period_label);
@@ -359,7 +380,7 @@ export default function MerlReporting({ user }) {
       params = { p_id: id };
     }
     const { error } = await supabase.rpc(rpc, params);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success(rpc === 'reopen_reporting_period' ? 'Reporting period reopened' : 'Updated');
     loadContext(projectId);
   };

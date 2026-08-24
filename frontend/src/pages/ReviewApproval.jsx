@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { CheckCircle2, RotateCcw, Eye, Unlock, AlertTriangle, X, FileText } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
+import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
 import DataTable from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -88,7 +89,7 @@ export default function ReviewApproval({ user }) {
     setBusy(params.p_id);
     const { error } = await supabase.rpc(rpc, params);
     setBusy(null);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success(okMsg);
     setDetail(null);
     load();

@@ -167,6 +167,11 @@ export default function ProjectSetup({ user }) {
         .ps-step.active .ps-tick{background:rgba(255,255,255,.25);color:#fff}
         .ps-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem}
         .ps-full{grid-column:1 / -1}
+        .ps-sec{grid-column:1 / -1;margin:1.4rem 0 0;padding-bottom:.4rem;
+          border-bottom:1px solid var(--border);font-size:.75rem;font-weight:700;
+          letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+        .ps-sec-first{margin-top:0}
+        .field-hint{display:block;margin-top:.25rem;font-size:.72rem;color:var(--text-3)}
         .ps-table{width:100%;border-collapse:collapse;font-size:.85rem}
         .ps-table th,.ps-table td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
         .ps-table th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)}
@@ -338,6 +343,9 @@ function ProfileStep({ project, users, onSaved }) {
 
   const save = async () => {
     if (!v.name.trim()) { toast.error('Project title is required'); return; }
+    if (toNum(v.budget_vuv) != null && toNum(v.budget_vuv) < 0) {
+      toast.error('Approved Budget cannot be negative'); return;
+    }
     setSaving(true);
     const { data, error } = await supabase.rpc('upsert_project', {
       p_id: project?.id ?? null, p_name: v.name, p_acronym: toNull(v.acronym), p_description: toNull(v.description),
@@ -362,33 +370,48 @@ function ProfileStep({ project, users, onSaved }) {
     <div>
       <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Project Profile <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 1</span></h3>
       <div className="ps-grid">
+        <h4 className="ps-sec ps-sec-first">Identification</h4>
         <Field className="ps-full" label="Project Title *"><input className="field-input" value={v.name} onChange={set('name')} /></Field>
         <Field label="Acronym"><input className="field-input" value={v.acronym ?? ''} onChange={set('acronym')} /></Field>
         <Field label="Status"><Select value={v.status} onChange={set('status')} options={OPT.DOCC_PROJECT_STATUS} /></Field>
         <Field className="ps-full" label="Description"><textarea className="field-input" rows={2} value={v.description ?? ''} onChange={set('description')} /></Field>
+
+        <h4 className="ps-sec">Classification</h4>
         <Field label="Theme / Sector"><Select value={v.category ?? ''} onChange={set('category')} options={OPT.CLIMATE_THEME} allowBlank /></Field>
         <Field label="Project Type"><Select value={v.project_type ?? ''} onChange={set('project_type')} options={OPT.PROJECT_TYPE} allowBlank /></Field>
+        <Field label="Expected Primary Outcome"><Select value={v.expected_primary_outcome ?? ''} onChange={set('expected_primary_outcome')} options={OPT.EXPECTED_OUTCOME} allowBlank /></Field>
+
+        <h4 className="ps-sec">Implementing institutions</h4>
         <Field label="Lead Department / Unit"><input className="field-input" value={v.lead_agency ?? ''} onChange={set('lead_agency')} /></Field>
         <Field label="Implementing / Executing Agency"><input className="field-input" value={v.executing_agency ?? ''} onChange={set('executing_agency')} /></Field>
+
+        <h4 className="ps-sec">Funding</h4>
         <Field label="Funding Partner / Donor"><Select value={v.donor ?? ''} onChange={set('donor')} options={OPT.DONOR} allowBlank /></Field>
         <Field label="Funding Window"><input className="field-input" value={v.funding_window ?? ''} onChange={set('funding_window')} /></Field>
-        <Field label="Approved Budget"><input type="number" className="field-input" value={v.budget_vuv} onChange={set('budget_vuv')} /></Field>
+        <Field label="Approved Budget"><input type="number" min="0" className="field-input" value={v.budget_vuv} onChange={set('budget_vuv')} /></Field>
         <Field label="Currency"><Select value={v.currency} onChange={set('currency')} options={OPT.CURRENCY} /></Field>
+
+        <h4 className="ps-sec">Timeline</h4>
         <Field label="Start Date"><input type="date" className="field-input" value={v.start_date || ''} onChange={set('start_date')} /></Field>
         <Field label="End Date"><input type="date" className="field-input" value={v.end_date || ''} onChange={set('end_date')} /></Field>
         <Field label="Approval Date"><input type="date" className="field-input" value={v.approval_date || ''} onChange={set('approval_date')} /></Field>
+
+        <h4 className="ps-sec">Geographic coverage</h4>
         <Field label="Coverage Type"><Select value={v.coverage_type ?? ''} onChange={set('coverage_type')} options={OPT.COVERAGE_TYPE} allowBlank /></Field>
-        <Field label="Provinces (multi-select)">
+        <Field label="Provinces" hint="Hold Ctrl (Cmd on Mac) to select more than one">
           <select multiple className="field-input" style={{ minHeight: 96 }} value={v.provinces} onChange={setMulti('provinces')}>
             {PROVINCE_LIST.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </Field>
-        <Field label="Expected Primary Outcome"><Select value={v.expected_primary_outcome ?? ''} onChange={set('expected_primary_outcome')} options={OPT.EXPECTED_OUTCOME} allowBlank /></Field>
+
+        <h4 className="ps-sec">Responsible officers</h4>
         <Field label="Project Manager / Focal Point"><Select value={v.project_manager_id ?? ''} onChange={set('project_manager_id')} options={userOpts} allowBlank /></Field>
         <Field label="M&E Officer"><Select value={v.me_officer_id ?? ''} onChange={set('me_officer_id')} options={userOpts} allowBlank /></Field>
         <Field label="Finance Officer"><Select value={v.finance_officer_id ?? ''} onChange={set('finance_officer_id')} options={userOpts} allowBlank /></Field>
-        <Field label="Est. Direct Beneficiaries"><input type="number" className="field-input" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></Field>
-        <Field label="Est. Indirect Beneficiaries"><input type="number" className="field-input" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></Field>
+
+        <h4 className="ps-sec">Expected reach</h4>
+        <Field label="Est. Direct Beneficiaries"><input type="number" min="0" className="field-input" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></Field>
+        <Field label="Est. Indirect Beneficiaries"><input type="number" min="0" className="field-input" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></Field>
       </div>
       <div style={{ marginTop: '1rem' }}>
         <button style={{ ...btn('var(--green-700)'), ...(saving ? disabledBtn : null) }} onClick={save} disabled={saving}>{saving ? 'Saving…' : project ? 'Save changes' : 'Create project'}</button>
@@ -520,7 +543,7 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
   const title = `${row?.id ? 'Edit' : 'New'} ${kind}`;
   return (
     <Modal title={title.charAt(0).toUpperCase() + title.slice(1)} onClose={onClose} onSave={save} saveLabel={row?.id ? 'Save' : 'Add'} dirty={dirty}>
-      <Field label="Statement" className="ps-full">
+      <Field label="Statement *" className="ps-full">
         <textarea className="field-input" rows={2} value={v.statement} onChange={set('statement')} />
       </Field>
       {kind === 'objective' && <>
@@ -625,6 +648,10 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
 
   const save = async () => {
     if (!v.name.trim()) return toast.error('Indicator name is required');
+    const year = toNum(v.baseline_year);
+    if (year != null && (year < 1980 || year > 2100)) {
+      return toast.error('Baseline Year must be between 1980 and 2100');
+    }
     const { error } = await supabase.rpc('upsert_project_indicator', {
       p_id: initial?.id ?? null, p_project_id: projectId, p_name: v.name, p_unit: toNull(v.unit),
       p_baseline_value: toNum(v.baseline_value), p_target_value: toNum(v.target_value),
@@ -647,7 +674,7 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
       <Field label="Unit of Measurement"><input className="field-input" value={v.unit ?? ''} onChange={set('unit')} /></Field>
       <Field className="ps-full" label="Definition"><textarea className="field-input" rows={2} value={v.definition ?? ''} onChange={set('definition')} /></Field>
       <Field label="Baseline Value"><input type="number" className="field-input" value={v.baseline_value ?? ''} onChange={set('baseline_value')} /></Field>
-      <Field label="Baseline Year"><input type="number" className="field-input" value={v.baseline_year ?? ''} onChange={set('baseline_year')} /></Field>
+      <Field label="Baseline Year"><input type="number" min="1980" max="2100" className="field-input" value={v.baseline_year ?? ''} onChange={set('baseline_year')} /></Field>
       <Field label="Final Target"><input type="number" className="field-input" value={v.target_value ?? ''} onChange={set('target_value')} /></Field>
       <Field label="Target Date"><input type="date" className="field-input" value={v.target_date || ''} onChange={set('target_date')} /></Field>
       <Field label="Reporting Frequency"><Select value={v.frequency ?? ''} onChange={set('frequency')} options={OPT.REPORTING_FREQUENCY} allowBlank /></Field>
@@ -741,6 +768,13 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
   const save = async () => {
     if (!v.name.trim()) return toast.error('Activity title is required');
     if (!v.output_id) return toast.error('Select the parent output');
+    const pct = toNum(v.physical_progress_pct);
+    if (pct != null && (pct < 0 || pct > 100)) {
+      return toast.error('Physical Progress must be between 0 and 100');
+    }
+    if (v.planned_start_date && v.planned_end_date && v.planned_end_date < v.planned_start_date) {
+      return toast.error('The planned end date cannot be earlier than the planned start date');
+    }
     const { error } = await supabase.rpc('upsert_project_activity_full', {
       p_id: initial?.id ?? null, p_output_id: v.output_id, p_name: v.name, p_description: toNull(v.description),
       p_responsible_officer_id: toNull(v.responsible_officer_id), p_status: v.status, p_outcome_id: toNull(v.outcome_id),
@@ -764,7 +798,7 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
       <Field label="Responsible Organisation"><input className="field-input" value={v.responsible_org ?? ''} onChange={set('responsible_org')} /></Field>
       <Field label="Responsible Officer"><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={userOpts} allowBlank /></Field>
       <Field label="Status"><Select value={v.status} onChange={set('status')} options={OPT.ACTIVITY_STATUS} /></Field>
-      <Field label="Physical Progress %"><input type="number" className="field-input" value={v.physical_progress_pct ?? ''} onChange={set('physical_progress_pct')} /></Field>
+      <Field label="Physical Progress %"><input type="number" min="0" max="100" className="field-input" value={v.physical_progress_pct ?? ''} onChange={set('physical_progress_pct')} /></Field>
       <Field label="Province"><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
       <Field label="Island"><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
       <Field label="Area Council"><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
@@ -841,6 +875,11 @@ function LocationForm({ projectId, initial, onClose, onSaved }) {
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setProvince = (e) => setV((s) => ({ ...s, province: e.target.value, island: '', area_council: '' }));
   const save = async () => {
+    // Every field here is optional on its own, but a location with none of them
+    // is not a location — it used to save as a blank row.
+    if (!v.province && !v.island && !v.community.trim()) {
+      return toast.error('Enter at least a province, island or community');
+    }
     const { error } = await supabase.rpc('upsert_project_location', {
       p_id: initial?.id ?? null, p_project_id: projectId, p_province: toNull(v.province), p_island: toNull(v.island),
       p_area_council: toNull(v.area_council), p_community: toNull(v.community), p_latitude: toNum(v.latitude),
@@ -856,21 +895,22 @@ function LocationForm({ projectId, initial, onClose, onSaved }) {
       <Field label="Island"><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
       <Field label="Area Council"><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
       <Field label="Community / Site"><input className="field-input" value={v.community ?? ''} onChange={set('community')} /></Field>
-      <Field label="Latitude"><input type="number" className="field-input" value={v.latitude ?? ''} onChange={set('latitude')} /></Field>
-      <Field label="Longitude"><input type="number" className="field-input" value={v.longitude ?? ''} onChange={set('longitude')} /></Field>
+      <Field label="Latitude"><input type="number" min="-90" max="90" step="any" className="field-input" value={v.latitude ?? ''} onChange={set('latitude')} /></Field>
+      <Field label="Longitude"><input type="number" min="-180" max="180" step="any" className="field-input" value={v.longitude ?? ''} onChange={set('longitude')} /></Field>
       <Field className="ps-full" label="Intervention / Activity"><input className="field-input" value={v.intervention ?? ''} onChange={set('intervention')} /></Field>
       <Field label="Implementation Status"><input className="field-input" value={v.status ?? ''} onChange={set('status')} /></Field>
-      <Field label="Beneficiaries"><input type="number" className="field-input" value={v.beneficiaries ?? ''} onChange={set('beneficiaries')} /></Field>
+      <Field label="Beneficiaries"><input type="number" min="0" className="field-input" value={v.beneficiaries ?? ''} onChange={set('beneficiaries')} /></Field>
     </Modal>
   );
 }
 
 // ── Shared primitives ────────────────────────────────────────────────────────
-function Field({ label, children, className }) {
+function Field({ label, children, className, hint }) {
   return (
     <div className={className}>
       <label className="field-label">{label}</label>
       {children}
+      {hint && <span className="field-hint">{hint}</span>}
     </div>
   );
 }

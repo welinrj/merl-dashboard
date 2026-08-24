@@ -153,11 +153,16 @@
   }
   .field-input {
     width: 100%; padding: 0.6rem 0.875rem;
+    /* 40px floor: the portal is used on phones in the field, and a control
+       under ~40px is hard to hit accurately. Textareas set their height from
+       rows, so they opt out. */
+    min-height: 40px;
     border: 1px solid var(--border); border-radius: var(--radius-control);
     font-size: 0.875rem; font-family: var(--font-ui);
     color: var(--text-1); background: var(--white); outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
+  textarea.field-input, select[multiple].field-input { min-height: 0; }
   .field-input:hover { border-color: var(--green-200); }
   .field-input:focus {
     border-color: var(--green-600);
