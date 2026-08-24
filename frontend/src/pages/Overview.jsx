@@ -299,10 +299,10 @@ export default function Overview({ user }) {
       <div className="ovx-kpis">
         <KpiCard icon={FolderOpen} label="Projects" value={total} accent="var(--green-600)"
           sub={`${activeProjects} active · ${completed} completed`} linkLabel="View projects" onClick={() => nav('/analytics/portfolio')} />
-        <KpiCard icon={CircleDollarSign} label="Total Funding" value={fmtVUV(totalBudget).replace('VUV', 'VT')} accent={BLUE}
+        <KpiCard icon={CircleDollarSign} label="Total Funding" value={fmtVUV(totalBudget).replace('VUV', 'VT')} accent="var(--green-600)"
           sub={donors.length ? `${donors.length} funding partner${donors.length === 1 ? '' : 's'}` : 'Committed budget'} linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
-        <KpiCard icon={Wallet} label="Disbursed" value={fmtVUV(totalExp).replace('VUV', 'VT')} accent="#7c3aed"
-          sub={`${util}% of total funding`} progress={util} progressColor="#7c3aed" linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
+        <KpiCard icon={Wallet} label="Disbursed" value={fmtVUV(totalExp).replace('VUV', 'VT')} accent="var(--green-600)"
+          sub={`${util}% of total funding`} progress={util} progressColor="var(--green-600)" linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
         <KpiCard icon={Users} label="Beneficiaries" value={totalBen ? totalBen.toLocaleString() : '0'} accent="var(--green-600)" solid
           linkLabel="View beneficiaries" onClick={() => nav('/analytics/geographic')}>
           {beneMini.length > 0 && (

@@ -1,7 +1,7 @@
-// KpiCard — shadcn/ui-shaped stat card (rounded border, soft shadow, icon
-// chip) with a 21st.dev-style hover treatment: the whole card lifts and its
-// footer affordance brightens on hover/focus, rather than only a small link
-// inside it. Used for the Dashboard Overview's headline KPI row.
+// KpiCard — headline stat card for the Dashboard Overview KPI row. Matches
+// the app's flat, bordered card language (.card / .card-hover in index.css):
+// 8px radius, 1px border, restrained shadow, border-colour change on hover —
+// no lift, no scale, no shadow escalation.
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,10 +15,10 @@ export default function KpiCard({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'group relative flex w-full min-w-0 flex-col gap-3 rounded-2xl border',
+        'group relative flex w-full min-w-0 flex-col gap-3 rounded-lg border',
         'border-[var(--border)] bg-white p-4 text-left shadow-[var(--shadow-sm)]',
-        'transition-all duration-200 sm:p-5',
-        onClick && 'cursor-pointer hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)] hover:border-[color-mix(in_srgb,var(--green-600)_45%,var(--border))]',
+        'transition-colors duration-150',
+        onClick && 'cursor-pointer hover:border-[var(--green-200)]',
         className,
       )}
     >
@@ -36,13 +36,13 @@ export default function KpiCard({
         </div>
         {Icon && (
           <span
-            className="flex h-10 w-10 flex-none items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105"
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-md"
             style={solid
               ? { background: accent, color: '#fff' }
-              : { background: `color-mix(in srgb, ${accent} 14%, white)`, color: accent }}
+              : { background: `color-mix(in srgb, ${accent} 12%, white)`, color: accent }}
             aria-hidden="true"
           >
-            <Icon size={19} strokeWidth={2.1} />
+            <Icon size={17} strokeWidth={2} />
           </span>
         )}
       </div>
@@ -54,16 +54,16 @@ export default function KpiCard({
       {progress != null && (
         <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
           <div
-            className="h-full rounded-full transition-[width] duration-300"
+            className="h-full rounded-full"
             style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: progressColor || accent }}
           />
         </div>
       )}
 
       {linkLabel && (
-        <span className="mt-auto inline-flex items-center gap-1 self-start text-xs font-semibold text-[var(--green-700)] opacity-80 transition-opacity duration-200 group-hover:opacity-100 group-hover:underline">
+        <span className="mt-auto inline-flex items-center gap-1 self-start text-xs font-semibold text-[var(--green-700)] group-hover:underline">
           {linkLabel}
-          <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+          <ArrowRight size={13} />
         </span>
       )}
     </Tag>
