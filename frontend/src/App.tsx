@@ -6,6 +6,7 @@ import {
   Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck,
 } from './components/ui/icons';
 import { useTranslation } from 'react-i18next';
+import { LANGUAGES } from './i18n';
 
 import Overview from './pages/Overview';
 import Dashboards from './pages/Dashboards';
@@ -23,12 +24,16 @@ import type { AppUser, UserRole, NavKey } from './types';
 
 // Sidebar item shape (richer than the old NavItem: carries the header title).
 interface SideItem {
-  key: NavKey; path: string; label: string;
+  // `key` doubles as the i18n key: nav.<key> is the sidebar label and
+  // head.<key> the page title, so a new entry cannot be added without its
+  // translations existing.
+  key: NavKey; path: string;
   // Optional query string. Two entries may share a pathname and be told apart
   // by this — Documents & Evidence opens MERL Reporting on its Evidence module.
   search?: string;
   Icon: React.ComponentType<{ size?: number | string }>;
-  head: string; sub?: string;
+  // Set when the page carries a subtitle under its title (head.<key>Sub).
+  hasSub?: boolean;
 }
 
 // ── Environment ───────────────────────────────────────────────────────────────
@@ -52,13 +57,7 @@ const TANNA_WEBP  = `${import.meta.env.BASE_URL}login-tanna.webp`;
 const VU_MAP      = `${import.meta.env.BASE_URL}vu.svg`;
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
-const ROLES: Record<UserRole, string> = {
-  ROLE_ADMIN:        'System Administrator',
-  ROLE_DOCC_MEO:     'DoCC M&E Officer',
-  ROLE_PROJ_MANAGER: 'Project Manager / Project Focal Point',
-  ROLE_DATA_ENTRY:   'Data Entry / Project Officer',
-  ROLE_VIEWER:       'Viewer / Executive',
-};
+
 
 // ── Supabase Auth ─────────────────────────────────────────────────────────────
 // Sign-in is email/password against Supabase Auth. Accounts are created by the
@@ -95,23 +94,23 @@ async function loadProfile(): Promise<AppUser | null> {
 // The analytics entries are read-only lenses; the records behind them are
 // entered in Project Setup and MERL Reporting.
 const NAV_ITEMS: SideItem[] = [
-  { key: 'overview',   path: '/dashboards',           label: 'Overview',              Icon: LayoutDashboard, head: 'MERL Project Portfolio Dashboard', sub: 'Monitoring, Evaluation, Reporting & Learning' },
-  { key: 'projects',   path: '/project-setup',        label: 'Project Setup',         Icon: FolderKanban,    head: 'Project Setup' },
+  { key: 'overview', path: '/dashboards', Icon: LayoutDashboard, hasSub: true },
+  { key: 'projects', path: '/project-setup', Icon: FolderKanban },
   // One analytics entry per Dashboards tab. These are read-only lenses on the
   // portfolio — the data behind them is entered in Project Setup and MERL
   // Reporting — so they are named for the analysis, not the record they show.
-  { key: 'results',    path: '/analytics/results',    label: 'Results & Indicators',  Icon: Target,          head: 'Results & Indicators' },
-  { key: 'finances',   path: '/analytics/financial',  label: 'Financial Analysis',    Icon: Wallet,          head: 'Financial Analysis' },
-  { key: 'locations',  path: '/analytics/geographic', label: 'Geographic Coverage',   Icon: MapPin,          head: 'Geographic Coverage' },
-  { key: 'risks',      path: '/analytics/risks',      label: 'Risk Analysis',         Icon: AlertTriangle,   head: 'Risk Analysis' },
+  { key: 'results', path: '/analytics/results', Icon: Target },
+  { key: 'finances', path: '/analytics/financial', Icon: Wallet },
+  { key: 'locations', path: '/analytics/geographic', Icon: MapPin },
+  { key: 'risks', path: '/analytics/risks', Icon: AlertTriangle },
   // The periodic reporting workspace: Forms 4, 6, 8, 9, 10 and 12 against a
   // reporting period. Documents & Evidence is the same workspace opened on its
   // Evidence module rather than a second, identical destination.
-  { key: 'activities', path: '/merl-reporting',       label: 'MERL Reporting',        Icon: ListChecks,      head: 'MERL Reporting' },
-  { key: 'documents',  path: '/merl-reporting',       label: 'Documents & Evidence',  search: '?module=evidence', Icon: FolderOpen, head: 'Documents & Evidence' },
-  { key: 'reports',    path: '/reports',              label: 'Reports',               Icon: FileBarChart,    head: 'Reports' },
-  { key: 'review',     path: '/review',               label: 'Review & Approval',     Icon: ClipboardCheck,  head: 'Review & Approval' },
-  { key: 'admin',      path: '/admin',                label: 'Administration',        Icon: Settings,        head: 'Administration' },
+  { key: 'activities', path: '/merl-reporting', Icon: ListChecks },
+  { key: 'documents', path: '/merl-reporting', search: '?module=evidence', Icon: FolderOpen },
+  { key: 'reports', path: '/reports', Icon: FileBarChart },
+  { key: 'review', path: '/review', Icon: ClipboardCheck },
+  { key: 'admin', path: '/admin', Icon: Settings },
 ];
 
 // Navigation by role (spec §18). Functions a role can't use are hidden.
@@ -399,7 +398,7 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);   // mobile nav dropdown
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
 
   // ── Session restore ────────────────────────────────────────────────────────
@@ -441,15 +440,15 @@ export default function App() {
       <aside className={`dsh-side${sidebarOpen ? ' open' : ''}`}>
         <div className="dsh-brand">
           <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
-          <div className="dsh-brand-dept">Department of<br />Climate Change (DoCC)</div>
-          <div className="dsh-brand-title">MERL Dashboard</div>
+          <div className="dsh-brand-dept">{t('shell.department')}</div>
+          <div className="dsh-brand-title">{t('shell.productName')}</div>
         </div>
         <nav className="dsh-nav" aria-label="Primary">
-          {visibleNav.map(({ key, path, label, search, Icon }) => (
+          {visibleNav.map(({ key, path, search, Icon }) => (
             <NavLink key={key} to={{ pathname: path, search: search ?? '' }}
               onClick={() => setSidebarOpen(false)}
               className={key === activeItem.key ? 'active' : ''}>
-              <Icon size={16} aria-hidden="true" />{label}
+              <Icon size={16} aria-hidden="true" />{t(`nav.${key}`)}
             </NavLink>
           ))}
         </nav>
@@ -458,32 +457,35 @@ export default function App() {
       {/* ── Main column ── */}
       <div className="dsh-main">
         <header className="dsh-head">
-          <button className="dsh-hamburger" aria-label="Toggle menu" onClick={() => setSidebarOpen(o => !o)}><Menu size={18} aria-hidden="true" /></button>
+          <button className="dsh-hamburger" aria-label={t('shell.toggleMenu')} onClick={() => setSidebarOpen(o => !o)}><Menu size={18} aria-hidden="true" /></button>
           <div style={{ minWidth: 0 }}>
-            <div className="dsh-head-title">{activeItem.head}</div>
-            {activeItem.sub && <div className="dsh-head-sub">{activeItem.sub}</div>}
+            <div className="dsh-head-title">{t(`head.${activeItem.key}`)}</div>
+            {activeItem.hasSub && <div className="dsh-head-sub">{t(`head.${activeItem.key}Sub`)}</div>}
           </div>
           <div className="dsh-head-actions">
             <GlobalSearch />
             {IS_STAGING && (
-              <span style={{ fontSize: '0.72rem', color: 'var(--green-700)', padding: '0.25rem 0.6rem', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 9999, fontWeight: 700 }}>Staging</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--green-700)', padding: '0.25rem 0.6rem', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 9999, fontWeight: 700 }}>{t('shell.staging')}</span>
             )}
             <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-              {(['en', 'fr'] as const).map(lng => (
-                <button key={lng} onClick={() => i18n.changeLanguage(lng)} aria-label={`Language ${lng.toUpperCase()}`}
+              {LANGUAGES.map(({ code, label, name }) => (
+                <button key={code} onClick={() => void i18n.changeLanguage(code)}
+                  lang={code} aria-label={name} title={name}
+                  aria-pressed={i18n.resolvedLanguage === code}
                   style={{ padding: '0.34rem 0.6rem', fontSize: '0.72rem', fontWeight: 700, border: 'none', cursor: 'pointer',
-                    background: i18n.language === lng ? 'var(--green-600)' : 'var(--white)', color: i18n.language === lng ? '#fff' : 'var(--text-3)' }}>
-                  {lng.toUpperCase()}
+                    background: i18n.resolvedLanguage === code ? 'var(--green-600)' : 'var(--white)',
+                    color: i18n.resolvedLanguage === code ? '#fff' : 'var(--text-3)' }}>
+                  {label}
                 </button>
               ))}
             </div>
             <NotificationBell user={user} />
             <div style={{ position: 'relative' }}>
-              <button className="dsh-user" onClick={() => setUserMenuOpen(o => !o)} aria-label="Account menu">
+              <button className="dsh-user" onClick={() => setUserMenuOpen(o => !o)} aria-label={t('shell.accountMenu')}>
                 <span className="dsh-avatar">{initials}</span>
                 <span className="dsh-user-meta">
                   <span className="dsh-user-name" style={{ display: 'block' }}>{user.name}</span>
-                  <span className="dsh-user-role">{ROLES[user.role]}</span>
+                  <span className="dsh-user-role">{t(`roles.${user.role}`)}</span>
                 </span>
               </button>
               {userMenuOpen && (
@@ -492,11 +494,11 @@ export default function App() {
                   <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 220, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
                     <div style={{ padding: '0.8rem 1rem', borderBottom: '1px solid var(--border)' }}>
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: 2 }}>{ROLES[user.role]}</div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: 2 }}>{t(`roles.${user.role}`)}</div>
                     </div>
                     <button onClick={() => { setUserMenuOpen(false); void supabase.auth.signOut(); setUser(null); }}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)', fontSize: '0.8rem', fontWeight: 600 }}>
-                      <LogOut size={16} aria-hidden="true" /> Sign Out
+                      <LogOut size={16} aria-hidden="true" /> {t('shell.signOut')}
                     </button>
                   </div>
                 </>

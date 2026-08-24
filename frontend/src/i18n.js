@@ -6,18 +6,48 @@ const resources = {
   en: {
     translation: {
       nav: {
-        dashboard:        'Dashboard',
-        indicators:       'Indicators',
-        activities:       'Activities',
-        financials:       'Financials',
-        events:           'L&D Events',
-        community:        'Community',
-        upload:           'Upload Portal',
+        overview:         'Overview',
+        projects:         'Project Setup',
+        results:          'Results & Indicators',
+        finances:         'Financial Analysis',
+        locations:        'Geographic Coverage',
+        risks:            'Risk Analysis',
+        activities:       'MERL Reporting',
+        documents:        'Documents & Evidence',
         reports:          'Reports',
-        communityReport:  'Community Reporter',
-        mapView:          'Map View',
-        learning:         'Learning',
+        review:           'Review & Approval',
         admin:            'Administration',
+      },
+      head: {
+        overview:         'MERL Project Portfolio Dashboard',
+        overviewSub:      'Monitoring, Evaluation, Reporting & Learning',
+        projects:         'Project Setup',
+        results:          'Results & Indicators',
+        finances:         'Financial Analysis',
+        locations:        'Geographic Coverage',
+        risks:            'Risk Analysis',
+        activities:       'MERL Reporting',
+        documents:        'Documents & Evidence',
+        reports:          'Reports',
+        review:           'Review & Approval',
+        admin:            'Administration',
+      },
+      shell: {
+        department:       'Department of Climate Change (DoCC)',
+        productName:      'MERL Dashboard',
+        staging:          'Staging',
+        signOut:          'Sign Out',
+        toggleMenu:       'Toggle menu',
+        accountMenu:      'Account menu',
+        language:         'Language {{code}}',
+        readOnlyNotice:   'You have read-only access.',
+      },
+      roles: {
+        ROLE_ADMIN:        'System Administrator',
+        ROLE_DOCC_MEO:     'DoCC M&E Officer',
+        ROLE_PROJ_MANAGER: 'Project Manager / Project Focal Point',
+        ROLE_DATA_ENTRY:   'Data Entry / Project Officer',
+        ROLE_VIEWER:       'Viewer / Executive',
       },
       common: {
         loading:          'Loading…',
@@ -383,18 +413,48 @@ const resources = {
   bi: {
     translation: {
       nav: {
-        dashboard:        'Dasbod',
-        indicators:       'Indikaeta',
-        activities:       'Aktiviti',
-        financials:       'Faenens',
-        events:           'Eventis L&D',
-        community:        'Komuniti',
-        upload:           'Apload Portal',
-        reports:          'Riport',
-        communityReport:  'Riporta blong Komuniti',
-        mapView:          'Lukluk long Map',
-        learning:         'Lanem',
+        overview:         'Ovaviu',
+        projects:         'Setemap Projek',
+        results:          'Risalt mo Indiketa',
+        finances:         'Analisis blong Mane',
+        locations:        'Ples we Projek i Kavarem',
+        risks:            'Analisis blong Risk',
+        activities:       'Ripot MERL',
+        documents:        'Ol Dokiumen mo Pruf',
+        reports:          'Ol Ripot',
+        review:           'Jekem mo Apruvum',
         admin:            'Administresen',
+      },
+      head: {
+        overview:         'Dasbod blong Ol Projek MERL',
+        overviewSub:      'Monitoring, Evaluesen, Ripoting mo Lanem',
+        projects:         'Setemap Projek',
+        results:          'Risalt mo Indiketa',
+        finances:         'Analisis blong Mane',
+        locations:        'Ples we Projek i Kavarem',
+        risks:            'Analisis blong Risk',
+        activities:       'Ripot MERL',
+        documents:        'Ol Dokiumen mo Pruf',
+        reports:          'Ol Ripot',
+        review:           'Jekem mo Apruvum',
+        admin:            'Administresen',
+      },
+      shell: {
+        department:       'Dipatmen blong Klaemet Jenj (DoCC)',
+        productName:      'Dasbod MERL',
+        staging:          'Testing',
+        signOut:          'Saenaot',
+        toggleMenu:       'Openem o klosem menu',
+        accountMenu:      'Menu blong akaon',
+        language:         'Lanwis {{code}}',
+        readOnlyNotice:   'Yu save luk nomo, yu no save jenisim.',
+      },
+      roles: {
+        ROLE_ADMIN:        'Administreta blong Sistem',
+        ROLE_DOCC_MEO:     'Ofisa blong M&E long DoCC',
+        ROLE_PROJ_MANAGER: 'Manija blong Projek / Fokol Poen',
+        ROLE_DATA_ENTRY:   'Ofisa blong Putum Deta / Ofisa blong Projek',
+        ROLE_VIEWER:       'Luk nomo / Eksekutiv',
       },
       common: {
         loading:          'I stap lod…',
@@ -565,6 +625,50 @@ const resources = {
   // a small shared subset are provided here; anything missing falls back to EN.
   fr: {
     translation: {
+      nav: {
+        overview:         "Vue d'ensemble",
+        projects:         'Configuration du projet',
+        results:          'Résultats et indicateurs',
+        finances:         'Analyse financière',
+        locations:        'Couverture géographique',
+        risks:            'Analyse des risques',
+        activities:       'Rapports MERL',
+        documents:        'Documents et justificatifs',
+        reports:          'Rapports',
+        review:           'Revue et approbation',
+        admin:            'Administration',
+      },
+      head: {
+        overview:         'Tableau de bord du portefeuille de projets MERL',
+        overviewSub:      'Suivi, évaluation, rapportage et apprentissage',
+        projects:         'Configuration du projet',
+        results:          'Résultats et indicateurs',
+        finances:         'Analyse financière',
+        locations:        'Couverture géographique',
+        risks:            'Analyse des risques',
+        activities:       'Rapports MERL',
+        documents:        'Documents et justificatifs',
+        reports:          'Rapports',
+        review:           'Revue et approbation',
+        admin:            'Administration',
+      },
+      shell: {
+        department:       'Département du changement climatique (DoCC)',
+        productName:      'Tableau de bord MERL',
+        staging:          'Préproduction',
+        signOut:          'Se déconnecter',
+        toggleMenu:       'Afficher ou masquer le menu',
+        accountMenu:      'Menu du compte',
+        language:         'Langue {{code}}',
+        readOnlyNotice:   'Vous disposez d\'un accès en lecture seule.',
+      },
+      roles: {
+        ROLE_ADMIN:        'Administrateur système',
+        ROLE_DOCC_MEO:     'Chargé de S&E du DoCC',
+        ROLE_PROJ_MANAGER: 'Chef de projet / Point focal du projet',
+        ROLE_DATA_ENTRY:   'Agent de saisie / Chargé de projet',
+        ROLE_VIEWER:       'Consultation / Direction',
+      },
       common: {
         loading:  'Chargement…',
         save:     'Enregistrer',
@@ -724,16 +828,50 @@ const resources = {
   },
 };
 
+// The portal is offered in English and French. Anything a locale does not
+// translate falls back to English rather than showing a raw key.
+//
+// A Bislama (`bi`) dictionary also exists in this file. It predates this change
+// and is deliberately left in place, but it is not offered in the picker — add
+// an entry here to bring it back.
+export const LANGUAGES = [
+  { code: 'en', label: 'EN', name: 'English' },
+  { code: 'fr', label: 'FR', name: 'Français' },
+];
+
+const STORAGE_KEY = 'merl.lang';
+
+// Remember the officer's choice. Field staff on shared devices should not have
+// to reset the language on every visit. Wrapped because storage throws in
+// private-mode browsers rather than simply being unavailable.
+function storedLanguage() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved && LANGUAGES.some((l) => l.code === saved)) return saved;
+  } catch { /* storage unavailable — fall through to the default */ }
+  return 'en';
+}
+
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'en',
+    lng: storedLanguage(),
     fallbackLng: 'en',
+    supportedLngs: LANGUAGES.map((l) => l.code),
     interpolation: {
       escapeValue: false, // React handles XSS
     },
     debug: import.meta.env.DEV,
   });
+
+// Persist the choice, and keep <html lang> in step so screen readers announce
+// the page in the right language and the browser hyphenates correctly.
+i18n.on('languageChanged', (lng) => {
+  try { localStorage.setItem(STORAGE_KEY, lng); } catch { /* not fatal */ }
+  if (typeof document !== 'undefined') document.documentElement.lang = lng;
+});
+
+if (typeof document !== 'undefined') document.documentElement.lang = i18n.language;
 
 export default i18n;
