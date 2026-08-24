@@ -13,17 +13,22 @@ const PROVINCE_ORDER = ['Torba', 'Sanma', 'Penama', 'Malampa', 'Shefa', 'Tafea']
 const W = 150, H = 300, PAD = 8;
 
 // Standalone accurate Vanuatu province choropleth (map only, no province cards).
-// Used by the compact Overview panel; the geometry is the same bundled GeoJSON.
-export function VanuatuMapMini({ counts = {}, selected, onSelect, width = 92, height = 150 }) {
+// Scales to fill its container while preserving the true island geometry (uniform
+// projection with a latitude-cosine correction, centred via preserveAspectRatio).
+// Hover can be controlled from outside (`hovered`/`onHover`) so the map and a
+// province list can highlight each other; clicking drives the shared filter.
+export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSelect }) {
   const [features, setFeatures] = useState(null);
-  const [hover, setHover] = useState(null);
+  const [innerHover, setInnerHover] = useState(null);
+  const hover = hovered !== undefined ? hovered : innerHover;
+  const setHover = (v) => { if (onHover) onHover(v); else setInnerHover(v); };
   useEffect(() => {
     let alive = true;
     fetch(GEO_URL).then((r) => r.json()).then((d) => { if (alive) setFeatures(d.features || []); }).catch(() => setFeatures([]));
     return () => { alive = false; };
   }, []);
-  const { paths, bbox } = useMemo(() => {
-    if (!features || !features.length) return { paths: [], bbox: null };
+  const { paths, vb } = useMemo(() => {
+    if (!features || !features.length) return { paths: [], vb: null };
     let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
     const rings = features.map((f) => {
       const g = f.geometry; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
@@ -34,8 +39,17 @@ export function VanuatuMapMini({ counts = {}, selected, onSelect, width = 92, he
       });
       return { name: f.properties?.NAME_1, outer };
     });
-    const bb = { minLon, maxLon, minLat, maxLat };
-    return { paths: rings.map((r) => ({ name: r.name, d: r.outer.map((ring) => ringToPath(ring, bb)).join(' ') })), bbox: bb };
+    // Uniform scale (equal x/y) with a cos(lat) correction so longitude degrees
+    // aren't over-wide — keeps Vanuatu's real proportions, no stretching.
+    const kx = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
+    const spanX = Math.max(1e-6, (maxLon - minLon) * kx);
+    const spanY = Math.max(1e-6, (maxLat - minLat));
+    const S = 1000 / Math.max(spanX, spanY);
+    const PADv = 6;
+    const VBW = spanX * S + PADv * 2, VBH = spanY * S + PADv * 2;
+    const project = ([lon, lat]) => `${(PADv + (lon - minLon) * kx * S).toFixed(1)},${(PADv + (maxLat - lat) * S).toFixed(1)}`;
+    const toPath = (ring) => ring.map((pt, i) => `${i === 0 ? 'M' : 'L'}${project(pt)}`).join(' ') + 'Z';
+    return { paths: rings.map((r) => ({ name: r.name, d: r.outer.map(toPath).join(' ') })), vb: { VBW, VBH } };
   }, [features]);
   const max = Math.max(1, ...Object.values(counts));
   const fill = (name) => {
@@ -44,14 +58,17 @@ export function VanuatuMapMini({ counts = {}, selected, onSelect, width = 92, he
     const t = 0.25 + 0.6 * (c / max);
     return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
   };
-  if (!bbox) return <div style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.7rem' }}>Map…</div>;
+  if (!vb) return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.7rem' }}>Map…</div>;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width={width} height={height} role="img" aria-label="Projects by province map of Vanuatu" style={{ maxWidth: '100%', flexShrink: 0 }}>
+    <svg viewBox={`0 0 ${vb.VBW.toFixed(1)} ${vb.VBH.toFixed(1)}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet"
+      role="img" aria-label="Projects by province map of Vanuatu" style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}>
       {paths.map((p) => {
         const isSel = selected === p.name;
+        const isHover = hover === p.name;
         return (
-          <path key={p.name} d={p.d} fill={fill(p.name)} stroke={isSel ? 'var(--green-800)' : 'var(--white)'}
-            strokeWidth={isSel ? 2 : 1} style={{ cursor: onSelect ? 'pointer' : 'default', opacity: hover && hover !== p.name ? 0.6 : 1, transition: 'opacity .15s' }}
+          <path key={p.name} d={p.d} fill={fill(p.name)} stroke={isSel || isHover ? 'var(--green-800)' : 'var(--white)'}
+            strokeWidth={isSel || isHover ? 2 : 1} vectorEffect="non-scaling-stroke"
+            style={{ cursor: onSelect ? 'pointer' : 'default', opacity: hover && !isHover && !isSel ? 0.55 : 1, transition: 'opacity .15s, stroke .15s' }}
             onMouseEnter={() => setHover(p.name)} onMouseLeave={() => setHover(null)} onClick={() => onSelect?.(p.name)}>
             <title>{p.name}: {counts[p.name] || 0} project(s)</title>
           </path>

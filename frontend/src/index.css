@@ -646,8 +646,13 @@
 
 /* Level 2 — geographic footprint + implementation performance */
 .ovx-mapperf { display: grid; grid-template-columns: 1.42fr 1fr; gap: .75rem; }
-.ovx-locwrap { display: flex; gap: 1rem; align-items: center; flex: 1; }
-.ovx-loc .ovx-provmap { flex: 0 0 auto; }
+.ovx-locwrap { display: flex; gap: 1rem; align-items: stretch; flex: 1; min-height: 0; }
+/* Map ≈40% of the card, filling the card height; islands centred, undistorted.
+   A flat sea-toned panel makes the surrounding ocean read as map, not blank space. */
+/* Absolute SVG so the province table alone sets the card height; the island
+   fills that height via preserveAspectRatio without dictating its own size. */
+.ovx-locmap { position: relative; overflow: hidden; flex: 0 0 40%; min-width: 0; min-height: 200px; background: color-mix(in srgb, var(--green-600) 9%, #ffffff); border: 1px solid color-mix(in srgb, var(--green-600) 16%, var(--border)); border-radius: 8px; }
+.ovx-locmap svg { position: absolute; inset: 8px; width: auto; height: auto; }
 .ovx-impl { display: flex; align-items: center; gap: .9rem; }
 .ovx-impl > div:first-child { flex: 0 0 128px; }
 .ovx-impl .ovx-status-legend { flex: 1; display: flex; flex-direction: column; gap: .18rem; min-width: 0; }
@@ -683,19 +688,24 @@
 .ovx-leg-name { font-size: .78rem; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ovx-leg-val { font-family: var(--font-display); font-size: .85rem; font-weight: 800; color: var(--navy-900); text-align: right; }
 .ovx-leg-pct { font-size: .74rem; color: var(--text-3); text-align: right; }
-.ovx-provwrap { display: flex; gap: .9rem; align-items: stretch; }
-.ovx-provmap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
-.ovx-prov { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: .2rem; min-width: 0; }
-.ovx-prov-row { display: grid; grid-template-columns: 9px 1fr auto auto; align-items: center; gap: .5rem; padding: .28rem .3rem; border: none; background: none; border-radius: 6px; cursor: pointer; text-align: left; }
-.ovx-prov-row:hover { background: var(--surface-1); }
-.ovx-prov-row.sel { background: var(--green-50); }
-.ovx-prov-row.nat { cursor: default; }
-.ovx-prov-row.nat:hover { background: none; }
-.ovx-prov-row.nat .ovx-prov-name { color: var(--text-3); }
-.ovx-prov-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green-600); }
-.ovx-prov-name { font-size: .78rem; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ovx-prov-proj { font-size: .73rem; color: var(--text-2); text-align: right; white-space: nowrap; }
-.ovx-prov-ben { font-size: .73rem; color: var(--text-3); text-align: right; white-space: nowrap; min-width: 38px; }
+/* Province table (≈60% of the card): Province | Projects | Beneficiaries. */
+.ovx-provtbl { flex: 1 1 60%; min-width: 0; border-collapse: collapse; align-self: center; width: 100%; table-layout: fixed; }
+.ovx-provtbl th { text-align: right; font-size: .62rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-3); padding: 0 .5rem .3rem; border-bottom: 1px solid var(--border); }
+.ovx-provtbl th:first-child { text-align: left; }
+.ovx-provtbl th:nth-child(2), .ovx-provtbl td:nth-child(2) { width: 3.4rem; padding-right: 1rem; }
+.ovx-provtbl th:nth-child(3), .ovx-provtbl td:nth-child(3) { width: 5rem; }
+.ovx-provtbl td { padding: .4rem .5rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.ovx-provtbl tbody tr:last-child td { border-bottom: none; }
+.ovx-provtbl tbody tr { cursor: pointer; transition: background .12s; }
+.ovx-provtbl tbody tr:hover, .ovx-provtbl tbody tr.hov { background: var(--surface-1); }
+.ovx-provtbl tbody tr.sel { background: var(--green-50); box-shadow: inset 3px 0 0 var(--green-600); }
+.ovx-provtbl tbody tr.nat { cursor: default; }
+.ovx-provtbl tbody tr.nat:hover { background: none; }
+.ovx-provtbl-name { display: flex; align-items: center; gap: .5rem; min-width: 0; font-size: .82rem; font-weight: 600; color: var(--text-1); }
+.ovx-provtbl-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ovx-provtbl tr.nat .ovx-provtbl-name { color: var(--text-3); font-weight: 500; }
+.ovx-provtbl-num { text-align: right; font-family: var(--font-display); font-size: .84rem; font-weight: 700; color: var(--navy-900); }
+.ovx-prov-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green-600); border: 1px solid color-mix(in srgb, var(--green-800) 25%, transparent); flex-shrink: 0; }
 .ovx-rtbl-wrap { overflow-x: auto; }
 .ovx-rtbl { width: 100%; border-collapse: collapse; font-size: .76rem; }
 .ovx-rtbl th { text-align: left; font-size: .66rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-3); padding: 0 .4rem .25rem 0; border-bottom: 1px solid var(--border); }
@@ -716,6 +726,10 @@
 .ovx-badge.tone-crit { background: #fee2e2; color: #991b1b; }
 .ovx-updated { display: flex; align-items: center; justify-content: center; gap: .35rem; font-size: .7rem; color: var(--text-3); padding-top: .1rem; }
 
+/* Tablet: give the province table a little more room so names don't truncate. */
+@media (min-width: 1001px) and (max-width: 1240px) {
+  .ovx-locmap { flex-basis: 35%; }
+}
 /* Responsive: tablets/phones stack normally */
 @media (max-width: 1000px) {
   .ovx-kpis { grid-template-columns: 1fr 1fr; }
@@ -726,7 +740,7 @@
 @media (max-width: 560px) {
   .ovx-kpis { grid-template-columns: 1fr; }
   .ovx-locwrap { flex-direction: column; align-items: stretch; }
-  .ovx-loc .ovx-provmap { align-self: center; }
+  .ovx-locmap { flex: 0 0 auto; height: 240px; }
 }
 .ov-panel { background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
 .ov-panel-h { padding: .8rem .9rem .3rem; }
