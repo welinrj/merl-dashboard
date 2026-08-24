@@ -185,8 +185,21 @@ const MODULES = [
 // ── Small presentational helpers ─────────────────────────────────────────────
 const btn = (bg, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.45rem 0.8rem',
-  fontSize: '0.8125rem', fontWeight: 600, borderRadius: 8, border: 'none', cursor: 'pointer',
+  fontSize: '0.8125rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer',
   color: '#fff', background: bg, ...extra,
+});
+// Outlined secondary/warning variants, so Return/Reopen/Cancel don't carry the
+// same solid-fill weight as the one primary action in a given row (spec §12).
+const btnSecondary = (extra = {}) => ({
+  display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.45rem 0.8rem',
+  fontSize: '0.8125rem', fontWeight: 600, borderRadius: 'var(--radius-control)', cursor: 'pointer',
+  color: 'var(--text-2)', background: 'var(--white)', border: '1px solid var(--border)', ...extra,
+});
+const btnWarning = (extra = {}) => ({ ...btnSecondary(extra), color: '#8a6416' });
+const btnGhost = (extra = {}) => ({
+  display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.4rem',
+  fontSize: '0.78rem', fontWeight: 600, borderRadius: 'var(--radius-control)', cursor: 'pointer',
+  color: 'var(--text-2)', background: 'none', border: 'none', ...extra,
 });
 const STATUS_TINT = {
   draft: '#64748b', submitted: '#2563eb', returned: '#d97706', reviewed: '#7c3aed', approved: '#16a34a',
@@ -430,22 +443,22 @@ export default function MerlReporting({ user }) {
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && (
-              <button style={btn('#2563eb')} onClick={() => periodAction('submit_reporting_period', currentPeriodRow.id)}>
+              <button style={btn('var(--green-600)')} onClick={() => periodAction('submit_reporting_period', currentPeriodRow.id)}>
                 <Send size={14} /> Submit
               </button>
             )}
             {canApprove && ['submitted', 'reviewed'].includes(currentPeriodRow.submission_status) && (
               <>
-                <button style={btn('#16a34a')} onClick={() => periodAction('review_reporting_period', currentPeriodRow.id, 'approve')}>
+                <button style={btn('var(--green-600)')} onClick={() => periodAction('review_reporting_period', currentPeriodRow.id, 'approve')}>
                   <CheckCircle2 size={14} /> Approve
                 </button>
-                <button style={btn('#d97706')} onClick={() => periodAction('review_reporting_period', currentPeriodRow.id, 'return')}>
+                <button style={btnWarning()} onClick={() => periodAction('review_reporting_period', currentPeriodRow.id, 'return')}>
                   <RotateCcw size={14} /> Return
                 </button>
               </>
             )}
             {canApprove && currentPeriodRow.submission_status === 'approved' && (
-              <button style={btn('#7c3aed')} onClick={() => periodAction('reopen_reporting_period', currentPeriodRow.id)}>
+              <button style={btnSecondary()} onClick={() => periodAction('reopen_reporting_period', currentPeriodRow.id)}>
                 <Unlock size={14} /> Reopen
               </button>
             )}
@@ -574,8 +587,8 @@ export default function MerlReporting({ user }) {
                   ))}
                   {canEdit && (
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
-                      <button onClick={() => setEditing(r)} style={btn('#475569', { padding: '0.3rem 0.6rem' })}><Pencil size={13} /> Edit</button>
-                      <button onClick={() => deleteRecord(r)} style={btn('#dc2626', { padding: '0.3rem 0.6rem' })}><Trash2 size={13} /> Delete</button>
+                      <button onClick={() => setEditing(r)} style={btnGhost()}><Pencil size={13} /> Edit</button>
+                      <button onClick={() => deleteRecord(r)} style={btnGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> Delete</button>
                     </div>
                   )}
                 </div>
@@ -628,7 +641,7 @@ function PeriodForm({ onCancel, onSave }) {
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem' }}>
         <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>Create</button>
-        <button style={btn('#64748b')} onClick={onCancel}>Cancel</button>
+        <button style={btnSecondary()} onClick={onCancel}>Cancel</button>
       </div>
     </div>
   );
@@ -664,7 +677,7 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}
       onClick={onCancel}>
-      <div style={{ background: 'var(--white)', borderRadius: 14, width: '100%', maxWidth: 720, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }}
+      <div style={{ background: 'var(--white)', borderRadius: 12, width: '100%', maxWidth: 720, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
           <strong style={{ fontSize: '1rem' }}>{initial?.id ? 'Edit' : 'Add'} — {module.label}</strong>
@@ -702,7 +715,7 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
         )}
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
           <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>{initial?.id ? 'Save changes' : 'Add record'}</button>
-          <button style={btn('#64748b')} onClick={onCancel}>Cancel</button>
+          <button style={btnSecondary()} onClick={onCancel}>Cancel</button>
         </div>
       </div>
     </div>

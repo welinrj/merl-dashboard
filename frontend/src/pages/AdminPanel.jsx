@@ -82,7 +82,7 @@ function AssignProjectsModal({ user, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 mt-12" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 mt-12" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-gray-900">Assigned projects</h3>
         <p className="text-sm text-gray-500 mt-1">
           <span className="font-medium text-gray-700">{user.full_name}</span> can access only the projects checked below.
@@ -278,7 +278,7 @@ function UsersTab() {
 
       {cred && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCred(null)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900">Temporary password</h3>
             <p className="text-sm text-gray-500 mt-1">
               Shown once. Share it securely with the user — they should change it after signing in.
@@ -859,22 +859,21 @@ function SystemTab() {
     <div className="space-y-6">
       <div>
         <h2 className="text-base font-bold text-gray-800 mb-3">System</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
-            <div className="text-xs font-semibold text-gray-400 uppercase">Audit events</div>
-            <div className="text-xl font-bold text-gray-900 mt-0.5">{status?.audit_row_count ?? 0}</div>
-            <div className="text-xs text-gray-400 mt-0.5">last {fmt(status?.last_audit_at)}</div>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
-            <div className="text-xs font-semibold text-gray-400 uppercase">Analytics cache</div>
-            <div className="text-sm font-semibold text-gray-800 mt-1">{fmt(status?.analytics_computed_at)}</div>
-            <div className="text-xs text-gray-400 mt-0.5">last refreshed</div>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
-            <div className="text-xs font-semibold text-gray-400 uppercase">RLS coverage</div>
-            <div className="text-xl font-bold text-gray-900 mt-0.5">{rlsCovered}/{rlsTables.length}</div>
-            <div className="text-xs text-gray-400 mt-0.5">tables protected</div>
-          </div>
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 bg-white border border-gray-100 rounded-lg px-4 py-3">
+          <span className="inline-flex items-baseline gap-1.5">
+            <span className="text-lg font-bold text-gray-900">{status?.audit_row_count ?? 0}</span>
+            <span className="text-xs text-gray-400">Audit events · last {fmt(status?.last_audit_at)}</span>
+          </span>
+          <span className="text-gray-200" aria-hidden="true">·</span>
+          <span className="inline-flex items-baseline gap-1.5">
+            <span className="text-sm font-semibold text-gray-800">{fmt(status?.analytics_computed_at)}</span>
+            <span className="text-xs text-gray-400">Analytics cache last refreshed</span>
+          </span>
+          <span className="text-gray-200" aria-hidden="true">·</span>
+          <span className="inline-flex items-baseline gap-1.5">
+            <span className="text-lg font-bold text-gray-900">{rlsCovered}/{rlsTables.length}</span>
+            <span className="text-xs text-gray-400">RLS-protected tables</span>
+          </span>
         </div>
       </div>
 

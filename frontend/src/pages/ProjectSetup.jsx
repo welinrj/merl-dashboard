@@ -37,10 +37,17 @@ const STEPS = [
 
 const btn = (bg, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 0.85rem',
-  fontSize: '0.8125rem', fontWeight: 600, borderRadius: 8, border: 'none', cursor: 'pointer',
+  fontSize: '0.8125rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer',
   color: '#fff', background: bg, ...extra,
 });
 const ghostBtn = { ...btn('var(--white)'), color: 'var(--text-2)', border: '1px solid var(--border)' };
+// Compact text-style row actions (edit/delete on cards) — a filled button per
+// row reads heavier than these actions need (spec §11/§12).
+const rowGhost = (extra = {}) => ({
+  display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.4rem',
+  fontSize: '0.78rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none',
+  cursor: 'pointer', color: 'var(--text-2)', background: 'none', ...extra,
+});
 
 export default function ProjectSetup({ user }) {
   const canEdit = EDITOR_ROLES.includes(user?.role);
@@ -561,8 +568,8 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
                 {i.unit && <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{i.unit}</span>}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button onClick={() => setEditing(i)} style={btn('#475569', { padding: '0.3rem 0.6rem' })}><Pencil size={13} /> Edit</button>
-                <button onClick={() => del(i)} style={btn('#dc2626', { padding: '0.3rem 0.6rem' })}><Trash2 size={13} /> Delete</button>
+                <button onClick={() => setEditing(i)} style={rowGhost()}><Pencil size={13} /> Edit</button>
+                <button onClick={() => del(i)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> Delete</button>
               </div>
             </div>
           ))}
@@ -674,8 +681,8 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
               <strong>{a.code}</strong> · {a.name}
               <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{a.output_code} · {OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
-                <button onClick={() => setEditing(a)} style={btn('#475569', { padding: '0.3rem 0.6rem' })}><Pencil size={13} /> Edit</button>
-                <button onClick={() => del(a)} style={btn('#dc2626', { padding: '0.3rem 0.6rem' })}><Trash2 size={13} /> Delete</button>
+                <button onClick={() => setEditing(a)} style={rowGhost()}><Pencil size={13} /> Edit</button>
+                <button onClick={() => del(a)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> Delete</button>
               </div>
             </div>
           ))}
@@ -785,8 +792,8 @@ function LocationsStep({ projectId, locations, reload }) {
             <div className="ps-card" key={l.id}>
               <strong>{l.province || '—'}</strong> · {l.island || '—'} · {l.community || '—'}
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
-                <button onClick={() => setEditing(l)} style={btn('#475569', { padding: '0.3rem 0.6rem' })}><Pencil size={13} /> Edit</button>
-                <button onClick={() => del(l)} style={btn('#dc2626', { padding: '0.3rem 0.6rem' })}><Trash2 size={13} /> Delete</button>
+                <button onClick={() => setEditing(l)} style={rowGhost()}><Pencil size={13} /> Edit</button>
+                <button onClick={() => del(l)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> Delete</button>
               </div>
             </div>
           ))}

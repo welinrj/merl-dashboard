@@ -13,6 +13,7 @@ import { confirmDialog, promptDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
 import DataTable from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
+import StatTile from '../components/ui/StatTile';
 
 // Read-only modules summarised in the review drawer so the officer can see what
 // they are approving before they act. Period-scoped modules are matched on the
@@ -36,20 +37,6 @@ const REVIEW_SECTIONS = [
 const REVIEWER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 const fmtDate = s => s ? new Date(s).toLocaleDateString('en-VU', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 const isOverdue = r => r.period_end && r.submission_status !== 'approved' && new Date(r.period_end) < new Date();
-
-function Kpi({ label, value, col, Icon }) {
-  return (
-    <div className="card" style={{ padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${col}18`, color: col, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon size={20} />
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, lineHeight: 1, color: 'var(--text-1)' }}>{value}</div>
-        <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 2 }}>{label}</div>
-      </div>
-    </div>
-  );
-}
 
 export default function ReviewApproval({ user }) {
   const canReview = !!user && REVIEWER_ROLES.includes(user.role);
@@ -146,11 +133,11 @@ export default function ReviewApproval({ user }) {
 
       {/* KPI cards */}
       <div className="grid-kpi" style={{ marginBottom: '1rem' }}>
-        <Kpi label="Awaiting Review" value={kpi.submitted} col="#2563eb" Icon={Eye} />
-        <Kpi label="Under Review"    value={kpi.reviewed}  col="#7c3aed" Icon={ClipboardCheck} />
-        <Kpi label="Returned"        value={kpi.returned}  col="#d97706" Icon={RotateCcw} />
-        <Kpi label="Approved"        value={kpi.approved}  col="#16a34a" Icon={CheckCircle2} />
-        <Kpi label="Overdue"         value={kpi.overdue}   col="#b3402f" Icon={Clock} />
+        <StatTile label="Awaiting Review" value={kpi.submitted} icon={Eye} accent="#2563eb" />
+        <StatTile label="Under Review" value={kpi.reviewed} icon={ClipboardCheck} accent="var(--text-3)" />
+        <StatTile label="Returned" value={kpi.returned} status={kpi.returned ? 'amber' : 'green'} icon={RotateCcw} accent="var(--gold-500)" />
+        <StatTile label="Approved" value={kpi.approved} icon={CheckCircle2} accent="var(--green-700)" />
+        <StatTile label="Overdue" value={kpi.overdue} status={kpi.overdue ? 'red' : 'green'} icon={Clock} accent="var(--red-600)" />
       </div>
 
       {/* Filter */}
@@ -220,19 +207,19 @@ export default function ReviewApproval({ user }) {
             render: (r) => (
               <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
                 {r.submission_status !== 'draft' && (
-                  <button onClick={() => setDetail(r)} style={qbtn('#475569')}><FileText size={13} /> View</button>
+                  <button onClick={() => setDetail(r)} style={rowBtnGhost}><FileText size={13} /> View</button>
                 )}
                 {canReview && ['submitted', 'reviewed'].includes(r.submission_status) && (
                   <>
                     {r.submission_status === 'submitted' && (
-                      <button disabled={busy === r.id} onClick={() => doReview(r)} style={qbtn('#7c3aed')}><Eye size={13} /> Review</button>
+                      <button disabled={busy === r.id} onClick={() => doReview(r)} style={rowBtnSecondary}><Eye size={13} /> Review</button>
                     )}
-                    <button disabled={busy === r.id} onClick={() => doReturn(r)} style={qbtn('#d97706')}><RotateCcw size={13} /> Return</button>
-                    <button disabled={busy === r.id} onClick={() => doApprove(r)} style={qbtn('#16a34a')}><CheckCircle2 size={13} /> Approve</button>
+                    <button disabled={busy === r.id} onClick={() => doReturn(r)} style={rowBtnWarning}><RotateCcw size={13} /> Return</button>
+                    <button disabled={busy === r.id} onClick={() => doApprove(r)} style={rowBtnPrimary}><CheckCircle2 size={13} /> Approve</button>
                   </>
                 )}
                 {canReview && r.submission_status === 'approved' && (
-                  <button disabled={busy === r.id} onClick={() => doReopen(r)} style={qbtn('#7c3aed')}><Unlock size={13} /> Reopen</button>
+                  <button disabled={busy === r.id} onClick={() => doReopen(r)} style={rowBtnSecondary}><Unlock size={13} /> Reopen</button>
                 )}
                 {(!canReview && r.submission_status === 'draft') && <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>}
               </span>
@@ -348,12 +335,12 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
           <div style={{ padding: '0.8rem 1.1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {['submitted', 'reviewed'].includes(status) && (
               <>
-                {status === 'submitted' && <button disabled={busy} onClick={onReview} style={qbtn('#7c3aed')}><Eye size={14} /> Mark under review</button>}
-                <button disabled={busy} onClick={onReturn} style={qbtn('#d97706')}><RotateCcw size={14} /> Return</button>
-                <button disabled={busy} onClick={onApprove} style={qbtn('#16a34a')}><CheckCircle2 size={14} /> Approve & lock</button>
+                {status === 'submitted' && <button disabled={busy} onClick={onReview} style={rowBtnSecondary}><Eye size={14} /> Mark under review</button>}
+                <button disabled={busy} onClick={onReturn} style={rowBtnWarning}><RotateCcw size={14} /> Return</button>
+                <button disabled={busy} onClick={onApprove} style={rowBtnPrimary}><CheckCircle2 size={14} /> Approve & lock</button>
               </>
             )}
-            {status === 'approved' && <button disabled={busy} onClick={onReopen} style={qbtn('#7c3aed')}><Unlock size={14} /> Reopen</button>}
+            {status === 'approved' && <button disabled={busy} onClick={onReopen} style={rowBtnSecondary}><Unlock size={14} /> Reopen</button>}
           </div>
         )}
       </div>
@@ -361,7 +348,14 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
   );
 }
 
-const qbtn = col => ({
-  display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.55rem', borderRadius: 8,
-  border: 'none', background: col, color: '#fff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
-});
+// Compact row/drawer action buttons — one primary per row (Approve), the
+// rest secondary (outlined) or tertiary (plain text), so actions don't all
+// carry the same visual weight (spec §12).
+const rowBtnBase = {
+  display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem',
+  borderRadius: 'var(--radius-control)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+};
+const rowBtnPrimary = { ...rowBtnBase, border: 'none', background: 'var(--green-600)', color: '#fff' };
+const rowBtnSecondary = { ...rowBtnBase, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--text-2)' };
+const rowBtnWarning = { ...rowBtnBase, border: '1px solid var(--border)', background: 'var(--white)', color: '#8a6416' };
+const rowBtnGhost = { ...rowBtnBase, border: 'none', background: 'none', padding: '0.3rem 0.3rem', color: 'var(--green-700)' };

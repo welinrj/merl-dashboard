@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import StatTile from '../components/ui/StatTile';
+import MetricStrip from '../components/ui/MetricStrip';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
@@ -112,14 +113,14 @@ export default function Dashboards({ initialTab }) {
         .db-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:1rem 0}
         .db-tab{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem .8rem;border-radius:9999px;border:1px solid var(--border);background:var(--white);cursor:pointer;font-size:.8125rem;font-weight:600;color:var(--text-2)}
         .db-tab.active{background:var(--green-600);color:#fff;border-color:var(--green-600)}
-        .db-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem}
+        .db-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,220px));justify-content:start;gap:.7rem}
         .db-2{display:grid;grid-template-columns:repeat(2,1fr);gap:.9rem;margin-top:1rem}
-        .db-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1rem}
+        .db-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-card);padding:1rem}
         .db-h{font-size:.9rem;font-weight:700;margin:0 0 .7rem}
         .db-table{width:100%;border-collapse:collapse;font-size:.83rem}
         .db-table th,.db-table td{padding:.45rem .5rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
         .db-table th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)}
-        @media (max-width:900px){.db-kpis{grid-template-columns:repeat(2,1fr)}.db-2{grid-template-columns:1fr}}
+        @media (max-width:900px){.db-2{grid-template-columns:1fr}}
         @media (max-width:420px){.db-kpis{grid-template-columns:1fr}}
       `}</style>
 
@@ -300,18 +301,20 @@ function Portfolio({ d, onNavigate }) {
       </div>
       <div className="db-kpis">
         <StatTile label="Total Projects" value={m.total} icon={FolderKanban} accent="var(--green-600)" />
-        <StatTile label="Active" value={m.active} sub={`${m.completed} completed`} icon={Activity} accent="#2563eb" />
-        <StatTile label="At Risk / Delayed" value={m.atRisk + m.delayed} status={m.atRisk + m.delayed ? 'amber' : 'green'} icon={AlertTriangle} accent="#d97706" />
-        <StatTile label="Total Beneficiaries" value={m.beneficiaries ? m.beneficiaries.toLocaleString() : '—'} icon={Users} accent="#7c3aed" />
-        <StatTile label="Approved Budget" value={fmtAmount(m.totalBudget)} icon={Wallet} accent="var(--green-700)" />
-        <StatTile label="Expenditure" value={fmtAmount(m.totalExp)} icon={Wallet} accent="#0891b2" />
-        <StatTile label="Budget Utilisation" value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} icon={TrendingUp} accent="#0891b2" />
+        <StatTile label="Total Beneficiaries" value={m.beneficiaries ? m.beneficiaries.toLocaleString() : '—'} icon={Users} accent="var(--green-600)" />
+        <StatTile label="Approved Budget" value={fmtAmount(m.totalBudget)} icon={Wallet} accent="var(--green-600)" />
+        <StatTile label="Budget Utilisation" value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} icon={TrendingUp} accent="var(--green-600)" />
         <StatTile label="Indicator Achievement" value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" icon={Target} accent="var(--green-600)" />
-        <StatTile label="Activities Completed" value={m.actCompleted} icon={Activity} accent="#2563eb" />
-        <StatTile label="Open Risks" value={m.openRisks} status={m.openRisks ? 'amber' : 'green'} icon={AlertTriangle} accent="#d97706" />
-        <StatTile label="Overdue Actions" value={m.overdue} status={m.overdue ? 'red' : 'green'} icon={Clock} accent="#dc2626" />
-        <StatTile label="Completed Projects" value={m.completed} icon={FileCheck} accent="var(--green-700)" />
       </div>
+      <MetricStrip title="Portfolio Summary" style={{ marginTop: '0.7rem' }} items={[
+        { label: 'Active', value: m.active },
+        { label: 'Completed', value: m.completed },
+        { label: 'At Risk / Delayed', value: m.atRisk + m.delayed, tone: (m.atRisk + m.delayed) ? 'warning' : undefined },
+        { label: 'Expenditure', value: fmtAmount(m.totalExp) },
+        { label: 'Activities Completed', value: m.actCompleted },
+        { label: 'Open Risks', value: m.openRisks, tone: m.openRisks ? 'warning' : undefined },
+        { label: 'Overdue Actions', value: m.overdue, tone: m.overdue ? 'danger' : undefined },
+      ]} />
 
       {/* Attention Required (§31) */}
       {m.attention.length > 0 && (
@@ -436,15 +439,19 @@ function ProjectView({ d, projectId }) {
         </div>
       </div>
       <div className="db-kpis">
-        <StatTile label="Approved Budget" value={fmtAmount(budget)} icon={Wallet} accent="var(--green-700)" />
-        <StatTile label="Expenditure" value={fmtAmount(exp)} icon={Wallet} accent="#0891b2" />
-        <StatTile label="Financial Utilisation" value={fmtPct(utilisationPct(budget, exp))} icon={TrendingUp} accent="#0891b2" />
         <StatTile label="Physical Progress" value={phys != null ? `${phys}%` : '—'} sub="avg of activities" icon={Activity} accent="var(--green-600)" />
-        <StatTile label="Beneficiaries" value={ben ? ben.toLocaleString() : '—'} icon={Users} accent="#7c3aed" />
-        <StatTile label="Activities" value={acts.length} sub={`${acts.filter((a) => a.status === 'completed').length} completed`} icon={Activity} accent="#2563eb" />
-        <StatTile label="Open Risks" value={risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length} status="amber" icon={AlertTriangle} accent="#d97706" />
-        <StatTile label="Latest Report" value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} icon={FileCheck} accent="var(--green-700)" />
+        <StatTile label="Financial Utilisation" value={fmtPct(utilisationPct(budget, exp))} icon={TrendingUp} accent="var(--green-600)" />
+        <StatTile label="Beneficiaries" value={ben ? ben.toLocaleString() : '—'} icon={Users} accent="var(--green-600)" />
+        <StatTile label="Latest Report" value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} icon={FileCheck} accent="var(--green-600)" />
       </div>
+      {(() => { const openRisksCount = risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length; return (
+        <MetricStrip title="Financial & Delivery Summary" style={{ marginTop: '0.7rem' }} items={[
+          { label: 'Approved Budget', value: fmtAmount(budget) },
+          { label: 'Expenditure', value: fmtAmount(exp) },
+          { label: 'Activities', value: `${acts.length} (${acts.filter((a) => a.status === 'completed').length} completed)` },
+          { label: 'Open Risks', value: openRisksCount, tone: openRisksCount ? 'warning' : undefined },
+        ]} />
+      ); })()}
       <div className="db-2">
         <div className="db-card">
           <h3 className="db-h">Indicator Performance</h3>
@@ -486,12 +493,12 @@ function Results({ d }) {
   const perf = countBy(d.progress, (p) => OPT.labelOf(OPT.PERFORMANCE_STATUS, p.performance_status || 'no_data'));
   return (
     <>
-      <div className="db-kpis">
-        <StatTile label="Objectives" value={d.objectives.length} icon={Target} accent="var(--green-700)" />
-        <StatTile label="Outcomes" value={d.outcomes.length} icon={Target} accent="#2563eb" />
-        <StatTile label="Outputs" value={d.outputs.length} icon={Target} accent="#7c3aed" />
-        <StatTile label="Indicators" value={d.indicators.length} icon={Activity} accent="var(--green-600)" />
-      </div>
+      <MetricStrip title="Results Framework" items={[
+        { label: 'Objectives', value: d.objectives.length },
+        { label: 'Outcomes', value: d.outcomes.length },
+        { label: 'Outputs', value: d.outputs.length },
+        { label: 'Indicators', value: d.indicators.length },
+      ]} />
       <div className="db-2">
         <div className="db-card"><h3 className="db-h">Indicator Performance Status</h3><BarList rows={perf} total={d.progress.length} accent="#0891b2" /></div>
         <div className="db-card"><h3 className="db-h">Indicators by Level</h3><BarList rows={countBy(d.indicators, (i) => OPT.labelOf(OPT.INDICATOR_LEVEL, i.indicator_level || '—'))} total={d.indicators.length} accent="#7c3aed" /></div>
@@ -529,11 +536,13 @@ function Financial({ d }) {
   return (
     <>
       <div className="db-kpis">
-        <StatTile label="Total Approved" value={fmtAmount(totalBudget)} icon={Wallet} accent="var(--green-700)" />
-        <StatTile label="Total Expenditure" value={fmtAmount(totalExp)} icon={Wallet} accent="#0891b2" />
-        <StatTile label="Remaining" value={fmtAmount(totalBudget - totalExp)} icon={Wallet} accent="var(--green-600)" />
-        <StatTile label="Utilisation" value={fmtPct(utilisationPct(totalBudget, totalExp))} icon={TrendingUp} accent="#0891b2" />
+        <StatTile label="Total Approved" value={fmtAmount(totalBudget)} icon={Wallet} accent="var(--green-600)" />
+        <StatTile label="Utilisation" value={fmtPct(utilisationPct(totalBudget, totalExp))} icon={TrendingUp} accent="var(--green-600)" />
       </div>
+      <MetricStrip style={{ marginTop: '0.7rem' }} items={[
+        { label: 'Total Expenditure', value: fmtAmount(totalExp) },
+        { label: 'Remaining', value: fmtAmount(totalBudget - totalExp) },
+      ]} />
       <div className="db-card" style={{ marginTop: '1rem' }}>
         <h3 className="db-h">Budget vs Expenditure by project</h3>
         <div style={{ overflowX: 'auto' }}><table className="db-table">
@@ -568,12 +577,12 @@ function Geographic({ d }) {
   const withCoords = locs.filter((l) => l.latitude != null && l.longitude != null);
   return (
     <>
-      <div className="db-kpis">
-        <StatTile label="Sites" value={locs.length} icon={MapPin} accent="var(--green-700)" />
-        <StatTile label="Provinces" value={Object.keys(provinceCounts).length} icon={MapPin} accent="#2563eb" />
-        <StatTile label="Area Councils" value={byAC.length} icon={MapPin} accent="#7c3aed" />
-        <StatTile label="Geo-tagged" value={withCoords.length} sub="with coordinates" icon={MapPin} accent="#0891b2" />
-      </div>
+      <MetricStrip title="Geographic Coverage" items={[
+        { label: 'Sites', value: locs.length },
+        { label: 'Provinces', value: Object.keys(provinceCounts).length },
+        { label: 'Area Councils', value: byAC.length },
+        { label: 'Geo-tagged Sites', value: withCoords.length },
+      ]} />
 
       {/* Vanuatu geographic dashboard (§36) — click a province to filter. */}
       <div className="db-card" style={{ marginTop: '1rem' }}>
@@ -629,10 +638,12 @@ function Risks({ d }) {
     <>
       <div className="db-kpis">
         <StatTile label="Critical / High" value={critical.length} status={critical.length ? 'red' : 'green'} icon={AlertTriangle} accent="#dc2626" />
-        <StatTile label="Open" value={open.length} status={open.length ? 'amber' : 'green'} icon={AlertTriangle} accent="#d97706" />
         <StatTile label="Overdue Actions" value={overdue.length} status={overdue.length ? 'red' : 'green'} icon={Clock} accent="#dc2626" />
-        <StatTile label="Resolved" value={resolved.length} icon={FileCheck} accent="var(--green-700)" />
       </div>
+      <MetricStrip style={{ marginTop: '0.7rem' }} items={[
+        { label: 'Open', value: open.length, tone: open.length ? 'warning' : undefined },
+        { label: 'Resolved', value: resolved.length },
+      ]} />
 
       {/* 5x5 Risk Matrix (§37) */}
       <div className="db-card" style={{ marginTop: '1rem' }}>
@@ -712,14 +723,14 @@ function Reporting({ d }) {
   const overdue = d.reporting.filter((r) => r.period_end && r.period_end < today() && r.submission_status !== 'approved').length;
   return (
     <>
-      <div className="db-kpis">
-        <StatTile label="Draft" value={by('draft')} icon={FileCheck} accent="#64748b" />
-        <StatTile label="Submitted" value={by('submitted')} icon={FileCheck} accent="#2563eb" />
-        <StatTile label="Returned" value={by('returned')} status={by('returned') ? 'amber' : 'green'} icon={FileCheck} accent="#d97706" />
-        <StatTile label="Reviewed" value={by('reviewed')} icon={FileCheck} accent="#7c3aed" />
-        <StatTile label="Approved" value={by('approved')} icon={FileCheck} accent="var(--green-700)" />
-        <StatTile label="Overdue" value={overdue} status={overdue ? 'red' : 'green'} icon={Clock} accent="#dc2626" />
-      </div>
+      <MetricStrip title="Reporting Status" items={[
+        { label: 'Draft', value: by('draft') },
+        { label: 'Submitted', value: by('submitted') },
+        { label: 'Returned', value: by('returned'), tone: by('returned') ? 'warning' : undefined },
+        { label: 'Reviewed', value: by('reviewed') },
+        { label: 'Approved', value: by('approved'), tone: by('approved') ? 'success' : undefined },
+        { label: 'Overdue', value: overdue, tone: overdue ? 'danger' : undefined },
+      ]} />
       <div className="db-card" style={{ marginTop: '1rem' }}>
         <h3 className="db-h">Reporting periods</h3>
         <div style={{ overflowX: 'auto' }}><table className="db-table">
