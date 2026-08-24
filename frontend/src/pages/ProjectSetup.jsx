@@ -18,6 +18,7 @@ import {
 } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
+import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
@@ -315,7 +316,7 @@ function ProfileStep({ project, users, onSaved }) {
       p_id: project?.id ?? null, p_name: v.name, p_acronym: toNull(v.acronym), p_description: toNull(v.description),
       p_status: v.status, p_category: toNull(v.category), p_lead_agency: toNull(v.lead_agency),
       p_executing_agency: toNull(v.executing_agency), p_donor: toNull(v.donor), p_funding_window: toNull(v.funding_window),
-      p_currency: v.currency, p_budget_vuv: toNum(v.budget_vuv), p_start_date: toNull(v.start_date),
+      p_currency: v.currency, p_budget_vuv: toNum(v.budget_vuv) ?? 0, p_start_date: toNull(v.start_date),
       p_end_date: toNull(v.end_date), p_approval_date: toNull(v.approval_date), p_project_type: toNull(v.project_type),
       p_primary_climate_theme: toNull(v.primary_climate_theme), p_coverage_type: toNull(v.coverage_type),
       p_provinces: toArr(v.provinces), p_project_manager_id: toNull(v.project_manager_id),
@@ -325,7 +326,7 @@ function ProfileStep({ project, users, onSaved }) {
       p_expected_primary_outcome: toNull(v.expected_primary_outcome),
     });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(dbErrorMessage(error)); return; }
     onSaved(data);
   };
 
@@ -380,7 +381,7 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
     if (!(await confirmDialog({ title:`Delete ${kind}`, message:`Delete ${kind} ${row.code}? Child records are removed too. This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const rpc = kind === 'objective' ? 'delete_objective' : kind === 'outcome' ? 'delete_outcome' : 'delete_output';
     const { error } = await supabase.rpc(rpc, { p_id: row.id });
-    if (error) { toast.error(error.message); return; } reload();
+    if (error) { toast.error(dbErrorMessage(error)); return; } reload();
   };
   const rowStyle = { display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.3rem 0' };
   const codeChip = (c, bg) => ({ fontSize: '0.68rem', fontWeight: 700, color: '#fff', background: bg, padding: '0.12rem 0.4rem', borderRadius: 6, flexShrink: 0, marginTop: 2 });
@@ -485,7 +486,7 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
         ? await supabase.rpc('update_output', { p_id: row.id, p_statement: S, p_responsible_officer_id: v.responsible_officer_id || null, p_status: v.status || null })
         : await supabase.rpc('create_output', { p_outcome_id: parentId, p_statement: S, p_responsible_officer_id: v.responsible_officer_id || null });
     }
-    if (res.error) { toast.error(res.error.message); return; }
+    if (res.error) { toast.error(dbErrorMessage(res.error)); return; }
     toast.success(row?.id ? 'Saved' : 'Added');
     onSaved();
   };
@@ -517,7 +518,7 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
   const del = async (row) => {
     if (!(await confirmDialog({ title:'Delete indicator', message:`Delete indicator ${row.code}? This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_indicator', { p_id: row.id });
-    if (error) return toast.error(error.message); reload();
+    if (error) return toast.error(dbErrorMessage(error)); reload();
   };
   return (
     <div>
@@ -609,7 +610,7 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
       p_objective_id: toNull(v.objective_id), p_outcome_id: toNull(v.outcome_id), p_output_id: toNull(v.output_id),
       p_is_qualitative: !!v.is_qualitative, p_higher_is_better: !!v.higher_is_better,
     });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(dbErrorMessage(error));
     onSaved();
   };
   return (
@@ -644,7 +645,7 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
   const del = async (row) => {
     if (!(await confirmDialog({ title:'Delete activity', message:`Delete activity ${row.code}? This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_activity', { p_id: row.id });
-    if (error) return toast.error(error.message); reload();
+    if (error) return toast.error(dbErrorMessage(error)); reload();
   };
   if (outputs.length === 0) return <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Add at least one Output in the Results Framework before creating activities.</p>;
   return (
@@ -724,7 +725,7 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
       p_physical_progress_pct: toNum(v.physical_progress_pct), p_key_achievement: toNull(v.key_achievement),
       p_issue_delay: toNull(v.issue_delay), p_next_action: toNull(v.next_action), p_next_action_due: toNull(v.next_action_due),
     });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(dbErrorMessage(error));
     onSaved();
   };
   return (
@@ -758,7 +759,7 @@ function LocationsStep({ projectId, locations, reload }) {
   const del = async (row) => {
     if (!(await confirmDialog({ title:'Delete location', message:'Delete this location? This cannot be undone.', confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_location', { p_id: row.id });
-    if (error) return toast.error(error.message); reload();
+    if (error) return toast.error(dbErrorMessage(error)); reload();
   };
   return (
     <div>
@@ -819,7 +820,7 @@ function LocationForm({ projectId, initial, onClose, onSaved }) {
       p_longitude: toNum(v.longitude), p_intervention: toNull(v.intervention), p_status: toNull(v.status),
       p_beneficiaries: toNum(v.beneficiaries),
     });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(dbErrorMessage(error));
     onSaved();
   };
   return (
