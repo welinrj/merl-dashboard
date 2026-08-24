@@ -1,13 +1,18 @@
-// KpiCard — headline stat card for the Dashboard Overview KPI row. Matches
-// the app's flat, bordered card language (.card / .card-hover in index.css):
-// 8px radius, 1px border, restrained shadow, border-colour change on hover —
-// no lift, no scale, no shadow escalation.
+// KpiCard — headline stat card for the Dashboard Overview KPI row. Matches the
+// app's flat, bordered card language (.card / .card-hover in index.css): 8px
+// radius, 1px border, restrained shadow, border-colour change on hover — no
+// lift, no scale, no shadow escalation.
+//
+// The card carries no icon. A KPI is read from its label and its number; an
+// icon beside every metric is decoration, and a coloured circle around that
+// icon is the signature of a generic template. Where a metric genuinely needs
+// a symbol (the GEDSI beneficiary breakdown), the page passes it via `children`.
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function KpiCard({
-  icon: Icon, label, value, sub, progress, progressColor, linkLabel,
-  onClick, accent = 'var(--green-600)', solid, children, className,
+  label, value, sub, progress, progressColor, linkLabel,
+  onClick, children, className,
 }) {
   const Tag = onClick ? 'button' : 'div';
   return (
@@ -22,29 +27,16 @@ export default function KpiCard({
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[0.68rem] font-bold uppercase tracking-wide text-[var(--text-3)]">
-            {label}
-          </div>
-          <div
-            className="mt-1 truncate text-[clamp(1.3rem,1.9vw,1.75rem)] font-extrabold leading-none tracking-tight text-[var(--navy-900)]"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            {value}
-          </div>
+      <div className="min-w-0">
+        <div className="text-[0.68rem] font-bold uppercase tracking-wide text-[var(--text-3)]">
+          {label}
         </div>
-        {Icon && (
-          <span
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-md"
-            style={solid
-              ? { background: accent, color: '#fff' }
-              : { background: `color-mix(in srgb, ${accent} 12%, white)`, color: accent }}
-            aria-hidden="true"
-          >
-            <Icon size={17} strokeWidth={2} />
-          </span>
-        )}
+        <div
+          className="mt-1 truncate text-[clamp(1.3rem,1.9vw,1.75rem)] font-extrabold leading-none tracking-tight text-[var(--navy-900)]"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {value}
+        </div>
       </div>
 
       {sub && <div className="text-xs leading-snug text-[var(--text-2)]">{sub}</div>}
@@ -55,7 +47,7 @@ export default function KpiCard({
         <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
           <div
             className="h-full rounded-full"
-            style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: progressColor || accent }}
+            style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: progressColor || 'var(--green-600)' }}
           />
         </div>
       )}
@@ -63,7 +55,7 @@ export default function KpiCard({
       {linkLabel && (
         <span className="mt-auto inline-flex items-center gap-1 self-start text-xs font-semibold text-[var(--green-700)] group-hover:underline">
           {linkLabel}
-          <ArrowRight size={13} />
+          <ArrowRight size={13} aria-hidden="true" />
         </span>
       )}
     </Tag>

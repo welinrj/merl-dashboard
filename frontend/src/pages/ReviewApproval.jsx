@@ -7,7 +7,7 @@
 // =============================================================================
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { ClipboardCheck, CheckCircle2, RotateCcw, Eye, Unlock, Clock, AlertTriangle, X, FileText } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Eye, Unlock, AlertTriangle, X, FileText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
@@ -120,24 +120,23 @@ export default function ReviewApproval({ user }) {
   return (
     <div className="page-pad" style={{ maxWidth: 1200 }}>
       <PageHeader
-        icon={ClipboardCheck}
         title="Review & Approval"
         subtitle="Reporting-period submissions across the portfolio. The DoCC M&E Officer reviews, returns for correction, and approves."
       />
 
       {!canReview && (
         <div className="card" style={{ padding: '0.7rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-2)' }}>
-          <AlertTriangle size={16} /> Review and approval are restricted to the DoCC M&amp;E Officer.
+          <AlertTriangle size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> Review and approval are restricted to the DoCC M&amp;E Officer.
         </div>
       )}
 
       {/* KPI cards */}
       <div className="grid-kpi" style={{ marginBottom: '1rem' }}>
-        <StatTile label="Awaiting Review" value={kpi.submitted} icon={Eye} accent="#2563eb" />
-        <StatTile label="Under Review" value={kpi.reviewed} icon={ClipboardCheck} accent="var(--text-3)" />
-        <StatTile label="Returned" value={kpi.returned} status={kpi.returned ? 'amber' : 'green'} icon={RotateCcw} accent="var(--gold-500)" />
-        <StatTile label="Approved" value={kpi.approved} icon={CheckCircle2} accent="var(--green-700)" />
-        <StatTile label="Overdue" value={kpi.overdue} status={kpi.overdue ? 'red' : 'green'} icon={Clock} accent="var(--red-600)" />
+        <StatTile label="Awaiting Review" value={kpi.submitted} />
+        <StatTile label="Under Review" value={kpi.reviewed} />
+        <StatTile label="Returned" value={kpi.returned} status={kpi.returned ? 'amber' : 'green'} />
+        <StatTile label="Approved" value={kpi.approved} />
+        <StatTile label="Overdue" value={kpi.overdue} status={kpi.overdue ? 'red' : 'green'} />
       </div>
 
       {/* Filter */}
@@ -164,7 +163,6 @@ export default function ReviewApproval({ user }) {
           return `${p?.code || ''} ${p?.name || ''} ${r.period_label || ''} ${r.reporting_officer_name || ''}`;
         }}
         empty={{
-          icon: CheckCircle2,
           title: filter === 'queue' ? 'No reports awaiting review' : 'No reporting periods',
           description: filter === 'queue'
             ? "You're up to date — nothing needs your review right now."

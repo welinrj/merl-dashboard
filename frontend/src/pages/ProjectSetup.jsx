@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  ClipboardList, Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight, FolderPlus,
+  Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight,
   CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -163,7 +163,6 @@ export default function ProjectSetup({ user }) {
       `}</style>
 
       <PageHeader
-        icon={ClipboardList}
         title="Project Setup"
         subtitle="Register a project and build its results framework, indicators, activities and locations. Periodic monitoring is entered later under MERL Reporting."
         actions={project ? (
@@ -188,7 +187,7 @@ export default function ProjectSetup({ user }) {
           </select>
         </div>
         <button style={btn('var(--green-700)')} onClick={() => { setProjectId(null); setStep('profile'); }}>
-          <FolderPlus size={16} /> New project
+          <Plus size={16} /> New project
         </button>
       </div>
 
@@ -219,12 +218,12 @@ export default function ProjectSetup({ user }) {
         <div className="card" style={{ padding: '0.75rem 0.9rem', marginBottom: '0.75rem', borderLeft: `3px solid ${issues.length ? 'var(--gold-500)' : 'var(--green-600)'}` }}>
           {issues.length === 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--green-700)', fontWeight: 700, fontSize: '0.85rem' }}>
-              <CheckCircle2 size={16} /> Ready for MERL Reporting
+              <CheckCircle2 size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> Ready for MERL Reporting
             </div>
           ) : (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#8a6416', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.4rem' }}>
-                <AlertTriangle size={16} /> {issues.length} setup issue{issues.length === 1 ? '' : 's'} require attention
+                <AlertTriangle size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> {issues.length} setup issue{issues.length === 1 ? '' : 's'} require attention
               </div>
               <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                 {issues.map((it, i) => (
@@ -387,8 +386,8 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
   const codeChip = (c, bg) => ({ fontSize: '0.68rem', fontWeight: 700, color: '#fff', background: bg, padding: '0.12rem 0.4rem', borderRadius: 6, flexShrink: 0, marginTop: 2 });
   const actions = (kind, row) => (
     <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-      <button onClick={() => openEdit(kind, row)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={13} /></button>
-      <button onClick={() => delNode(kind, row)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={13} /></button>
+      <button onClick={() => openEdit(kind, row)} aria-label={`Edit ${kind} ${row.code}`} title={`Edit ${kind}`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+      <button onClick={() => delNode(kind, row)} aria-label={`Delete ${kind} ${row.code}`} title={`Delete ${kind}`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
     </span>
   );
 
@@ -542,8 +541,8 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
                   <td>{i.target_value ?? '—'}</td>
                   <td>{i.frequency ? OPT.labelOf(OPT.REPORTING_FREQUENCY, i.frequency) : '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} /></button>
-                    <button onClick={() => del(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} /></button>
+                    <button onClick={() => setEditing(i)} aria-label={`Edit indicator ${i.code ?? ''}`} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(i)} aria-label={`Delete indicator ${i.code ?? ''}`} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -665,8 +664,8 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
                   <td>{OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</td>
                   <td>{a.physical_progress_pct != null ? `${a.physical_progress_pct}%` : '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(a)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} /></button>
-                    <button onClick={() => del(a)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} /></button>
+                    <button onClick={() => setEditing(a)} aria-label={`Edit activity ${a.code ?? ''}`} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(a)} aria-label={`Delete activity ${a.code ?? ''}`} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -777,8 +776,8 @@ function LocationsStep({ projectId, locations, reload }) {
                   <td>{l.province || '—'}</td><td>{l.island || '—'}</td><td>{l.area_council || '—'}</td>
                   <td>{l.community || '—'}</td><td>{l.beneficiaries ?? '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(l)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} /></button>
-                    <button onClick={() => del(l)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} /></button>
+                    <button onClick={() => setEditing(l)} aria-label={`Edit location ${l.code ?? ''}`} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(l)} aria-label={`Delete location ${l.code ?? ''}`} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -876,7 +875,7 @@ function Modal({ title, children, onClose, onSave, saveLabel, dirty }) {
       <div style={{ background: 'var(--white)', borderRadius: 14, width: '100%', maxWidth: 760, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
           <strong style={{ fontSize: '1rem' }}>{title}</strong>
-          <button onClick={guardedClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} /></button>
+          <button onClick={guardedClose} aria-label="Close" title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="ps-grid">{children}</div>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>

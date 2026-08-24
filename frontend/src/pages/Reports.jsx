@@ -7,7 +7,8 @@
 // Financial Performance, Geographic/Provincial, Funding Partner/Donor.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileBarChart, Printer, History, Clock } from 'lucide-react';
+// One icon on this page: Printer, which labels the export control.
+import { Printer } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';
@@ -133,7 +134,6 @@ export default function Reports() {
 
       <div className="rp-noprint">
         <PageHeader
-          icon={FileBarChart}
           title="Reports"
           subtitle="Generated automatically from the standardised MERL dataset. Use Print to save as PDF."
         />
@@ -198,13 +198,12 @@ export default function Reports() {
       {/* Report Library (§48-51): audit trail of official reports generated */}
       <div className="rp-noprint" style={{ marginTop: '1.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
-          <History size={18} style={{ color: 'var(--green-700)' }} />
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>Report Library</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginLeft: '0.25rem' }}>Recently generated reports</span>
         </div>
         {runs.length === 0 ? (
           <div className="card" style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-3)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <Clock size={15} /> No reports generated yet. Use Print / PDF above to produce one — it will be logged here.
+            No reports generated yet. Use Print / PDF above to produce one — it will be logged here.
           </div>
         ) : (
           <div className="card" style={{ padding: 0, overflowX: 'auto' }}>

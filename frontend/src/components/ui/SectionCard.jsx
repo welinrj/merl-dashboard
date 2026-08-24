@@ -7,18 +7,16 @@
 //     …content…
 //   </SectionCard>
 
-export default function SectionCard({ title, description, actions, icon: Icon, children, bodyStyle, style }) {
+// No icon slot: the title and its description carry the hierarchy on their own.
+export default function SectionCard({ title, description, actions, children, bodyStyle, style }) {
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden', ...style }}>
       {(title || actions) && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
           flexWrap: 'wrap', padding: '0.9rem 1.15rem', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {Icon && <Icon size={16} style={{ color: 'var(--green-700)', flexShrink: 0 }} aria-hidden="true" />}
-            <div style={{ minWidth: 0 }}>
-              {title && <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-1)' }}>{title}</div>}
-              {description && <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 1 }}>{description}</div>}
-            </div>
+          <div style={{ minWidth: 0 }}>
+            {title && <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-1)' }}>{title}</div>}
+            {description && <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 1 }}>{description}</div>}
           </div>
           {actions && <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>{actions}</div>}
         </div>

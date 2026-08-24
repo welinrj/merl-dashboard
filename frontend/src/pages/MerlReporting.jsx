@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  ClipboardCheck, Plus, Pencil, Trash2, Send, CheckCircle2, RotateCcw, X, AlertTriangle, Lock, Unlock,
+  Plus, Pencil, Trash2, Send, CheckCircle2, RotateCcw, X, AlertTriangle, Info, Lock, Unlock,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
@@ -396,7 +396,6 @@ export default function MerlReporting({ user }) {
       `}</style>
 
       <PageHeader
-        icon={ClipboardCheck}
         title="MERL Reporting"
         subtitle="Periodic monitoring entries for the DoCC Standardised MERL form. Data entered here flows to the dashboards and generated reports."
       />
@@ -503,7 +502,7 @@ export default function MerlReporting({ user }) {
           </div>
           {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && completion.done < completion.total && (
             <p style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', fontSize: '0.72rem', color: 'var(--text-2)', margin: '0.7rem 0 0' }}>
-              <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+              <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
               <span>You can submit at any point, but sections without data will be reported as empty for this period.</span>
             </p>
           )}
@@ -545,7 +544,7 @@ export default function MerlReporting({ user }) {
 
         {activeModule.note && (
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', fontSize: '0.75rem', color: 'var(--text-2)', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 8, padding: '0.5rem 0.7rem', marginBottom: '0.6rem' }}>
-            <AlertTriangle size={14} style={{ color: 'var(--green-700)', flexShrink: 0, marginTop: 1 }} />
+            <Info size={14} style={{ color: 'var(--green-700)', flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
             <span>{activeModule.note}</span>
           </div>
         )}
@@ -570,8 +569,8 @@ export default function MerlReporting({ user }) {
                       {activeModule.columns.map((c) => <td key={c.label}>{c.get(r) ?? '—'}</td>)}
                       {canEdit && (
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button onClick={() => setEditing(r)} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={15} /></button>
-                          <button onClick={() => deleteRecord(r)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={15} /></button>
+                          <button onClick={() => setEditing(r)} aria-label="Edit record" title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                          <button onClick={() => deleteRecord(r)} aria-label="Delete record" title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                         </td>
                       )}
                     </tr>
@@ -681,7 +680,7 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
         onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
           <strong style={{ fontSize: '1rem' }}>{initial?.id ? 'Edit' : 'Add'} — {module.label}</strong>
-          <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} /></button>
+          <button onClick={onCancel} aria-label="Close" title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="mr-form-grid">
           {module.fields.map((f) => (

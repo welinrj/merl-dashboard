@@ -575,7 +575,6 @@
 
 .ov-kpis { display: grid; grid-template-columns: repeat(6,1fr); gap: .7rem; margin-bottom: 1rem; }
 .ov-kpi { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); padding: .85rem .95rem; min-width: 0; }
-.ov-kpi-ic { color: var(--text-3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; align-self: flex-start; }
 .ov-kpi-label { font-size: .8rem; font-weight: 700; color: var(--navy-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ov-kpi-value { font-family: var(--font-display); font-weight: 800; color: var(--navy-900); line-height: 1.05; margin: .1rem 0; }
 .ov-kpi-sub { font-size: .68rem; color: var(--text-3); }
@@ -593,7 +592,6 @@
 .ov-tiles.b5 { grid-template-columns: repeat(5, minmax(0,1fr)); }
 .ov-tiles.r4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
 .ov-tile { border: 1px solid var(--border); border-radius: 8px; padding: .55rem .45rem .5rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .1rem; min-width: 0; }
-.ov-tile-ic { display: flex; margin-bottom: .1rem; }
 .ov-tile-val { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; line-height: 1; color: var(--text-1); }
 .ov-tile-lbl { font-size: .68rem; color: var(--text-3); line-height: 1.15; }
 .ov-tile-pct { font-size: .8rem; font-weight: 700; margin-top: .05rem; }
@@ -646,16 +644,14 @@
 /* Level 3 — supporting analytics */
 .ovx-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .ovx-perf { display: flex; flex-direction: column; gap: .55rem; }
-.ovx-perf-row { display: grid; grid-template-columns: 18px 1fr 1.6fr 44px; align-items: center; gap: .6rem; }
-.ovx-perf-ic { display: flex; }
+.ovx-perf-row { display: grid; grid-template-columns: 1fr 1.6fr 44px; align-items: center; gap: .6rem; }
 .ovx-perf-lbl { font-size: .82rem; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ovx-perf-bar { height: 8px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
 .ovx-perf-bar > div { height: 100%; border-radius: 5px; }
 .ovx-perf-val { font-family: var(--font-display); font-size: 1rem; font-weight: 800; color: var(--navy-900); text-align: right; }
 .ovx-attn { display: flex; flex-direction: column; gap: .18rem; }
-.ovx-attn-row { display: grid; grid-template-columns: 34px 26px 1fr auto; align-items: center; gap: .55rem; padding: .34rem .3rem; background: none; border: none; border-radius: 8px; cursor: pointer; text-align: left; }
+.ovx-attn-row { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: .55rem; padding: .4rem .3rem; background: none; border: none; border-radius: var(--radius-control); cursor: pointer; text-align: left; }
 .ovx-attn-row:hover { background: var(--surface-1); }
-.ovx-attn-ic { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ovx-attn-val { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; text-align: center; }
 .ovx-attn-lbl { font-size: .84rem; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ovx-attn-link { display: inline-flex; align-items: center; gap: .15rem; font-size: .72rem; font-weight: 700; white-space: nowrap; }
@@ -696,9 +692,8 @@
 .ovx-rtbl tbody tr { cursor: pointer; }
 .ovx-rtbl tbody tr:hover { background: var(--surface-1); }
 .ovx-rtbl tbody tr:last-child td { border-bottom: none; }
-.ovx-rt-item { display: flex; align-items: center; gap: .3rem; color: var(--navy-active); font-weight: 600; white-space: nowrap; max-width: 108px; overflow: hidden; }
-.ovx-rt-item span { overflow: hidden; text-overflow: ellipsis; }
-.ovx-rt-item svg { color: var(--green-700); flex-shrink: 0; }
+.ovx-rt-item { color: var(--navy-active); font-weight: 600; white-space: nowrap; max-width: 108px; overflow: hidden; }
+.ovx-rt-item span { display: block; overflow: hidden; text-overflow: ellipsis; }
 .ovx-rt-proj { color: var(--text-2); max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ovx-rt-due { color: var(--text-2); white-space: nowrap; }
 .ovx-badge { display: inline-block; padding: .1rem .45rem; border-radius: 9999px; font-size: .68rem; font-weight: 700; white-space: nowrap; }

@@ -312,21 +312,21 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
           <form className="lg2-form" onSubmit={handleCredentials}>
             <div className="lg2-field">
               <label htmlFor="lg-email" className="sr-only">Email</label>
-              <span className="lg2-ficon"><Mail size={18} /></span>
+              <span className="lg2-ficon" aria-hidden="true"><Mail size={18} /></span>
               <input id="lg-email" type="email" value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
                 className="lg2-input" placeholder="Email" autoComplete="username" required />
             </div>
             <div className="lg2-field">
               <label htmlFor="lg-pass" className="sr-only">Password</label>
-              <span className="lg2-ficon"><Lock size={18} /></span>
+              <span className="lg2-ficon" aria-hidden="true"><Lock size={18} /></span>
               <input id="lg-pass" type={showPass ? 'text' : 'password'} value={password}
                 onChange={e => { setPassword(e.target.value); setError(''); }}
                 className="lg2-input" placeholder="Password" autoComplete="current-password" required />
               <button type="button" className="lg2-eye"
                 aria-label={showPass ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPass(!showPass)}>
-                {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPass ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
               </button>
             </div>
 
@@ -337,7 +337,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {error && (
               <div className="lg2-alert" role="alert">
-                <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />{error}
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true" />{error}
               </div>
             )}
 
@@ -347,7 +347,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
           </form>
 
           <div className="lg2-secure">
-            <ShieldCheck size={16} /> Secure access for authorised users only.
+            <ShieldCheck size={16} aria-hidden="true" /> Secure access for authorised users only.
           </div>
 
           <footer className="lg2-foot">
@@ -425,7 +425,7 @@ export default function App() {
           {visibleNav.map(({ key, path, label, Icon }) => (
             <NavLink key={key} to={path} onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => (isActive ? 'active' : '')}>
-              <Icon size={17} />{label}
+              <Icon size={16} aria-hidden="true" />{label}
             </NavLink>
           ))}
         </nav>
@@ -434,7 +434,7 @@ export default function App() {
       {/* ── Main column ── */}
       <div className="dsh-main">
         <header className="dsh-head">
-          <button className="dsh-hamburger" aria-label="Toggle menu" onClick={() => setSidebarOpen(o => !o)}><Menu size={20} /></button>
+          <button className="dsh-hamburger" aria-label="Toggle menu" onClick={() => setSidebarOpen(o => !o)}><Menu size={18} aria-hidden="true" /></button>
           <div style={{ minWidth: 0 }}>
             <div className="dsh-head-title">{activeItem.head}</div>
             {activeItem.sub && <div className="dsh-head-sub">{activeItem.sub}</div>}
@@ -472,7 +472,7 @@ export default function App() {
                     </div>
                     <button onClick={() => { setUserMenuOpen(false); void supabase.auth.signOut(); setUser(null); }}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)', fontSize: '0.8rem', fontWeight: 600 }}>
-                      <LogOut size={15} /> Sign Out
+                      <LogOut size={16} aria-hidden="true" /> Sign Out
                     </button>
                   </div>
                 </>

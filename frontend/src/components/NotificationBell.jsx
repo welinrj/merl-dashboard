@@ -7,7 +7,8 @@
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Eye, RotateCcw, Clock, CheckCircle2 } from 'lucide-react';
+// One icon: the bell that opens the panel.
+import { Bell } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 const REVIEWER = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
@@ -41,18 +42,18 @@ export default function NotificationBell({ user }) {
     const code = (id) => projById[id] || 'Project';
     if (isReviewer) {
       rows.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).forEach((r) => out.push({
-        id: `rev-${r.id}`, icon: Eye, accent: '#2563eb',
+        id: `rev-${r.id}`, accent: '#2563eb',
         title: `${code(r.project_id)} · ${r.period_label}`, note: 'Awaiting your review', to: '/review',
       }));
     }
     if (isEditor) {
       rows.filter((r) => r.submission_status === 'returned').forEach((r) => out.push({
-        id: `ret-${r.id}`, icon: RotateCcw, accent: '#d97706',
+        id: `ret-${r.id}`, accent: '#d97706',
         title: `${code(r.project_id)} · ${r.period_label}`, note: r.review_comments ? `Returned: ${r.review_comments}` : 'Returned for correction', to: '/merl-reporting',
       }));
       const t = todayIso();
       rows.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < t).forEach((r) => out.push({
-        id: `od-${r.id}`, icon: Clock, accent: '#b3402f',
+        id: `od-${r.id}`, accent: '#b3402f',
         title: `${code(r.project_id)} · ${r.period_label}`, note: 'Reporting period overdue', to: '/merl-reporting',
       }));
     }
@@ -64,7 +65,7 @@ export default function NotificationBell({ user }) {
   return (
     <div style={{ position: 'relative' }}>
       <button className="dsh-bell" title="Notifications" aria-label={`Notifications${count ? ` (${count})` : ''}`} onClick={() => setOpen((o) => !o)}>
-        <Bell size={19} />
+        <Bell size={18} aria-hidden="true" />
         {count > 0 && <span className="dsh-bell-badge">{count > 9 ? '9+' : count}</span>}
       </button>
       {open && (
@@ -77,15 +78,13 @@ export default function NotificationBell({ user }) {
             </div>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
               {count === 0 ? (
-                <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
-                  <CheckCircle2 size={22} style={{ color: 'var(--green-600)' }} /> You're all caught up.
+                <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.82rem' }}>
+                  No unread notifications.
                 </div>
               ) : items.map((it) => (
                 <button key={it.id} onClick={() => { setOpen(false); nav(it.to); }}
                   style={{ width: '100%', display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.6rem 0.9rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `color-mix(in srgb, ${it.accent} 15%, #fff)`, color: it.accent }}>
-                    <it.icon size={15} />
-                  </span>
+                  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, marginTop: '0.32rem', background: it.accent }} />
                   <span style={{ minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title}</span>
                     <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.note}</span>

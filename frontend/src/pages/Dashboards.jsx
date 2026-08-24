@@ -6,13 +6,13 @@
 // public.v_* views; no separate dashboard tables.
 // =============================================================================
 import { useEffect, useMemo, useState } from 'react';
-import {
-  LayoutDashboard, FolderKanban, Target, Wallet, MapPin, AlertTriangle, FileCheck,
-  Users, Activity, TrendingUp, Clock,
-} from 'lucide-react';
+// One icon on this page: the warning triangle that marks Attention Required.
+// Every other metric, tab and heading is carried by its label and its number.
+import { AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import StatTile from '../components/ui/StatTile';
 import MetricStrip from '../components/ui/MetricStrip';
+import Gedsi from '../components/ui/Gedsi';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
@@ -22,13 +22,13 @@ import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 
 const TABS = [
-  { key: 'portfolio', label: 'Executive Portfolio', Icon: LayoutDashboard },
-  { key: 'project',   label: 'Project',             Icon: FolderKanban },
-  { key: 'results',   label: 'Results & Indicators', Icon: Target },
-  { key: 'financial', label: 'Financial',           Icon: Wallet },
-  { key: 'geographic', label: 'Geographic',         Icon: MapPin },
-  { key: 'risks',     label: 'Risks',               Icon: AlertTriangle },
-  { key: 'reporting', label: 'Reporting',           Icon: FileCheck },
+  { key: 'portfolio',  label: 'Executive Portfolio' },
+  { key: 'project',    label: 'Project' },
+  { key: 'results',    label: 'Results & Indicators' },
+  { key: 'financial',  label: 'Financial' },
+  { key: 'geographic', label: 'Geographic' },
+  { key: 'risks',      label: 'Risks' },
+  { key: 'reporting',  label: 'Reporting' },
 ];
 
 const ACTIVE_STATUSES = ['approved', 'not_started', 'on_track', 'at_risk', 'delayed'];
@@ -99,7 +99,7 @@ export default function Dashboards({ initialTab }) {
   if (loading || !d) {
     return (
       <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <PageHeader icon={LayoutDashboard} title="Dashboards" subtitle="Portfolio monitoring across the L&D programme." />
+        <PageHeader title="MERL Dashboard" subtitle="Portfolio monitoring across the L&D programme." />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.7rem' }}>
           {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
@@ -110,9 +110,13 @@ export default function Dashboards({ initialTab }) {
   return (
     <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
       <style>{`
-        .db-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:1rem 0}
-        .db-tab{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem .8rem;border-radius:9999px;border:1px solid var(--border);background:var(--white);cursor:pointer;font-size:.8125rem;font-weight:600;color:var(--text-2)}
-        .db-tab.active{background:var(--green-600);color:#fff;border-color:var(--green-600)}
+        /* Text tabs on a shared baseline rule — reporting-application
+           navigation, not pills. The active tab is carried by weight, ink
+           colour and a 2px accent underline sitting on that rule. */
+        .db-tabs{display:flex;gap:.25rem;flex-wrap:wrap;margin:1rem 0 1.1rem;border-bottom:1px solid var(--border);overflow-x:auto}
+        .db-tab{position:relative;padding:.5rem .7rem;margin-bottom:-1px;border:none;border-bottom:2px solid transparent;background:none;cursor:pointer;font-size:.8125rem;font-weight:600;color:var(--text-3);white-space:nowrap;transition:color .12s,border-color .12s}
+        .db-tab:hover{color:var(--text-1)}
+        .db-tab.active{color:var(--green-700);border-bottom-color:var(--green-600);font-weight:700}
         .db-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,220px));justify-content:start;gap:.7rem}
         .db-2{display:grid;grid-template-columns:repeat(2,1fr);gap:.9rem;margin-top:1rem}
         .db-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-card);padding:1rem}
@@ -125,8 +129,7 @@ export default function Dashboards({ initialTab }) {
       `}</style>
 
       <PageHeader
-        icon={LayoutDashboard}
-        title="Dashboards"
+        title="MERL Dashboard"
         subtitle="Portfolio monitoring across the L&D programme."
         actions={dataAsAt ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Data as at: <strong style={{ color: 'var(--text-2)' }}>{dataAsAt}</strong></span>
@@ -134,14 +137,15 @@ export default function Dashboards({ initialTab }) {
       />
 
       {d.projects.length === 0 ? (
-        <EmptyState icon={FolderKanban} title="No project data available"
+        <EmptyState title="No project data available"
           description="Register your first project to begin portfolio monitoring." />
       ) : (
       <>
-      <div className="db-tabs">
-        {TABS.map(({ key, label, Icon }) => (
-          <button key={key} className={`db-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
-            <Icon size={14} /> {label}
+      <div className="db-tabs" role="tablist" aria-label="Dashboard views">
+        {TABS.map(({ key, label }) => (
+          <button key={key} role="tab" aria-selected={tab === key}
+            className={`db-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
+            {label}
           </button>
         ))}
       </div>
@@ -300,11 +304,11 @@ function Portfolio({ d, onNavigate }) {
         Showing <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} projects
       </div>
       <div className="db-kpis">
-        <StatTile label="Total Projects" value={m.total} icon={FolderKanban} accent="var(--green-600)" />
-        <StatTile label="Total Beneficiaries" value={m.beneficiaries ? m.beneficiaries.toLocaleString() : '—'} icon={Users} accent="var(--green-600)" />
-        <StatTile label="Approved Budget" value={fmtAmount(m.totalBudget)} icon={Wallet} accent="var(--green-600)" />
-        <StatTile label="Budget Utilisation" value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} icon={TrendingUp} accent="var(--green-600)" />
-        <StatTile label="Indicator Achievement" value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" icon={Target} accent="var(--green-600)" />
+        <StatTile label="Total Projects" value={m.total} />
+        <StatTile label="Total Beneficiaries" value={m.beneficiaries ? m.beneficiaries.toLocaleString() : '—'} />
+        <StatTile label="Approved Budget" value={fmtAmount(m.totalBudget)} />
+        <StatTile label="Budget Utilisation" value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} />
+        <StatTile label="Indicator Achievement" value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" />
       </div>
       <MetricStrip title="Portfolio Summary" style={{ marginTop: '0.7rem' }} items={[
         { label: 'Active', value: m.active },
@@ -319,8 +323,11 @@ function Portfolio({ d, onNavigate }) {
       {/* Attention Required (§31) */}
       {m.attention.length > 0 && (
         <div className="db-card" style={{ marginTop: '1rem', borderLeft: '3px solid var(--gold-500)' }}>
+          {/* The one warning triangle on this page: it marks the section that
+              needs action. The rows below carry a status dot, not a repeat of
+              the same triangle. */}
           <h3 className="db-h" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <AlertTriangle size={15} style={{ color: 'var(--gold-500)' }} /> Attention Required
+            <AlertTriangle size={16} style={{ color: 'var(--gold-500)', flexShrink: 0 }} aria-hidden="true" /> Attention Required
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             {m.attention.map((a, i) => (
@@ -338,8 +345,11 @@ function Portfolio({ d, onNavigate }) {
       {/* Beneficiaries & GEDSI (§38) */}
       {m.gedsi.total != null && (
         <div className="db-card" style={{ marginTop: '1rem' }}>
+          {/* No heading symbol — the per-category pictograms below are where a
+              symbol adds meaning, by making the disaggregation comparable at a
+              glance. One generic Users icon on the heading would not. */}
           <h3 className="db-h" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Users size={15} style={{ color: '#7c3aed' }} /> Beneficiaries &amp; GEDSI
+            Beneficiaries &amp; GEDSI
             {m.gedsi.completeness != null && (
               <span style={{ marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 600, color: m.gedsi.completeness >= 75 ? 'var(--green-700)' : 'var(--gold-500)' }}>
                 Disaggregation completeness: {m.gedsi.completeness}%
@@ -350,10 +360,20 @@ function Portfolio({ d, onNavigate }) {
             {m.gedsi.total.toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-3)' }}>total direct beneficiaries</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.6rem', marginTop: '0.75rem' }}>
-            {[['Female', m.gedsi.female], ['Male', m.gedsi.male], ['Other / N.R.', m.gedsi.other], ['Youth', m.gedsi.youth], ['Persons w/ disability', m.gedsi.pwd], ['Indirect', m.gedsi.indirect]].map(([lbl, val]) => (
-              <div key={lbl} style={{ background: 'var(--surface-1)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
+            {[
+              ['Female', m.gedsi.female, 'female'],
+              ['Male', m.gedsi.male, 'male'],
+              ['Other / N.R.', m.gedsi.other, null],
+              ['Youth', m.gedsi.youth, 'youth'],
+              ['Persons w/ disability', m.gedsi.pwd, 'disability'],
+              ['Indirect', m.gedsi.indirect, 'indirect'],
+            ].map(([lbl, val, sym]) => (
+              <div key={lbl} style={{ background: 'var(--surface-1)', borderRadius: 'var(--radius-control)', padding: '0.5rem 0.65rem' }}>
                 <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-1)' }}>{val != null ? val.toLocaleString() : '—'}</div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{lbl}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--text-3)' }}>
+                  {sym && <Gedsi name={sym} size={14} style={{ color: 'var(--green-700)', flexShrink: 0 }} />}
+                  {lbl}
+                </div>
               </div>
             ))}
           </div>
@@ -439,10 +459,10 @@ function ProjectView({ d, projectId }) {
         </div>
       </div>
       <div className="db-kpis">
-        <StatTile label="Physical Progress" value={phys != null ? `${phys}%` : '—'} sub="avg of activities" icon={Activity} accent="var(--green-600)" />
-        <StatTile label="Financial Utilisation" value={fmtPct(utilisationPct(budget, exp))} icon={TrendingUp} accent="var(--green-600)" />
-        <StatTile label="Beneficiaries" value={ben ? ben.toLocaleString() : '—'} icon={Users} accent="var(--green-600)" />
-        <StatTile label="Latest Report" value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} icon={FileCheck} accent="var(--green-600)" />
+        <StatTile label="Physical Progress" value={phys != null ? `${phys}%` : '—'} sub="avg of activities" />
+        <StatTile label="Financial Utilisation" value={fmtPct(utilisationPct(budget, exp))} />
+        <StatTile label="Beneficiaries" value={ben ? ben.toLocaleString() : '—'} />
+        <StatTile label="Latest Report" value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} />
       </div>
       {(() => { const openRisksCount = risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length; return (
         <MetricStrip title="Financial & Delivery Summary" style={{ marginTop: '0.7rem' }} items={[
@@ -536,8 +556,8 @@ function Financial({ d }) {
   return (
     <>
       <div className="db-kpis">
-        <StatTile label="Total Approved" value={fmtAmount(totalBudget)} icon={Wallet} accent="var(--green-600)" />
-        <StatTile label="Utilisation" value={fmtPct(utilisationPct(totalBudget, totalExp))} icon={TrendingUp} accent="var(--green-600)" />
+        <StatTile label="Total Approved" value={fmtAmount(totalBudget)} />
+        <StatTile label="Utilisation" value={fmtPct(utilisationPct(totalBudget, totalExp))} />
       </div>
       <MetricStrip style={{ marginTop: '0.7rem' }} items={[
         { label: 'Total Expenditure', value: fmtAmount(totalExp) },
@@ -637,8 +657,8 @@ function Risks({ d }) {
   return (
     <>
       <div className="db-kpis">
-        <StatTile label="Critical / High" value={critical.length} status={critical.length ? 'red' : 'green'} icon={AlertTriangle} accent="#dc2626" />
-        <StatTile label="Overdue Actions" value={overdue.length} status={overdue.length ? 'red' : 'green'} icon={Clock} accent="#dc2626" />
+        <StatTile label="Critical / High" value={critical.length} status={critical.length ? 'red' : 'green'} />
+        <StatTile label="Overdue Actions" value={overdue.length} status={overdue.length ? 'red' : 'green'} />
       </div>
       <MetricStrip style={{ marginTop: '0.7rem' }} items={[
         { label: 'Open', value: open.length, tone: open.length ? 'warning' : undefined },
