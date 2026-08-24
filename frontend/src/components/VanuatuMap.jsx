@@ -47,9 +47,19 @@ export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSele
     const S = 1000 / Math.max(spanX, spanY);
     const PADv = 6;
     const VBW = spanX * S + PADv * 2, VBH = spanY * S + PADv * 2;
-    const project = ([lon, lat]) => `${(PADv + (lon - minLon) * kx * S).toFixed(1)},${(PADv + (maxLat - lat) * S).toFixed(1)}`;
-    const toPath = (ring) => ring.map((pt, i) => `${i === 0 ? 'M' : 'L'}${project(pt)}`).join(' ') + 'Z';
-    return { paths: rings.map((r) => ({ name: r.name, d: r.outer.map(toPath).join(' ') })), vb: { VBW, VBH } };
+    const projXY = ([lon, lat]) => [PADv + (lon - minLon) * kx * S, PADv + (maxLat - lat) * S];
+    // Build each province's path and its bounding box in projected space (used to
+    // zoom the viewBox onto a single province when one is selected).
+    const paths = rings.map((r) => {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      const d = r.outer.map((ring) => ring.map((pt, i) => {
+        const [x, y] = projXY(pt);
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ') + 'Z').join(' ');
+      return { name: r.name, d, box: { x0, y0, x1, y1 } };
+    });
+    return { paths, vb: { VBW, VBH } };
   }, [features]);
   const max = Math.max(1, ...Object.values(counts));
   const fill = (name) => {
@@ -61,10 +71,20 @@ export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSele
     return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
   };
   if (!vb) return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.7rem' }}>Map…</div>;
+  // When a province is selected, zoom the viewBox to its bounds and draw only it.
+  const zoom = selected ? paths.find((p) => p.name === selected) : null;
+  const viewBox = zoom
+    ? (() => {
+      const { x0, y0, x1, y1 } = zoom.box;
+      const pad = Math.max(x1 - x0, y1 - y0) * 0.12 + 6;
+      return `${(x0 - pad).toFixed(1)} ${(y0 - pad).toFixed(1)} ${(x1 - x0 + pad * 2).toFixed(1)} ${(y1 - y0 + pad * 2).toFixed(1)}`;
+    })()
+    : `0 0 ${vb.VBW.toFixed(1)} ${vb.VBH.toFixed(1)}`;
+  const shown = zoom ? [zoom] : paths;
   return (
-    <svg viewBox={`0 0 ${vb.VBW.toFixed(1)} ${vb.VBH.toFixed(1)}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet"
-      role="img" aria-label="Projects by province map of Vanuatu" style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}>
-      {paths.map((p) => {
+    <svg viewBox={viewBox} width="100%" height="100%" preserveAspectRatio="xMidYMid meet"
+      role="img" aria-label={zoom ? `Map of ${zoom.name} province` : 'Projects by province map of Vanuatu'} style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}>
+      {shown.map((p) => {
         const isSel = selected === p.name;
         const isHover = hover === p.name;
         return (
