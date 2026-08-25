@@ -305,9 +305,91 @@ DROP FUNCTION IF EXISTS public.upsert_project_location(
 
 -- ── 6. Implementation status was free text ───────────────────────────────────
 -- The form wrote whatever was typed, and the portal displayed the raw token —
--- a location saved through the UI reads "in_progress" on screen. The values are
--- the activity-status vocabulary the rest of Form 5 already uses; the constraint
--- is NOT VALID so a database holding older free text still migrates (see 0035).
+-- a location saved through the UI reads "in_progress" on screen. It becomes the
+-- activity-status vocabulary the rest of Form 5 already uses.
+--
+-- Existing rows hold whatever officers typed. Leaving them to a NOT VALID
+-- constraint would keep them readable but make them unsavable: the form has no
+-- option for "ongoing", so the next officer to open that location would save it
+-- back as blank and the status would be gone without anyone deciding to lose
+-- it. So the known spellings are mapped first, and anything left is named in a
+-- warning rather than discarded.
+-- 0035 enforces project scoping with a row trigger that resolves the caller
+-- through merl.users. A migration has no caller — current_db_user() is NULL, so
+-- every row this UPDATE touches would be refused as "You do not have access to
+-- this project" and the migration would fail on any database that holds a
+-- location. The trigger comes off for the length of this one statement and goes
+-- straight back on; the whole migration is one transaction, so a failure in
+-- between cannot leave it disabled.
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_trigger
+               WHERE tgrelid = 'merl.project_locations'::regclass
+                 AND tgname = 'trg_scope_project_locations' AND NOT tgisinternal) THEN
+        ALTER TABLE merl.project_locations DISABLE TRIGGER trg_scope_project_locations;
+    END IF;
+END $$;
+
+UPDATE merl.project_locations SET status = CASE lower(btrim(status))
+    WHEN 'ongoing'      THEN 'in_progress'
+    WHEN 'in progress'  THEN 'in_progress'
+    WHEN 'in-progress'  THEN 'in_progress'
+    WHEN 'active'       THEN 'in_progress'
+    WHEN 'started'      THEN 'in_progress'
+    WHEN 'implementing' THEN 'in_progress'
+    WHEN 'complete'     THEN 'completed'
+    WHEN 'done'         THEN 'completed'
+    WHEN 'finished'     THEN 'completed'
+    WHEN 'not started'  THEN 'not_started'
+    WHEN 'planned'      THEN 'not_started'
+    WHEN 'pipeline'     THEN 'not_started'
+    WHEN 'pending'      THEN 'not_started'
+    WHEN 'late'         THEN 'delayed'
+    WHEN 'behind'       THEN 'delayed'
+    WHEN 'on hold'      THEN 'on_hold'
+    WHEN 'paused'       THEN 'on_hold'
+    WHEN 'suspended'    THEN 'on_hold'
+    WHEN 'canceled'     THEN 'cancelled'
+    WHEN 'dropped'      THEN 'cancelled'
+    ELSE lower(btrim(status))
+END
+WHERE status IS NOT NULL
+  AND status IS DISTINCT FROM CASE lower(btrim(status))
+    WHEN 'ongoing' THEN 'in_progress' WHEN 'in progress' THEN 'in_progress'
+    WHEN 'in-progress' THEN 'in_progress' WHEN 'active' THEN 'in_progress'
+    WHEN 'started' THEN 'in_progress' WHEN 'implementing' THEN 'in_progress'
+    WHEN 'complete' THEN 'completed' WHEN 'done' THEN 'completed'
+    WHEN 'finished' THEN 'completed' WHEN 'not started' THEN 'not_started'
+    WHEN 'planned' THEN 'not_started' WHEN 'pipeline' THEN 'not_started'
+    WHEN 'pending' THEN 'not_started' WHEN 'late' THEN 'delayed'
+    WHEN 'behind' THEN 'delayed' WHEN 'on hold' THEN 'on_hold'
+    WHEN 'paused' THEN 'on_hold' WHEN 'suspended' THEN 'on_hold'
+    WHEN 'canceled' THEN 'cancelled' WHEN 'dropped' THEN 'cancelled'
+    ELSE lower(btrim(status)) END;
+
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_trigger
+               WHERE tgrelid = 'merl.project_locations'::regclass
+                 AND tgname = 'trg_scope_project_locations' AND NOT tgisinternal) THEN
+        ALTER TABLE merl.project_locations ENABLE TRIGGER trg_scope_project_locations;
+    END IF;
+END $$;
+
+DO $$
+DECLARE v_left text;
+BEGIN
+    SELECT string_agg(DISTINCT quote_literal(status), ', ')
+      INTO v_left
+      FROM merl.project_locations
+     WHERE status IS NOT NULL
+       AND status NOT IN ('not_started','in_progress','completed','delayed','on_hold','cancelled');
+    IF v_left IS NOT NULL THEN
+        RAISE WARNING
+          'Implementation statuses this migration could not map: %. Those locations keep '
+          'their value and stay readable, but the form cannot offer it — set them from the '
+          'list, or add the spelling to the mapping in 0037 and re-run it.', v_left;
+    END IF;
+END $$;
+
 ALTER TABLE merl.project_locations DROP CONSTRAINT IF EXISTS project_locations_status_check;
 ALTER TABLE merl.project_locations ADD CONSTRAINT project_locations_status_check
     CHECK (status IS NULL OR status IN

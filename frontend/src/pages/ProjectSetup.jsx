@@ -1049,7 +1049,13 @@ function LocationForm({ projectId, initial, villages, onVillageAdded, onClose, o
 
       <Field className="ps-full" label={t('ps.intervention')}><input className="field-input" value={v.intervention ?? ''} onChange={set('intervention')} /></Field>
       <Field label={t('ps.implementationStatus')}>
-        <Select value={v.status ?? ''} onChange={set('status')} options={OPT.ACTIVITY_STATUS} allowBlank />
+        {/* A location saved before this was a controlled value may hold wording
+            migration 0037 could not map. Offer it as-is rather than letting the
+            select show blank and quietly write the status away on the next save. */}
+        <Select value={v.status ?? ''} onChange={set('status')} allowBlank
+          options={v.status && !OPT.ACTIVITY_STATUS.some((o) => o.value === v.status)
+            ? [...OPT.ACTIVITY_STATUS, { value: v.status, label: v.status }]
+            : OPT.ACTIVITY_STATUS} />
       </Field>
       <Field label={t('ps.beneficiaries')}><input type="number" min="0" className="field-input" value={v.beneficiaries ?? ''} onChange={set('beneficiaries')} /></Field>
         <TranslationPanel table="project_locations" row={initial} onSaved={onSaved}
