@@ -479,12 +479,13 @@ function Panel({ title, subtitle, children, footer }) {
   );
 }
 function FilterSelect({ label, value, onChange, options }) {
+  const { t } = useTranslation();
   return (
     <label className="ov-fsel">
       <span>{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
-        <option value="">All</option>
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        <option value="">{t('ui.all')}</option>
+        {options.map((o) => <option key={o.value} value={o.value}>{OPT.optionLabel(o)}</option>)}
       </select>
     </label>
   );

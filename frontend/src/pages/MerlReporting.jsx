@@ -673,7 +673,7 @@ function PeriodForm({ onCancel, onSave }) {
           <label className="field-label">{t('merl.periodType')}</label>
           <select className="field-input" value={v.period_type} onChange={set('period_type')}>
             <option value="">—</option>
-            {OPT.PERIOD_TYPE.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {OPT.PERIOD_TYPE.map((o) => <option key={o.value} value={o.value}>{OPT.optionLabel(o)}</option>)}
           </select>
         </div>
         <div>
@@ -740,7 +740,7 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
                 <select className="field-input" value={v[f.name] ?? ''} onChange={set(f.name, f.type)}>
                   <option value="">—</option>
                   {(f.dynamicOptions ? dynamicOptions(f.dynamicOptions) : f.options).map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>{OPT.optionLabel(o)}</option>
                   ))}
                 </select>
               ) : f.type === 'checkbox' ? (

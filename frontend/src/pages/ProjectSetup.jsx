@@ -929,7 +929,7 @@ function Select({ value, onChange, options, allowBlank }) {
   return (
     <select className="field-input" value={value} onChange={onChange}>
       {allowBlank && <option value="">—</option>}
-      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      {options.map((o) => <option key={o.value} value={o.value}>{OPT.optionLabel(o)}</option>)}
     </select>
   );
 }
