@@ -25,6 +25,7 @@ import {
   utilisationPct, fundsAvailable, riskRating, fmtAmount, fmtPct,
 } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
+import { localised } from '../lib/contentLocale';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 // The DoCC M&E Officer is the official Reviewer/Approver; System Administrator
@@ -225,7 +226,8 @@ const STATUS_TINT = {
 };
 
 export default function MerlReporting({ user }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage;
   const canEdit = EDITOR_ROLES.includes(user?.role);
   const canApprove = APPROVER_ROLES.includes(user?.role);
 
@@ -268,28 +270,28 @@ export default function MerlReporting({ user }) {
 
   // ── Load projects once ──────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.from('v_projects').select('id, code, name, status').order('code')
+    localised(supabase.from('v_projects').select('id, code, name, status, i18n').order('code'))
       .then(({ data, error }) => {
         if (error) { toast.error(t('merl.couldNotLoad')); return; }
         setProjects(data ?? []);
         if (data?.length && !projectId) setProjectId(data[0].id);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [lang]);
 
   // ── Load per-project context ────────────────────────────────────────────────
   const loadContext = useCallback(async (pid) => {
     if (!pid) return;
     const [ind, act, per] = await Promise.all([
-      supabase.from('v_project_indicators').select('id, code, name, target_value').eq('project_id', pid).order('code'),
-      supabase.from('v_project_activities').select('id, code, name').eq('project_id', pid).order('code'),
-      supabase.from('v_reporting_periods').select('*').eq('project_id', pid).order('created_at', { ascending: false }),
+      localised(supabase.from('v_project_indicators').select('id, code, name, target_value, i18n').eq('project_id', pid).order('code')),
+      localised(supabase.from('v_project_activities').select('id, code, name, i18n').eq('project_id', pid).order('code')),
+      localised(supabase.from('v_reporting_periods').select('*').eq('project_id', pid).order('created_at', { ascending: false })),
     ]);
     setIndicators(ind.data ?? []);
     setActivities(act.data ?? []);
     setPeriods(per.data ?? []);
     if ((per.data ?? []).length) setActivePeriod((prev) => prev || per.data[0].period_label);
-  }, []);
+  }, [lang]);
 
   useEffect(() => { loadContext(projectId); }, [projectId, loadContext]);
 
@@ -297,12 +299,13 @@ export default function MerlReporting({ user }) {
   const loadRecords = useCallback(async () => {
     if (!projectId || !activeModule) { setRecords([]); return; }
     setLoading(true);
-    const { data, error } = await supabase.from(activeModule.view).select('*')
-      .eq('project_id', projectId).order('created_at', { ascending: false });
+    const { data, error } = await localised(
+      supabase.from(activeModule.view).select('*')
+        .eq('project_id', projectId).order('created_at', { ascending: false }));
     if (error) toast.error(`${t('merl.couldNotLoad')} — ${t(activeModule.label)}`);
     setRecords(data ?? []);
     setLoading(false);
-  }, [projectId, activeModule]);
+  }, [projectId, activeModule, lang]);
 
   useEffect(() => { loadRecords(); setEditing(null); }, [loadRecords]);
 

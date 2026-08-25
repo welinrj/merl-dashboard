@@ -4,6 +4,7 @@ import { confirmDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime } from '../lib/locale';
+import { localised } from '../lib/contentLocale';
 
 // The five official user types. `id` is the DB enum value (merl.user_role).
 const DB_ROLES = [
@@ -55,7 +56,8 @@ function TabButton({ label, active, onClick }) {
 // Assign/unassign projects to a Project Manager or Data Entry Officer. Portfolio
 // roles (System Admin / DoCC M&E Officer) need no assignment — they see all.
 function AssignProjectsModal({ user, onClose }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage;
   const [projects, setProjects] = useState([]);
   const [assigned, setAssigned] = useState(new Set());
   const [loading, setLoading]   = useState(true);
@@ -65,13 +67,13 @@ function AssignProjectsModal({ user, onClose }) {
   const load = useCallback(async () => {
     setLoading(true);
     const [pj, as] = await Promise.all([
-      supabase.from('v_projects').select('id, code, name').order('code'),
+      localised(supabase.from('v_projects').select('id, code, name, i18n').order('code')),
       supabase.from('v_user_project_assignments').select('project_id, is_active').eq('user_id', user.id),
     ]);
     setProjects(pj.data || []);
     setAssigned(new Set((as.data || []).filter(a => a.is_active).map(a => a.project_id)));
     setLoading(false);
-  }, [user.id]);
+  }, [user.id, lang]);
   useEffect(() => { load(); }, [load]);
 
   const toggle = async (projectId, isOn) => {

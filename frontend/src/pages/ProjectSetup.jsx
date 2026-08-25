@@ -23,6 +23,7 @@ import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
 import { useTranslation } from 'react-i18next';
+import { localised } from '../lib/contentLocale';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const toNull = (v) => (v === '' || v === undefined ? null : v);
@@ -56,7 +57,8 @@ const rowGhost = (extra = {}) => ({
 });
 
 export default function ProjectSetup({ user }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage;
   const canEdit = EDITOR_ROLES.includes(user?.role);
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState(null); // null = choosing / new
@@ -73,10 +75,10 @@ export default function ProjectSetup({ user }) {
   const project = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await supabase.from('v_projects').select('id, code, name, status').order('code');
+    const { data } = await localised(supabase.from('v_projects').select('id, code, name, status, i18n').order('code'));
     setProjects(data ?? []);
     return data ?? [];
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     loadProjects();
@@ -97,16 +99,16 @@ export default function ProjectSetup({ user }) {
   const loadFramework = useCallback(async (pid) => {
     if (!pid) { setObjectives([]); setOutcomes([]); setOutputs([]); setIndicators([]); setActivities([]); setLocations([]); return; }
     const [obj, oc, op, ind, act, loc] = await Promise.all([
-      supabase.from('v_objectives').select('*').eq('project_id', pid).order('code'),
-      supabase.from('v_outcomes').select('*').eq('project_id', pid).order('code'),
-      supabase.from('v_outputs').select('*').eq('project_id', pid).order('code'),
-      supabase.from('v_project_indicators').select('*').eq('project_id', pid).order('code'),
-      supabase.from('v_project_activities').select('*').eq('project_id', pid).order('code'),
-      supabase.from('v_project_locations').select('*').eq('project_id', pid).order('created_at'),
+      localised(supabase.from('v_objectives').select('*').eq('project_id', pid).order('code')),
+      localised(supabase.from('v_outcomes').select('*').eq('project_id', pid).order('code')),
+      localised(supabase.from('v_outputs').select('*').eq('project_id', pid).order('code')),
+      localised(supabase.from('v_project_indicators').select('*').eq('project_id', pid).order('code')),
+      localised(supabase.from('v_project_activities').select('*').eq('project_id', pid).order('code')),
+      localised(supabase.from('v_project_locations').select('*').eq('project_id', pid).order('created_at')),
     ]);
     setObjectives(obj.data ?? []); setOutcomes(oc.data ?? []); setOutputs(op.data ?? []);
     setIndicators(ind.data ?? []); setActivities(act.data ?? []); setLocations(loc.data ?? []);
-  }, []);
+  }, [lang]);
 
   useEffect(() => { loadFramework(projectId); }, [projectId, loadFramework]);
 

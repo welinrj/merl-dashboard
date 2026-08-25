@@ -17,6 +17,7 @@ import StatusBadge from '../components/ui/StatusBadge';
 import StatTile from '../components/ui/StatTile';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
+import { localised } from '../lib/contentLocale';
 
 // Read-only modules summarised in the review drawer so the officer can see what
 // they are approving before they act. Period-scoped modules are matched on the
@@ -40,7 +41,8 @@ const REVIEWER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 const isOverdue = r => r.period_end && r.submission_status !== 'approved' && new Date(r.period_end) < new Date();
 
 export default function ReviewApproval({ user }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage;
   const canReview = !!user && REVIEWER_ROLES.includes(user.role);
   const [rows, setRows] = useState([]);
   const [projById, setProjById] = useState({});
@@ -52,15 +54,15 @@ export default function ReviewApproval({ user }) {
   const load = useCallback(async () => {
     setLoading(true);
     const [rp, pj] = await Promise.all([
-      supabase.from('v_reporting_periods').select('*'),
-      supabase.from('v_projects').select('id, code, name'),
+      localised(supabase.from('v_reporting_periods').select('*')),
+      localised(supabase.from('v_projects').select('id, code, name, i18n')),
     ]);
     setRows(rp.error ? [] : (rp.data ?? []));
     const map = {};
     (pj.data ?? []).forEach(p => { map[p.id] = p; });
     setProjById(map);
     setLoading(false);
-  }, []);
+  }, [lang]);
   useEffect(() => { load(); }, [load]);
 
   const kpi = useMemo(() => {
@@ -245,7 +247,8 @@ export default function ReviewApproval({ user }) {
 // Read-only review drawer: loads the reported records for a period across all
 // modules so the officer can see what they are approving before acting.
 function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, onReturn, onApprove, onReopen }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage;
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -254,11 +257,11 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
     Promise.all(REVIEW_SECTIONS.map(async (s) => {
       let q = supabase.from(s.view).select('*').eq('project_id', row.project_id);
       if (s.periodScoped) q = q.eq('reporting_period', row.period_label);
-      const { data: rows } = await q;
+      const { data: rows } = await localised(q);
       return [s.key, rows ?? []];
     })).then((entries) => { if (alive) setData(Object.fromEntries(entries)); });
     return () => { alive = false; };
-  }, [row.project_id, row.period_label]);
+  }, [row.project_id, row.period_label, lang]);
 
   const status = row.submission_status;
 

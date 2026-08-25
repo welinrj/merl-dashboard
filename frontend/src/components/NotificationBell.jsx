@@ -11,13 +11,15 @@ import { useTranslation } from 'react-i18next';
 // One icon: the bell that opens the panel.
 import { Bell } from './ui/icons';
 import { supabase } from '../supabaseClient';
+import { localised } from '../lib/contentLocale';
 
 const REVIEWER = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 const EDITOR = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER', 'ROLE_DATA_ENTRY'];
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export default function NotificationBell({ user }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage;
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState([]);
@@ -25,14 +27,14 @@ export default function NotificationBell({ user }) {
 
   const load = useCallback(async () => {
     const [rp, pj] = await Promise.all([
-      supabase.from('v_reporting_periods').select('id, project_id, period_label, period_end, submission_status, review_comments'),
-      supabase.from('v_projects').select('id, code'),
+      localised(supabase.from('v_reporting_periods').select('id, project_id, period_label, period_end, submission_status, review_comments, i18n')),
+      localised(supabase.from('v_projects').select('id, code, i18n')),
     ]);
     setRows(rp.data ?? []);
     const m = {};
     (pj.data ?? []).forEach((p) => { m[p.id] = p.code; });
     setProjById(m);
-  }, []);
+  }, [lang]);
   useEffect(() => { load(); }, [load]);
 
   const role = user?.role;
