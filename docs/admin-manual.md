@@ -157,3 +157,46 @@ the maintenance contact listed in the handover checklist
    drill twice a year (backup-restore.md §5).
 6. **Data sovereignty** — production data stays on the Government server.
    Do not copy the database to personal machines or third-party services.
+
+## Loading the village register
+
+Form 7's Community / Site field offers villages from `merl.ref_villages`. It
+starts empty and fills as officers add the villages they cannot find, but a
+proper gazetteer from the Vanuatu National Statistics Office or the Department
+of Lands is worth loading once.
+
+A shapefile is several files, not one. Convert it first:
+
+```bash
+ogr2ogr -f GeoJSON -t_srs EPSG:4326 villages.geojson villages.shp
+```
+
+Then check what the importer makes of it before writing anything:
+
+```bash
+node scripts/import-villages.mjs villages.geojson --dry-run
+```
+
+It reports how many features it found, how many it could name, and which
+province values it could not recognise. When that looks right, load it:
+
+```bash
+export SUPABASE_URL=https://api.dmp.gov.vu
+export SUPABASE_SERVICE_ROLE_KEY=...      # from /opt/supabase/docker/.env
+node scripts/import-villages.mjs villages.geojson
+```
+
+Re-running is safe: villages are matched on name within island and updated in
+place, so a corrected file can simply be imported again. The import overwrites
+coordinates an officer pinned by hand — that is what makes it authoritative.
+
+CSV works too, with a header row naming the columns (`name`, `province`,
+`island`, `latitude`, `longitude`). The importer accepts the usual spellings of
+each, so an export from GIS software normally needs no editing.
+
+To see how much of the register is in use:
+
+```sql
+SELECT source, count(*), count(latitude) AS with_coordinates
+FROM merl.ref_villages GROUP BY source;
+```

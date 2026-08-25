@@ -50,6 +50,24 @@ time rather than silently.
 - App lives in `frontend/` (Vite + React 18 + TypeScript, `.tsx`/`.jsx`). Build/typecheck with `cd frontend && npm run build` and `npx tsc --noEmit` before committing.
 - Styling: Tailwind 3 (`@tailwind` directives in `src/index.css`, tokens as CSS custom properties in `:root`) plus inline styles on the pages. Shared UI primitives live in `src/components/ui/`; the `cn` helper is in `src/lib/utils.ts`; the `@/*` alias maps to `src/`.
 
+## Geography — provinces, islands, area councils, villages
+
+`constants/vanuatuGeo.js` mirrors the province/island/area-council seed from
+migration `0029` so the cascading selects work before any fetch. Villages are
+different: they live in `merl.ref_villages` (migration `0037`) because there are
+thousands of them and they carry coordinates.
+
+The register fills from two directions — `scripts/import-villages.mjs` for an
+authoritative file (GeoJSON or CSV; convert a shapefile with `ogr2ogr` first),
+and officers adding the village they could not find, from the Locations form. An
+officer's pin never moves a village the import placed; the import always wins.
+
+Maps are drawn from `public/vanuatu-provinces.geojson` with no tile server, on
+purpose: the portal is used on phones in the field, and a map that needs a fetch
+per pan does not work there. `MapPinPicker` and `VanuatuMap` both project
+longitude by `cos(latitude)` so the islands keep their proportions. Don't
+introduce a tile dependency without deciding what happens with no signal.
+
 ## Mobile-friendly and professional on every screen — REQUIRED
 
 Every change must look and work well on phones **and** desktop. Treat mobile
