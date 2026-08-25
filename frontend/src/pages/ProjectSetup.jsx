@@ -22,6 +22,7 @@ import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
+import { useTranslation } from 'react-i18next';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const toNull = (v) => (v === '' || v === undefined ? null : v);
@@ -29,11 +30,11 @@ const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(
 const toArr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
 
 const STEPS = [
-  { key: 'profile',    label: 'Project Profile', form: 'Form 1' },
-  { key: 'results',    label: 'Results Framework', form: 'Form 2' },
-  { key: 'indicators', label: 'Indicators', form: 'Form 3' },
-  { key: 'activities', label: 'Activities', form: 'Form 5' },
-  { key: 'locations',  label: 'Locations', form: 'Form 7' },
+  { key: 'profile',    label: 'ps.projectProfile', form: 'Form 1' },
+  { key: 'results',    label: 'ps.resultsFramework', form: 'Form 2' },
+  { key: 'indicators', label: 'ps.indicators', form: 'Form 3' },
+  { key: 'activities', label: 'ps.activities', form: 'Form 5' },
+  { key: 'locations',  label: 'ps.locations', form: 'Form 7' },
 ];
 
 const btn = (bg, extra = {}) => ({
@@ -55,6 +56,7 @@ const rowGhost = (extra = {}) => ({
 });
 
 export default function ProjectSetup({ user }) {
+  const { t } = useTranslation();
   const canEdit = EDITOR_ROLES.includes(user?.role);
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState(null); // null = choosing / new
@@ -121,18 +123,18 @@ export default function ProjectSetup({ user }) {
   const issues = useMemo(() => {
     if (!project) return [];
     const out = [];
-    if (objectives.length === 0) out.push({ label: 'Add at least one objective', step: 'results' });
-    if (outcomes.length === 0) out.push({ label: 'Add at least one outcome', step: 'results' });
-    if (outputs.length === 0) out.push({ label: 'Add at least one output', step: 'results' });
-    if (indicators.length === 0) out.push({ label: 'Configure at least one indicator', step: 'indicators' });
+    if (objectives.length === 0) out.push({ label: t('ps.addObjective'), step: 'results' });
+    if (outcomes.length === 0) out.push({ label: t('ps.addOutcome'), step: 'results' });
+    if (outputs.length === 0) out.push({ label: t('ps.addOutput'), step: 'results' });
+    if (indicators.length === 0) out.push({ label: t('ps.addIndicator'), step: 'indicators' });
     const noBaseline = indicators.filter((i) => i.baseline_value == null).length;
-    if (noBaseline) out.push({ label: `${noBaseline} indicator${noBaseline === 1 ? '' : 's'} missing a baseline`, step: 'indicators' });
+    if (noBaseline) out.push({ label: t('ps.missingBaseline', { count: noBaseline }), step: 'indicators' });
     const noTarget = indicators.filter((i) => i.target_value == null && !i.is_qualitative).length;
-    if (noTarget) out.push({ label: `${noTarget} indicator${noTarget === 1 ? '' : 's'} missing a target`, step: 'indicators' });
+    if (noTarget) out.push({ label: t('ps.missingTarget', { count: noTarget }), step: 'indicators' });
     const noFreq = indicators.filter((i) => !i.frequency).length;
-    if (noFreq) out.push({ label: `${noFreq} indicator${noFreq === 1 ? '' : 's'} missing a reporting frequency`, step: 'indicators' });
-    if (activities.length === 0) out.push({ label: 'Add at least one activity', step: 'activities' });
-    if (locations.length === 0) out.push({ label: 'Add at least one location', step: 'locations' });
+    if (noFreq) out.push({ label: t('ps.missingFreq', { count: noFreq }), step: 'indicators' });
+    if (activities.length === 0) out.push({ label: t('ps.addActivity'), step: 'activities' });
+    if (locations.length === 0) out.push({ label: t('ps.addLocation'), step: 'locations' });
     return out;
   }, [project, objectives, outcomes, outputs, indicators, activities, locations]);
 
@@ -151,7 +153,7 @@ export default function ProjectSetup({ user }) {
   if (!canEdit) {
     return (
       <div className="page-pad" style={{ maxWidth: 700, margin: '0 auto' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)' }}>Project Setup</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)' }}>{t('ps.projectSetup')}</h1>
         <p style={{ color: 'var(--text-2)' }}>You have read-only access. Project setup is available to Project Managers, M&amp;E Officers and Administrators.</p>
       </div>
     );
@@ -181,7 +183,7 @@ export default function ProjectSetup({ user }) {
       `}</style>
 
       <PageHeader
-        title="Project Setup"
+        title={t('ps.projectSetup')}
         subtitle="Register a project and build its results framework, indicators, activities and locations. Periodic monitoring is entered later under MERL Reporting."
         actions={project ? (
           <div style={{ textAlign: 'right', minWidth: 170 }}>
@@ -198,14 +200,14 @@ export default function ProjectSetup({ user }) {
       {/* Project selector */}
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ flex: '1 1 320px' }}>
-          <label className="field-label">Project</label>
+          <label className="field-label">{t('ps.project')}</label>
           <select className="field-input" value={projectId ?? ''} onChange={(e) => { setProjectId(e.target.value || null); setStep('profile'); }}>
             <option value="">— Select a project to edit —</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
           </select>
         </div>
         <button style={btn('var(--green-700)')} onClick={() => { setProjectId(null); setStep('profile'); }}>
-          <Plus size={16} /> New project
+          <Plus size={16} /> {t('ps.newProject')}
         </button>
       </div>
 
@@ -219,7 +221,7 @@ export default function ProjectSetup({ user }) {
               onClick={() => !disabled && setStep(s.key)} disabled={disabled}
               style={disabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>
               {done ? <span className="ps-tick"><Check size={11} /></span> : <span style={{ width: 16, textAlign: 'center', color: 'var(--text-3)' }}>{STEPS.indexOf(s) + 1}</span>}
-              {s.label}
+              {t(s.label)}
             </button>
           );
         })}
@@ -227,7 +229,7 @@ export default function ProjectSetup({ user }) {
 
       {project && (
         <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-2)' }}>
-          Editing <strong>{project.code}</strong> — {project.name}
+          {t('ps.editing')} <strong>{project.code}</strong> — {project.name}
           <span style={{ marginLeft: '0.5rem', color: 'var(--text-3)' }}>({OPT.labelOf(OPT.DOCC_PROJECT_STATUS, project.status)})</span>
         </div>
       )}
@@ -236,7 +238,7 @@ export default function ProjectSetup({ user }) {
         <div className="card" style={{ padding: '0.75rem 0.9rem', marginBottom: '0.75rem', borderLeft: `3px solid ${issues.length ? 'var(--gold-500)' : 'var(--green-600)'}` }}>
           {issues.length === 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--green-700)', fontWeight: 700, fontSize: '0.85rem' }}>
-              <CheckCircle2 size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> Ready for MERL Reporting
+              <CheckCircle2 size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> {t('ps.readyForReporting')}
             </div>
           ) : (
             <>
@@ -261,7 +263,7 @@ export default function ProjectSetup({ user }) {
       <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
         {step === 'profile' && (
           <ProfileStep project={project} users={users}
-            onSaved={async (id) => { await loadProjects(); setProjectId(id); toast.success('Project saved'); }} />
+            onSaved={async (id) => { await loadProjects(); setProjectId(id); toast.success(t('ps.projectSaved')); }} />
         )}
         {step === 'results' && project && (
           <ResultsStep projectId={projectId} objectives={objectives} outcomes={outcomes} outputs={outputs}
@@ -279,7 +281,7 @@ export default function ProjectSetup({ user }) {
           <LocationsStep projectId={projectId} locations={locations} reload={() => loadFramework(projectId)} />
         )}
         {step !== 'profile' && !project && (
-          <p style={{ color: 'var(--text-3)' }}>Save the project profile first to unlock this step.</p>
+          <p style={{ color: 'var(--text-3)' }}>{t('ps.saveProfileFirst')}</p>
         )}
       </div>
 
@@ -293,7 +295,7 @@ export default function ProjectSetup({ user }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
         <button style={{ ...ghostBtn, ...(stepIndex === 0 ? disabledBtn : null) }}
           onClick={goPrev} disabled={stepIndex === 0}>
-          <ArrowLeft size={15} aria-hidden="true" /> Previous
+          <ArrowLeft size={15} aria-hidden="true" /> {t('ps.previous')}
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginLeft: 'auto' }}>
           {nextBlockedReason && (
@@ -301,7 +303,7 @@ export default function ProjectSetup({ user }) {
           )}
           <button style={{ ...btn('var(--green-700)'), ...(nextDisabled ? disabledBtn : null) }}
             onClick={goNext} disabled={nextDisabled} title={nextBlockedReason || undefined}>
-            Next <ArrowRight size={15} aria-hidden="true" />
+            {t('ps.next')} <ArrowRight size={15} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -311,6 +313,7 @@ export default function ProjectSetup({ user }) {
 
 // ── Step 1: Project Profile ──────────────────────────────────────────────────
 function ProfileStep({ project, users, onSaved }) {
+  const { t } = useTranslation();
   const blank = {
     name: '', acronym: '', description: '', status: 'pipeline', category: '', lead_agency: '',
     executing_agency: '', donor: '', funding_window: '', currency: 'VUV', budget_vuv: '',
@@ -342,9 +345,9 @@ function ProfileStep({ project, users, onSaved }) {
   const setMulti = (k) => (e) => setV((s) => ({ ...s, [k]: Array.from(e.target.selectedOptions).map((o) => o.value) }));
 
   const save = async () => {
-    if (!v.name.trim()) { toast.error('Project title is required'); return; }
+    if (!v.name.trim()) { toast.error(t('ps.projectTitleRequired')); return; }
     if (toNum(v.budget_vuv) != null && toNum(v.budget_vuv) < 0) {
-      toast.error('Approved Budget cannot be negative'); return;
+      toast.error(t('ps.budgetNegative')); return;
     }
     setSaving(true);
     const { data, error } = await supabase.rpc('upsert_project', {
@@ -368,50 +371,50 @@ function ProfileStep({ project, users, onSaved }) {
   const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
   return (
     <div>
-      <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Project Profile <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 1</span></h3>
+      <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{t('ps.projectProfile')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 1</span></h3>
       <div className="ps-grid">
-        <h4 className="ps-sec ps-sec-first">Identification</h4>
-        <Field className="ps-full" label="Project Title *"><input className="field-input" value={v.name} onChange={set('name')} /></Field>
-        <Field label="Acronym"><input className="field-input" value={v.acronym ?? ''} onChange={set('acronym')} /></Field>
-        <Field label="Status"><Select value={v.status} onChange={set('status')} options={OPT.DOCC_PROJECT_STATUS} /></Field>
-        <Field className="ps-full" label="Description"><textarea className="field-input" rows={2} value={v.description ?? ''} onChange={set('description')} /></Field>
+        <h4 className="ps-sec ps-sec-first">{t('ps.identification')}</h4>
+        <Field className="ps-full" label={t('ps.projectTitleReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
+        <Field label={t('ps.acronym')}><input className="field-input" value={v.acronym ?? ''} onChange={set('acronym')} /></Field>
+        <Field label={t('ps.status')}><Select value={v.status} onChange={set('status')} options={OPT.DOCC_PROJECT_STATUS} /></Field>
+        <Field className="ps-full" label={t('ps.description')}><textarea className="field-input" rows={2} value={v.description ?? ''} onChange={set('description')} /></Field>
 
-        <h4 className="ps-sec">Classification</h4>
-        <Field label="Theme / Sector"><Select value={v.category ?? ''} onChange={set('category')} options={OPT.CLIMATE_THEME} allowBlank /></Field>
-        <Field label="Project Type"><Select value={v.project_type ?? ''} onChange={set('project_type')} options={OPT.PROJECT_TYPE} allowBlank /></Field>
-        <Field label="Expected Primary Outcome"><Select value={v.expected_primary_outcome ?? ''} onChange={set('expected_primary_outcome')} options={OPT.EXPECTED_OUTCOME} allowBlank /></Field>
+        <h4 className="ps-sec">{t('ps.classification')}</h4>
+        <Field label={t('ps.themeSector')}><Select value={v.category ?? ''} onChange={set('category')} options={OPT.CLIMATE_THEME} allowBlank /></Field>
+        <Field label={t('ps.projectType')}><Select value={v.project_type ?? ''} onChange={set('project_type')} options={OPT.PROJECT_TYPE} allowBlank /></Field>
+        <Field label={t('ps.expectedPrimaryOutcome')}><Select value={v.expected_primary_outcome ?? ''} onChange={set('expected_primary_outcome')} options={OPT.EXPECTED_OUTCOME} allowBlank /></Field>
 
-        <h4 className="ps-sec">Implementing institutions</h4>
-        <Field label="Lead Department / Unit"><input className="field-input" value={v.lead_agency ?? ''} onChange={set('lead_agency')} /></Field>
-        <Field label="Implementing / Executing Agency"><input className="field-input" value={v.executing_agency ?? ''} onChange={set('executing_agency')} /></Field>
+        <h4 className="ps-sec">{t('ps.implementingInstitutions')}</h4>
+        <Field label={t('ps.leadDept')}><input className="field-input" value={v.lead_agency ?? ''} onChange={set('lead_agency')} /></Field>
+        <Field label={t('ps.executingAgency')}><input className="field-input" value={v.executing_agency ?? ''} onChange={set('executing_agency')} /></Field>
 
-        <h4 className="ps-sec">Funding</h4>
-        <Field label="Funding Partner / Donor"><Select value={v.donor ?? ''} onChange={set('donor')} options={OPT.DONOR} allowBlank /></Field>
-        <Field label="Funding Window"><input className="field-input" value={v.funding_window ?? ''} onChange={set('funding_window')} /></Field>
-        <Field label="Approved Budget"><input type="number" min="0" className="field-input" value={v.budget_vuv} onChange={set('budget_vuv')} /></Field>
-        <Field label="Currency"><Select value={v.currency} onChange={set('currency')} options={OPT.CURRENCY} /></Field>
+        <h4 className="ps-sec">{t('ps.funding')}</h4>
+        <Field label={t('ps.donor')}><Select value={v.donor ?? ''} onChange={set('donor')} options={OPT.DONOR} allowBlank /></Field>
+        <Field label={t('ps.fundingWindow')}><input className="field-input" value={v.funding_window ?? ''} onChange={set('funding_window')} /></Field>
+        <Field label={t('ps.approvedBudget')}><input type="number" min="0" className="field-input" value={v.budget_vuv} onChange={set('budget_vuv')} /></Field>
+        <Field label={t('ps.currency')}><Select value={v.currency} onChange={set('currency')} options={OPT.CURRENCY} /></Field>
 
-        <h4 className="ps-sec">Timeline</h4>
-        <Field label="Start Date"><input type="date" className="field-input" value={v.start_date || ''} onChange={set('start_date')} /></Field>
-        <Field label="End Date"><input type="date" className="field-input" value={v.end_date || ''} onChange={set('end_date')} /></Field>
-        <Field label="Approval Date"><input type="date" className="field-input" value={v.approval_date || ''} onChange={set('approval_date')} /></Field>
+        <h4 className="ps-sec">{t('ps.timeline')}</h4>
+        <Field label={t('ps.startDate')}><input type="date" className="field-input" value={v.start_date || ''} onChange={set('start_date')} /></Field>
+        <Field label={t('ps.endDate')}><input type="date" className="field-input" value={v.end_date || ''} onChange={set('end_date')} /></Field>
+        <Field label={t('ps.approvalDate')}><input type="date" className="field-input" value={v.approval_date || ''} onChange={set('approval_date')} /></Field>
 
-        <h4 className="ps-sec">Geographic coverage</h4>
-        <Field label="Coverage Type"><Select value={v.coverage_type ?? ''} onChange={set('coverage_type')} options={OPT.COVERAGE_TYPE} allowBlank /></Field>
-        <Field label="Provinces" hint="Hold Ctrl (Cmd on Mac) to select more than one">
+        <h4 className="ps-sec">{t('ps.geographicCoverage')}</h4>
+        <Field label={t('ps.coverageType')}><Select value={v.coverage_type ?? ''} onChange={set('coverage_type')} options={OPT.COVERAGE_TYPE} allowBlank /></Field>
+        <Field label={t('ps.provinces')} hint={t('ps.multiSelectHint')}>
           <select multiple className="field-input" style={{ minHeight: 96 }} value={v.provinces} onChange={setMulti('provinces')}>
             {PROVINCE_LIST.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </Field>
 
-        <h4 className="ps-sec">Responsible officers</h4>
-        <Field label="Project Manager / Focal Point"><Select value={v.project_manager_id ?? ''} onChange={set('project_manager_id')} options={userOpts} allowBlank /></Field>
-        <Field label="M&E Officer"><Select value={v.me_officer_id ?? ''} onChange={set('me_officer_id')} options={userOpts} allowBlank /></Field>
-        <Field label="Finance Officer"><Select value={v.finance_officer_id ?? ''} onChange={set('finance_officer_id')} options={userOpts} allowBlank /></Field>
+        <h4 className="ps-sec">{t('ps.responsibleOfficers')}</h4>
+        <Field label={t('ps.projectManager')}><Select value={v.project_manager_id ?? ''} onChange={set('project_manager_id')} options={userOpts} allowBlank /></Field>
+        <Field label={t('ps.meOfficer')}><Select value={v.me_officer_id ?? ''} onChange={set('me_officer_id')} options={userOpts} allowBlank /></Field>
+        <Field label={t('ps.financeOfficer')}><Select value={v.finance_officer_id ?? ''} onChange={set('finance_officer_id')} options={userOpts} allowBlank /></Field>
 
-        <h4 className="ps-sec">Expected reach</h4>
-        <Field label="Est. Direct Beneficiaries"><input type="number" min="0" className="field-input" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></Field>
-        <Field label="Est. Indirect Beneficiaries"><input type="number" min="0" className="field-input" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></Field>
+        <h4 className="ps-sec">{t('ps.expectedReach')}</h4>
+        <Field label={t('ps.estDirect')}><input type="number" min="0" className="field-input" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></Field>
+        <Field label={t('ps.estIndirect')}><input type="number" min="0" className="field-input" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></Field>
       </div>
       <div style={{ marginTop: '1rem' }}>
         <button style={{ ...btn('var(--green-700)'), ...(saving ? disabledBtn : null) }} onClick={save} disabled={saving}>{saving ? 'Saving…' : project ? 'Save changes' : 'Create project'}</button>
@@ -422,13 +425,14 @@ function ProfileStep({ project, users, onSaved }) {
 
 // ── Step 2: Results Framework (Objective → Outcome → Output) ─────────────────
 function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = [], activities = [], users = [], reload }) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState({});
   const [editing, setEditing] = useState(null); // { kind, parentId, row }
   const toggle = (id) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
   const openAdd = (kind, parentId) => setEditing({ kind, parentId, row: null });
   const openEdit = (kind, row) => setEditing({ kind, row });
   const delNode = async (kind, row) => {
-    if (!(await confirmDialog({ title:`Delete ${kind}`, message:`Delete ${kind} ${row.code}? Child records are removed too. This cannot be undone.`, confirmLabel:'Delete' }))) return;
+    if (!(await confirmDialog({ title:`Delete ${kind}`, message:`Delete ${kind} ${row.code}? Child records are removed too. This cannot be undone.`, confirmLabel:t('ps.deleteLbl') }))) return;
     const rpc = kind === 'objective' ? 'delete_objective' : kind === 'outcome' ? 'delete_outcome' : 'delete_output';
     const { error } = await supabase.rpc(rpc, { p_id: row.id });
     if (error) { toast.error(dbErrorMessage(error)); return; } reload();
@@ -445,10 +449,10 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>Results Framework <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 2</span></h3>
-        <button style={btn('var(--green-700)')} onClick={() => openAdd('objective')}><Plus size={14} /> Objective</button>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.resultsFramework')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 2</span></h3>
+        <button style={btn('var(--green-700)')} onClick={() => openAdd('objective')}><Plus size={14} /> {t('ps.objective')}</button>
       </div>
-      {objectives.length === 0 && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No objectives yet. Add the first project objective.</p>}
+      {objectives.length === 0 && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noObjectives')}</p>}
       {objectives.map((obj) => {
         const isCollapsed = collapsed[obj.id];
         const ocCount = outcomes.filter((oc) => oc.objective_id === obj.id).length;
@@ -490,11 +494,11 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
                     </div>
                     );
                   })}
-                  <button onClick={() => openAdd('output', oc.id)} style={{ ...ghostBtn, padding: '0.2rem 0.5rem', marginTop: '0.25rem', fontSize: '0.72rem' }}><Plus size={12} /> Output</button>
+                  <button onClick={() => openAdd('output', oc.id)} style={{ ...ghostBtn, padding: '0.2rem 0.5rem', marginTop: '0.25rem', fontSize: '0.72rem' }}><Plus size={12} /> {t('ps.output')}</button>
                 </div>
               </div>
             ))}
-            <button onClick={() => openAdd('outcome', obj.id)} style={{ ...ghostBtn, padding: '0.25rem 0.55rem', marginTop: '0.4rem', fontSize: '0.75rem' }}><Plus size={12} /> Outcome</button>
+            <button onClick={() => openAdd('outcome', obj.id)} style={{ ...ghostBtn, padding: '0.25rem 0.55rem', marginTop: '0.4rem', fontSize: '0.75rem' }}><Plus size={12} /> {t('ps.outcome')}</button>
           </div>
           )}
         </div>
@@ -512,6 +516,7 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
 // create_/update_ RPC parameters (climate theme, expected outcome, notes,
 // responsible officer, status). No schema change required.
 function ResultModal({ editing, projectId, users, onClose, onSaved }) {
+  const { t } = useTranslation();
   const { kind, parentId, row } = editing;
   const base = kind === 'objective'
     ? { statement: '', climate_theme: '', expected_outcome: '', notes: '', status: '' }
@@ -520,7 +525,7 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
   const dirty = useDirty(v);
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const save = async () => {
-    if (!v.statement.trim()) { toast.error('Statement is required'); return; }
+    if (!v.statement.trim()) { toast.error(t('ps.statementRequired')); return; }
     const S = v.statement.trim();
     let res;
     if (kind === 'objective') {
@@ -543,18 +548,18 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
   const title = `${row?.id ? 'Edit' : 'New'} ${kind}`;
   return (
     <Modal title={title.charAt(0).toUpperCase() + title.slice(1)} onClose={onClose} onSave={save} saveLabel={row?.id ? 'Save' : 'Add'} dirty={dirty}>
-      <Field label="Statement *" className="ps-full">
+      <Field label={t('ps.statementReq')} className="ps-full">
         <textarea className="field-input" rows={2} value={v.statement} onChange={set('statement')} />
       </Field>
       {kind === 'objective' && <>
-        <Field label="Climate theme"><Select value={v.climate_theme ?? ''} onChange={set('climate_theme')} options={OPT.CLIMATE_THEME} allowBlank /></Field>
-        <Field label="Expected outcome" className="ps-full"><input className="field-input" value={v.expected_outcome ?? ''} onChange={set('expected_outcome')} /></Field>
-        <Field label="Notes" className="ps-full"><textarea className="field-input" rows={2} value={v.notes ?? ''} onChange={set('notes')} /></Field>
+        <Field label={t('ps.climateTheme')}><Select value={v.climate_theme ?? ''} onChange={set('climate_theme')} options={OPT.CLIMATE_THEME} allowBlank /></Field>
+        <Field label={t('ps.expectedOutcome')} className="ps-full"><input className="field-input" value={v.expected_outcome ?? ''} onChange={set('expected_outcome')} /></Field>
+        <Field label={t('ps.notes')} className="ps-full"><textarea className="field-input" rows={2} value={v.notes ?? ''} onChange={set('notes')} /></Field>
       </>}
       {(kind === 'outcome' || kind === 'output') && (
-        <Field label="Responsible officer"><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={users.map((u) => ({ value: u.id, label: u.full_name }))} allowBlank /></Field>
+        <Field label={t('ps.responsibleOfficerLc')}><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={users.map((u) => ({ value: u.id, label: u.full_name }))} allowBlank /></Field>
       )}
-      {row?.id && <Field label="Status"><Select value={v.status ?? ''} onChange={set('status')} options={OPT.RECORD_STATUS} allowBlank /></Field>}
+      {row?.id && <Field label={t('ps.status')}><Select value={v.status ?? ''} onChange={set('status')} options={OPT.RECORD_STATUS} allowBlank /></Field>}
     </Modal>
   );
 }
@@ -564,27 +569,28 @@ const qualTag = { marginLeft: 6, fontSize: '0.6rem', fontWeight: 700, color: 'va
 const miniChip = { fontSize: '0.72rem', color: 'var(--text-2)', background: 'var(--surface-1)', borderRadius: 6, padding: '0.15rem 0.45rem' };
 
 function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, users, reload }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
-    if (!(await confirmDialog({ title:'Delete indicator', message:`Delete indicator ${row.code}? This cannot be undone.`, confirmLabel:'Delete' }))) return;
+    if (!(await confirmDialog({ title:t('ps.deleteIndicator'), message:`Delete indicator ${row.code}? This cannot be undone.`, confirmLabel:t('ps.deleteLbl') }))) return;
     const { error } = await supabase.rpc('delete_project_indicator', { p_id: row.id });
     if (error) return toast.error(dbErrorMessage(error)); reload();
   };
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>Indicators <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 3</span></h3>
-        <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> Indicator</button>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.indicators')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 3</span></h3>
+        <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.indicator')}</button>
       </div>
-      {indicators.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No indicators yet.</p> : (
+      {indicators.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noIndicators')}</p> : (
         <div className="ps-desktop" style={{ overflowX: 'auto' }}>
           <table className="ps-table">
-            <thead><tr><th>Code</th><th>Name</th><th>Level</th><th>Linked</th><th>Unit</th><th>Baseline</th><th>Target</th><th>Frequency</th><th></th></tr></thead>
+            <thead><tr><th>{t('ps.code')}</th><th>{t('ps.name')}</th><th>{t('ps.level')}</th><th>{t('ps.linked')}</th><th>{t('ps.unit')}</th><th>{t('ps.baseline')}</th><th>{t('ps.target')}</th><th>{t('ps.frequency')}</th><th></th></tr></thead>
             <tbody>
               {indicators.map((i) => (
                 <tr key={i.id}>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>{i.code}</td>
-                  <td>{i.name}{i.is_qualitative && <span style={qualTag}>Qualitative</span>}</td>
+                  <td>{i.name}{i.is_qualitative && <span style={qualTag}>{t('ps.qualitative')}</span>}</td>
                   <td>{OPT.labelOf(OPT.INDICATOR_LEVEL, i.indicator_level)}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-3)' }}>{i.linked_code ?? '—'}</td>
                   <td>{i.unit ?? '—'}</td>
@@ -592,8 +598,8 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
                   <td>{i.target_value ?? '—'}</td>
                   <td>{i.frequency ? OPT.labelOf(OPT.REPORTING_FREQUENCY, i.frequency) : '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(i)} aria-label={`Edit indicator ${i.code ?? ''}`} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-                    <button onClick={() => del(i)} aria-label={`Delete indicator ${i.code ?? ''}`} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+                    <button onClick={() => setEditing(i)} aria-label={`Edit indicator ${i.code ?? ''}`} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(i)} aria-label={`Delete indicator ${i.code ?? ''}`} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -605,7 +611,7 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
         <div className="ps-cards">
           {indicators.map((i) => (
             <div className="ps-card" key={i.id}>
-              <div><strong style={{ fontFamily: 'var(--font-mono)' }}>{i.code}</strong> · {i.name}{i.is_qualitative && <span style={qualTag}>Qualitative</span>}</div>
+              <div><strong style={{ fontFamily: 'var(--font-mono)' }}>{i.code}</strong> · {i.name}{i.is_qualitative && <span style={qualTag}>{t('ps.qualitative')}</span>}</div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 2 }}>
                 {OPT.labelOf(OPT.INDICATOR_LEVEL, i.indicator_level)}{i.linked_code ? ` · ${i.linked_code}` : ''}
                 {i.frequency ? ` · ${OPT.labelOf(OPT.REPORTING_FREQUENCY, i.frequency)}` : ''}
@@ -618,8 +624,8 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
                 {i.unit && <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{i.unit}</span>}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button onClick={() => setEditing(i)} style={rowGhost()}><Pencil size={13} /> Edit</button>
-                <button onClick={() => del(i)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> Delete</button>
+                <button onClick={() => setEditing(i)} style={rowGhost()}><Pencil size={13} /> {t('ps.edit')}</button>
+                <button onClick={() => del(i)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> {t('ps.deleteLbl')}</button>
               </div>
             </div>
           ))}
@@ -634,6 +640,7 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
 }
 
 function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, users, onClose, onSaved }) {
+  const { t } = useTranslation();
   const base = {
     name: '', indicator_level: '', definition: '', unit: '', baseline_value: '', baseline_year: '',
     target_value: '', target_date: '', frequency: '', data_source: '', collection_method: '',
@@ -647,10 +654,10 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
   const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
 
   const save = async () => {
-    if (!v.name.trim()) return toast.error('Indicator name is required');
+    if (!v.name.trim()) return toast.error(t('ps.indicatorNameRequired'));
     const year = toNum(v.baseline_year);
     if (year != null && (year < 1980 || year > 2100)) {
-      return toast.error('Baseline Year must be between 1980 and 2100');
+      return toast.error(t('ps.baselineYearRange'));
     }
     const { error } = await supabase.rpc('upsert_project_indicator', {
       p_id: initial?.id ?? null, p_project_id: projectId, p_name: v.name, p_unit: toNull(v.unit),
@@ -669,35 +676,36 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
   };
   return (
     <Modal title={`${initial?.id ? 'Edit' : 'Add'} indicator`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
-      <Field className="ps-full" label="Indicator Name *"><input className="field-input" value={v.name} onChange={set('name')} /></Field>
-      <Field label="Level"><Select value={v.indicator_level ?? ''} onChange={set('indicator_level')} options={OPT.INDICATOR_LEVEL} allowBlank /></Field>
-      <Field label="Unit of Measurement"><input className="field-input" value={v.unit ?? ''} onChange={set('unit')} /></Field>
-      <Field className="ps-full" label="Definition"><textarea className="field-input" rows={2} value={v.definition ?? ''} onChange={set('definition')} /></Field>
-      <Field label="Baseline Value"><input type="number" className="field-input" value={v.baseline_value ?? ''} onChange={set('baseline_value')} /></Field>
-      <Field label="Baseline Year"><input type="number" min="1980" max="2100" className="field-input" value={v.baseline_year ?? ''} onChange={set('baseline_year')} /></Field>
-      <Field label="Final Target"><input type="number" className="field-input" value={v.target_value ?? ''} onChange={set('target_value')} /></Field>
-      <Field label="Target Date"><input type="date" className="field-input" value={v.target_date || ''} onChange={set('target_date')} /></Field>
-      <Field label="Reporting Frequency"><Select value={v.frequency ?? ''} onChange={set('frequency')} options={OPT.REPORTING_FREQUENCY} allowBlank /></Field>
-      <Field label="Responsible Officer"><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={userOpts} allowBlank /></Field>
-      <Field label="Data Source"><input className="field-input" value={v.data_source ?? ''} onChange={set('data_source')} /></Field>
-      <Field label="Data Collection Method"><input className="field-input" value={v.collection_method ?? ''} onChange={set('collection_method')} /></Field>
-      <Field label="Required Disaggregation"><input className="field-input" value={v.disaggregation ?? ''} onChange={set('disaggregation')} /></Field>
-      <Field label="Verification Method"><input className="field-input" value={v.verification_method ?? ''} onChange={set('verification_method')} /></Field>
-      <Field label="Linked Objective"><Select value={v.objective_id ?? ''} onChange={set('objective_id')} options={objectives.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
-      <Field label="Linked Outcome"><Select value={v.outcome_id ?? ''} onChange={set('outcome_id')} options={outcomes.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
-      <Field label="Linked Output"><Select value={v.output_id ?? ''} onChange={set('output_id')} options={outputs.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
-      <Field className="ps-full" label="Assumptions / Comments"><textarea className="field-input" rows={2} value={v.assumptions ?? ''} onChange={set('assumptions')} /></Field>
-      <Field label="Qualitative indicator"><input type="checkbox" checked={!!v.is_qualitative} onChange={set('is_qualitative', 'checkbox')} style={{ width: 18, height: 18 }} /></Field>
-      <Field label="Higher value is better"><input type="checkbox" checked={!!v.higher_is_better} onChange={set('higher_is_better', 'checkbox')} style={{ width: 18, height: 18 }} /></Field>
+      <Field className="ps-full" label={t('ps.indicatorNameReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
+      <Field label={t('ps.level')}><Select value={v.indicator_level ?? ''} onChange={set('indicator_level')} options={OPT.INDICATOR_LEVEL} allowBlank /></Field>
+      <Field label={t('ps.unitOfMeasurement')}><input className="field-input" value={v.unit ?? ''} onChange={set('unit')} /></Field>
+      <Field className="ps-full" label={t('ps.definition')}><textarea className="field-input" rows={2} value={v.definition ?? ''} onChange={set('definition')} /></Field>
+      <Field label={t('ps.baselineValue')}><input type="number" className="field-input" value={v.baseline_value ?? ''} onChange={set('baseline_value')} /></Field>
+      <Field label={t('ps.baselineYear')}><input type="number" min="1980" max="2100" className="field-input" value={v.baseline_year ?? ''} onChange={set('baseline_year')} /></Field>
+      <Field label={t('ps.finalTarget')}><input type="number" className="field-input" value={v.target_value ?? ''} onChange={set('target_value')} /></Field>
+      <Field label={t('ps.targetDate')}><input type="date" className="field-input" value={v.target_date || ''} onChange={set('target_date')} /></Field>
+      <Field label={t('ps.reportingFrequency')}><Select value={v.frequency ?? ''} onChange={set('frequency')} options={OPT.REPORTING_FREQUENCY} allowBlank /></Field>
+      <Field label={t('ps.responsibleOfficer')}><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={userOpts} allowBlank /></Field>
+      <Field label={t('ps.dataSource')}><input className="field-input" value={v.data_source ?? ''} onChange={set('data_source')} /></Field>
+      <Field label={t('ps.collectionMethod')}><input className="field-input" value={v.collection_method ?? ''} onChange={set('collection_method')} /></Field>
+      <Field label={t('ps.disaggregation')}><input className="field-input" value={v.disaggregation ?? ''} onChange={set('disaggregation')} /></Field>
+      <Field label={t('ps.verificationMethod')}><input className="field-input" value={v.verification_method ?? ''} onChange={set('verification_method')} /></Field>
+      <Field label={t('ps.linkedObjective')}><Select value={v.objective_id ?? ''} onChange={set('objective_id')} options={objectives.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
+      <Field label={t('ps.linkedOutcome')}><Select value={v.outcome_id ?? ''} onChange={set('outcome_id')} options={outcomes.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
+      <Field label={t('ps.linkedOutput')}><Select value={v.output_id ?? ''} onChange={set('output_id')} options={outputs.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
+      <Field className="ps-full" label={t('ps.assumptions')}><textarea className="field-input" rows={2} value={v.assumptions ?? ''} onChange={set('assumptions')} /></Field>
+      <Field label={t('ps.qualitativeIndicator')}><input type="checkbox" checked={!!v.is_qualitative} onChange={set('is_qualitative', 'checkbox')} style={{ width: 18, height: 18 }} /></Field>
+      <Field label={t('ps.higherIsBetter')}><input type="checkbox" checked={!!v.higher_is_better} onChange={set('higher_is_better', 'checkbox')} style={{ width: 18, height: 18 }} /></Field>
     </Modal>
   );
 }
 
 // ── Step 4: Activities ───────────────────────────────────────────────────────
 function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
-    if (!(await confirmDialog({ title:'Delete activity', message:`Delete activity ${row.code}? This cannot be undone.`, confirmLabel:'Delete' }))) return;
+    if (!(await confirmDialog({ title:t('ps.deleteActivity'), message:`Delete activity ${row.code}? This cannot be undone.`, confirmLabel:t('ps.deleteLbl') }))) return;
     const { error } = await supabase.rpc('delete_project_activity', { p_id: row.id });
     if (error) return toast.error(dbErrorMessage(error)); reload();
   };
@@ -705,13 +713,13 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>Activities <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 5</span></h3>
-        <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> Activity</button>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.activities')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 5</span></h3>
+        <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.activity')}</button>
       </div>
-      {activities.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No activities yet.</p> : (
+      {activities.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noActivities')}</p> : (
         <div className="ps-desktop" style={{ overflowX: 'auto' }}>
           <table className="ps-table">
-            <thead><tr><th>Code</th><th>Title</th><th>Output</th><th>Status</th><th>Progress</th><th></th></tr></thead>
+            <thead><tr><th>{t('ps.code')}</th><th>{t('ps.title')}</th><th>{t('ps.output')}</th><th>{t('ps.status')}</th><th>{t('ps.progress')}</th><th></th></tr></thead>
             <tbody>
               {activities.map((a) => (
                 <tr key={a.id}>
@@ -719,8 +727,8 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
                   <td>{OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</td>
                   <td>{a.physical_progress_pct != null ? `${a.physical_progress_pct}%` : '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(a)} aria-label={`Edit activity ${a.code ?? ''}`} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-                    <button onClick={() => del(a)} aria-label={`Delete activity ${a.code ?? ''}`} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+                    <button onClick={() => setEditing(a)} aria-label={`Edit activity ${a.code ?? ''}`} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(a)} aria-label={`Delete activity ${a.code ?? ''}`} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -735,8 +743,8 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
               <strong>{a.code}</strong> · {a.name}
               <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{a.output_code} · {OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
-                <button onClick={() => setEditing(a)} style={rowGhost()}><Pencil size={13} /> Edit</button>
-                <button onClick={() => del(a)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> Delete</button>
+                <button onClick={() => setEditing(a)} style={rowGhost()}><Pencil size={13} /> {t('ps.edit')}</button>
+                <button onClick={() => del(a)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> {t('ps.deleteLbl')}</button>
               </div>
             </div>
           ))}
@@ -751,6 +759,7 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
 }
 
 function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
+  const { t } = useTranslation();
   const base = {
     name: '', output_id: outputs[0]?.id ?? '', outcome_id: '', description: '', responsible_officer_id: '',
     responsible_org: '', status: 'not_started', province: '', island: '', area_council: '', community: '',
@@ -766,14 +775,14 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
   const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
 
   const save = async () => {
-    if (!v.name.trim()) return toast.error('Activity title is required');
-    if (!v.output_id) return toast.error('Select the parent output');
+    if (!v.name.trim()) return toast.error(t('ps.activityTitleRequired'));
+    if (!v.output_id) return toast.error(t('ps.selectParentOutput'));
     const pct = toNum(v.physical_progress_pct);
     if (pct != null && (pct < 0 || pct > 100)) {
-      return toast.error('Physical Progress must be between 0 and 100');
+      return toast.error(t('ps.progressRange'));
     }
     if (v.planned_start_date && v.planned_end_date && v.planned_end_date < v.planned_start_date) {
-      return toast.error('The planned end date cannot be earlier than the planned start date');
+      return toast.error(t('ps.endBeforeStart'));
     }
     const { error } = await supabase.rpc('upsert_project_activity_full', {
       p_id: initial?.id ?? null, p_output_id: v.output_id, p_name: v.name, p_description: toNull(v.description),
@@ -791,55 +800,56 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
   };
   return (
     <Modal title={`${initial?.id ? 'Edit' : 'Add'} activity`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
-      <Field className="ps-full" label="Activity Title *"><input className="field-input" value={v.name} onChange={set('name')} /></Field>
-      <Field label="Linked Output *"><Select value={v.output_id} onChange={set('output_id')} options={outputs.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} /></Field>
-      <Field label="Linked Outcome"><Select value={v.outcome_id ?? ''} onChange={set('outcome_id')} options={outcomes.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
-      <Field className="ps-full" label="Description"><textarea className="field-input" rows={2} value={v.description ?? ''} onChange={set('description')} /></Field>
-      <Field label="Responsible Organisation"><input className="field-input" value={v.responsible_org ?? ''} onChange={set('responsible_org')} /></Field>
-      <Field label="Responsible Officer"><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={userOpts} allowBlank /></Field>
-      <Field label="Status"><Select value={v.status} onChange={set('status')} options={OPT.ACTIVITY_STATUS} /></Field>
-      <Field label="Physical Progress %"><input type="number" min="0" max="100" className="field-input" value={v.physical_progress_pct ?? ''} onChange={set('physical_progress_pct')} /></Field>
-      <Field label="Province"><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
-      <Field label="Island"><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
-      <Field label="Area Council"><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
-      <Field label="Community"><input className="field-input" value={v.community ?? ''} onChange={set('community')} /></Field>
-      <Field label="Planned Start"><input type="date" className="field-input" value={v.planned_start_date || ''} onChange={set('planned_start_date')} /></Field>
-      <Field label="Planned End"><input type="date" className="field-input" value={v.planned_end_date || ''} onChange={set('planned_end_date')} /></Field>
-      <Field label="Planned Budget"><input type="number" className="field-input" value={v.planned_budget ?? ''} onChange={set('planned_budget')} /></Field>
-      <Field label="Actual Expenditure"><input type="number" className="field-input" value={v.actual_expenditure ?? ''} onChange={set('actual_expenditure')} /></Field>
-      <Field className="ps-full" label="Key Achievement"><textarea className="field-input" rows={2} value={v.key_achievement ?? ''} onChange={set('key_achievement')} /></Field>
-      <Field label="Next Action"><input className="field-input" value={v.next_action ?? ''} onChange={set('next_action')} /></Field>
-      <Field label="Next Action Due"><input type="date" className="field-input" value={v.next_action_due || ''} onChange={set('next_action_due')} /></Field>
+      <Field className="ps-full" label={t('ps.activityTitleReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
+      <Field label={t('ps.linkedOutputReq')}><Select value={v.output_id} onChange={set('output_id')} options={outputs.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} /></Field>
+      <Field label={t('ps.linkedOutcome')}><Select value={v.outcome_id ?? ''} onChange={set('outcome_id')} options={outcomes.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
+      <Field className="ps-full" label={t('ps.description')}><textarea className="field-input" rows={2} value={v.description ?? ''} onChange={set('description')} /></Field>
+      <Field label={t('ps.responsibleOrg')}><input className="field-input" value={v.responsible_org ?? ''} onChange={set('responsible_org')} /></Field>
+      <Field label={t('ps.responsibleOfficer')}><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={userOpts} allowBlank /></Field>
+      <Field label={t('ps.status')}><Select value={v.status} onChange={set('status')} options={OPT.ACTIVITY_STATUS} /></Field>
+      <Field label={t('ps.physicalProgressPct')}><input type="number" min="0" max="100" className="field-input" value={v.physical_progress_pct ?? ''} onChange={set('physical_progress_pct')} /></Field>
+      <Field label={t('ps.province')}><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
+      <Field label={t('ps.island')}><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
+      <Field label={t('ps.areaCouncil')}><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
+      <Field label={t('ps.community')}><input className="field-input" value={v.community ?? ''} onChange={set('community')} /></Field>
+      <Field label={t('ps.plannedStart')}><input type="date" className="field-input" value={v.planned_start_date || ''} onChange={set('planned_start_date')} /></Field>
+      <Field label={t('ps.plannedEnd')}><input type="date" className="field-input" value={v.planned_end_date || ''} onChange={set('planned_end_date')} /></Field>
+      <Field label={t('ps.plannedBudget')}><input type="number" className="field-input" value={v.planned_budget ?? ''} onChange={set('planned_budget')} /></Field>
+      <Field label={t('ps.actualExpenditure')}><input type="number" className="field-input" value={v.actual_expenditure ?? ''} onChange={set('actual_expenditure')} /></Field>
+      <Field className="ps-full" label={t('ps.keyAchievement')}><textarea className="field-input" rows={2} value={v.key_achievement ?? ''} onChange={set('key_achievement')} /></Field>
+      <Field label={t('ps.nextAction')}><input className="field-input" value={v.next_action ?? ''} onChange={set('next_action')} /></Field>
+      <Field label={t('ps.nextActionDue')}><input type="date" className="field-input" value={v.next_action_due || ''} onChange={set('next_action_due')} /></Field>
     </Modal>
   );
 }
 
 // ── Step 5: Locations ────────────────────────────────────────────────────────
 function LocationsStep({ projectId, locations, reload }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
-    if (!(await confirmDialog({ title:'Delete location', message:'Delete this location? This cannot be undone.', confirmLabel:'Delete' }))) return;
+    if (!(await confirmDialog({ title:t('ps.deleteLocation'), message:t('ps.deleteLocationConfirm'), confirmLabel:t('ps.deleteLbl') }))) return;
     const { error } = await supabase.rpc('delete_project_location', { p_id: row.id });
     if (error) return toast.error(dbErrorMessage(error)); reload();
   };
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>Geographic Implementation <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 7</span></h3>
-        <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> Location</button>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.geographicImplementation')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 7</span></h3>
+        <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.location')}</button>
       </div>
-      {locations.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No locations yet.</p> : (
+      {locations.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noLocations')}</p> : (
         <div className="ps-desktop" style={{ overflowX: 'auto' }}>
           <table className="ps-table">
-            <thead><tr><th>Province</th><th>Island</th><th>Area Council</th><th>Community</th><th>Beneficiaries</th><th></th></tr></thead>
+            <thead><tr><th>{t('ps.province')}</th><th>{t('ps.island')}</th><th>{t('ps.areaCouncil')}</th><th>{t('ps.community')}</th><th>{t('ps.beneficiaries')}</th><th></th></tr></thead>
             <tbody>
               {locations.map((l) => (
                 <tr key={l.id}>
                   <td>{l.province || '—'}</td><td>{l.island || '—'}</td><td>{l.area_council || '—'}</td>
                   <td>{l.community || '—'}</td><td>{l.beneficiaries ?? '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(l)} aria-label={`Edit location ${l.code ?? ''}`} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-                    <button onClick={() => del(l)} aria-label={`Delete location ${l.code ?? ''}`} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+                    <button onClick={() => setEditing(l)} aria-label={`Edit location ${l.code ?? ''}`} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(l)} aria-label={`Delete location ${l.code ?? ''}`} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -853,8 +863,8 @@ function LocationsStep({ projectId, locations, reload }) {
             <div className="ps-card" key={l.id}>
               <strong>{l.province || '—'}</strong> · {l.island || '—'} · {l.community || '—'}
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
-                <button onClick={() => setEditing(l)} style={rowGhost()}><Pencil size={13} /> Edit</button>
-                <button onClick={() => del(l)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> Delete</button>
+                <button onClick={() => setEditing(l)} style={rowGhost()}><Pencil size={13} /> {t('ps.edit')}</button>
+                <button onClick={() => del(l)} style={rowGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> {t('ps.deleteLbl')}</button>
               </div>
             </div>
           ))}
@@ -868,6 +878,7 @@ function LocationsStep({ projectId, locations, reload }) {
 }
 
 function LocationForm({ projectId, initial, onClose, onSaved }) {
+  const { t } = useTranslation();
   const base = { province: '', island: '', area_council: '', community: '', latitude: '', longitude: '', intervention: '', status: '', beneficiaries: '' };
   const [v, setV] = useState({ ...base, ...(initial?.id ? initial : {}) });
   const dirty = useDirty(v);
@@ -878,7 +889,7 @@ function LocationForm({ projectId, initial, onClose, onSaved }) {
     // Every field here is optional on its own, but a location with none of them
     // is not a location — it used to save as a blank row.
     if (!v.province && !v.island && !v.community.trim()) {
-      return toast.error('Enter at least a province, island or community');
+      return toast.error(t('ps.locationEmpty'));
     }
     const { error } = await supabase.rpc('upsert_project_location', {
       p_id: initial?.id ?? null, p_project_id: projectId, p_province: toNull(v.province), p_island: toNull(v.island),
@@ -891,15 +902,15 @@ function LocationForm({ projectId, initial, onClose, onSaved }) {
   };
   return (
     <Modal title={`${initial?.id ? 'Edit' : 'Add'} location`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
-      <Field label="Province"><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
-      <Field label="Island"><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
-      <Field label="Area Council"><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
-      <Field label="Community / Site"><input className="field-input" value={v.community ?? ''} onChange={set('community')} /></Field>
-      <Field label="Latitude"><input type="number" min="-90" max="90" step="any" className="field-input" value={v.latitude ?? ''} onChange={set('latitude')} /></Field>
-      <Field label="Longitude"><input type="number" min="-180" max="180" step="any" className="field-input" value={v.longitude ?? ''} onChange={set('longitude')} /></Field>
-      <Field className="ps-full" label="Intervention / Activity"><input className="field-input" value={v.intervention ?? ''} onChange={set('intervention')} /></Field>
-      <Field label="Implementation Status"><input className="field-input" value={v.status ?? ''} onChange={set('status')} /></Field>
-      <Field label="Beneficiaries"><input type="number" min="0" className="field-input" value={v.beneficiaries ?? ''} onChange={set('beneficiaries')} /></Field>
+      <Field label={t('ps.province')}><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
+      <Field label={t('ps.island')}><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
+      <Field label={t('ps.areaCouncil')}><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
+      <Field label={t('ps.communitySite')}><input className="field-input" value={v.community ?? ''} onChange={set('community')} /></Field>
+      <Field label={t('ps.latitude')}><input type="number" min="-90" max="90" step="any" className="field-input" value={v.latitude ?? ''} onChange={set('latitude')} /></Field>
+      <Field label={t('ps.longitude')}><input type="number" min="-180" max="180" step="any" className="field-input" value={v.longitude ?? ''} onChange={set('longitude')} /></Field>
+      <Field className="ps-full" label={t('ps.intervention')}><input className="field-input" value={v.intervention ?? ''} onChange={set('intervention')} /></Field>
+      <Field label={t('ps.implementationStatus')}><input className="field-input" value={v.status ?? ''} onChange={set('status')} /></Field>
+      <Field label={t('ps.beneficiaries')}><input type="number" min="0" className="field-input" value={v.beneficiaries ?? ''} onChange={set('beneficiaries')} /></Field>
     </Modal>
   );
 }
@@ -930,11 +941,12 @@ function useDirty(v) {
 }
 
 function Modal({ title, children, onClose, onSave, saveLabel, dirty }) {
+  const { t } = useTranslation();
   // Unsaved-changes guard (§22): confirm before discarding edits.
   const guardedClose = async () => {
     if (dirty && !(await confirmDialog({
-      title: 'Discard changes?', message: 'You have unsaved changes. Discard them?',
-      confirmLabel: 'Discard changes', cancelLabel: 'Stay',
+      title: t('ps.discardChangesQ'), message: t('ps.unsavedChanges'),
+      confirmLabel: t('ps.discardChanges'), cancelLabel: 'Stay',
     }))) return;
     onClose();
   };
@@ -943,12 +955,12 @@ function Modal({ title, children, onClose, onSave, saveLabel, dirty }) {
       <div style={{ background: 'var(--white)', borderRadius: 14, width: '100%', maxWidth: 760, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
           <strong style={{ fontSize: '1rem' }}>{title}</strong>
-          <button onClick={guardedClose} aria-label="Close" title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
+          <button onClick={guardedClose} aria-label={t('ps.close')} title={t('ps.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="ps-grid">{children}</div>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
           <button style={btn('var(--green-700)')} onClick={onSave}>{saveLabel}</button>
-          <button style={ghostBtn} onClick={guardedClose}>Cancel</button>
+          <button style={ghostBtn} onClick={guardedClose}>{t('ps.cancel')}</button>
         </div>
       </div>
     </div>

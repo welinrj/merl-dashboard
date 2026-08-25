@@ -23,13 +23,13 @@ import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
 
 const TABS = [
-  { key: 'portfolio',  label: t('dash.tabPortfolio') },
-  { key: 'project',    label: t('dash.tabProject') },
-  { key: 'results',    label: t('dash.tabResults') },
-  { key: 'financial',  label: t('dash.tabFinancial') },
-  { key: 'geographic', label: t('dash.tabGeographic') },
-  { key: 'risks',      label: t('dash.tabRisks') },
-  { key: 'reporting',  label: t('dash.tabReporting') },
+  { key: 'portfolio',  label: 'dash.tabPortfolio' },
+  { key: 'project',    label: 'dash.tabProject' },
+  { key: 'results',    label: 'dash.tabResults' },
+  { key: 'financial',  label: 'dash.tabFinancial' },
+  { key: 'geographic', label: 'dash.tabGeographic' },
+  { key: 'risks',      label: 'dash.tabRisks' },
+  { key: 'reporting',  label: 'dash.tabReporting' },
 ];
 
 const ACTIVE_STATUSES = ['approved', 'not_started', 'on_track', 'at_risk', 'delayed'];
@@ -147,7 +147,7 @@ export default function Dashboards({ initialTab }) {
         {TABS.map(({ key, label }) => (
           <button key={key} role="tab" aria-selected={tab === key}
             className={`db-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
