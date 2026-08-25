@@ -1,0 +1,15 @@
+{
+  "name": "dmp-translate-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keeps the French copy of the DoCC MERL records up to date.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
