@@ -10,16 +10,18 @@
 //
 // No icon slot by design — see the note above the component.
 import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 // A page title does not need an icon to be understood — the heading carries the
 // hierarchy. `icon` is intentionally not part of this component's API.
 export default function PageHeader({ title, subtitle, breadcrumb, actions }) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
       gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
       <div style={{ minWidth: 0 }}>
         {Array.isArray(breadcrumb) && breadcrumb.length > 0 && (
-          <nav aria-label="Breadcrumb" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-3)' }}>
+          <nav aria-label={t('ui.breadcrumb')} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-3)' }}>
             {breadcrumb.map((c, i) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                 {i > 0 && <span aria-hidden="true" style={{ color: 'var(--text-3)' }}>/</span>}

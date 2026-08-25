@@ -7,17 +7,19 @@
 // =============================================================================
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Search, FolderKanban, Target, ListChecks } from './ui/icons';
 import { supabase } from '../supabaseClient';
 
 const GROUPS = {
-  project:   { label: 'Project',   icon: FolderKanban, accent: '#2563eb' },
-  indicator: { label: 'Indicator', icon: Target,       accent: '#0e7490' },
-  activity:  { label: 'Activity',  icon: ListChecks,   accent: '#7c3aed' },
+  project:   { label: 'gs.project',   icon: FolderKanban, accent: '#2563eb' },
+  indicator: { label: 'gs.indicator', icon: Target,       accent: '#0e7490' },
+  activity:  { label: 'gs.activity',  icon: ListChecks,   accent: '#7c3aed' },
 };
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
 
 export default function GlobalSearch() {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -97,29 +99,29 @@ export default function GlobalSearch() {
 
   return (
     <>
-      <button className="gs-trigger" onClick={() => setOpen(true)} aria-label="Search projects, indicators and activities">
+      <button className="gs-trigger" onClick={() => setOpen(true)} aria-label={t('gs.trigger')}>
         <Search size={15} aria-hidden="true" />
-        <span className="gs-trigger-lbl">Search…</span>
+        <span className="gs-trigger-lbl">{t('gs.short')}</span>
         <kbd className="gs-kbd">{isMac ? '⌘' : 'Ctrl'} K</kbd>
       </button>
 
       {open && (
-        <div className="gs-overlay" role="dialog" aria-modal="true" aria-label="Search"
+        <div className="gs-overlay" role="dialog" aria-modal="true" aria-label={t('gs.dialog')}
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
           <div className="gs-panel" onKeyDown={onKeyDown}>
             <div className="gs-input-row">
               <Search size={18} style={{ color: 'var(--text-3)', flexShrink: 0 }} aria-hidden="true" />
               <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)}
-                placeholder="Search projects, indicators, activities…" className="gs-input" aria-label="Search query" />
+                placeholder={t('gs.placeholder')} className="gs-input" aria-label={t('gs.query')} />
               <kbd className="gs-kbd">Esc</kbd>
             </div>
             <div className="gs-results" ref={listRef}>
               {data == null ? (
-                <div className="gs-hint">Loading…</div>
+                <div className="gs-hint">{t('gs.loading')}</div>
               ) : q.trim() === '' ? (
-                <div className="gs-hint">Type to search across the portfolio.</div>
+                <div className="gs-hint">{t('gs.hint')}</div>
               ) : results.length === 0 ? (
-                <div className="gs-hint">No matches for “{q.trim()}”.</div>
+                <div className="gs-hint">{t('gs.noMatches', { q: q.trim() })}</div>
               ) : (
                 results.map((r, i) => {
                   const g = GROUPS[r.type];
@@ -133,7 +135,7 @@ export default function GlobalSearch() {
                       </span>
                       <span className="gs-item-txt">
                         <span className="gs-item-name">{r.code ? `${r.code} · ` : ''}{r.name}</span>
-                        <span className="gs-item-type">{g.label}</span>
+                        <span className="gs-item-type">{t(g.label)}</span>
                       </span>
                       {i === active && <span aria-hidden="true" style={{ color: 'var(--text-3)', flexShrink: 0, fontSize: '0.8rem', lineHeight: 1 }}>&crarr;</span>}
                     </button>

@@ -145,6 +145,7 @@ interface LoginScreenProps {
 }
 
 function LoginScreen({ onLogin }: LoginScreenProps) {
+  const { t, i18n } = useTranslation();
   const [email, setEmail]       = useState(() => { try { return localStorage.getItem('docc.email') || ''; } catch { return ''; } });
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -160,13 +161,13 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
     try {
       const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr) {
-        setError('Incorrect email or password.');
+        setError(t('login.badCredentials'));
         return;
       }
       const profile = await loadProfile();
       if (!profile) {
         await supabase.auth.signOut();
-        setError('No active platform profile is linked to this account. Contact the system administrator.');
+        setError(t('login.noProfile'));
         return;
       }
       // "Keep me signed in" prefills the email on this device only (never the password).
@@ -193,6 +194,13 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
           flex-direction:column; justify-content:flex-start;
           padding:clamp(2.4rem,6vh,3.4rem) clamp(2rem,3.2vw,4rem) 5.5rem; z-index:3; }
         .lg2-inner{ width:100%; max-width:420px; }
+        /* EN/FR switch — the portal is used in both official languages, so the
+           choice has to be reachable before anyone signs in. */
+        .lg2-lang{ display:flex; justify-content:flex-end; gap:.25rem; margin-bottom:.9rem; }
+        .lg2-lang button{ min-width:42px; min-height:32px; padding:.3rem .55rem; font:inherit;
+          font-size:.72rem; font-weight:700; border:1px solid var(--bd); border-radius:6px;
+          background:#fff; color:var(--mut); cursor:pointer; }
+        .lg2-lang button[aria-pressed="true"]{ background:var(--tl); border-color:var(--tl); color:#fff; }
         .lg2-brand{ display:flex; align-items:center; gap:.85rem; margin-bottom:clamp(1.4rem,4.5vh,2.5rem); }
         .lg2-crest{ width:60px; height:60px; object-fit:contain; flex-shrink:0; }
         .lg2-brand-country{ font-size:1.05rem; font-weight:800; letter-spacing:.02em; color:var(--nv); line-height:1.1; }
@@ -308,42 +316,51 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
       {/* LEFT — white login content */}
       <div className="lg2-left">
         <div className="lg2-inner">
+          <div className="lg2-lang" role="group" aria-label={t('login.language')}>
+            {LANGUAGES.map(({ code, label, name }) => (
+              <button key={code} type="button" lang={code} title={name} aria-label={name}
+                aria-pressed={i18n.resolvedLanguage === code}
+                onClick={() => void i18n.changeLanguage(code)}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="lg2-brand">
-            <img className="lg2-crest" src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
+            <img className="lg2-crest" src={CREST} alt={t('login.crestAlt')} />
             <div>
-              <div className="lg2-brand-country">VANUATU</div>
-              <div className="lg2-brand-dept">Department of Climate Change</div>
-              <div className="lg2-brand-gov">Government of the Republic of Vanuatu</div>
+              <div className="lg2-brand-country">{t('login.country')}</div>
+              <div className="lg2-brand-dept">{t('login.department')}</div>
+              <div className="lg2-brand-gov">{t('login.government')}</div>
             </div>
           </div>
 
-          <h1 className="lg2-title">MERL Portal</h1>
+          <h1 className="lg2-title">{t('login.portal')}</h1>
           <div className="lg2-underline" />
           <div className="lg2-descriptor">
-            <span>Monitoring</span><i className="lg2-dot" aria-hidden="true" />
-            <span>Evaluation</span><i className="lg2-dot" aria-hidden="true" />
-            <span>Reporting</span><i className="lg2-dot" aria-hidden="true" />
-            <span>Learning</span>
+            <span>{t('login.monitoring')}</span><i className="lg2-dot" aria-hidden="true" />
+            <span>{t('login.evaluation')}</span><i className="lg2-dot" aria-hidden="true" />
+            <span>{t('login.reporting')}</span><i className="lg2-dot" aria-hidden="true" />
+            <span>{t('login.learning')}</span>
           </div>
 
-          <h2 className="lg2-signin">Sign in to your account</h2>
+          <h2 className="lg2-signin">{t('login.signInTitle')}</h2>
 
           <form className="lg2-form" onSubmit={handleCredentials}>
             <div className="lg2-field">
-              <label htmlFor="lg-email" className="sr-only">Email</label>
+              <label htmlFor="lg-email" className="sr-only">{t('login.email')}</label>
               <span className="lg2-ficon" aria-hidden="true"><Mail size={18} /></span>
               <input id="lg-email" type="email" value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
-                className="lg2-input" placeholder="Email" autoComplete="username" required />
+                className="lg2-input" placeholder={t('login.email')} autoComplete="username" required />
             </div>
             <div className="lg2-field">
-              <label htmlFor="lg-pass" className="sr-only">Password</label>
+              <label htmlFor="lg-pass" className="sr-only">{t('login.password')}</label>
               <span className="lg2-ficon" aria-hidden="true"><Lock size={18} /></span>
               <input id="lg-pass" type={showPass ? 'text' : 'password'} value={password}
                 onChange={e => { setPassword(e.target.value); setError(''); }}
-                className="lg2-input" placeholder="Password" autoComplete="current-password" required />
+                className="lg2-input" placeholder={t('login.password')} autoComplete="current-password" required />
               <button type="button" className="lg2-eye"
-                aria-label={showPass ? 'Hide password' : 'Show password'}
+                aria-label={showPass ? t('login.hidePass') : t('login.showPass')}
                 onClick={() => setShowPass(!showPass)}>
                 {showPass ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
               </button>
@@ -351,7 +368,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 
             <label className="lg2-keep">
               <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-              Keep me signed in
+              {t('login.keepSignedIn')}
             </label>
 
             {error && (
@@ -361,31 +378,31 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
             )}
 
             <button type="submit" className="lg2-submit" disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? t('login.signingIn') : t('login.signIn')}
             </button>
           </form>
 
           <div className="lg2-secure">
-            <ShieldCheck size={16} aria-hidden="true" /> Secure access for authorised users only.
+            <ShieldCheck size={16} aria-hidden="true" /> {t('login.secure')}
           </div>
 
           <footer className="lg2-foot">
-            <div>© 2026 Department of Climate Change, Vanuatu.</div>
-            <div>All rights reserved.</div>
-            <div className="lg2-attr">Photograph: “On the Yasur ash plains, Tanna, Vanuatu” (12 June 2009) · CC BY 2.0.</div>
+            <div>{t('login.copyright')}</div>
+            <div>{t('login.rights')}</div>
+            <div className="lg2-attr">{t('login.photoCredit')}</div>
           </footer>
         </div>
       </div>
 
       {/* RIGHT — Tanna, Vanuatu photograph */}
-      <div className="lg2-photo" role="img" aria-label="The Yasur volcano ash plains, Tanna, Vanuatu">
+      <div className="lg2-photo" role="img" aria-label={t('login.photoAlt')}>
         <div className="lg2-fade" aria-hidden="true" />
         {/* Decorative rings + Vanuatu island silhouette over the transition */}
         <div className="lg2-rings" aria-hidden="true"><span /><span /><span /><span /></div>
         <div className="lg2-map" aria-hidden="true" />
         <div className="lg2-tagline">
-          <span>Loss &amp; Damage Fund</span>
-          <span>Development Project</span>
+          <span>{t('login.fund')}</span>
+          <span>{t('login.programme')}</span>
         </div>
       </div>
     </div>
@@ -439,11 +456,11 @@ export default function App() {
       {/* ── Sidebar ── */}
       <aside className={`dsh-side${sidebarOpen ? ' open' : ''}`}>
         <div className="dsh-brand">
-          <img src={CREST} alt="Coat of arms of the Republic of Vanuatu" />
+          <img src={CREST} alt={t('login.crestAlt')} />
           <div className="dsh-brand-dept">{t('shell.department')}</div>
           <div className="dsh-brand-title">{t('shell.productName')}</div>
         </div>
-        <nav className="dsh-nav" aria-label="Primary">
+        <nav className="dsh-nav" aria-label={t('shell.primaryNav')}>
           {visibleNav.map(({ key, path, search, Icon }) => (
             <NavLink key={key} to={{ pathname: path, search: search ?? '' }}
               onClick={() => setSidebarOpen(false)}

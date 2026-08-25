@@ -7,6 +7,7 @@
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 // One icon: the bell that opens the panel.
 import { Bell } from './ui/icons';
 import { supabase } from '../supabaseClient';
@@ -16,6 +17,7 @@ const EDITOR = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER', 'ROLE_DATA_E
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export default function NotificationBell({ user }) {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState([]);
@@ -39,32 +41,32 @@ export default function NotificationBell({ user }) {
 
   const items = useMemo(() => {
     const out = [];
-    const code = (id) => projById[id] || 'Project';
+    const code = (id) => projById[id] || t('notif.project');
     if (isReviewer) {
       rows.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).forEach((r) => out.push({
         id: `rev-${r.id}`, accent: '#2563eb',
-        title: `${code(r.project_id)} · ${r.period_label}`, note: 'Awaiting your review', to: '/review',
+        title: `${code(r.project_id)} · ${r.period_label}`, note: t('notif.awaiting'), to: '/review',
       }));
     }
     if (isEditor) {
       rows.filter((r) => r.submission_status === 'returned').forEach((r) => out.push({
         id: `ret-${r.id}`, accent: '#d97706',
-        title: `${code(r.project_id)} · ${r.period_label}`, note: r.review_comments ? `Returned: ${r.review_comments}` : 'Returned for correction', to: '/merl-reporting',
+        title: `${code(r.project_id)} · ${r.period_label}`, note: r.review_comments ? t('notif.returnedWhy', { reason: r.review_comments }) : t('notif.returned'), to: '/merl-reporting',
       }));
       const t = todayIso();
       rows.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < t).forEach((r) => out.push({
         id: `od-${r.id}`, accent: '#b3402f',
-        title: `${code(r.project_id)} · ${r.period_label}`, note: 'Reporting period overdue', to: '/merl-reporting',
+        title: `${code(r.project_id)} · ${r.period_label}`, note: t('notif.overdue'), to: '/merl-reporting',
       }));
     }
     return out.slice(0, 20);
-  }, [rows, projById, isReviewer, isEditor]);
+  }, [rows, projById, isReviewer, isEditor, t]);
 
   const count = items.length;
 
   return (
     <div style={{ position: 'relative' }}>
-      <button className="dsh-bell" title="Notifications" aria-label={`Notifications${count ? ` (${count})` : ''}`} onClick={() => setOpen((o) => !o)}>
+      <button className="dsh-bell" title={t('notif.title')} aria-label={count ? t('notif.titleCount', { count }) : t('notif.title')} onClick={() => setOpen((o) => !o)}>
         <Bell size={18} aria-hidden="true" />
         {count > 0 && <span className="dsh-bell-badge">{count > 9 ? '9+' : count}</span>}
       </button>
@@ -74,12 +76,12 @@ export default function NotificationBell({ user }) {
           <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 320, maxWidth: '90vw',
             background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
             <div style={{ padding: '0.7rem 0.9rem', borderBottom: '1px solid var(--border)', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>
-              Notifications{count > 0 && <span style={{ color: 'var(--text-3)', fontWeight: 500 }}> · {count}</span>}
+              {t('notif.title')}{count > 0 && <span style={{ color: 'var(--text-3)', fontWeight: 500 }}> · {count}</span>}
             </div>
             <div style={{ maxHeight: 360, overflowY: 'auto' }}>
               {count === 0 ? (
                 <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.82rem' }}>
-                  No unread notifications.
+                  {t('notif.none')}
                 </div>
               ) : items.map((it) => (
                 <button key={it.id} onClick={() => { setOpen(false); nav(it.to); }}
