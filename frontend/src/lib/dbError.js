@@ -58,6 +58,12 @@ const EXPLAINED_CONSTRAINTS = new Set([
   // Activities
   'project_activities_physical_progress_pct_check',
   'project_activities_dates_check',
+  // Locations (0037) — implementation status became a controlled value
+  'project_locations_status_check',
+  // Village register (0037)
+  'ref_villages_name_not_blank',
+  'ref_villages_latitude_check',
+  'ref_villages_longitude_check',
 ]);
 
 // Fall back to the column name made readable — "persons_with_disability"
