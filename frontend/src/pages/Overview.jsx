@@ -27,6 +27,7 @@ import {
 import KpiCard from '../components/ui/KpiCard';
 import Gedsi from '../components/ui/Gedsi';
 import { useTranslation } from 'react-i18next';
+import { fmtDate, fmtNum } from '../lib/locale';
 
 // ── Semantic colours (matched to the approved sample) ─────────────────────────
 const BLUE = '#2f6df0';
@@ -63,7 +64,7 @@ function fmtVUV(v) {
   if (n >= 1e9) return `VUV ${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `VUV ${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `VUV ${(n / 1e3).toFixed(1)}K`;
-  return `VUV ${n.toLocaleString()}`;
+  return `VUV ${fmtNum(n)}`;
 }
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 const pct1 = (n, d) => (d ? `${((n / d) * 100).toFixed(1)}%` : '0%');
@@ -72,7 +73,7 @@ function fmtCompact(v) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return n.toLocaleString();
+  return fmtNum(n);
 }
 const countBy = (rows, keyFn) => {
   const m = new Map();
@@ -264,21 +265,20 @@ export default function Overview({ user }) {
   for (const b of bens) { const v = Number(b.total_direct) || 0; for (const pv of (provById.get(b.project_id) || [])) provBen[pv] = (provBen[pv] || 0) + v; }
 
   // Recent & upcoming reporting periods → status-badged table rows (all real data).
-  const fmtDate = (s) => (s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
   const daysUntil = (s) => Math.round((new Date(s.slice(0, 10)) - new Date(now2)) / 864e5);
   const reportStatus = (r) => {
-    if (r.submission_status === 'approved') return { label: 'Approved', tone: 'ok' };
-    if (['submitted', 'reviewed'].includes(r.submission_status)) return { label: 'Submitted', tone: 'info' };
-    if (!r.period_end) return { label: 'Pending', tone: 'warn' };
+    if (r.submission_status === 'approved') return { label: t('overview.statusApproved'), tone: 'ok' };
+    if (['submitted', 'reviewed'].includes(r.submission_status)) return { label: t('overview.statusSubmitted'), tone: 'info' };
+    if (!r.period_end) return { label: t('overview.statusPending'), tone: 'warn' };
     const dleft = daysUntil(r.period_end);
-    if (dleft < 0) return { label: 'Overdue', tone: 'crit' };
-    return { label: `Due in ${dleft} day${dleft === 1 ? '' : 's'}`, tone: dleft <= 7 ? 'crit' : 'warn' };
+    if (dleft < 0) return { label: t('overview.statusOverdue'), tone: 'crit' };
+    return { label: t('overview.dueInDays', { count: dleft }), tone: dleft <= 7 ? 'crit' : 'warn' };
   };
   const reportRows = [...reps]
     .filter((r) => r.period_end && daysUntil(r.period_end) >= -60)
     .sort((a, b) => (a.period_end || '').localeCompare(b.period_end || ''))
     .slice(0, 5)
-    .map((r) => ({ id: `${r.project_id}-${r.period_label}`, item: r.period_label || 'Reporting period', project: projName(r.project_id), due: r.period_end, status: reportStatus(r) }));
+    .map((r) => ({ id: `${r.project_id}-${r.period_label}`, item: r.period_label || t('overview.reportingPeriod'), project: projName(r.project_id), due: r.period_end, status: reportStatus(r) }));
 
   return (
     <div className="ovx">
@@ -291,7 +291,7 @@ export default function Overview({ user }) {
         <div className="ovx-filters">
           <FilterSelect label={t('overview.filterFy')} value={filters.fy} onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
           <FilterSelect label={t('overview.filterStatus')} value={filters.status} onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((k) => ({ value: k, label: STATUS_BUCKETS_LABEL(k, t) }))} />
-          <FilterSelect label={t('overview.filterTheme')} value={filters.theme} onChange={(v) => setFilter('theme', v)} options={themes.map((t) => ({ value: t, label: t }))} />
+          <FilterSelect label={t('overview.filterTheme')} value={filters.theme} onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
           <FilterSelect label={t('overview.filterProvince')} value={filters.province} onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} />
           <FilterSelect label={t('overview.filterPartner')} value={filters.partner} onChange={(v) => setFilter('partner', v)} options={donors.map((x) => ({ value: x, label: x }))} />
           <button className="ov-btn-ghost" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
@@ -309,7 +309,7 @@ export default function Overview({ user }) {
           sub={t('overview.pctOfFunding', { pct: util })} progress={util} linkLabel={t('overview.viewFinancials')} onClick={() => nav('/analytics/financial')} />
         {/* The one KPI carrying symbols: the GEDSI split is read by comparing
             categories, which the shared pictogram family makes faster. */}
-        <KpiCard label={t('overview.kpiBeneficiaries')} value={totalBen ? totalBen.toLocaleString() : '0'}
+        <KpiCard label={t('overview.kpiBeneficiaries')} value={totalBen ? fmtNum(totalBen) : '0'}
           linkLabel={t('overview.viewBeneficiaries')} onClick={() => nav('/analytics/geographic')}>
           {beneMini.length > 0 && (
             <div className="flex items-start justify-between gap-2">
@@ -317,7 +317,7 @@ export default function Overview({ user }) {
                 <span key={b.key} className="flex min-w-0 flex-col items-start gap-0.5">
                   <span className="flex items-center gap-1 text-[var(--green-700)]">
                     <Gedsi name={b.sym} size={14} />
-                    <b className="text-[1rem] font-extrabold leading-none text-[var(--navy-900)]" style={{ fontFamily: 'var(--font-display)' }}>{b.value.toLocaleString()}</b>
+                    <b className="text-[1rem] font-extrabold leading-none text-[var(--navy-900)]" style={{ fontFamily: 'var(--font-display)' }}>{fmtNum(b.value)}</b>
                   </span>
                   <i className="whitespace-nowrap text-[0.64rem] not-italic text-[var(--text-3)]">{b.label}</i>
                 </span>
@@ -436,7 +436,7 @@ function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, 
                 onClick={() => onSelect(pv)} onMouseEnter={() => setHover(pv)} onMouseLeave={() => setHover(null)}>
                 <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: fillDot(counts[pv] || 0, counts) }} /><span className="ovx-provtbl-nm">{pv}</span></td>
                 <td className="ovx-provtbl-num">{counts[pv] || 0}</td>
-                <td className="ovx-provtbl-num">{(provBen[pv] || 0).toLocaleString()}</td>
+                <td className="ovx-provtbl-num">{fmtNum(provBen[pv] || 0)}</td>
               </tr>
             ))}
             {nationalCount > 0 && (
@@ -465,8 +465,8 @@ function STATUS_BUCKETS_LABEL(k, t) {
 function fillDot(c, counts) {
   if (!c) return 'color-mix(in srgb, var(--green-700) 22%, #ffffff)';
   const max = Math.max(1, ...Object.values(counts));
-  const t = 0.55 + 0.45 * (c / max);
-  return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
+  const ramp = 0.55 + 0.45 * (c / max);
+  return `color-mix(in srgb, var(--green-600) ${Math.round(ramp * 100)}%, #ffffff)`;
 }
 
 // ── Presentational pieces ─────────────────────────────────────────────────────

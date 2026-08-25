@@ -21,6 +21,7 @@ import VanuatuMap from '../components/VanuatuMap';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
+import { fmtDate, fmtNum } from '../lib/locale';
 
 const TABS = [
   { key: 'portfolio',  label: 'dash.tabPortfolio' },
@@ -95,7 +96,7 @@ export default function Dashboards({ initialTab }) {
     const approved = (d?.reporting || []).filter((r) => r.submission_status === 'approved' && r.period_end);
     if (!approved.length) return null;
     const latest = approved.map((r) => r.period_end).sort().pop();
-    return new Date(latest).toLocaleDateString('en-VU', { year: 'numeric', month: 'short', day: 'numeric' });
+    return fmtDate(latest);
   }, [d]);
 
   if (loading || !d) {
@@ -296,7 +297,7 @@ function Portfolio({ d, onNavigate }) {
           { key: 'status', label: t('dash.status'), value: flt.status, onChange: (v) => setFlt((s) => ({ ...s, status: v })),
             options: [{ value: '', label: t('dash.allStatuses') }, ...OPT.DOCC_PROJECT_STATUS] },
           { key: 'theme', label: t('dash.themeSector'), value: flt.theme, onChange: (v) => setFlt((s) => ({ ...s, theme: v })),
-            options: [{ value: '', label: t('dash.allThemes') }, ...opts.themes.map((t) => ({ value: t, label: OPT.labelOf(OPT.CLIMATE_THEME, t) || t }))] },
+            options: [{ value: '', label: t('dash.allThemes') }, ...opts.themes.map((theme) => ({ value: theme, label: OPT.labelOf(OPT.CLIMATE_THEME, theme) || theme }))] },
           { key: 'province', label: t('dash.province'), value: flt.province, onChange: (v) => setFlt((s) => ({ ...s, province: v })),
             options: [{ value: '', label: t('dash.allProvinces') }, ...opts.provinces.map((p) => ({ value: p, label: p }))] },
           { key: 'donor', label: t('dash.fundingPartner'), value: flt.donor, onChange: (v) => setFlt((s) => ({ ...s, donor: v })),
@@ -309,7 +310,7 @@ function Portfolio({ d, onNavigate }) {
       </div>
       <div className="db-kpis">
         <StatTile label={t('dash.totalProjects')} value={m.total} />
-        <StatTile label={t('dash.totalBeneficiaries')} value={m.beneficiaries ? m.beneficiaries.toLocaleString() : '—'} />
+        <StatTile label={t('dash.totalBeneficiaries')} value={m.beneficiaries ? fmtNum(m.beneficiaries) : '—'} />
         <StatTile label={t('dash.approvedBudget')} value={fmtAmount(m.totalBudget)} />
         <StatTile label={t('dash.budgetUtilisation')} value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} />
         <StatTile label={t('dash.indAchievement')} value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" />
@@ -361,7 +362,7 @@ function Portfolio({ d, onNavigate }) {
             )}
           </h3>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-1)' }}>
-            {m.gedsi.total.toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-3)' }}>{t('dash.totalDirectBeneficiaries')}</span>
+            {fmtNum(m.gedsi.total)} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-3)' }}>{t('dash.totalDirectBeneficiaries')}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.6rem', marginTop: '0.75rem' }}>
             {[
@@ -373,7 +374,7 @@ function Portfolio({ d, onNavigate }) {
               ['Indirect', m.gedsi.indirect, 'indirect'],
             ].map(([lbl, val, sym]) => (
               <div key={lbl} style={{ background: 'var(--surface-1)', borderRadius: 'var(--radius-control)', padding: '0.5rem 0.65rem' }}>
-                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-1)' }}>{val != null ? val.toLocaleString() : '—'}</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-1)' }}>{val != null ? fmtNum(val) : '—'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--text-3)' }}>
                   {sym && <Gedsi name={sym} size={14} style={{ color: 'var(--green-700)', flexShrink: 0 }} />}
                   {lbl}
@@ -466,7 +467,7 @@ function ProjectView({ d, projectId }) {
       <div className="db-kpis">
         <StatTile label={t('dash.physicalProgress')} value={phys != null ? `${phys}%` : '—'} sub="avg of activities" />
         <StatTile label={t('dash.financialUtilisation')} value={fmtPct(utilisationPct(budget, exp))} />
-        <StatTile label={t('dash.beneficiaries')} value={ben ? ben.toLocaleString() : '—'} />
+        <StatTile label={t('dash.beneficiaries')} value={ben ? fmtNum(ben) : '—'} />
         <StatTile label={t('dash.latestReport')} value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} />
       </div>
       {(() => { const openRisksCount = risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length; return (
@@ -505,7 +506,7 @@ function ProjectView({ d, projectId }) {
           )}
           <h3 className="db-h" style={{ marginTop: '1rem' }}>{t('dash.tabRisks')}</h3>
           {risks.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noRisks')}</p> : (
-            <BarList rows={countBy(risks, (r) => r.risk_rating || 'Unrated')} accent="#dc2626" />
+            <BarList rows={countBy(risks, (r) => ratingLabel(r.risk_rating, t))} accent="#dc2626" />
           )}
         </div>
       </div>
@@ -641,6 +642,16 @@ function Geographic({ d }) {
 
 // ── Risks ────────────────────────────────────────────────────────────────────
 // 5x5 risk matrix band from likelihood x impact score (§37).
+// Risk ratings arrive as free text on the record ("High", "critical", …), so a
+// recognised value is shown in the reader's language and anything else is left
+// exactly as the officer typed it.
+function ratingLabel(rating, t) {
+  if (!rating) return t('dash.unrated');
+  const known = { low: 'dash.low', medium: 'dash.medium', high: 'dash.high', critical: 'dash.critical' };
+  const key = known[String(rating).toLowerCase()];
+  return key ? t(key) : rating;
+}
+
 function riskBand(score, t) {
   if (score >= 15) return { key: 'critical', label: t('dash.critical'), bg: '#b3402f', fg: '#fff' };
   if (score >= 10) return { key: 'high', label: t('dash.high'), bg: '#e06636', fg: '#fff' };
@@ -719,10 +730,10 @@ function Risks({ d }) {
 
       <div className="db-2">
         <div className="db-card"><h3 className="db-h">{t('dash.byCategory')}</h3><BarList rows={countBy(d.risks, (r) => OPT.labelOf(OPT.RISK_CATEGORY, r.category || 'other'))} total={d.risks.length} accent="#d97706" /></div>
-        <div className="db-card"><h3 className="db-h">{t('dash.byRating')}</h3><BarList rows={countBy(d.risks, (r) => r.risk_rating || 'Unrated')} total={d.risks.length} accent="#dc2626" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.byRating')}</h3><BarList rows={countBy(d.risks, (r) => ratingLabel(r.risk_rating, t))} total={d.risks.length} accent="#dc2626" /></div>
       </div>
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">{cell ? `Risks at Likelihood ${cell.l} × Impact ${cell.i}` : 'Open risks & issues'}</h3>
+        <h3 className="db-h">{cell ? t('dash.risksAtCell', { likelihood: cell.l, impact: cell.i }) : t('dash.openRisksIssues')}</h3>
         {tableRisks.length === 0 ? (
           <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noRisksCell')}</p>
         ) : (
@@ -733,7 +744,7 @@ function Risks({ d }) {
               <tr key={r.code}>
                 <td>{r.code}</td><td>{OPT.labelOf(OPT.RISK_TYPE, r.type)}</td>
                 <td>{(r.description || '').slice(0, 60)}</td>
-                <td style={{ fontWeight: 700 }}>{r.risk_rating || '—'}</td>
+                <td style={{ fontWeight: 700 }}>{r.risk_rating ? ratingLabel(r.risk_rating, t) : '—'}</td>
                 <td style={{ color: r.due_date && r.due_date < today() ? '#dc2626' : 'inherit' }}>{r.due_date || '—'}</td>
                 <td>{r.responsible_person || '—'}</td>
               </tr>

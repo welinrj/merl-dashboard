@@ -14,8 +14,8 @@ import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
+import { fmtDateTime, fmtNum } from '../lib/locale';
 
-const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('en-VU', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
 
 const REPORT_TYPES = [
   { key: 'project',    label: 'rpt.projectProgressReport' },
@@ -86,7 +86,7 @@ export default function Reports() {
 
   // "Data as at" (§76): latest timestamp across the datasets this report reads.
   const times = [d.reporting, d.progress, d.financial, d.beneficiaries, d.risks, d.learning, d.activities]
-    .flat().flatMap((r) => [r?.updated_at, r?.created_at]).filter(Boolean).map((t) => new Date(t).getTime());
+    .flat().flatMap((r) => [r?.updated_at, r?.created_at]).filter(Boolean).map((ts) => new Date(ts).getTime());
   const dataAsAt = times.length ? new Date(Math.max(...times)) : null;
   const generatedAt = new Date();
 
@@ -384,7 +384,7 @@ function Portfolio({ d, period }) {
           <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div>
           <div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div>
           <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.totalBeneficiariesLbl')}</b> {sum(d.beneficiaries, (b) => b.total_direct).toLocaleString()}</div>
+          <div><b>{t('rpt.totalBeneficiariesLbl')}</b> {fmtNum(sum(d.beneficiaries, (b) => b.total_direct))}</div>
           <div><b>{t('rpt.openRisksLbl')}</b> {d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
         </div>
       </Section>
@@ -455,7 +455,7 @@ function GeographicReport({ d, province }) {
         <div className="rp-meta">
           <div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div>
           <div><b>{t('rpt.sitesLbl')}</b> {locs.length}</div>
-          <div><b>{t('rpt.beneficiariesLbl')}</b> {sum(locs, (l) => l.beneficiaries).toLocaleString()}</div>
+          <div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(sum(locs, (l) => l.beneficiaries))}</div>
         </div>
       </Section>
       <Section n="2" title={t('rpt.sites')}>
@@ -488,7 +488,7 @@ function DonorReport({ d, donor }) {
           <div><b>{t('rpt.investmentLbl')}</b> {fmtAmount(budget)}</div>
           <div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div>
           <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.beneficiariesLbl')}</b> {bens.toLocaleString()}</div>
+          <div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(bens)}</div>
         </div>
       </Section>
       <Section n="2" title={t('rpt.projects')}>

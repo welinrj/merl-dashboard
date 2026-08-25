@@ -39,7 +39,7 @@ const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(
 // options: static [{value,label}] ; dynamicOptions: 'indicators' | 'activities'
 const MODULES = [
   {
-    key: 'indicator_progress', label: 'merl.modIndicatorProgress', form: 'Form 4',
+    key: 'indicator_progress', label: 'merl.modIndicatorProgress', form: '4',
     view: 'v_indicator_progress', rpc: 'upsert_indicator_progress', del: 'delete_indicator_progress',
     periodScoped: true,
     fields: [
@@ -63,7 +63,7 @@ const MODULES = [
     ],
   },
   {
-    key: 'financial_progress', label: 'merl.modFinancialProgress', form: 'Form 6',
+    key: 'financial_progress', label: 'merl.modFinancialProgress', form: '6',
     view: 'v_financial_progress', rpc: 'upsert_financial_progress', del: 'delete_financial_progress',
     periodScoped: true,
     fields: [
@@ -85,7 +85,7 @@ const MODULES = [
     ],
   },
   {
-    key: 'beneficiaries', label: 'merl.modBeneficiaries', form: 'Form 8',
+    key: 'beneficiaries', label: 'merl.modBeneficiaries', form: '8',
     view: 'v_beneficiaries', rpc: 'upsert_beneficiaries', del: 'delete_beneficiaries',
     periodScoped: true,
     fields: [
@@ -130,7 +130,7 @@ const MODULES = [
     ],
   },
   {
-    key: 'risks_issues', label: 'merl.modRisks', form: 'Form 9',
+    key: 'risks_issues', label: 'merl.modRisks', form: '9',
     view: 'v_risks_issues', rpc: 'upsert_risk_issue', del: 'delete_risk_issue',
     periodScoped: false,
     fields: [
@@ -156,7 +156,7 @@ const MODULES = [
     ],
   },
   {
-    key: 'learning_updates', label: 'merl.modLearning', form: 'Form 10',
+    key: 'learning_updates', label: 'merl.modLearning', form: '10',
     view: 'v_learning_updates', rpc: 'upsert_learning_update', del: 'delete_learning_update',
     periodScoped: true,
     fields: [
@@ -179,7 +179,7 @@ const MODULES = [
     ],
   },
   {
-    key: 'evidence', label: 'merl.modEvidence', form: 'Form 12',
+    key: 'evidence', label: 'merl.modEvidence', form: '12',
     view: 'v_evidence', rpc: 'upsert_evidence', del: 'delete_evidence',
     periodScoped: true,
     fields: [
@@ -518,7 +518,7 @@ export default function MerlReporting({ user }) {
             <div>
               <strong style={{ fontSize: '0.85rem', color: 'var(--text-1)' }}>{t('merl.periodCompletion')}</strong>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.4rem' }}>
-                {completion.done} of {completion.total} sections have data
+                {t('merl.sectionsWithData', { done: completion.done, total: completion.total })}
               </span>
             </div>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 800, color: completion.pct === 100 ? '#16a34a' : 'var(--text-1)' }}>
@@ -573,7 +573,7 @@ export default function MerlReporting({ user }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
           <div>
             <strong style={{ fontSize: '0.95rem' }}>{t(activeModule.label)}</strong>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.4rem' }}>{activeModule.form}</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.4rem' }}>{t('merl.form', { n: activeModule.form })}</span>
           </div>
           {canEdit && (
             <button style={btn('var(--green-700)')}

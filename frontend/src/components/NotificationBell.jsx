@@ -53,8 +53,8 @@ export default function NotificationBell({ user }) {
         id: `ret-${r.id}`, accent: '#d97706',
         title: `${code(r.project_id)} · ${r.period_label}`, note: r.review_comments ? t('notif.returnedWhy', { reason: r.review_comments }) : t('notif.returned'), to: '/merl-reporting',
       }));
-      const t = todayIso();
-      rows.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < t).forEach((r) => out.push({
+      const today = todayIso();
+      rows.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < today).forEach((r) => out.push({
         id: `od-${r.id}`, accent: '#b3402f',
         title: `${code(r.project_id)} · ${r.period_label}`, note: t('notif.overdue'), to: '/merl-reporting',
       }));

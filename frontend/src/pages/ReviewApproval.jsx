@@ -16,28 +16,27 @@ import DataTable from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import StatTile from '../components/ui/StatTile';
 import { useTranslation } from 'react-i18next';
+import { fmtDate, fmtNum } from '../lib/locale';
 
 // Read-only modules summarised in the review drawer so the officer can see what
 // they are approving before they act. Period-scoped modules are matched on the
 // period label; risks & issues are project-scoped.
-const fmtNum = (v) => (v == null ? '—' : Number(v).toLocaleString('en-VU'));
 const REVIEW_SECTIONS = [
-  { key: 'indicator_progress', label: 'merl.modIndicatorProgress', form: 'Form 4', view: 'v_indicator_progress', periodScoped: true,
+  { key: 'indicator_progress', label: 'merl.modIndicatorProgress', form: '4', view: 'v_indicator_progress', periodScoped: true,
     line: (r) => `${r.indicator_code || '—'} · cumulative ${fmtNum(r.cumulative_actual)}${r.achievement_pct != null ? ` · ${Math.round(r.achievement_pct)}%` : ''}` },
-  { key: 'financial_progress', label: 'merl.modFinancialProgress', form: 'Form 6', view: 'v_financial_progress', periodScoped: true,
+  { key: 'financial_progress', label: 'merl.modFinancialProgress', form: '6', view: 'v_financial_progress', periodScoped: true,
     line: (r) => `Cumulative exp. ${fmtNum(r.cumulative_expenditure)}${r.utilisation_pct != null ? ` · ${Math.round(r.utilisation_pct)}% utilised` : ''}` },
-  { key: 'beneficiaries', label: 'merl.modBeneficiaries', form: 'Form 8', view: 'v_beneficiaries', periodScoped: true,
+  { key: 'beneficiaries', label: 'merl.modBeneficiaries', form: '8', view: 'v_beneficiaries', periodScoped: true,
     line: (r) => `${r.location || 'All'} · direct ${fmtNum(r.total_direct)} (F ${fmtNum(r.female)} / M ${fmtNum(r.male)} / PWD ${fmtNum(r.persons_with_disability)})` },
-  { key: 'learning_updates', label: 'merl.modLearning', form: 'Form 10', view: 'v_learning_updates', periodScoped: true,
+  { key: 'learning_updates', label: 'merl.modLearning', form: '10', view: 'v_learning_updates', periodScoped: true,
     line: (r) => (r.key_achievements || r.major_results || r.lessons_learned || 'Recorded').slice(0, 120) },
-  { key: 'evidence', label: 'merl.modEvidence', form: 'Form 12', view: 'v_evidence', periodScoped: true,
+  { key: 'evidence', label: 'merl.modEvidence', form: '12', view: 'v_evidence', periodScoped: true,
     line: (r) => `${r.title || '—'}${r.verification_status ? ` · ${r.verification_status}` : ''}` },
-  { key: 'risks_issues', label: 'merl.modRisks', form: 'Form 9', view: 'v_risks_issues', periodScoped: false,
+  { key: 'risks_issues', label: 'merl.modRisks', form: '9', view: 'v_risks_issues', periodScoped: false,
     line: (r) => `${r.code || ''} ${(r.description || '').slice(0, 80)}${r.risk_rating ? ` · ${r.risk_rating}` : ''}`.trim() },
 ];
 
 const REVIEWER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
-const fmtDate = s => s ? new Date(s).toLocaleDateString('en-VU', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 const isOverdue = r => r.period_end && r.submission_status !== 'approved' && new Date(r.period_end) < new Date();
 
 export default function ReviewApproval({ user }) {
@@ -144,12 +143,12 @@ export default function ReviewApproval({ user }) {
 
       {/* Filter */}
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        {[['queue', 'Review queue'], ['approved', 'Approved'], ['all', 'All periods']].map(([k, lbl]) => (
+        {[['queue', 'merl.filterQueue'], ['approved', 'merl.filterApproved'], ['all', 'merl.filterAll']].map(([k, lbl]) => (
           <button key={k} onClick={() => setFilter(k)}
             style={{ padding: '0.35rem 0.8rem', borderRadius: 9999, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
               border: `1px solid ${filter === k ? 'var(--green-600)' : 'var(--border)'}`,
               background: filter === k ? 'var(--green-50)' : 'var(--white)', color: filter === k ? 'var(--green-700)' : 'var(--text-2)' }}>
-            {lbl}
+            {t(lbl)}
           </button>
         ))}
       </div>
@@ -160,19 +159,17 @@ export default function ReviewApproval({ user }) {
         keyField="id"
         loading={loading}
         minWidth={880}
-        searchPlaceholder="Search project, period or submitter…"
+        searchPlaceholder={t('merl.searchQueue')}
         searchable={(r) => {
           const p = projById[r.project_id];
           return `${p?.code || ''} ${p?.name || ''} ${r.period_label || ''} ${r.reporting_officer_name || ''}`;
         }}
         empty={{
-          title: filter === 'queue' ? 'No reports awaiting review' : 'No reporting periods',
-          description: filter === 'queue'
-            ? "You're up to date — nothing needs your review right now."
-            : 'Reporting periods will appear here once projects begin reporting.',
+          title: t(filter === 'queue' ? 'merl.emptyQueueTitle' : 'merl.emptyAllTitle'),
+          description: t(filter === 'queue' ? 'merl.emptyQueueBody' : 'merl.emptyAllBody'),
         }}
         columns={[
-          { key: 'project', header: 'Project', sortable: true,
+          { key: 'project', header: t('merl.colProject'), sortable: true,
             sortValue: (r) => projById[r.project_id]?.code || '',
             render: (r) => {
               const p = projById[r.project_id];
@@ -183,7 +180,7 @@ export default function ReviewApproval({ user }) {
                 </>
               );
             } },
-          { key: 'period_label', header: 'Reporting Period', sortable: true,
+          { key: 'period_label', header: t('merl.colPeriod'), sortable: true,
             render: (r) => (
               <span style={{ fontSize: '0.8rem' }}>
                 {r.period_label}
@@ -191,11 +188,11 @@ export default function ReviewApproval({ user }) {
                 {r.reopened_at && <span title={r.reopen_reason || ''} style={{ marginLeft: 6 }}><StatusBadge tone="info" label={t('merl.reopened')} /></span>}
               </span>
             ) },
-          { key: 'reporting_officer_name', header: 'Submitted By', sortable: true,
+          { key: 'reporting_officer_name', header: t('merl.colSubmittedBy'), sortable: true,
             render: (r) => <span style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>{r.reporting_officer_name ?? '—'}</span> },
-          { key: 'submitted_at', header: 'Submitted', sortable: true,
+          { key: 'submitted_at', header: t('merl.colSubmitted'), sortable: true,
             render: (r) => <span style={{ fontSize: '0.78rem', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{fmtDate(r.submitted_at)}</span> },
-          { key: 'submission_status', header: 'Status', sortable: true,
+          { key: 'submission_status', header: t('merl.colStatus'), sortable: true,
             render: (r) => (
               <>
                 <StatusBadge status={r.submission_status} />
@@ -204,7 +201,7 @@ export default function ReviewApproval({ user }) {
                 )}
               </>
             ) },
-          { key: '_actions', header: 'Actions', align: 'right',
+          { key: '_actions', header: t('merl.colActions'), align: 'right',
             render: (r) => (
               <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
                 {r.submission_status !== 'draft' && (
@@ -310,7 +307,7 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
               <div key={s.key}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
                   <strong style={{ fontSize: '0.82rem', color: 'var(--text-1)' }}>{t(s.label)}</strong>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{s.form}</span>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{t('merl.form', { n: s.form })}</span>
                   <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 700, color: rows.length ? 'var(--green-700)' : 'var(--text-3)' }}>
                     {rows.length} record{rows.length === 1 ? '' : 's'}
                   </span>

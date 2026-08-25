@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
 import { useTranslation } from 'react-i18next';
+import { fmtDateTime } from '../lib/locale';
 
 // The five official user types. `id` is the DB enum value (merl.user_role).
 const DB_ROLES = [
@@ -727,7 +728,7 @@ function AuditTab() {
   useEffect(() => { load(); }, [load]);
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const fmt = ts => (ts ? new Date(ts).toLocaleString() : '—');
+  const fmt = fmtDateTime;
 
   return (
     <div className="space-y-4">
@@ -855,7 +856,7 @@ function SystemTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  const fmt = ts => (ts ? new Date(ts).toLocaleString() : '—');
+  const fmt = fmtDateTime;
   const rlsTables = status?.rls_tables ?? [];
   const rlsCovered = rlsTables.filter(t => t.rls_enabled).length;
 

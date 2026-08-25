@@ -5,6 +5,10 @@
 // distinction (Section 14): a missing input yields null, never 0.
 // =============================================================================
 
+// fmtAmount below is the one display-facing helper here, and its thousands
+// separator has to follow the reader's language like every other number.
+import { intlLocale } from '../locale';
+
 const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
@@ -74,7 +78,7 @@ export function riskRating(likelihood, impact) {
 export function fmtAmount(v) {
   const n = num(v);
   if (!isNum(n)) return '—';
-  return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return n.toLocaleString(intlLocale(), { maximumFractionDigits: 2 });
 }
 
 /** Format a percentage for display, preserving the null/no-data distinction. */

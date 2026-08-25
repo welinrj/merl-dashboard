@@ -53,8 +53,8 @@ export default function GlobalSearch() {
     if (open) {
       if (data == null) load();
       setActive(0);
-      const t = setTimeout(() => inputRef.current?.focus(), 30);
-      return () => clearTimeout(t);
+      const focusTimer = setTimeout(() => inputRef.current?.focus(), 30);
+      return () => clearTimeout(focusTimer);
     }
     setQ('');
     return undefined;
