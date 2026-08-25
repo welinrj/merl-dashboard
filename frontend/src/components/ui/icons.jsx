@@ -73,6 +73,7 @@ import {
   ArrowLeft2 as ChevronLeft,     // pagination
   ArrowRight2 as ChevronRight,   // pagination, tree expand
   ArrowDown2 as ChevronDown,     // tree collapse
+  LanguageSquare as Languages,   // the record's other language
 } from 'iconsax-reactjs';
 
 export {
@@ -81,7 +82,7 @@ export {
   LogOut, Menu, Bell, Search,
   Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck,
   Plus, Pencil, Trash2, Send, Printer, Download, FileText, RotateCcw, Unlock,
-  CheckCircle2, Info,
+  CheckCircle2, Info, Languages,
   ArrowRight, ArrowLeft, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronDown,
 };
 

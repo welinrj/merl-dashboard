@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, FolderKanban, Target, ListChecks } from './ui/icons';
 import { supabase } from '../supabaseClient';
+import { localised } from '../lib/contentLocale';
 
 const GROUPS = {
   project:   { label: 'gs.project',   icon: FolderKanban, accent: '#2563eb' },
@@ -19,23 +20,26 @@ const GROUPS = {
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
 
 export default function GlobalSearch() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage;
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [data, setData] = useState(null); // null = not loaded yet
+  // Drop the cached index when the language changes so the next open reloads.
+  useEffect(() => { setData(null); }, [lang]);
   const [active, setActive] = useState(0);
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
   const load = useCallback(async () => {
     const [pj, ind, act] = await Promise.all([
-      supabase.from('v_projects').select('id, code, name, status'),
-      supabase.from('v_project_indicators').select('id, code, name, project_id'),
-      supabase.from('v_project_activities').select('id, code, name, project_id'),
+      localised(supabase.from('v_projects').select('id, code, name, status, i18n')),
+      localised(supabase.from('v_project_indicators').select('id, code, name, project_id, i18n')),
+      localised(supabase.from('v_project_activities').select('id, code, name, project_id, i18n')),
     ]);
     setData({ projects: pj.data ?? [], indicators: ind.data ?? [], activities: act.data ?? [] });
-  }, []);
+  }, [lang]);
 
   // Open on ⌘K / Ctrl-K anywhere in the app.
   useEffect(() => {

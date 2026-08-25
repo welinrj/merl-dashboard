@@ -17,6 +17,34 @@
   through the cache; row-level RLS-protected data stays on the direct Supabase
   path with the user's token — never cache per-user data in the shared cache.
 
+## Bilingual — two separate mechanisms
+
+The portal runs in English and French, and there are **two** things to keep
+translated. Confusing them is the usual mistake.
+
+1. **Interface strings** live in `frontend/src/i18n.js`, resolved with
+   `useTranslation()`. Never hard-code a user-visible string. Two traps that
+   pass both `tsc --noEmit` and `npm run build` and then crash at import:
+   calling `t()` at module scope (put the *key* in the module-level array and
+   resolve it at render), and shadowing `t` with a local binding.
+   Controlled-vocabulary option labels resolve through the `opt` namespace via
+   `constants/formOptions.js`; dates and numbers through `lib/locale.js`.
+2. **Record text** — project names, statements, narratives, everything an
+   officer types into a form — lives in the database. Migration `0036` gives
+   each such table an `i18n` jsonb column, the `translate-service` container
+   fills it, and `lib/contentLocale.js` swaps it in **where rows are fetched**,
+   not at each render site. So: wrap a new read in `localised(...)`, include
+   `i18n` in any explicit `select` list, and add the active language to the
+   loader's dependencies so switching language refetches.
+
+Records are always **edited** in the language they were entered in — that
+wording is what prints on official reports. A form opened from a localised list
+must call `sourceRow(row)`; `TranslationPanel` is what lets an officer correct
+the French. Adding a translatable column means a row in
+`merl.translatable_fields` *and* in `TRANSLATABLE_FIELDS` in `contentLocale.js`;
+the database refuses anything not in its own registry, so drift fails at save
+time rather than silently.
+
 ## Frontend
 
 - App lives in `frontend/` (Vite + React 18 + TypeScript, `.tsx`/`.jsx`). Build/typecheck with `cd frontend && npm run build` and `npx tsc --noEmit` before committing.

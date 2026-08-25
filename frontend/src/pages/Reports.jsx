@@ -15,6 +15,7 @@ import PageHeader from '../components/ui/PageHeader';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime, fmtNum } from '../lib/locale';
+import { localised } from '../lib/contentLocale';
 
 
 const REPORT_TYPES = [
@@ -34,7 +35,8 @@ function latestByProject(rows) {
 }
 
 export default function Reports() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage;
   const [d, setD] = useState(null);
   const [type, setType] = useState('project');
   const [projectId, setProjectId] = useState('');
@@ -53,7 +55,8 @@ export default function Reports() {
 
   useEffect(() => {
     (async () => {
-      const q = (v, cols) => supabase.from(v).select(cols);
+      // Rows arrive already in the reader's language; see lib/contentLocale.js.
+      const q = (v, cols) => localised(supabase.from(v).select(cols));
       const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op, learn] = await Promise.all([
         q('v_projects', '*'),
         q('v_financial_progress', '*'),
@@ -77,7 +80,8 @@ export default function Reports() {
       });
       if ((proj.data ?? []).length) setProjectId(proj.data[0].id);
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   if (!d) return <div className="page-pad"><p style={{ color: 'var(--text-3)' }}>{t('rpt.loading')}</p></div>;
 

@@ -254,12 +254,46 @@ END $$;
 
 -- =============================================================================
 -- 6. Column-level guards for values the forms accepted but should not have
+--
+-- Each constraint is added NOT VALID and then validated in a block that
+-- tolerates failure. Plain ADD CONSTRAINT scans the whole table and aborts the
+-- migration if any existing row breaks the rule — and psql runs each statement
+-- in its own transaction, so an abort here would leave the database half
+-- migrated with sections 7 to 12 never applied. That is exactly what happens
+-- on a database that already holds the bad data these rules exist to stop:
+-- a single legacy project with a negative budget takes the whole migration
+-- down. NOT VALID enforces the rule on every insert and update from now on
+-- while leaving legacy rows alone, and the VALIDATE turns it into a full
+-- constraint wherever the data is already clean. Anything left unvalidated is
+-- named in a warning so the data owner can find and fix it, then re-run
+-- VALIDATE CONSTRAINT at leisure.
 -- =============================================================================
+
+CREATE OR REPLACE FUNCTION merl.validate_or_warn(p_table text, p_constraint text)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE v_bad bigint;
+BEGIN
+    EXECUTE format('ALTER TABLE merl.%I VALIDATE CONSTRAINT %I', p_table, p_constraint);
+EXCEPTION WHEN check_violation THEN
+    EXECUTE format(
+        'SELECT count(*) FROM merl.%I WHERE NOT (%s)',
+        p_table,
+        (SELECT pg_get_expr(conbin, conrelid)
+           FROM pg_constraint
+          WHERE conrelid = ('merl.' || p_table)::regclass AND conname = p_constraint))
+    INTO v_bad;
+    RAISE WARNING
+      'Constraint %.% is enforced for new data but % existing row(s) break it. '
+      'Clean those rows, then run: ALTER TABLE merl.% VALIDATE CONSTRAINT %;',
+      p_table, p_constraint, v_bad, p_table, p_constraint;
+END;
+$$;
 
 -- A negative approved budget was accepted (-5,000,000 VUV).
 ALTER TABLE merl.projects DROP CONSTRAINT IF EXISTS projects_budget_nonneg;
 ALTER TABLE merl.projects ADD CONSTRAINT projects_budget_nonneg
-    CHECK (budget_vuv IS NULL OR budget_vuv >= 0);
+    CHECK (budget_vuv IS NULL OR budget_vuv >= 0) NOT VALID;
+SELECT merl.validate_or_warn('projects', 'projects_budget_nonneg');
 
 -- Beneficiary disaggregation was never reconciled: female 900 + male 900 +
 -- other 900 saved happily against a total_direct of 100, and those figures roll
@@ -269,7 +303,8 @@ ALTER TABLE merl.beneficiaries ADD CONSTRAINT beneficiaries_gender_reconciles
     CHECK (
         total_direct IS NULL
         OR COALESCE(female,0) + COALESCE(male,0) + COALESCE(other_gender,0) <= total_direct
-    );
+    ) NOT VALID;
+SELECT merl.validate_or_warn('beneficiaries', 'beneficiaries_gender_reconciles');
 
 -- Youth and persons with disability are subsets of the same total, counted on a
 -- different axis, so each is bounded individually rather than summed with the
@@ -280,17 +315,20 @@ ALTER TABLE merl.beneficiaries ADD CONSTRAINT beneficiaries_subsets_within_total
         total_direct IS NULL
         OR (COALESCE(youth,0) <= total_direct
             AND COALESCE(persons_with_disability,0) <= total_direct)
-    );
+    ) NOT VALID;
+SELECT merl.validate_or_warn('beneficiaries', 'beneficiaries_subsets_within_total');
 
 -- An indicator baseline year of 1300 was accepted.
 ALTER TABLE merl.project_indicators DROP CONSTRAINT IF EXISTS indicators_baseline_year_plausible;
 ALTER TABLE merl.project_indicators ADD CONSTRAINT indicators_baseline_year_plausible
-    CHECK (baseline_year IS NULL OR baseline_year BETWEEN 1980 AND 2100);
+    CHECK (baseline_year IS NULL OR baseline_year BETWEEN 1980 AND 2100) NOT VALID;
+SELECT merl.validate_or_warn('project_indicators', 'indicators_baseline_year_plausible');
 
 -- A risk could be marked resolved before it was identified.
 ALTER TABLE merl.risks_issues DROP CONSTRAINT IF EXISTS risks_resolved_after_identified;
 ALTER TABLE merl.risks_issues ADD CONSTRAINT risks_resolved_after_identified
-    CHECK (date_resolved IS NULL OR date_identified IS NULL OR date_resolved >= date_identified);
+    CHECK (date_resolved IS NULL OR date_identified IS NULL OR date_resolved >= date_identified) NOT VALID;
+SELECT merl.validate_or_warn('risks_issues', 'risks_resolved_after_identified');
 
 -- A location row with every field NULL was accepted; the form has no client
 -- validation either, so an empty submit wrote an empty record.
@@ -300,7 +338,8 @@ ALTER TABLE merl.project_locations ADD CONSTRAINT locations_not_empty
         COALESCE(btrim(province),'')  <> ''
      OR COALESCE(btrim(island),'')    <> ''
      OR COALESCE(btrim(community),'') <> ''
-    );
+    ) NOT VALID;
+SELECT merl.validate_or_warn('project_locations', 'locations_not_empty');
 
 -- =============================================================================
 -- 7. Cross-project links in the results framework

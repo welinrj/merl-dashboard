@@ -93,6 +93,40 @@ services:
       timeout: 3s
       retries: 3
 
+  # Record translation worker: keeps the French copy of the officer-entered
+  # records up to date (migration 0036). Polls the database for text that has no
+  # translation or whose English has been edited, translates it, writes it back.
+  #
+  # Optional. With TRANSLATE_PROVIDER unset the worker idles and records render
+  # in the language they were entered in — the same posture as the cache
+  # sidecar, and how Supabase Cloud staging runs.
+  #
+  # Not exposed through the proxy: it holds the service-role key.
+  translate-service:
+    build:
+      context: ./translate-service
+    container_name: dmp-translate
+    restart: unless-stopped
+    environment:
+      SUPABASE_URL: ${SUPABASE_INTERNAL_URL:-${VITE_SUPABASE_URL}}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      TRANSLATE_PROVIDER: ${TRANSLATE_PROVIDER:-}
+      TRANSLATE_API_KEY: ${TRANSLATE_API_KEY:-}
+      TRANSLATE_ENDPOINT: ${TRANSLATE_ENDPOINT:-}
+      TRANSLATE_TARGET_LANG: ${TRANSLATE_TARGET_LANG:-fr}
+      TRANSLATE_BATCH_LIMIT: ${TRANSLATE_BATCH_LIMIT:-100}
+      TRANSLATE_POLL_SECONDS: ${TRANSLATE_POLL_SECONDS:-60}
+      PORT: 8081
+    expose:
+      - "8081"
+    networks:
+      - dmp-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 60s
+      timeout: 3s
+      retries: 3
+
   proxy:
     image: nginx:1.27-alpine
     container_name: dmp-proxy
