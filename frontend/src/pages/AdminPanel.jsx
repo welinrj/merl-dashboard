@@ -2,33 +2,34 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
+import { useTranslation } from 'react-i18next';
 
 // The five official user types. `id` is the DB enum value (merl.user_role).
 const DB_ROLES = [
-  { id: 'system_admin',       label: 'System Administrator',                 color: 'bg-red-100 text-red-700' },
-  { id: 'docc_me_officer',    label: 'DoCC M&E Officer',                     color: 'bg-blue-100 text-blue-700' },
-  { id: 'project_manager',    label: 'Project Manager / Project Focal Point', color: 'bg-green-100 text-green-700' },
-  { id: 'data_entry_officer', label: 'Data Entry / Project Officer',         color: 'bg-amber-100 text-amber-700' },
-  { id: 'viewer',             label: 'Viewer / Executive',                   color: 'bg-gray-100 text-gray-700' },
+  { id: 'system_admin',       label: 'adm.roleAdmin',                 color: 'bg-red-100 text-red-700' },
+  { id: 'docc_me_officer',    label: 'adm.roleMeo',                     color: 'bg-blue-100 text-blue-700' },
+  { id: 'project_manager',    label: 'adm.rolePm', color: 'bg-green-100 text-green-700' },
+  { id: 'data_entry_officer', label: 'adm.roleDataEntry',         color: 'bg-amber-100 text-amber-700' },
+  { id: 'viewer',             label: 'adm.roleViewer',                   color: 'bg-gray-100 text-gray-700' },
 ];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 // App-side role codes (UserRole in types.ts), same five official roles.
 const ROLES = [
-  { id: 'ROLE_ADMIN',        label: 'System Administrator',                 color: 'bg-red-100 text-red-700' },
-  { id: 'ROLE_DOCC_MEO',     label: 'DoCC M&E Officer',                     color: 'bg-blue-100 text-blue-700' },
-  { id: 'ROLE_PROJ_MANAGER', label: 'Project Manager / Project Focal Point', color: 'bg-green-100 text-green-700' },
-  { id: 'ROLE_DATA_ENTRY',   label: 'Data Entry / Project Officer',         color: 'bg-amber-100 text-amber-700' },
-  { id: 'ROLE_VIEWER',       label: 'Viewer / Executive',                   color: 'bg-gray-100 text-gray-700' },
+  { id: 'ROLE_ADMIN',        label: 'adm.roleAdmin',                 color: 'bg-red-100 text-red-700' },
+  { id: 'ROLE_DOCC_MEO',     label: 'adm.roleMeo',                     color: 'bg-blue-100 text-blue-700' },
+  { id: 'ROLE_PROJ_MANAGER', label: 'adm.rolePm', color: 'bg-green-100 text-green-700' },
+  { id: 'ROLE_DATA_ENTRY',   label: 'adm.roleDataEntry',         color: 'bg-amber-100 text-amber-700' },
+  { id: 'ROLE_VIEWER',       label: 'adm.roleViewer',                   color: 'bg-gray-100 text-gray-700' },
 ];
 
 const CATEGORIES = [
-  { id: 'CC-ADAPT',  label: 'Climate Adaptation',    color: '#10b981' },
-  { id: 'CC-RESIL',  label: 'Community Resilience',  color: '#3b82f6' },
-  { id: 'CC-MITIG',  label: 'Climate Mitigation',    color: '#f59e0b' },
-  { id: 'CC-POLICY', label: 'Policy & Governance',   color: '#8b5cf6' },
-  { id: 'CC-CAPBLD', label: 'Capacity Building',     color: '#ec4899' },
-  { id: 'CC-CROSS',  label: 'Cross-Cutting',         color: '#6366f1' },
+  { id: 'CC-ADAPT',  label: 'adm.catAdaptation',    color: '#10b981' },
+  { id: 'CC-RESIL',  label: 'adm.catResilience',  color: '#3b82f6' },
+  { id: 'CC-MITIG',  label: 'adm.catMitigation',    color: '#f59e0b' },
+  { id: 'CC-POLICY', label: 'adm.catPolicy',   color: '#8b5cf6' },
+  { id: 'CC-CAPBLD', label: 'adm.catCapacity',     color: '#ec4899' },
+  { id: 'CC-CROSS',  label: 'adm.catCrossCutting',         color: '#6366f1' },
 ];
 
 const PROVINCES = ['Shefa', 'Sanma', 'Penama', 'Malampa', 'Torba', 'Tafea'];
@@ -53,6 +54,7 @@ function TabButton({ label, active, onClick }) {
 // Assign/unassign projects to a Project Manager or Data Entry Officer. Portfolio
 // roles (System Admin / DoCC M&E Officer) need no assignment — they see all.
 function AssignProjectsModal({ user, onClose }) {
+  const { t } = useTranslation();
   const [projects, setProjects] = useState([]);
   const [assigned, setAssigned] = useState(new Set());
   const [loading, setLoading]   = useState(true);
@@ -84,16 +86,16 @@ function AssignProjectsModal({ user, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 mt-12" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-gray-900">Assigned projects</h3>
+        <h3 className="text-lg font-bold text-gray-900">{t('adm.assignedProjects')}</h3>
         <p className="text-sm text-gray-500 mt-1">
           <span className="font-medium text-gray-700">{user.full_name}</span> can access only the projects checked below.
         </p>
         {err && <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
         <div className="mt-4 max-h-80 overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-lg">
           {loading ? (
-            <div className="p-4 text-sm text-gray-400">Loading…</div>
+            <div className="p-4 text-sm text-gray-400">{t('adm.loading')}</div>
           ) : projects.length === 0 ? (
-            <div className="p-4 text-sm text-gray-400">No projects registered yet.</div>
+            <div className="p-4 text-sm text-gray-400">{t('adm.noProjects')}</div>
           ) : projects.map(p => {
             const on = assigned.has(p.id);
             return (
@@ -110,7 +112,7 @@ function AssignProjectsModal({ user, onClose }) {
         </div>
         <div className="mt-4 flex justify-between items-center">
           <span className="text-xs text-gray-400">{assigned.size} project{assigned.size === 1 ? '' : 's'} assigned</span>
-          <button onClick={onClose} className="bg-green-700 text-white text-sm font-semibold rounded-lg px-5 py-2 hover:bg-green-800">Done</button>
+          <button onClick={onClose} className="bg-green-700 text-white text-sm font-semibold rounded-lg px-5 py-2 hover:bg-green-800">{t('adm.done')}</button>
         </div>
       </div>
     </div>
@@ -119,6 +121,7 @@ function AssignProjectsModal({ user, onClose }) {
 
 // ── Users Tab ─────────────────────────────────────────────────────────────────
 function UsersTab() {
+  const { t } = useTranslation();
   const [users, setUsers]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [err, setErr]           = useState('');
@@ -167,7 +170,7 @@ function UsersTab() {
   };
 
   const removeUser = async (u) => {
-    if (!(await confirmDialog({ title:'Delete user', message:`Permanently delete ${u.full_name}?\n\nThis cannot be undone. To preserve the audit trail, use Deactivate instead.`, confirmLabel:'Delete' }))) return;
+    if (!(await confirmDialog({ title:t('adm.deleteUser'), message:`Permanently delete ${u.full_name}?\n\nThis cannot be undone. To preserve the audit trail, use Deactivate instead.`, confirmLabel:t('adm.deleteLbl') }))) return;
     setBusy(true); setErr('');
     const { error } = await supabase.rpc('admin_delete_user', { p_id: u.id });
     setBusy(false);
@@ -188,18 +191,18 @@ function UsersTab() {
 
       {showForm && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
-          <h3 className="text-sm font-bold text-green-800">New User</h3>
+          <h3 className="text-sm font-bold text-green-800">{t('adm.newUser')}</h3>
           <div className="grid grid-cols-2 gap-3">
             <input value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })}
-              placeholder="Full name" className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
+              placeholder={t('adm.fullName')} className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
             <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} type="email"
-              placeholder="Email address" className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
+              placeholder={t('adm.emailAddress')} className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
             <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full">
-              {DB_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+              {DB_ROLES.map(r => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
             </select>
             <input value={form.organisation} onChange={e => setForm({ ...form, organisation: e.target.value })}
-              placeholder="Organisation (optional)" className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
+              placeholder={t('adm.organisationOptional')} className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-full" />
           </div>
           <div className="flex gap-2">
             <button onClick={addUser} disabled={busy}
@@ -207,24 +210,24 @@ function UsersTab() {
               {busy ? 'Creating…' : 'Create user'}
             </button>
             <button onClick={() => { setShowForm(false); setErr(''); }}
-              className="text-sm text-gray-600 px-4 py-1.5 rounded-lg hover:bg-gray-100">Cancel</button>
+              className="text-sm text-gray-600 px-4 py-1.5 rounded-lg hover:bg-gray-100">{t('adm.cancel')}</button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="text-sm text-gray-400 py-6">Loading users…</div>
+        <div className="text-sm text-gray-400 py-6">{t('adm.loadingUsers')}</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
-                <th className="pb-2 pr-4">Name</th>
-                <th className="pb-2 pr-4">Email</th>
-                <th className="pb-2 pr-4">Role</th>
-                <th className="pb-2 pr-4">Organisation</th>
-                <th className="pb-2 pr-4">Status</th>
-                <th className="pb-2 text-right">Actions</th>
+                <th className="pb-2 pr-4">{t('adm.name')}</th>
+                <th className="pb-2 pr-4">{t('adm.email')}</th>
+                <th className="pb-2 pr-4">{t('adm.role')}</th>
+                <th className="pb-2 pr-4">{t('adm.organisation')}</th>
+                <th className="pb-2 pr-4">{t('adm.status')}</th>
+                <th className="pb-2 text-right">{t('adm.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -236,7 +239,7 @@ function UsersTab() {
                     <td className="py-2.5 pr-4 text-gray-500">{u.email}</td>
                     <td className="py-2.5 pr-4">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${role?.color || 'bg-gray-100 text-gray-600'}`}>
-                        {role?.label || u.role}
+                        {role ? t(role.label) : u.role}
                       </span>
                     </td>
                     <td className="py-2.5 pr-4 text-gray-500 text-xs">{u.organisation || '—'}</td>
@@ -249,7 +252,7 @@ function UsersTab() {
                     <td className="py-2.5 text-right whitespace-nowrap">
                       <button onClick={() => resetPassword(u)} disabled={busy || !u.has_login}
                         className="text-xs font-semibold text-green-700 hover:underline disabled:text-gray-300 disabled:no-underline mr-3">
-                        Reset password
+                        {t('adm.resetPassword')}
                       </button>
                       <button onClick={() => toggleActive(u)} disabled={busy}
                         className="text-xs font-semibold text-gray-600 hover:underline mr-3">
@@ -258,19 +261,19 @@ function UsersTab() {
                       {['project_manager', 'data_entry_officer'].includes(u.role) && (
                         <button onClick={() => setAssignFor(u)} disabled={busy}
                           className="text-xs font-semibold text-blue-600 hover:underline mr-3">
-                          Assign projects
+                          {t('adm.assignProjects')}
                         </button>
                       )}
                       <button onClick={() => removeUser(u)} disabled={busy}
                         className="text-xs font-semibold text-red-600 hover:underline">
-                        Delete
+                        {t('adm.deleteLbl')}
                       </button>
                     </td>
                   </tr>
                 );
               })}
               {users.length === 0 && (
-                <tr><td colSpan={6} className="py-6 text-sm text-gray-400">No users yet.</td></tr>
+                <tr><td colSpan={6} className="py-6 text-sm text-gray-400">{t('adm.noUsers')}</td></tr>
               )}
             </tbody>
           </table>
@@ -280,24 +283,24 @@ function UsersTab() {
       {cred && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCred(null)}>
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-900">Temporary password</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t('adm.tempPassword')}</h3>
             <p className="text-sm text-gray-500 mt-1">
               Shown once. Share it securely with the user — they should change it after signing in.
               Passwords are stored as one-way hashes and can never be viewed again.
             </p>
             <div className="mt-4 space-y-1">
-              <div className="text-xs font-semibold text-gray-400 uppercase">Email</div>
+              <div className="text-xs font-semibold text-gray-400 uppercase">{t('adm.email')}</div>
               <div className="font-mono text-sm text-gray-800 break-all">{cred.email}</div>
-              <div className="text-xs font-semibold text-gray-400 uppercase pt-3">Temporary password</div>
+              <div className="text-xs font-semibold text-gray-400 uppercase pt-3">{t('adm.tempPassword')}</div>
               <div className="flex items-center gap-2">
                 <code className="font-mono text-sm bg-gray-100 border border-gray-200 rounded px-2 py-1 flex-1 break-all">{cred.password}</code>
                 <button onClick={() => navigator.clipboard?.writeText(cred.password)}
-                  className="text-xs font-semibold text-green-700 hover:underline">Copy</button>
+                  className="text-xs font-semibold text-green-700 hover:underline">{t('adm.copy')}</button>
               </div>
             </div>
             <button onClick={() => setCred(null)}
               className="mt-5 w-full bg-green-700 text-white text-sm font-semibold rounded-lg py-2 hover:bg-green-800">
-              Done
+              {t('adm.done')}
             </button>
           </div>
         </div>
@@ -312,6 +315,7 @@ function UsersTab() {
 
 // ── Projects Tab ──────────────────────────────────────────────────────────────
 function ProjectsTab() {
+  const { t } = useTranslation();
   const EMPTY_FORM = {
     name: '', code: '', category: 'CC-ADAPT', lead_agency: '',
     description: '', start_date: '', end_date: '',
@@ -433,7 +437,7 @@ function ProjectsTab() {
           <div className="grid grid-cols-2 gap-3">
             {/* Project name — full width */}
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 block mb-1">Project Name *</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.projectNameReq')}</label>
               <input
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
@@ -461,21 +465,21 @@ function ProjectsTab() {
 
             {/* Category */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Category</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.category')}</label>
               <select
                 value={form.category}
                 onChange={e => setForm({ ...form, category: e.target.value })}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
               >
                 {CATEGORIES.map(c => (
-                  <option key={c.id} value={c.id}>{c.label} ({c.id})</option>
+                  <option key={c.id} value={c.id}>{t(c.label)} ({c.id})</option>
                 ))}
               </select>
             </div>
 
             {/* Lead Agency */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Lead Agency</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.leadAgency')}</label>
               <input
                 value={form.lead_agency}
                 onChange={e => setForm({ ...form, lead_agency: e.target.value })}
@@ -486,7 +490,7 @@ function ProjectsTab() {
 
             {/* Status */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Status</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.status')}</label>
               <select
                 value={form.status}
                 onChange={e => setForm({ ...form, status: e.target.value })}
@@ -500,7 +504,7 @@ function ProjectsTab() {
 
             {/* Start Date */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Start Date</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.startDate')}</label>
               <input
                 type="date"
                 value={form.start_date}
@@ -511,7 +515,7 @@ function ProjectsTab() {
 
             {/* End Date */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">End Date</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.endDate')}</label>
               <input
                 type="date"
                 value={form.end_date}
@@ -522,7 +526,7 @@ function ProjectsTab() {
 
             {/* Budget */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Total Budget (VUV)</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.totalBudgetVuv')}</label>
               <input
                 type="number"
                 value={form.budget_vuv}
@@ -534,11 +538,11 @@ function ProjectsTab() {
 
             {/* Description — full width */}
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 block mb-1">Description</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.description')}</label>
               <textarea
                 value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
-                placeholder="Brief project description..."
+                placeholder={t('adm.descriptionPh')}
                 rows={2}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none"
               />
@@ -546,7 +550,7 @@ function ProjectsTab() {
 
             {/* Province toggles — full width */}
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 block mb-1">Provinces</label>
+              <label className="text-xs text-gray-500 block mb-1">{t('adm.provinces')}</label>
               <div className="flex flex-wrap gap-2">
                 {PROVINCES.map(p => (
                   <button
@@ -578,7 +582,7 @@ function ProjectsTab() {
               onClick={closeForm}
               className="text-sm text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100"
             >
-              Cancel
+              {t('adm.cancel')}
             </button>
           </div>
         </div>
@@ -589,19 +593,19 @@ function ProjectsTab() {
       <table className="w-full text-sm min-w-[640px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
-            <th className="pb-2 pr-4">Project Name</th>
-            <th className="pb-2 pr-4">Code</th>
-            <th className="pb-2 pr-4">Category</th>
-            <th className="pb-2 pr-4">Lead Agency</th>
-            <th className="pb-2 pr-4">Budget (VUV)</th>
-            <th className="pb-2 pr-4">Provinces</th>
-            <th className="pb-2 pr-4">Status</th>
-            <th className="pb-2 text-right">Actions</th>
+            <th className="pb-2 pr-4">{t('adm.projectName')}</th>
+            <th className="pb-2 pr-4">{t('adm.code')}</th>
+            <th className="pb-2 pr-4">{t('adm.category')}</th>
+            <th className="pb-2 pr-4">{t('adm.leadAgency')}</th>
+            <th className="pb-2 pr-4">{t('adm.budgetVuv')}</th>
+            <th className="pb-2 pr-4">{t('adm.provinces')}</th>
+            <th className="pb-2 pr-4">{t('adm.status')}</th>
+            <th className="pb-2 text-right">{t('adm.actions')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
           {!loading && projects.length === 0 && (
-            <tr><td colSpan={8} className="py-6 text-center text-sm text-gray-400">No projects yet. Click “+ Add Project” to create one.</td></tr>
+            <tr><td colSpan={8} className="py-6 text-center text-sm text-gray-400">{t('adm.noProjectsAdd')}</td></tr>
           )}
           {projects.map(p => (
             <tr key={p.id} className="hover:bg-gray-50">
@@ -634,13 +638,13 @@ function ProjectsTab() {
                   onClick={() => openEdit(p)}
                   className="text-xs font-semibold text-green-700 hover:text-green-900 px-2 py-1 rounded hover:bg-green-50"
                 >
-                  Edit
+                  {t('adm.edit')}
                 </button>
                 <button
                   onClick={() => setConfirmDel(p)}
                   className="text-xs font-semibold text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
                 >
-                  Delete
+                  {t('adm.deleteLbl')}
                 </button>
               </td>
             </tr>
@@ -656,9 +660,9 @@ function ProjectsTab() {
           onClick={() => !busy && setConfirmDel(null)}
         >
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-gray-900">Delete project?</h3>
+            <h3 className="text-base font-bold text-gray-900">{t('adm.deleteProject')}</h3>
             <p className="text-sm text-gray-600 mt-2">
-              This permanently deletes <span className="font-semibold">{confirmDel.name}</span>{' '}
+              {t('adm.permanentlyDeletes')} <span className="font-semibold">{confirmDel.name}</span>{' '}
               (<span className="font-mono text-xs">{confirmDel.code}</span>). This cannot be undone.
             </p>
             <div className="flex justify-end gap-2 mt-5">
@@ -667,7 +671,7 @@ function ProjectsTab() {
                 disabled={busy}
                 className="text-sm text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100"
               >
-                Cancel
+                {t('adm.cancel')}
               </button>
               <button
                 onClick={() => doDelete(confirmDel)}
@@ -693,6 +697,7 @@ const ACTION_STYLE = {
 const PAGE_SIZE = 25;
 
 function AuditTab() {
+  const { t } = useTranslation();
   const [rows, setRows]       = useState([]);
   const [total, setTotal]     = useState(0);
   const [loading, setLoading] = useState(true);
@@ -727,26 +732,26 @@ function AuditTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-base font-bold text-gray-800">Audit Log</h2>
+        <h2 className="text-base font-bold text-gray-800">{t('adm.auditLog')}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={action}
             onChange={e => { setPage(0); setAction(e.target.value); }}
             className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white"
           >
-            <option value="">All actions</option>
-            <option value="INSERT">Insert</option>
-            <option value="UPDATE">Update</option>
-            <option value="DELETE">Delete</option>
+            <option value="">{t('adm.allActions')}</option>
+            <option value="INSERT">{t('adm.insert')}</option>
+            <option value="UPDATE">{t('adm.update')}</option>
+            <option value="DELETE">{t('adm.deleteLbl')}</option>
           </select>
           <input
             value={search}
             onChange={e => { setPage(0); setSearch(e.target.value); }}
-            placeholder="Search table / user / id…"
+            placeholder={t('adm.searchAudit')}
             className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white min-w-[180px]"
           />
           <button onClick={load} className="text-sm text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100">
-            Refresh
+            {t('adm.refresh')}
           </button>
         </div>
       </div>
@@ -757,20 +762,20 @@ function AuditTab() {
         <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
             <tr>
-              <th className="text-left font-semibold px-3 py-2">When</th>
-              <th className="text-left font-semibold px-3 py-2">User</th>
-              <th className="text-left font-semibold px-3 py-2">Action</th>
-              <th className="text-left font-semibold px-3 py-2">Table</th>
-              <th className="text-left font-semibold px-3 py-2">Record</th>
+              <th className="text-left font-semibold px-3 py-2">{t('adm.when')}</th>
+              <th className="text-left font-semibold px-3 py-2">{t('adm.user')}</th>
+              <th className="text-left font-semibold px-3 py-2">{t('adm.action')}</th>
+              <th className="text-left font-semibold px-3 py-2">{t('adm.table')}</th>
+              <th className="text-left font-semibold px-3 py-2">{t('adm.record')}</th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">{t('adm.loading')}</td></tr>
             )}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">No audit entries match.</td></tr>
+              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">{t('adm.noAuditEntries')}</td></tr>
             )}
             {!loading && rows.map(r => (
               <Fragment key={r.id}>
@@ -796,11 +801,11 @@ function AuditTab() {
                     <td colSpan={6} className="px-3 py-3">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
-                          <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Before</div>
+                          <div className="text-xs font-semibold text-gray-400 uppercase mb-1">{t('adm.before')}</div>
                           <pre className="text-xs bg-white border border-gray-100 rounded-lg p-2 overflow-x-auto max-h-56">{r.old_values ? JSON.stringify(r.old_values, null, 2) : '—'}</pre>
                         </div>
                         <div>
-                          <div className="text-xs font-semibold text-gray-400 uppercase mb-1">After</div>
+                          <div className="text-xs font-semibold text-gray-400 uppercase mb-1">{t('adm.after')}</div>
                           <pre className="text-xs bg-white border border-gray-100 rounded-lg p-2 overflow-x-auto max-h-56">{r.new_values ? JSON.stringify(r.new_values, null, 2) : '—'}</pre>
                         </div>
                       </div>
@@ -820,13 +825,13 @@ function AuditTab() {
             onClick={() => setPage(p => Math.max(0, p - 1))}
             disabled={page === 0}
             className="px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40"
-          >Previous</button>
+          >{t('adm.previous')}</button>
           <span>Page {page + 1} of {pages}</span>
           <button
             onClick={() => setPage(p => (p + 1 < pages ? p + 1 : p))}
             disabled={page + 1 >= pages}
             className="px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40"
-          >Next</button>
+          >{t('adm.next')}</button>
         </div>
       </div>
     </div>
@@ -835,6 +840,7 @@ function AuditTab() {
 
 // ── System Tab ────────────────────────────────────────────────────────────────
 function SystemTab() {
+  const { t } = useTranslation();
   const [status, setStatus]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr]         = useState('');
@@ -853,13 +859,13 @@ function SystemTab() {
   const rlsTables = status?.rls_tables ?? [];
   const rlsCovered = rlsTables.filter(t => t.rls_enabled).length;
 
-  if (loading) return <div className="px-4 py-10 text-center text-gray-400 text-sm">Loading system status…</div>;
+  if (loading) return <div className="px-4 py-10 text-center text-gray-400 text-sm">{t('adm.loadingSystem')}</div>;
   if (err) return <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{err}</div>;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-base font-bold text-gray-800 mb-3">System</h2>
+        <h2 className="text-base font-bold text-gray-800 mb-3">{t('adm.system')}</h2>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 bg-white border border-gray-100 rounded-lg px-4 py-3">
           <span className="inline-flex items-baseline gap-1.5">
             <span className="text-lg font-bold text-gray-900">{status?.audit_row_count ?? 0}</span>
@@ -868,24 +874,24 @@ function SystemTab() {
           <span className="text-gray-200" aria-hidden="true">·</span>
           <span className="inline-flex items-baseline gap-1.5">
             <span className="text-sm font-semibold text-gray-800">{fmt(status?.analytics_computed_at)}</span>
-            <span className="text-xs text-gray-400">Analytics cache last refreshed</span>
+            <span className="text-xs text-gray-400">{t('adm.analyticsCache')}</span>
           </span>
           <span className="text-gray-200" aria-hidden="true">·</span>
           <span className="inline-flex items-baseline gap-1.5">
             <span className="text-lg font-bold text-gray-900">{rlsCovered}/{rlsTables.length}</span>
-            <span className="text-xs text-gray-400">RLS-protected tables</span>
+            <span className="text-xs text-gray-400">{t('adm.rlsTables')}</span>
           </span>
         </div>
       </div>
 
       <div>
-        <h2 className="text-base font-bold text-gray-800 mb-3">Row Level Security (RLS)</h2>
+        <h2 className="text-base font-bold text-gray-800 mb-3">{t('adm.rowLevelSecurity')}</h2>
         <div className="grid gap-2 sm:grid-cols-3">
           {rlsTables.map(t => (
             <div key={t.table} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-2">
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${t.rls_enabled ? 'bg-green-500' : 'bg-red-500'}`} />
               <span className="text-xs text-gray-600 font-mono truncate">{t.table}</span>
-              {!t.rls_enabled && <span className="ml-auto text-[10px] text-red-600 font-semibold">OFF</span>}
+              {!t.rls_enabled && <span className="ml-auto text-[10px] text-red-600 font-semibold">{t('adm.off')}</span>}
             </div>
           ))}
         </div>
@@ -897,23 +903,24 @@ function SystemTab() {
 // ── AdminPanel (default export) ───────────────────────────────────────────────
 // Each tab is self-contained and loads its own data from Supabase.
 export default function AdminPanel({ user }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('users');
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('adm.adminPanel')}</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          System administration — users, projects, audit log, and system health
+          {t('adm.adminSub')}
         </p>
       </div>
 
       {/* Tab bar */}
       <div className="flex gap-2 border-b border-gray-100 pb-1">
-        <TabButton label="Users"     active={tab === 'users'}    onClick={() => setTab('users')} />
-        <TabButton label="Projects"  active={tab === 'projects'} onClick={() => setTab('projects')} />
-        <TabButton label="Audit Log" active={tab === 'audit'}    onClick={() => setTab('audit')} />
-        <TabButton label="System"    active={tab === 'system'}   onClick={() => setTab('system')} />
+        <TabButton label={t('adm.users')}     active={tab === 'users'}    onClick={() => setTab('users')} />
+        <TabButton label={t('adm.projects')}  active={tab === 'projects'} onClick={() => setTab('projects')} />
+        <TabButton label={t('adm.auditLog')} active={tab === 'audit'}    onClick={() => setTab('audit')} />
+        <TabButton label={t('adm.system')}    active={tab === 'system'}   onClick={() => setTab('system')} />
       </div>
 
       {tab === 'users'    && <UsersTab />}
