@@ -170,7 +170,7 @@ function UsersTab() {
   };
 
   const removeUser = async (u) => {
-    if (!(await confirmDialog({ title:t('adm.deleteUser'), message:`Permanently delete ${u.full_name}?\n\nThis cannot be undone. To preserve the audit trail, use Deactivate instead.`, confirmLabel:t('adm.deleteLbl') }))) return;
+    if (!(await confirmDialog({ title:t('adm.deleteUser'), message:t('adm.deleteUserConfirm', { name: u.full_name }), confirmLabel:t('adm.deleteLbl') }))) return;
     setBusy(true); setErr('');
     const { error } = await supabase.rpc('admin_delete_user', { p_id: u.id });
     setBusy(false);
@@ -369,8 +369,8 @@ function ProjectsTab() {
   const closeForm = () => { setShowForm(false); setEditingId(null); setForm(EMPTY_FORM); setError(''); };
 
   const save = async () => {
-    if (!form.name.trim()) { setError('Project name is required.'); return; }
-    if (!editingId && !form.code.trim()) { setError('Project code is required.'); return; }
+    if (!form.name.trim()) { setError(t('adm.projectNameRequired')); return; }
+    if (!editingId && !form.code.trim()) { setError(t('adm.projectCodeRequired')); return; }
     setBusy(true); setError('');
 
     const common = {
@@ -408,7 +408,7 @@ function ProjectsTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-base font-bold text-gray-800">
-          Projects ({projects.length}){loading && <span className="ml-2 text-xs font-normal text-gray-400">loading…</span>}
+          {t('adm.projectsCount', { count: projects.length })}{loading && <span className="ml-2 text-xs font-normal text-gray-400">{t('adm.loadingShort')}</span>}
         </h2>
         <button
           onClick={openAdd}
@@ -441,7 +441,7 @@ function ProjectsTab() {
               <input
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Vanuatu Coastal Resilience Programme"
+                placeholder={t('adm.phProjectName')}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
               />
             </div>
@@ -454,7 +454,7 @@ function ProjectsTab() {
               <input
                 value={form.code}
                 onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                placeholder="e.g. VCRP-001"
+                placeholder={t('adm.phProjectCode')}
                 readOnly={!!editingId}
                 title={editingId ? 'Project code cannot be changed' : undefined}
                 className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono ${
@@ -483,7 +483,7 @@ function ProjectsTab() {
               <input
                 value={form.lead_agency}
                 onChange={e => setForm({ ...form, lead_agency: e.target.value })}
-                placeholder="e.g. DoCC / MALFFB"
+                placeholder={t('adm.phLeadAgency')}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
               />
             </div>
@@ -781,7 +781,7 @@ function AuditTab() {
               <Fragment key={r.id}>
                 <tr className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmt(r.changed_at)}</td>
-                  <td className="px-3 py-2 text-gray-800">{r.actor_name || <span className="text-gray-400">system</span>}</td>
+                  <td className="px-3 py-2 text-gray-800">{r.actor_name || <span className="text-gray-400">{t('adm.systemActor')}</span>}</td>
                   <td className="px-3 py-2">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ACTION_STYLE[r.action] || 'bg-gray-100 text-gray-600'}`}>{r.action}</span>
                   </td>

@@ -137,7 +137,7 @@ export default function Reports() {
       <div className="rp-noprint">
         <PageHeader
           title={t('rpt.reports')}
-          subtitle="Generated automatically from the standardised MERL dataset. Use Print to save as PDF."
+          subtitle={t('rpt.pageSubtitle')}
         />
       </div>
 
@@ -353,7 +353,7 @@ function ProjectProgress({ d, projectId, period }) {
       <Section n="9" title={t('rpt.keyAchievements')}><Narr text={[learn.key_achievements, learn.major_results].filter(Boolean).join('\n\n')} /></Section>
       <Section n="10" title={t('rpt.challengesRisks')}>
         <Narr text={learn.challenges} />
-        <table className="rp-t"><thead><tr><th>ID</th><th>{t('rpt.type')}</th><th>{t('rpt.description')}</th><th>{t('rpt.rating')}</th><th>{t('rpt.status')}</th><th>{t('rpt.mitigation')}</th></tr></thead>
+        <table className="rp-t"><thead><tr><th>{t('rpt.id')}</th><th>{t('rpt.type')}</th><th>{t('rpt.description')}</th><th>{t('rpt.rating')}</th><th>{t('rpt.status')}</th><th>{t('rpt.mitigation')}</th></tr></thead>
           <tbody>
             {risks.map((r) => <tr key={r.code}><td>{r.code}</td><td>{OPT.labelOf(OPT.RISK_TYPE, r.type)}</td><td>{r.description}</td><td>{r.risk_rating || '—'}</td><td>{OPT.labelOf(OPT.RISK_STATUS, r.status)}</td><td>{r.mitigation || '—'}</td></tr>)}
             {risks.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noRisks')}</td></tr>}

@@ -14,6 +14,7 @@
 //
 // Mount <ConfirmHost /> once near the app root (alongside the toaster).
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 let openFn = null;
 
@@ -34,6 +35,7 @@ export function promptDialog(opts) {
 }
 
 export function ConfirmHost() {
+  const { t } = useTranslation();
   const [state, setState] = useState(null); // { opts, resolve }
   const [value, setValue] = useState('');
   const inputRef = useRef(null);
@@ -69,10 +71,10 @@ export function ConfirmHost() {
 
   if (!state) return null;
   const {
-    title = isPrompt ? 'Enter a value' : 'Please confirm',
+    title = isPrompt ? t('ui.enterValue') : t('ui.pleaseConfirm'),
     message = '', label = '', helper = '', placeholder = '',
-    confirmLabel = isPrompt ? 'Save' : 'OK',
-    cancelLabel = 'Cancel',
+    confirmLabel = isPrompt ? t('ui.save') : t('ui.ok'),
+    cancelLabel = t('ui.cancel'),
     danger = !isPrompt,
     multiline = false,
     required = false,

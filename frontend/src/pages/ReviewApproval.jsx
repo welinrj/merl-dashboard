@@ -97,34 +97,34 @@ export default function ReviewApproval({ user }) {
     load();
   };
 
-  const doReview = r => act('review_reporting_period', { p_id: r.id, p_decision: 'review', p_comments: null }, 'Marked under review');
+  const doReview = r => act('review_reporting_period', { p_id: r.id, p_decision: 'review', p_comments: null }, t('merl.markedUnderReview'));
   const doReturn = async r => {
     const c = await promptDialog({ title:t('merl.returnForCorrection'), label:t('merl.whatNeedsCorrection'), required:true, multiline:true,
       message:t('merl.pmWillSee') });
     if (c == null || !c.trim()) return;
-    act('review_reporting_period', { p_id: r.id, p_decision: 'return', p_comments: c.trim() }, 'Returned for correction');
+    act('review_reporting_period', { p_id: r.id, p_decision: 'return', p_comments: c.trim() }, t('merl.returnedToast'));
   };
   const doApprove = async r => {
     const ok = await confirmDialog({
       title: t('merl.approveConfirm'),
-      message: 'Approved information becomes the official project data used by dashboards and generated reports, and the period is locked. Continue?',
+      message: t('merl.approveConfirmBody'),
       confirmLabel: t('merl.approve'),
     });
     if (!ok) return;
-    act('review_reporting_period', { p_id: r.id, p_decision: 'approve', p_comments: r.review_comments ?? null }, 'Approved and locked');
+    act('review_reporting_period', { p_id: r.id, p_decision: 'approve', p_comments: r.review_comments ?? null }, t('merl.approvedLockedToast'));
   };
   const doReopen = async r => {
     const reason = await promptDialog({ title:t('merl.reopenPeriod'), label:t('merl.reopenReason'), required:true, multiline:true,
-      message:'This approved period will return to draft for correction. The reason is recorded in the audit trail.' });
+      message:t('merl.reopenConfirmBody') });
     if (reason == null || !reason.trim()) return;
-    act('reopen_reporting_period', { p_id: r.id, p_reason: reason.trim() }, 'Reporting period reopened');
+    act('reopen_reporting_period', { p_id: r.id, p_reason: reason.trim() }, t('merl.periodReopenedToast'));
   };
 
   return (
     <div className="page-pad" style={{ maxWidth: 1200 }}>
       <PageHeader
-        title="Review & Approval"
-        subtitle="Reporting-period submissions across the portfolio. The DoCC M&E Officer reviews, returns for correction, and approves."
+        title={t('merl.reviewTitle')}
+        subtitle={t('merl.reviewSubtitle')}
       />
 
       {!canReview && (
@@ -135,11 +135,11 @@ export default function ReviewApproval({ user }) {
 
       {/* KPI cards */}
       <div className="grid-kpi" style={{ marginBottom: '1rem' }}>
-        <StatTile label="Awaiting Review" value={kpi.submitted} />
-        <StatTile label="Under Review" value={kpi.reviewed} />
-        <StatTile label="Returned" value={kpi.returned} status={kpi.returned ? 'amber' : 'green'} />
+        <StatTile label={t('merl.awaitingReview')} value={kpi.submitted} />
+        <StatTile label={t('merl.underReview')} value={kpi.reviewed} />
+        <StatTile label={t('merl.returned')} value={kpi.returned} status={kpi.returned ? 'amber' : 'green'} />
         <StatTile label={t('merl.approved')} value={kpi.approved} />
-        <StatTile label="Overdue" value={kpi.overdue} status={kpi.overdue ? 'red' : 'green'} />
+        <StatTile label={t('merl.overdue')} value={kpi.overdue} status={kpi.overdue ? 'red' : 'green'} />
       </div>
 
       {/* Filter */}
@@ -187,8 +187,8 @@ export default function ReviewApproval({ user }) {
             render: (r) => (
               <span style={{ fontSize: '0.8rem' }}>
                 {r.period_label}
-                {isOverdue(r) && <StatusBadge tone="danger" label="Overdue" />}
-                {r.reopened_at && <span title={r.reopen_reason || ''} style={{ marginLeft: 6 }}><StatusBadge tone="info" label="Reopened" /></span>}
+                {isOverdue(r) && <StatusBadge tone="danger" label={t('merl.overdue')} />}
+                {r.reopened_at && <span title={r.reopen_reason || ''} style={{ marginLeft: 6 }}><StatusBadge tone="info" label={t('merl.reopened')} /></span>}
               </span>
             ) },
           { key: 'reporting_officer_name', header: 'Submitted By', sortable: true,
@@ -266,7 +266,7 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
   const status = row.submission_status;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Reporting period detail"
+    <div role="dialog" aria-modal="true" aria-label={t('merl.periodDetail')}
       style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.4)' }} />
       <div style={{ position: 'relative', width: 'min(560px, 100%)', maxWidth: '100%', height: '100%', background: 'var(--surface-1, var(--white))',
@@ -281,22 +281,22 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
               <StatusBadge status={status} />
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4, flexShrink: 0 }}>
+          <button onClick={onClose} aria-label={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4, flexShrink: 0 }}>
             <X size={20} />
           </button>
         </div>
 
         {/* Meta */}
         <div style={{ padding: '0.75rem 1.1rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-2)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem 0.75rem' }}>
-          <span>Submitted by: <strong style={{ color: 'var(--text-1)' }}>{row.reporting_officer_name ?? '—'}</strong></span>
-          <span>Submitted: <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.submitted_at)}</strong></span>
-          {row.period_start && <span>Period: <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.period_start)} – {fmtDate(row.period_end)}</strong></span>}
+          <span>{t('merl.submittedBy')} <strong style={{ color: 'var(--text-1)' }}>{row.reporting_officer_name ?? '—'}</strong></span>
+          <span>{t('merl.submittedOn')} <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.submitted_at)}</strong></span>
+          {row.period_start && <span>{t('merl.periodLbl')} <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.period_start)} – {fmtDate(row.period_end)}</strong></span>}
           {row.reopened_at && <span style={{ color: '#8a6416' }}>Reopened: {fmtDate(row.reopened_at)}</span>}
         </div>
 
         {status === 'returned' && row.review_comments && (
           <div style={{ margin: '0.75rem 1.1rem 0', padding: '0.6rem 0.8rem', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, fontSize: '0.78rem', color: '#8a6416' }}>
-            <strong>Returned for correction:</strong> {row.review_comments}
+            <strong>{t('merl.returnedForCorrection')}</strong> {row.review_comments}
           </div>
         )}
 

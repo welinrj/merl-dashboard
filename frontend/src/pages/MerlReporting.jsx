@@ -355,7 +355,7 @@ export default function MerlReporting({ user }) {
     }
     const { error } = await supabase.rpc(m.rpc, params);
     if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success(editing?.id ? 'Updated' : 'Added');
+    toast.success(editing?.id ? t('merl.updatedToast') : t('merl.addedToast'));
     setEditing(null);
     loadRecords();
     setRefreshKey((k) => k + 1);
@@ -406,7 +406,7 @@ export default function MerlReporting({ user }) {
     }
     const { error } = await supabase.rpc(rpc, params);
     if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success(rpc === 'reopen_reporting_period' ? 'Reporting period reopened' : 'Updated');
+    toast.success(rpc === 'reopen_reporting_period' ? t('merl.periodReopenedToast') : t('merl.updatedToast'));
     loadContext(projectId);
   };
 
@@ -442,8 +442,8 @@ export default function MerlReporting({ user }) {
       `}</style>
 
       <PageHeader
-        title="MERL Reporting"
-        subtitle="Periodic monitoring entries for the DoCC Standardised MERL form. Data entered here flows to the dashboards and generated reports."
+        title={t('merl.pageTitle')}
+        subtitle={t('merl.pageSubtitle')}
       />
 
       {/* Project + period bar */}
@@ -457,7 +457,7 @@ export default function MerlReporting({ user }) {
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
           <label className="field-label">{t('merl.activePeriod')}</label>
           <select className="field-input" value={activePeriod} onChange={(e) => setActivePeriod(e.target.value)}>
-            <option value="">— none —</option>
+            <option value="">{t('merl.noneOption')}</option>
             {periods.map((p) => <option key={p.id} value={p.period_label}>{p.period_label}</option>)}
           </select>
         </div>
@@ -478,7 +478,7 @@ export default function MerlReporting({ user }) {
             {OPT.labelOf(OPT.SUBMISSION_STATUS, currentPeriodRow.submission_status)}
           </span>
           {currentPeriodRow.submission_status === 'approved' && (
-            <span title="Approved records are locked. The DoCC M&E Officer must reopen this period to make changes."
+            <span title={t('merl.lockedTitle')}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 700, color: '#155e34', background: '#dcece2', border: '1px solid #16a34a55', padding: '0.2rem 0.55rem', borderRadius: 9999 }}>
               <Lock size={12} /> {t('merl.locked')}
             </span>
@@ -549,7 +549,7 @@ export default function MerlReporting({ user }) {
           {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && completion.done < completion.total && (
             <p style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', fontSize: '0.72rem', color: 'var(--text-2)', margin: '0.7rem 0 0' }}>
               <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
-              <span>You can submit at any point, but sections without data will be reported as empty for this period.</span>
+              <span>{t('merl.submitAnyTime')}</span>
             </p>
           )}
         </div>
@@ -615,7 +615,7 @@ export default function MerlReporting({ user }) {
                       {activeModule.columns.map((c) => <td key={c.label}>{c.get(r) ?? '—'}</td>)}
                       {canEdit && (
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button onClick={() => setEditing(r)} aria-label="Edit record" title={t('merl.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                          <button onClick={() => setEditing(r)} aria-label={t('merl.editRecord')} title={t('merl.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
                           <button onClick={() => deleteRecord(r)} aria-label={t('merl.deleteRecord')} title={t('merl.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                         </td>
                       )}
@@ -728,7 +728,7 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
         onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
           <strong style={{ fontSize: '1rem' }}>{initial?.id ? t('merl.edit') : t('merl.add')} — {t(module.label)}</strong>
-          <button onClick={onCancel} aria-label="Close" title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
+          <button onClick={onCancel} aria-label={t('ui.close')} title={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="mr-form-grid">
           {module.fields.map((f) => (

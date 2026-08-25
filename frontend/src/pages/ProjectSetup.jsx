@@ -154,7 +154,7 @@ export default function ProjectSetup({ user }) {
     return (
       <div className="page-pad" style={{ maxWidth: 700, margin: '0 auto' }}>
         <h1 style={{ fontFamily: 'var(--font-display)' }}>{t('ps.projectSetup')}</h1>
-        <p style={{ color: 'var(--text-2)' }}>You have read-only access. Project setup is available to Project Managers, M&amp;E Officers and Administrators.</p>
+        <p style={{ color: 'var(--text-2)' }}>{t('ps.readOnlyNotice')}</p>
       </div>
     );
   }
@@ -184,7 +184,7 @@ export default function ProjectSetup({ user }) {
 
       <PageHeader
         title={t('ps.projectSetup')}
-        subtitle="Register a project and build its results framework, indicators, activities and locations. Periodic monitoring is entered later under MERL Reporting."
+        subtitle={t('ps.pageSubtitle')}
         actions={project ? (
           <div style={{ textAlign: 'right', minWidth: 170 }}>
             <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: setupPct === 100 ? 'var(--green-700)' : 'var(--text-3)' }}>
@@ -202,7 +202,7 @@ export default function ProjectSetup({ user }) {
         <div style={{ flex: '1 1 320px' }}>
           <label className="field-label">{t('ps.project')}</label>
           <select className="field-input" value={projectId ?? ''} onChange={(e) => { setProjectId(e.target.value || null); setStep('profile'); }}>
-            <option value="">— Select a project to edit —</option>
+            <option value="">{t('ps.selectProject')}</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
           </select>
         </div>
@@ -371,7 +371,7 @@ function ProfileStep({ project, users, onSaved }) {
   const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
   return (
     <div>
-      <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{t('ps.projectProfile')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 1</span></h3>
+      <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{t('ps.projectProfile')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 1 })}</span></h3>
       <div className="ps-grid">
         <h4 className="ps-sec ps-sec-first">{t('ps.identification')}</h4>
         <Field className="ps-full" label={t('ps.projectTitleReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
@@ -432,7 +432,8 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
   const openAdd = (kind, parentId) => setEditing({ kind, parentId, row: null });
   const openEdit = (kind, row) => setEditing({ kind, row });
   const delNode = async (kind, row) => {
-    if (!(await confirmDialog({ title:`Delete ${kind}`, message:`Delete ${kind} ${row.code}? Child records are removed too. This cannot be undone.`, confirmLabel:t('ps.deleteLbl') }))) return;
+    const kindLabel = t(`ps.node${kind.charAt(0).toUpperCase()}${kind.slice(1)}`);
+    if (!(await confirmDialog({ title:t('ps.deleteNodeTitle', { kind: kindLabel }), message:t('ps.deleteNodeConfirm', { kind: kindLabel, code: row.code }), confirmLabel:t('ps.deleteLbl') }))) return;
     const rpc = kind === 'objective' ? 'delete_objective' : kind === 'outcome' ? 'delete_outcome' : 'delete_output';
     const { error } = await supabase.rpc(rpc, { p_id: row.id });
     if (error) { toast.error(dbErrorMessage(error)); return; } reload();
@@ -449,7 +450,7 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.resultsFramework')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 2</span></h3>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.resultsFramework')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 2 })}</span></h3>
         <button style={btn('var(--green-700)')} onClick={() => openAdd('objective')}><Plus size={14} /> {t('ps.objective')}</button>
       </div>
       {objectives.length === 0 && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noObjectives')}</p>}
@@ -542,7 +543,7 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
         : await supabase.rpc('create_output', { p_outcome_id: parentId, p_statement: S, p_responsible_officer_id: v.responsible_officer_id || null });
     }
     if (res.error) { toast.error(dbErrorMessage(res.error)); return; }
-    toast.success(row?.id ? 'Saved' : 'Added');
+    toast.success(row?.id ? t('ps.savedToast') : t('ps.addedToast'));
     onSaved();
   };
   const title = `${row?.id ? 'Edit' : 'New'} ${kind}`;
@@ -572,14 +573,14 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
   const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
-    if (!(await confirmDialog({ title:t('ps.deleteIndicator'), message:`Delete indicator ${row.code}? This cannot be undone.`, confirmLabel:t('ps.deleteLbl') }))) return;
+    if (!(await confirmDialog({ title:t('ps.deleteIndicator'), message:t('ps.deleteIndicatorConfirm', { code: row.code }), confirmLabel:t('ps.deleteLbl') }))) return;
     const { error } = await supabase.rpc('delete_project_indicator', { p_id: row.id });
     if (error) return toast.error(dbErrorMessage(error)); reload();
   };
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.indicators')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 3</span></h3>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.indicators')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 3 })}</span></h3>
         <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.indicator')}</button>
       </div>
       {indicators.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noIndicators')}</p> : (
@@ -618,9 +619,9 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
               </div>
               {/* baseline -> target (§21). Achievement/current come from reporting, not setup. */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.8rem' }}>
-                <span style={miniChip}>Baseline: <strong>{i.baseline_value ?? '—'}</strong></span>
+                <span style={miniChip}>{t('ps.baselineLbl')} <strong>{i.baseline_value ?? '—'}</strong></span>
                 <span style={{ color: 'var(--text-3)' }}>→</span>
-                <span style={miniChip}>Target: <strong>{i.target_value ?? '—'}</strong></span>
+                <span style={miniChip}>{t('ps.targetLbl')} <strong>{i.target_value ?? '—'}</strong></span>
                 {i.unit && <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{i.unit}</span>}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -705,15 +706,15 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
-    if (!(await confirmDialog({ title:t('ps.deleteActivity'), message:`Delete activity ${row.code}? This cannot be undone.`, confirmLabel:t('ps.deleteLbl') }))) return;
+    if (!(await confirmDialog({ title:t('ps.deleteActivity'), message:t('ps.deleteActivityConfirm', { code: row.code }), confirmLabel:t('ps.deleteLbl') }))) return;
     const { error } = await supabase.rpc('delete_project_activity', { p_id: row.id });
     if (error) return toast.error(dbErrorMessage(error)); reload();
   };
-  if (outputs.length === 0) return <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Add at least one Output in the Results Framework before creating activities.</p>;
+  if (outputs.length === 0) return <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.needOutput')}</p>;
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.activities')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 5</span></h3>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.activities')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 5 })}</span></h3>
         <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.activity')}</button>
       </div>
       {activities.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noActivities')}</p> : (
@@ -835,7 +836,7 @@ function LocationsStep({ projectId, locations, reload }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.geographicImplementation')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Form 7</span></h3>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.geographicImplementation')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 7 })}</span></h3>
         <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.location')}</button>
       </div>
       {locations.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noLocations')}</p> : (
@@ -946,7 +947,7 @@ function Modal({ title, children, onClose, onSave, saveLabel, dirty }) {
   const guardedClose = async () => {
     if (dirty && !(await confirmDialog({
       title: t('ps.discardChangesQ'), message: t('ps.unsavedChanges'),
-      confirmLabel: t('ps.discardChanges'), cancelLabel: 'Stay',
+      confirmLabel: t('ps.discardChanges'), cancelLabel: t('ps.stay'),
     }))) return;
     onClose();
   };
