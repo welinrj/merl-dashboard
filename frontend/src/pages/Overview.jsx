@@ -28,7 +28,7 @@ import KpiCard from '../components/ui/KpiCard';
 import Gedsi from '../components/ui/Gedsi';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
-import { localised } from '../lib/contentLocale';
+import { localised, i18nCols } from '../lib/contentLocale';
 
 // ── Semantic colours (matched to the approved sample) ─────────────────────────
 const BLUE = '#2f6df0';
@@ -92,17 +92,17 @@ export default function Overview({ user }) {
   useEffect(() => {
     (async () => {
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
-      const q = (v, c) => localised(supabase.from(v).select(c));
+      const q = (v, c) => localised(() => supabase.from(v).select(i18nCols(c)));
       const [proj, fin, risk, ben, act, ind, prog, rep, loc] = await Promise.all([
-        q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, updated_at, i18n'),
-        q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at, i18n'),
-        q('v_risks_issues', 'project_id, risk_rating, status, due_date, i18n'),
-        q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, i18n'),
-        q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due, i18n'),
-        q('v_project_indicators', 'project_id, id, i18n'),
-        q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at, i18n'),
-        q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at, i18n'),
-        q('v_project_locations', 'project_id, province, i18n'),
+        q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, updated_at'),
+        q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at'),
+        q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
+        q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
+        q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
+        q('v_project_indicators', 'project_id, id'),
+        q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
+        q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
+        q('v_project_locations', 'project_id, province'),
       ]);
       setD({
         projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [], beneficiaries: ben.data ?? [],

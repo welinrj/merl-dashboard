@@ -4,7 +4,7 @@ import { confirmDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime } from '../lib/locale';
-import { localised } from '../lib/contentLocale';
+import { localised, i18nCols } from '../lib/contentLocale';
 
 // The five official user types. `id` is the DB enum value (merl.user_role).
 const DB_ROLES = [
@@ -67,7 +67,7 @@ function AssignProjectsModal({ user, onClose }) {
   const load = useCallback(async () => {
     setLoading(true);
     const [pj, as] = await Promise.all([
-      localised(supabase.from('v_projects').select('id, code, name, i18n').order('code')),
+      localised(() => supabase.from('v_projects').select(i18nCols('id, code, name')).order('code')),
       supabase.from('v_user_project_assignments').select('project_id, is_active').eq('user_id', user.id),
     ]);
     setProjects(pj.data || []);

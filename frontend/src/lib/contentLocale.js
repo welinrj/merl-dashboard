@@ -73,6 +73,39 @@ export function localiseRows(rows, lang = i18n.resolvedLanguage) {
   return rows.map((row) => localiseRow(row, lang));
 }
 
+// ── Working against a database that has not been migrated yet ────────────────
+// The frontend is deployed separately from the database, so there is always a
+// window where the built bundle is newer than the schema it talks to. Asking a
+// view for the i18n column before migration 0036 has run does not merely lose
+// the translations: PostgREST rejects the whole query, and the page shows no
+// projects at all. A pending migration must never be able to empty a screen.
+//
+// So the column is requested optimistically, and the first query to be refused
+// for asking teaches the rest of the session to stop asking. The portal then
+// behaves exactly as it did before translations existed — the same posture
+// cachedRead takes when the Redis sidecar is absent.
+let i18nAbsent = false;
+
+/**
+ * Add the i18n column to a select list, unless this database has already shown
+ * that it does not have one.
+ *
+ *   supabase.from('v_projects').select(i18nCols('id, code, name'))
+ *
+ * A `*` select is left alone: it already returns the column wherever the column
+ * exists, and naming it as well would make the query fail where it doesn't.
+ */
+export const i18nCols = (columns) =>
+  (i18nAbsent || columns.includes('*') || /(^|,)\s*i18n\s*(,|$)/.test(columns)
+    ? columns
+    : `${columns}, i18n`);
+
+// PostgREST reports an unknown column as 42703. The message is matched too
+// because the code is not always carried through the client.
+const isMissingI18nColumn = (error) =>
+  Boolean(error) && (error.code === '42703' || /column .*i18n.* does not exist/i.test(error.message ?? ''))
+  && /i18n/i.test(`${error.message ?? ''}${error.details ?? ''}${error.hint ?? ''}`);
+
 /**
  * Localise a PostgREST result in place of awaiting it directly:
  *
@@ -80,9 +113,21 @@ export function localiseRows(rows, lang = i18n.resolvedLanguage) {
  *
  * `error` and every other field pass through untouched, so this is a drop-in
  * around an existing call rather than a different way of fetching.
+ *
+ * Pass a function rather than a query and it can be rebuilt: if the database
+ * turns out not to have the i18n column, the query is retried once without it
+ * instead of the caller seeing an error.
  */
 export async function localised(query, lang = i18n.resolvedLanguage) {
-  const result = await query;
+  const run = typeof query === 'function' ? query : () => query;
+  let result = await run();
+
+  if (isMissingI18nColumn(result?.error)) {
+    i18nAbsent = true;
+    // Only a rebuildable query can drop the column and try again.
+    if (typeof query === 'function') result = await run();
+  }
+
   if (!result || result.error || !result.data) return result;
   return {
     ...result,

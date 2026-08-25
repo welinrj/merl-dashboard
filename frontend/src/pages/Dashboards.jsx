@@ -22,7 +22,7 @@ import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
-import { localised } from '../lib/contentLocale';
+import { localised, i18nCols } from '../lib/contentLocale';
 
 const TABS = [
   { key: 'portfolio',  label: 'dash.tabPortfolio' },
@@ -69,20 +69,20 @@ export default function Dashboards({ initialTab }) {
     (async () => {
       setLoading(true);
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
-      const q = (v, cols) => localised(supabase.from(v).select(cols));
+      const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
       const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op] = await Promise.all([
-        q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, i18n'),
-        q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at, i18n'),
-        q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person, i18n'),
-        q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, other_vulnerable, indirect, reporting_period, i18n'),
-        q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code, i18n'),
-        q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level, i18n'),
-        q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, reporting_period, final_target, created_at, i18n'),
-        q('v_reporting_periods', 'project_id, period_label, period_type, submission_status, period_end, i18n'),
-        q('v_project_locations', 'project_id, province, island, area_council, community, beneficiaries, latitude, longitude, i18n'),
-        q('v_objectives', 'project_id, code, statement, i18n'),
-        q('v_outcomes', 'project_id, code, statement, objective_id, i18n'),
-        q('v_outputs', 'project_id, code, statement, outcome_id, i18n'),
+        q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
+        q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at'),
+        q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
+        q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, other_vulnerable, indirect, reporting_period'),
+        q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code'),
+        q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level'),
+        q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, reporting_period, final_target, created_at'),
+        q('v_reporting_periods', 'project_id, period_label, period_type, submission_status, period_end'),
+        q('v_project_locations', 'project_id, province, island, area_council, community, beneficiaries, latitude, longitude'),
+        q('v_objectives', 'project_id, code, statement'),
+        q('v_outcomes', 'project_id, code, statement, objective_id'),
+        q('v_outputs', 'project_id, code, statement, outcome_id'),
       ]);
       setD({
         projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
