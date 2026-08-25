@@ -24,6 +24,7 @@ import {
   achievementPct, variance as calcVariance, performanceStatus, remainingBalance,
   utilisationPct, fundsAvailable, riskRating, fmtAmount, fmtPct,
 } from '../lib/docc/reporting';
+import { useTranslation } from 'react-i18next';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 // The DoCC M&E Officer is the official Reviewer/Approver; System Administrator
@@ -38,69 +39,69 @@ const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(
 // options: static [{value,label}] ; dynamicOptions: 'indicators' | 'activities'
 const MODULES = [
   {
-    key: 'indicator_progress', label: 'Indicator Progress', form: 'Form 4',
+    key: 'indicator_progress', label: 'merl.modIndicatorProgress', form: 'Form 4',
     view: 'v_indicator_progress', rpc: 'upsert_indicator_progress', del: 'delete_indicator_progress',
     periodScoped: true,
     fields: [
-      { name: 'indicator_id', label: 'Indicator', type: 'select', dynamicOptions: 'indicators', required: true },
-      { name: 'period_target', label: 'Period Target', type: 'number' },
-      { name: 'actual_this_period', label: 'Actual This Period', type: 'number' },
-      { name: 'cumulative_actual', label: 'Cumulative Actual', type: 'number' },
-      { name: 'previous_value', label: 'Previous Period Value', type: 'number' },
-      { name: 'performance_status', label: 'Performance Status', type: 'select', options: OPT.PERFORMANCE_STATUS },
-      { name: 'narrative', label: 'Progress Narrative', type: 'textarea' },
-      { name: 'variance_reason', label: 'Reason for Variance', type: 'textarea' },
-      { name: 'corrective_action', label: 'Corrective Action', type: 'textarea' },
-      { name: 'date_reported', label: 'Date Reported', type: 'date' },
+      { name: 'indicator_id', label: 'merl.indicator', type: 'select', dynamicOptions: 'indicators', required: true },
+      { name: 'period_target', label: 'merl.periodTarget', type: 'number' },
+      { name: 'actual_this_period', label: 'merl.actualThisPeriod', type: 'number' },
+      { name: 'cumulative_actual', label: 'merl.cumulativeActual', type: 'number' },
+      { name: 'previous_value', label: 'merl.previousPeriodValue', type: 'number' },
+      { name: 'performance_status', label: 'merl.performanceStatus', type: 'select', options: OPT.PERFORMANCE_STATUS },
+      { name: 'narrative', label: 'merl.progressNarrative', type: 'textarea' },
+      { name: 'variance_reason', label: 'merl.reasonForVariance', type: 'textarea' },
+      { name: 'corrective_action', label: 'merl.correctiveAction', type: 'textarea' },
+      { name: 'date_reported', label: 'merl.dateReported', type: 'date' },
     ],
     columns: [
-      { label: 'Indicator', get: (r) => r.indicator_code || '—' },
-      { label: 'Period', get: (r) => r.reporting_period },
-      { label: 'Cumulative', get: (r) => (r.cumulative_actual ?? '—') },
-      { label: 'Achievement', get: (r) => fmtPct(r.achievement_pct) },
-      { label: 'Status', get: (r) => OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status) },
+      { label: 'merl.indicator', get: (r) => r.indicator_code || '—' },
+      { label: 'merl.period', get: (r) => r.reporting_period },
+      { label: 'merl.cumulative', get: (r) => (r.cumulative_actual ?? '—') },
+      { label: 'merl.achievement', get: (r) => fmtPct(r.achievement_pct) },
+      { label: 'merl.status', get: (r) => OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status) },
     ],
   },
   {
-    key: 'financial_progress', label: 'Financial Progress', form: 'Form 6',
+    key: 'financial_progress', label: 'merl.modFinancialProgress', form: 'Form 6',
     view: 'v_financial_progress', rpc: 'upsert_financial_progress', del: 'delete_financial_progress',
     periodScoped: true,
     fields: [
-      { name: 'approved_budget', label: 'Approved Project Budget', type: 'number' },
-      { name: 'annual_budget', label: 'Annual Budget', type: 'number' },
-      { name: 'period_budget', label: 'Budget for Reporting Period', type: 'number' },
-      { name: 'expenditure_period', label: 'Expenditure This Period', type: 'number' },
-      { name: 'cumulative_expenditure', label: 'Cumulative Expenditure', type: 'number' },
-      { name: 'funds_received', label: 'Funds Received', type: 'number' },
-      { name: 'funds_committed', label: 'Funds Committed', type: 'number' },
-      { name: 'narrative', label: 'Financial Narrative', type: 'textarea' },
+      { name: 'approved_budget', label: 'merl.approvedProjectBudget', type: 'number' },
+      { name: 'annual_budget', label: 'merl.annualBudget', type: 'number' },
+      { name: 'period_budget', label: 'merl.budgetForPeriod', type: 'number' },
+      { name: 'expenditure_period', label: 'merl.expenditureThisPeriod', type: 'number' },
+      { name: 'cumulative_expenditure', label: 'merl.cumulativeExpenditure', type: 'number' },
+      { name: 'funds_received', label: 'merl.fundsReceived', type: 'number' },
+      { name: 'funds_committed', label: 'merl.fundsCommitted', type: 'number' },
+      { name: 'narrative', label: 'merl.financialNarrative', type: 'textarea' },
     ],
     columns: [
-      { label: 'Period', get: (r) => r.reporting_period },
-      { label: 'Approved', get: (r) => fmtAmount(r.approved_budget) },
-      { label: 'Cumulative Exp.', get: (r) => fmtAmount(r.cumulative_expenditure) },
-      { label: 'Balance', get: (r) => fmtAmount(r.remaining_balance) },
-      { label: 'Utilisation', get: (r) => fmtPct(r.utilisation_pct) },
+      { label: 'merl.period', get: (r) => r.reporting_period },
+      { label: 'merl.approved', get: (r) => fmtAmount(r.approved_budget) },
+      { label: 'merl.cumulativeExp', get: (r) => fmtAmount(r.cumulative_expenditure) },
+      { label: 'merl.balance', get: (r) => fmtAmount(r.remaining_balance) },
+      { label: 'merl.utilisation', get: (r) => fmtPct(r.utilisation_pct) },
     ],
   },
   {
-    key: 'beneficiaries', label: 'Beneficiaries & GEDSI', form: 'Form 8',
+    key: 'beneficiaries', label: 'merl.modBeneficiaries', form: 'Form 8',
     view: 'v_beneficiaries', rpc: 'upsert_beneficiaries', del: 'delete_beneficiaries',
     periodScoped: true,
     fields: [
-      { name: 'activity_id', label: 'Activity (optional)', type: 'select', dynamicOptions: 'activities' },
-      { name: 'location', label: 'Location', type: 'text' },
-      { name: 'total_direct', label: 'Total Direct Beneficiaries', type: 'number' },
-      { name: 'female', label: 'Female', type: 'number' },
-      { name: 'male', label: 'Male', type: 'number' },
-      { name: 'other_gender', label: 'Other / Not Reported', type: 'number' },
-      { name: 'youth', label: 'Youth', type: 'number' },
-      { name: 'persons_with_disability', label: 'Persons with Disabilities', type: 'number' },
-      { name: 'indirect', label: 'Indirect Beneficiaries', type: 'number' },
-      { name: 'other_vulnerable', label: 'Other Vulnerable / Target Groups', type: 'text' },
-      { name: 'data_source', label: 'Data Source', type: 'text' },
-      { name: 'double_counting_check', label: 'Double-counting checked', type: 'checkbox' },
-      { name: 'comments', label: 'Comments', type: 'textarea' },
+      { name: 'activity_id', label: 'merl.activityOptional', type: 'select', dynamicOptions: 'activities' },
+      { name: 'location', label: 'merl.location', type: 'text' },
+      { name: 'total_direct', label: 'merl.totalDirect', type: 'number' },
+      { name: 'female', label: 'merl.female', type: 'number' },
+      { name: 'male', label: 'merl.male', type: 'number' },
+      { name: 'other_gender', label: 'merl.otherNotReported', type: 'number' },
+      { name: 'youth', label: 'merl.youth', type: 'number' },
+      { name: 'persons_with_disability', label: 'merl.pwdFull', type: 'number' },
+      { name: 'indirect', label: 'merl.indirectBeneficiaries', type: 'number' },
+      { name: 'other_vulnerable', label: 'merl.otherVulnerable', type: 'text' },
+      { name: 'data_source', label: 'merl.dataSource', type: 'text' },
+      { name: 'double_counting_check', label: 'merl.doubleCounting', type: 'checkbox' },
+      { name: 'comments', label: 'merl.comments', type: 'textarea' },
     ],
     note: 'Leave a count blank if it was not collected — a blank is stored as "no data", which is different from a recorded 0.',
     // The gender split is a partition of the total; youth and disability are
@@ -120,82 +121,82 @@ const MODULES = [
       return null;
     },
     columns: [
-      { label: 'Period', get: (r) => r.reporting_period },
-      { label: 'Location', get: (r) => r.location || '—' },
-      { label: 'Direct', get: (r) => (r.total_direct ?? '—') },
-      { label: 'Female', get: (r) => (r.female ?? '—') },
-      { label: 'Male', get: (r) => (r.male ?? '—') },
-      { label: 'PWD', get: (r) => (r.persons_with_disability ?? '—') },
+      { label: 'merl.period', get: (r) => r.reporting_period },
+      { label: 'merl.location', get: (r) => r.location || '—' },
+      { label: 'merl.direct', get: (r) => (r.total_direct ?? '—') },
+      { label: 'merl.female', get: (r) => (r.female ?? '—') },
+      { label: 'merl.male', get: (r) => (r.male ?? '—') },
+      { label: 'merl.pwd', get: (r) => (r.persons_with_disability ?? '—') },
     ],
   },
   {
-    key: 'risks_issues', label: 'Risks & Issues', form: 'Form 9',
+    key: 'risks_issues', label: 'merl.modRisks', form: 'Form 9',
     view: 'v_risks_issues', rpc: 'upsert_risk_issue', del: 'delete_risk_issue',
     periodScoped: false,
     fields: [
-      { name: 'type', label: 'Type', type: 'select', options: OPT.RISK_TYPE, required: true },
-      { name: 'description', label: 'Description', type: 'textarea', required: true },
-      { name: 'category', label: 'Category', type: 'select', options: OPT.RISK_CATEGORY },
-      { name: 'date_identified', label: 'Date Identified', type: 'date' },
-      { name: 'likelihood', label: 'Likelihood (1–5)', type: 'select', options: OPT.LIKELIHOOD_IMPACT },
-      { name: 'impact', label: 'Impact (1–5)', type: 'select', options: OPT.LIKELIHOOD_IMPACT },
-      { name: 'mitigation', label: 'Mitigation / Corrective Action', type: 'textarea' },
-      { name: 'responsible_person', label: 'Responsible Person', type: 'text' },
-      { name: 'due_date', label: 'Due Date', type: 'date' },
-      { name: 'status', label: 'Status', type: 'select', options: OPT.RISK_STATUS },
-      { name: 'latest_update', label: 'Latest Update', type: 'textarea' },
-      { name: 'date_resolved', label: 'Date Resolved', type: 'date' },
+      { name: 'type', label: 'merl.type', type: 'select', options: OPT.RISK_TYPE, required: true },
+      { name: 'description', label: 'merl.description', type: 'textarea', required: true },
+      { name: 'category', label: 'merl.category', type: 'select', options: OPT.RISK_CATEGORY },
+      { name: 'date_identified', label: 'merl.dateIdentified', type: 'date' },
+      { name: 'likelihood', label: 'merl.likelihood', type: 'select', options: OPT.LIKELIHOOD_IMPACT },
+      { name: 'impact', label: 'merl.impact', type: 'select', options: OPT.LIKELIHOOD_IMPACT },
+      { name: 'mitigation', label: 'merl.mitigation', type: 'textarea' },
+      { name: 'responsible_person', label: 'merl.responsiblePerson', type: 'text' },
+      { name: 'due_date', label: 'merl.dueDate', type: 'date' },
+      { name: 'status', label: 'merl.status', type: 'select', options: OPT.RISK_STATUS },
+      { name: 'latest_update', label: 'merl.latestUpdate', type: 'textarea' },
+      { name: 'date_resolved', label: 'merl.dateResolved', type: 'date' },
     ],
     columns: [
       { label: 'ID', get: (r) => r.code },
-      { label: 'Type', get: (r) => OPT.labelOf(OPT.RISK_TYPE, r.type) },
-      { label: 'Description', get: (r) => (r.description || '').slice(0, 60) },
-      { label: 'Rating', get: (r) => r.risk_rating || '—' },
-      { label: 'Status', get: (r) => OPT.labelOf(OPT.RISK_STATUS, r.status) },
+      { label: 'merl.type', get: (r) => OPT.labelOf(OPT.RISK_TYPE, r.type) },
+      { label: 'merl.description', get: (r) => (r.description || '').slice(0, 60) },
+      { label: 'merl.rating', get: (r) => r.risk_rating || '—' },
+      { label: 'merl.status', get: (r) => OPT.labelOf(OPT.RISK_STATUS, r.status) },
     ],
   },
   {
-    key: 'learning_updates', label: 'Achievements & Learning', form: 'Form 10',
+    key: 'learning_updates', label: 'merl.modLearning', form: 'Form 10',
     view: 'v_learning_updates', rpc: 'upsert_learning_update', del: 'delete_learning_update',
     periodScoped: true,
     fields: [
-      { name: 'key_achievements', label: 'Key Achievements', type: 'textarea' },
-      { name: 'major_results', label: 'Major Results', type: 'textarea' },
-      { name: 'challenges', label: 'Challenges', type: 'textarea' },
-      { name: 'lessons_learned', label: 'Lessons Learned', type: 'textarea' },
-      { name: 'successful_approaches', label: 'Successful Approaches', type: 'textarea' },
-      { name: 'what_did_not_work', label: 'What Did Not Work', type: 'textarea' },
-      { name: 'corrective_actions', label: 'Corrective Actions Taken', type: 'textarea' },
-      { name: 'recommendations', label: 'Recommendations', type: 'textarea' },
-      { name: 'emerging_opportunities', label: 'Emerging Opportunities', type: 'textarea' },
-      { name: 'next_period_priorities', label: 'Priorities for Next Period', type: 'textarea' },
-      { name: 'success_story', label: 'Success Story / Case Study', type: 'textarea' },
+      { name: 'key_achievements', label: 'merl.keyAchievements', type: 'textarea' },
+      { name: 'major_results', label: 'merl.majorResults', type: 'textarea' },
+      { name: 'challenges', label: 'merl.challenges', type: 'textarea' },
+      { name: 'lessons_learned', label: 'merl.lessonsLearned', type: 'textarea' },
+      { name: 'successful_approaches', label: 'merl.successfulApproaches', type: 'textarea' },
+      { name: 'what_did_not_work', label: 'merl.whatDidNotWork', type: 'textarea' },
+      { name: 'corrective_actions', label: 'merl.correctiveActionsTaken', type: 'textarea' },
+      { name: 'recommendations', label: 'merl.recommendations', type: 'textarea' },
+      { name: 'emerging_opportunities', label: 'merl.emergingOpportunities', type: 'textarea' },
+      { name: 'next_period_priorities', label: 'merl.nextPeriodPriorities', type: 'textarea' },
+      { name: 'success_story', label: 'merl.successStory', type: 'textarea' },
     ],
     columns: [
-      { label: 'Period', get: (r) => r.reporting_period },
-      { label: 'Key Achievements', get: (r) => (r.key_achievements || '').slice(0, 80) || '—' },
-      { label: 'Lessons', get: (r) => (r.lessons_learned || '').slice(0, 60) || '—' },
+      { label: 'merl.period', get: (r) => r.reporting_period },
+      { label: 'merl.keyAchievements', get: (r) => (r.key_achievements || '').slice(0, 80) || '—' },
+      { label: 'merl.lessons', get: (r) => (r.lessons_learned || '').slice(0, 60) || '—' },
     ],
   },
   {
-    key: 'evidence', label: 'Evidence', form: 'Form 12',
+    key: 'evidence', label: 'merl.modEvidence', form: 'Form 12',
     view: 'v_evidence', rpc: 'upsert_evidence', del: 'delete_evidence',
     periodScoped: true,
     fields: [
-      { name: 'title', label: 'Document Title', type: 'text', required: true },
-      { name: 'document_type', label: 'Document Type', type: 'select', options: OPT.DOCUMENT_TYPE },
-      { name: 'indicator_id', label: 'Related Indicator (optional)', type: 'select', dynamicOptions: 'indicators' },
-      { name: 'activity_id', label: 'Related Activity (optional)', type: 'select', dynamicOptions: 'activities' },
-      { name: 'description', label: 'Description', type: 'textarea' },
-      { name: 'document_date', label: 'Document Date', type: 'date' },
-      { name: 'file_url', label: 'File / URL', type: 'text' },
-      { name: 'verification_status', label: 'Verification Status', type: 'select', options: OPT.VERIFICATION_STATUS },
+      { name: 'title', label: 'merl.documentTitle', type: 'text', required: true },
+      { name: 'document_type', label: 'merl.documentType', type: 'select', options: OPT.DOCUMENT_TYPE },
+      { name: 'indicator_id', label: 'merl.relatedIndicator', type: 'select', dynamicOptions: 'indicators' },
+      { name: 'activity_id', label: 'merl.relatedActivity', type: 'select', dynamicOptions: 'activities' },
+      { name: 'description', label: 'merl.description', type: 'textarea' },
+      { name: 'document_date', label: 'merl.documentDate', type: 'date' },
+      { name: 'file_url', label: 'merl.fileUrl', type: 'text' },
+      { name: 'verification_status', label: 'merl.verificationStatus', type: 'select', options: OPT.VERIFICATION_STATUS },
     ],
     columns: [
       { label: 'ID', get: (r) => r.code },
-      { label: 'Title', get: (r) => r.title },
-      { label: 'Type', get: (r) => OPT.labelOf(OPT.DOCUMENT_TYPE, r.document_type) },
-      { label: 'Verification', get: (r) => OPT.labelOf(OPT.VERIFICATION_STATUS, r.verification_status) },
+      { label: 'merl.title', get: (r) => r.title },
+      { label: 'merl.type', get: (r) => OPT.labelOf(OPT.DOCUMENT_TYPE, r.document_type) },
+      { label: 'merl.verification', get: (r) => OPT.labelOf(OPT.VERIFICATION_STATUS, r.verification_status) },
     ],
   },
 ];
@@ -224,6 +225,7 @@ const STATUS_TINT = {
 };
 
 export default function MerlReporting({ user }) {
+  const { t } = useTranslation();
   const canEdit = EDITOR_ROLES.includes(user?.role);
   const canApprove = APPROVER_ROLES.includes(user?.role);
 
@@ -268,7 +270,7 @@ export default function MerlReporting({ user }) {
   useEffect(() => {
     supabase.from('v_projects').select('id, code, name, status').order('code')
       .then(({ data, error }) => {
-        if (error) { toast.error('Could not load projects'); return; }
+        if (error) { toast.error(t('merl.couldNotLoad')); return; }
         setProjects(data ?? []);
         if (data?.length && !projectId) setProjectId(data[0].id);
       });
@@ -297,7 +299,7 @@ export default function MerlReporting({ user }) {
     setLoading(true);
     const { data, error } = await supabase.from(activeModule.view).select('*')
       .eq('project_id', projectId).order('created_at', { ascending: false });
-    if (error) toast.error(`Could not load ${activeModule.label}`);
+    if (error) toast.error(`${t('merl.couldNotLoad')} — ${t(activeModule.label)}`);
     setRecords(data ?? []);
     setLoading(false);
   }, [projectId, activeModule]);
@@ -329,7 +331,7 @@ export default function MerlReporting({ user }) {
     const m = activeModule;
     for (const f of m.fields) {
       if (f.required && (values[f.name] === '' || values[f.name] == null)) {
-        toast.error(`${f.label} is required`); return;
+        toast.error(t('merl.fieldRequired', { field: t(f.label) })); return;
       }
     }
     // Cross-field rules the database also enforces, checked here first so the
@@ -361,24 +363,24 @@ export default function MerlReporting({ user }) {
   };
 
   const deleteRecord = async (row) => {
-    if (!(await confirmDialog({ title:'Delete record', message:'Delete this record? This cannot be undone.', confirmLabel:'Delete' }))) return;
+    if (!(await confirmDialog({ title:t('merl.deleteRecord'), message:t('merl.deleteConfirm'), confirmLabel:t('merl.deleteLbl') }))) return;
     const { error } = await supabase.rpc(activeModule.del, { p_id: row.id });
     if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success('Deleted');
+    toast.success(t('merl.deleted'));
     loadRecords();
     setRefreshKey((k) => k + 1);
   };
 
   // ── Reporting period workflow (Form 11) ─────────────────────────────────────
   const createPeriod = async (values) => {
-    if (!values.period_label) { toast.error('Period label is required'); return; }
+    if (!values.period_label) { toast.error(t('merl.periodLabelRequired')); return; }
     const { error } = await supabase.rpc('upsert_reporting_period', {
       p_id: null, p_project_id: projectId, p_period_label: values.period_label,
       p_period_type: toNull(values.period_type), p_period_start: toNull(values.period_start),
       p_period_end: toNull(values.period_end), p_reporting_officer_id: null,
     });
     if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success('Reporting period created');
+    toast.success(t('merl.periodCreated'));
     setNewPeriodOpen(false);
     setActivePeriod(values.period_label);
     loadContext(projectId);
@@ -388,13 +390,13 @@ export default function MerlReporting({ user }) {
     let params;
     if (rpc === 'reopen_reporting_period') {
       // Reopening an approved period requires a reason (recorded in the audit trail).
-      const reason = await promptDialog({ title:'Reopen reporting period', label:'Reason for reopening', required:true, multiline:true,
+      const reason = await promptDialog({ title:t('merl.reopenPeriod'), label:t('merl.reopenReason'), required:true, multiline:true,
         message:'This approved period will return to draft for correction. The reason is recorded in the audit trail.' });
       if (reason == null || !reason.trim()) return;
       params = { p_id: id, p_reason: reason.trim() };
     } else if (decision === 'return') {
       // Returning for correction requires a comment explaining what to fix.
-      const comment = await promptDialog({ title:'Return for correction', label:'What needs correction?', required:true, multiline:true });
+      const comment = await promptDialog({ title:t('merl.returnForCorrection'), label:t('merl.whatNeedsCorrection'), required:true, multiline:true });
       if (comment == null || !comment.trim()) return;
       params = { p_id: id, p_decision: decision, p_comments: comment.trim() };
     } else if (decision) {
@@ -447,13 +449,13 @@ export default function MerlReporting({ user }) {
       {/* Project + period bar */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-          <label className="field-label">Project</label>
+          <label className="field-label">{t('merl.project')}</label>
           <select className="field-input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
           </select>
         </div>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <label className="field-label">Active reporting period</label>
+          <label className="field-label">{t('merl.activePeriod')}</label>
           <select className="field-input" value={activePeriod} onChange={(e) => setActivePeriod(e.target.value)}>
             <option value="">— none —</option>
             {periods.map((p) => <option key={p.id} value={p.period_label}>{p.period_label}</option>)}
@@ -461,7 +463,7 @@ export default function MerlReporting({ user }) {
         </div>
         {canEdit && (
           <button style={btn('var(--green-700)')} onClick={() => setNewPeriodOpen((o) => !o)}>
-            <Plus size={15} /> New period
+            <Plus size={15} /> {t('merl.newPeriod')}
           </button>
         )}
       </div>
@@ -470,7 +472,7 @@ export default function MerlReporting({ user }) {
       {currentPeriodRow && (
         <div style={{ marginTop: '0.75rem', padding: '0.7rem 0.9rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--white)', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>
-            Period <strong>{currentPeriodRow.period_label}</strong>
+            {t('merl.period')} <strong>{currentPeriodRow.period_label}</strong>
           </span>
           <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#fff', background: STATUS_TINT[currentPeriodRow.submission_status] || '#64748b', padding: '0.2rem 0.55rem', borderRadius: 9999 }}>
             {OPT.labelOf(OPT.SUBMISSION_STATUS, currentPeriodRow.submission_status)}
@@ -478,7 +480,7 @@ export default function MerlReporting({ user }) {
           {currentPeriodRow.submission_status === 'approved' && (
             <span title="Approved records are locked. The DoCC M&E Officer must reopen this period to make changes."
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 700, color: '#155e34', background: '#dcece2', border: '1px solid #16a34a55', padding: '0.2rem 0.55rem', borderRadius: 9999 }}>
-              <Lock size={12} /> Locked
+              <Lock size={12} /> {t('merl.locked')}
             </span>
           )}
           {currentPeriodRow.submission_status === 'returned' && currentPeriodRow.review_comments && (
@@ -487,22 +489,22 @@ export default function MerlReporting({ user }) {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && (
               <button style={btn('var(--green-600)')} onClick={() => periodAction('submit_reporting_period', currentPeriodRow.id)}>
-                <Send size={14} /> Submit
+                <Send size={14} /> {t('merl.submit')}
               </button>
             )}
             {canApprove && ['submitted', 'reviewed'].includes(currentPeriodRow.submission_status) && (
               <>
                 <button style={btn('var(--green-600)')} onClick={() => periodAction('review_reporting_period', currentPeriodRow.id, 'approve')}>
-                  <CheckCircle2 size={14} /> Approve
+                  <CheckCircle2 size={14} /> {t('merl.approve')}
                 </button>
                 <button style={btnWarning()} onClick={() => periodAction('review_reporting_period', currentPeriodRow.id, 'return')}>
-                  <RotateCcw size={14} /> Return
+                  <RotateCcw size={14} /> {t('merl.returnLbl')}
                 </button>
               </>
             )}
             {canApprove && currentPeriodRow.submission_status === 'approved' && (
               <button style={btnSecondary()} onClick={() => periodAction('reopen_reporting_period', currentPeriodRow.id)}>
-                <Unlock size={14} /> Reopen
+                <Unlock size={14} /> {t('merl.reopen')}
               </button>
             )}
           </div>
@@ -514,7 +516,7 @@ export default function MerlReporting({ user }) {
         <div style={{ marginTop: '0.75rem', padding: '0.8rem 0.9rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--white)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
             <div>
-              <strong style={{ fontSize: '0.85rem', color: 'var(--text-1)' }}>Period completion</strong>
+              <strong style={{ fontSize: '0.85rem', color: 'var(--text-1)' }}>{t('merl.periodCompletion')}</strong>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.4rem' }}>
                 {completion.done} of {completion.total} sections have data
               </span>
@@ -539,7 +541,7 @@ export default function MerlReporting({ user }) {
                   {has
                     ? <CheckCircle2 size={13} />
                     : <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid var(--text-3)', display: 'inline-block' }} />}
-                  {m.label}
+                  {t(m.label)}
                 </button>
               );
             })}
@@ -561,7 +563,7 @@ export default function MerlReporting({ user }) {
       <div className="mr-tabs">
         {MODULES.map((m) => (
           <button key={m.key} className={`mr-tab${tab === m.key ? ' active' : ''}`} onClick={() => selectTab(m.key)}>
-            {m.label}
+            {t(m.label)}
           </button>
         ))}
       </div>
@@ -570,7 +572,7 @@ export default function MerlReporting({ user }) {
       <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.9rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
           <div>
-            <strong style={{ fontSize: '0.95rem' }}>{activeModule.label}</strong>
+            <strong style={{ fontSize: '0.95rem' }}>{t(activeModule.label)}</strong>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.4rem' }}>{activeModule.form}</span>
           </div>
           {canEdit && (
@@ -581,7 +583,7 @@ export default function MerlReporting({ user }) {
               title={activeModule.periodScoped && currentPeriodRow?.submission_status === 'approved'
                 ? 'This reporting period is approved and locked — the DoCC M&E Officer must reopen it to make changes'
                 : activeModule.periodScoped && !activePeriod ? 'Select or create a reporting period first' : ''}>
-              <Plus size={15} /> Add
+              <Plus size={15} /> {t('merl.add')}
             </button>
           )}
         </div>
@@ -594,16 +596,16 @@ export default function MerlReporting({ user }) {
         )}
 
         {loading ? (
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Loading…</p>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('merl.loading')}</p>
         ) : records.length === 0 ? (
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No records yet for this project.</p>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('merl.noRecords')}</p>
         ) : (
           <>
             <div className="mr-desktop-table" style={{ overflowX: 'auto' }}>
               <table className="mr-table">
                 <thead>
                   <tr>
-                    {activeModule.columns.map((c) => <th key={c.label}>{c.label}</th>)}
+                    {activeModule.columns.map((c) => <th key={c.label}>{t(c.label)}</th>)}
                     {canEdit && <th></th>}
                   </tr>
                 </thead>
@@ -613,8 +615,8 @@ export default function MerlReporting({ user }) {
                       {activeModule.columns.map((c) => <td key={c.label}>{c.get(r) ?? '—'}</td>)}
                       {canEdit && (
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button onClick={() => setEditing(r)} aria-label="Edit record" title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-                          <button onClick={() => deleteRecord(r)} aria-label="Delete record" title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+                          <button onClick={() => setEditing(r)} aria-label="Edit record" title={t('merl.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                          <button onClick={() => deleteRecord(r)} aria-label={t('merl.deleteRecord')} title={t('merl.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                         </td>
                       )}
                     </tr>
@@ -626,12 +628,12 @@ export default function MerlReporting({ user }) {
               {records.map((r) => (
                 <div className="mr-card" key={r.id}>
                   {activeModule.columns.map((c) => (
-                    <div className="mr-card-row" key={c.label}><span>{c.label}</span><span>{c.get(r) ?? '—'}</span></div>
+                    <div className="mr-card-row" key={c.label}><span>{t(c.label)}</span><span>{c.get(r) ?? '—'}</span></div>
                   ))}
                   {canEdit && (
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
-                      <button onClick={() => setEditing(r)} style={btnGhost()}><Pencil size={13} /> Edit</button>
-                      <button onClick={() => deleteRecord(r)} style={btnGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> Delete</button>
+                      <button onClick={() => setEditing(r)} style={btnGhost()}><Pencil size={13} /> {t('merl.edit')}</button>
+                      <button onClick={() => deleteRecord(r)} style={btnGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> {t('merl.deleteLbl')}</button>
                     </div>
                   )}
                 </div>
@@ -657,34 +659,35 @@ export default function MerlReporting({ user }) {
 
 // ── Reporting-period creation form ───────────────────────────────────────────
 function PeriodForm({ onCancel, onSave }) {
+  const { t } = useTranslation();
   const [v, setV] = useState({ period_label: '', period_type: '', period_start: '', period_end: '' });
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   return (
     <div style={{ marginTop: '0.75rem', padding: '0.9rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--white)' }}>
       <div className="mr-form-grid">
         <div>
-          <label className="field-label">Period label (e.g. 2026-Q1)</label>
+          <label className="field-label">{t('merl.periodLabel')}</label>
           <input className="field-input" value={v.period_label} onChange={set('period_label')} />
         </div>
         <div>
-          <label className="field-label">Period type</label>
+          <label className="field-label">{t('merl.periodType')}</label>
           <select className="field-input" value={v.period_type} onChange={set('period_type')}>
             <option value="">—</option>
             {OPT.PERIOD_TYPE.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <div>
-          <label className="field-label">Start</label>
+          <label className="field-label">{t('merl.start')}</label>
           <input type="date" className="field-input" value={v.period_start} onChange={set('period_start')} />
         </div>
         <div>
-          <label className="field-label">End</label>
+          <label className="field-label">{t('merl.end')}</label>
           <input type="date" className="field-input" value={v.period_end} onChange={set('period_end')} />
         </div>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem' }}>
-        <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>Create</button>
-        <button style={btnSecondary()} onClick={onCancel}>Cancel</button>
+        <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>{t('merl.create')}</button>
+        <button style={btnSecondary()} onClick={onCancel}>{t('merl.cancel')}</button>
       </div>
     </div>
   );
@@ -692,6 +695,7 @@ function PeriodForm({ onCancel, onSave }) {
 
 // ── Generic module record form ───────────────────────────────────────────────
 function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onSave }) {
+  const { t } = useTranslation();
   const seed = useMemo(() => {
     const base = {};
     for (const f of module.fields) base[f.name] = initial?.[f.name] ?? (f.type === 'checkbox' ? false : '');
@@ -723,13 +727,13 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
       <div style={{ background: 'var(--white)', borderRadius: 12, width: '100%', maxWidth: 720, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-          <strong style={{ fontSize: '1rem' }}>{initial?.id ? 'Edit' : 'Add'} — {module.label}</strong>
+          <strong style={{ fontSize: '1rem' }}>{initial?.id ? t('merl.edit') : t('merl.add')} — {t(module.label)}</strong>
           <button onClick={onCancel} aria-label="Close" title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="mr-form-grid">
           {module.fields.map((f) => (
             <div key={f.name} style={{ gridColumn: f.type === 'textarea' ? '1 / -1' : 'auto' }}>
-              <label className="field-label">{f.label}{f.required && ' *'}</label>
+              <label className="field-label">{t(f.label)}{f.required && ' *'}</label>
               {f.type === 'textarea' ? (
                 <textarea className="field-input" rows={2} value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />
               ) : f.type === 'select' ? (
@@ -758,7 +762,7 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
         )}
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
           <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>{initial?.id ? 'Save changes' : 'Add record'}</button>
-          <button style={btnSecondary()} onClick={onCancel}>Cancel</button>
+          <button style={btnSecondary()} onClick={onCancel}>{t('merl.cancel')}</button>
         </div>
       </div>
     </div>
