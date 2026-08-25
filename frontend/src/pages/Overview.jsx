@@ -134,7 +134,7 @@ export default function Overview({ user }) {
   const totalBudget = sum(projects, (p) => p.budget_vuv);
 
   // ── Chart datasets ──────────────────────────────────────────────────────────
-  const statusData = Object.keys(byBucket).map((k) => ({ key: k, name: STATUS_BUCKETS_LABEL(k), value: byBucket[k], color: STATUS_COLOR[k] }));
+  const statusData = Object.keys(byBucket).map((k) => ({ key: k, name: STATUS_BUCKETS_LABEL(k, t), value: byBucket[k], color: STATUS_COLOR[k] }));
   const themeData = countBy(projects, (p) => p.category).map(([name, value]) => ({ name, value }));
   const provinceCounts = {}; for (const p of projects) for (const pv of (p.provinces || [])) provinceCounts[pv] = (provinceCounts[pv] || 0) + 1;
   const nationalCount = projects.filter((p) => !(p.provinces || []).length).length;
@@ -226,17 +226,17 @@ export default function Overview({ user }) {
   const pctOf = (n, dv) => (dv ? Math.round((n / dv) * 100) : 0);
 
   const perf = [
-    { key: 'ind', label: 'Indicators on track', frac: `${onTrackInd}/${totalIndicators}`, pct: pctOf(onTrackInd, totalIndicators), color: '#22a565' },
-    { key: 'act', label: 'Activities completed', frac: `${actsDone}/${acts.length}`, pct: pctOf(actsDone, acts.length), color: BLUE },
-    { key: 'bud', label: 'Budget utilisation', frac: fmtVUV(totalExp).replace('VUV ', ''), pct: util, color: '#7c3aed' },
-    { key: 'rep', label: 'Reporting compliance', frac: `${repsApproved}/${reps.length}`, pct: pctOf(repsApproved, reps.length), color: '#0e8f8a' },
+    { key: 'ind', label: t('overview.perfIndicators'), frac: `${onTrackInd}/${totalIndicators}`, pct: pctOf(onTrackInd, totalIndicators), color: '#22a565' },
+    { key: 'act', label: t('overview.perfActivities'), frac: `${actsDone}/${acts.length}`, pct: pctOf(actsDone, acts.length), color: BLUE },
+    { key: 'bud', label: t('overview.perfBudget'), frac: fmtVUV(totalExp).replace('VUV ', ''), pct: util, color: '#7c3aed' },
+    { key: 'rep', label: t('overview.perfReporting'), frac: `${repsApproved}/${reps.length}`, pct: pctOf(repsApproved, reps.length), color: '#0e8f8a' },
   ];
   const toneColor = { crit: '#b3402f', warn: '#d97706', ok: '#22a565' };
   const attn = [
-    { key: 'ovr', label: 'Overdue reports', value: repsOverdue, to: '/merl-reporting', tone: repsOverdue ? 'crit' : 'ok' },
-    { key: 'off', label: 'Indicators off track', value: offTrackInd, to: '/analytics/results', tone: offTrackInd ? 'warn' : 'ok' },
-    { key: 'del', label: 'Delayed activities', value: overdueActs, to: '/merl-reporting', tone: overdueActs ? 'warn' : 'ok' },
-    { key: 'rev', label: 'Awaiting review', value: repsAwaiting, to: '/review', tone: repsAwaiting ? 'warn' : 'ok' },
+    { key: 'ovr', label: t('overview.attnOverdue'), value: repsOverdue, to: '/merl-reporting', tone: repsOverdue ? 'crit' : 'ok' },
+    { key: 'off', label: t('overview.attnOffTrack'), value: offTrackInd, to: '/analytics/results', tone: offTrackInd ? 'warn' : 'ok' },
+    { key: 'del', label: t('overview.attnDelayed'), value: overdueActs, to: '/merl-reporting', tone: overdueActs ? 'warn' : 'ok' },
+    { key: 'rev', label: t('overview.attnAwaiting'), value: repsAwaiting, to: '/review', tone: repsAwaiting ? 'warn' : 'ok' },
   ];
   const genderSplit = (() => {
     const f = gedsi[0].value, m = gedsi[1].value;
@@ -252,10 +252,10 @@ export default function Overview({ user }) {
   // One institutional colour across the set — these categories are being
   // compared, not colour-coded, so four different hues would only add noise.
   const beneMini = [
-    { key: 'female', sym: 'female', label: 'Female', value: gedsi[0].value },
-    { key: 'male', sym: 'male', label: 'Male', value: gedsi[1].value },
-    { key: 'youth', sym: 'youth', label: 'Youth', value: gedsi[2].value },
-    { key: 'pwd', sym: 'disability', label: 'Disability', value: gedsi[3].value },
+    { key: 'female', sym: 'female', label: t('overview.beneFemale'), value: gedsi[0].value },
+    { key: 'male', sym: 'male', label: t('overview.beneMale'), value: gedsi[1].value },
+    { key: 'youth', sym: 'youth', label: t('overview.beneYouth'), value: gedsi[2].value },
+    { key: 'pwd', sym: 'disability', label: t('overview.beneDisability'), value: gedsi[3].value },
   ].filter((x) => x.value != null);
 
   // Beneficiaries reached per province (project → provinces → direct beneficiaries).
@@ -290,7 +290,7 @@ export default function Overview({ user }) {
         </div>
         <div className="ovx-filters">
           <FilterSelect label={t('overview.filterFy')} value={filters.fy} onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
-          <FilterSelect label={t('overview.filterStatus')} value={filters.status} onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((k) => ({ value: k, label: STATUS_BUCKETS_LABEL(k) }))} />
+          <FilterSelect label={t('overview.filterStatus')} value={filters.status} onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((k) => ({ value: k, label: STATUS_BUCKETS_LABEL(k, t) }))} />
           <FilterSelect label={t('overview.filterTheme')} value={filters.theme} onChange={(v) => setFilter('theme', v)} options={themes.map((t) => ({ value: t, label: t }))} />
           <FilterSelect label={t('overview.filterProvince')} value={filters.province} onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} />
           <FilterSelect label={t('overview.filterPartner')} value={filters.partner} onChange={(v) => setFilter('partner', v)} options={donors.map((x) => ({ value: x, label: x }))} />
@@ -352,7 +352,7 @@ export default function Overview({ user }) {
               <div className="ovx-perf-bar"><div style={{ width: `${Math.min(100, overallProgress)}%`, background: '#22a565' }} /></div>
             </div>
           )}
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>View performance details <ArrowRight size={13} /></button>
+          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')} <ArrowRight size={13} /></button>
         </div>
       </div>
 
@@ -369,7 +369,7 @@ export default function Overview({ user }) {
               </div>
             ))}
           </div>
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>View performance details <ArrowRight size={13} /></button>
+          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')} <ArrowRight size={13} /></button>
         </div>
         <div className="ovx-card">
           <div className="ovx-card-h"><AlertTriangle size={16} style={{ color: '#d97706', flexShrink: 0 }} aria-hidden="true" /> {t('overview.needsAttention')}</div>
@@ -380,7 +380,7 @@ export default function Overview({ user }) {
               <button key={a.key} className="ovx-attn-row" onClick={() => nav(a.to)}>
                 <span className="ovx-attn-val" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>{a.value}</span>
                 <span className="ovx-attn-lbl">{a.label}</span>
-                <span className="ovx-attn-link" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>View all <ArrowRight size={12} /></span>
+                <span className="ovx-attn-link" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>{t('overview.viewAll')} <ArrowRight size={12} /></span>
               </button>
             ))}
           </div>
@@ -389,10 +389,10 @@ export default function Overview({ user }) {
 
       <div className="ovx-card">
         <div className="ovx-card-h">{t('overview.recentUpcoming')}</div>
-        {reportRows.length === 0 ? <NoData label="Nothing due soon" height={120} /> : (
+        {reportRows.length === 0 ? <NoData label={t('overview.nothingDueSoon')} height={120} /> : (
           <div className="ovx-rtbl-wrap">
             <table className="ovx-rtbl">
-              <thead><tr><th>Item</th><th>Project</th><th>Due date</th><th>Status</th></tr></thead>
+              <thead><tr><th>{t('overview.colItem')}</th><th>{t('overview.colProject')}</th><th>{t('overview.colDueDate')}</th><th>{t('overview.colStatus')}</th></tr></thead>
               <tbody>
                 {reportRows.map((r) => (
                   <tr key={r.id} onClick={() => nav('/analytics/reporting')}>
@@ -406,7 +406,7 @@ export default function Overview({ user }) {
             </table>
           </div>
         )}
-        <button className="ovx-cardlink" onClick={() => nav('/analytics/reporting')}>View all reports <ArrowRight size={13} /></button>
+        <button className="ovx-cardlink" onClick={() => nav('/analytics/reporting')}>{t('overview.viewAllReports')} <ArrowRight size={13} /></button>
       </div>
 
       <div className="ovx-updated">Last updated: {dataAsAt}</div>
@@ -441,7 +441,7 @@ function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, 
             ))}
             {nationalCount > 0 && (
               <tr className="nat">
-                <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: 'var(--text-3)' }} /><span className="ovx-provtbl-nm">National / multi-province</span></td>
+                <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: 'var(--text-3)' }} /><span className="ovx-provtbl-nm">{t('overview.nationalMulti')}</span></td>
                 <td className="ovx-provtbl-num">{nationalCount}</td>
                 <td className="ovx-provtbl-num">—</td>
               </tr>
@@ -449,13 +449,16 @@ function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, 
           </tbody>
         </table>
       </div>
-      <button className="ovx-cardlink" onClick={onView}>View coverage <ArrowRight size={13} /></button>
+      <button className="ovx-cardlink" onClick={onView}>{t('overview.viewCoverage')} <ArrowRight size={13} /></button>
     </div>
   );
 }
 
-function STATUS_BUCKETS_LABEL(k) {
-  return { on_track: 'On Track', at_risk: 'At Risk / Delayed', not_started: 'Not Started', completed: 'Completed' }[k] || k;
+function STATUS_BUCKETS_LABEL(k, t) {
+  return {
+    on_track: t('overview.bucketOnTrack'), at_risk: t('overview.bucketAtRisk'),
+    not_started: t('overview.bucketNotStarted'), completed: t('overview.bucketCompleted'),
+  }[k] || k;
 }
 
 // Province dot colour — matches the map choropleth shading (green by project count).
@@ -543,18 +546,21 @@ function Progress({ value }) {
     </div>
   );
 }
-function NoData({ label = 'No data', height = 180 }) {
-  return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}><span style={{ fontSize: '0.8rem' }}>{label}</span></div>;
+function NoData({ label, height = 180 }) {
+  const { t } = useTranslation();
+  const text = label ?? t('overview.noData');
+  return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}><span style={{ fontSize: '0.8rem' }}>{text}</span></div>;
 }
 
 function EmptyPortfolio() {
+  const { t } = useTranslation();
   const nav = useNavigate();
   return (
     <div className="ov" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
       <div style={{ textAlign: 'center', maxWidth: 440 }}>
-        <h2 style={{ margin: '0 0 0.4rem' }}>No project data available</h2>
-        <p style={{ color: 'var(--text-2)', margin: '0 0 1.2rem' }}>Add your first project to begin monitoring MERL performance.</p>
-        <button className="ov-btn" onClick={() => nav('/project-setup')}>Add a project</button>
+        <h2 style={{ margin: '0 0 0.4rem' }}>{t('overview.emptyTitle')}</h2>
+        <p style={{ color: 'var(--text-2)', margin: '0 0 1.2rem' }}>{t('overview.emptyBody')}</p>
+        <button className="ov-btn" onClick={() => nav('/project-setup')}>{t('overview.emptyCta')}</button>
       </div>
     </div>
   );

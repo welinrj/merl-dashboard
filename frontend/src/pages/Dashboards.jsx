@@ -101,7 +101,7 @@ export default function Dashboards({ initialTab }) {
   if (loading || !d) {
     return (
       <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <PageHeader title="MERL Dashboard" subtitle="Portfolio monitoring across the L&D programme." />
+        <PageHeader title={t('dash.pageTitle')} subtitle={t('dash.pageSubtitle')} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.7rem' }}>
           {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
@@ -131,10 +131,10 @@ export default function Dashboards({ initialTab }) {
       `}</style>
 
       <PageHeader
-        title="MERL Dashboard"
-        subtitle="Portfolio monitoring across the L&D programme."
+        title={t('dash.pageTitle')}
+        subtitle={t('dash.pageSubtitle')}
         actions={dataAsAt ? (
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Data as at: <strong style={{ color: 'var(--text-2)' }}>{dataAsAt}</strong></span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{t('dash.dataAsAt')} <strong style={{ color: 'var(--text-2)' }}>{dataAsAt}</strong></span>
         ) : null}
       />
 
@@ -199,7 +199,7 @@ const perfTint = (s) => ({ on_track: '#16a34a', target_achieved: '#0891b2', atte
 
 // ── Executive Portfolio ──────────────────────────────────────────────────────
 function Portfolio({ d, onNavigate }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [flt, setFlt] = useState({ status: '', theme: '', province: '', donor: '' });
 
   // Distinct filter options from the loaded projects (§25).
@@ -240,10 +240,10 @@ function Portfolio({ d, onNavigate }) {
     const highRiskOverdue = risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
       && r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status)).length;
     const attention = [];
-    if (atRiskDelayed) attention.push({ label: `${atRiskDelayed} project${atRiskDelayed === 1 ? '' : 's'} at risk or delayed`, tab: 'portfolio', tone: 'amber' });
-    if (offTrack) attention.push({ label: `${offTrack} indicator${offTrack === 1 ? '' : 's'} off track`, tab: 'results', tone: 'red' });
-    if (reportsOverdue) attention.push({ label: `${reportsOverdue} report${reportsOverdue === 1 ? '' : 's'} overdue`, tab: 'reporting', tone: 'red' });
-    if (highRiskOverdue) attention.push({ label: `${highRiskOverdue} high-risk action${highRiskOverdue === 1 ? '' : 's'} overdue`, tab: 'risks', tone: 'red' });
+    if (atRiskDelayed) attention.push({ label: t('dash.attnProjects', { count: atRiskDelayed }), tab: 'portfolio', tone: 'amber' });
+    if (offTrack) attention.push({ label: t('dash.attnIndicators', { count: offTrack }), tab: 'results', tone: 'red' });
+    if (reportsOverdue) attention.push({ label: t('dash.attnReports', { count: reportsOverdue }), tab: 'reporting', tone: 'red' });
+    if (highRiskOverdue) attention.push({ label: t('dash.attnActions', { count: highRiskOverdue }), tab: 'risks', tone: 'red' });
 
     // Physical vs financial progress (§32).
     const physAgg = {};
@@ -287,7 +287,7 @@ function Portfolio({ d, onNavigate }) {
       byTheme: countBy(projects, (p) => p.category),
       byStatus: countBy(projects, (p) => OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)),
     };
-  }, [d, flt]);
+  }, [d, flt, t, i18n.resolvedLanguage]);
 
   return (
     <>
@@ -339,7 +339,7 @@ function Portfolio({ d, onNavigate }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: '0.25rem 0', font: 'inherit', color: 'var(--text-1)' }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: a.tone === 'red' ? 'var(--red-600)' : 'var(--gold-500)' }} />
                 <span style={{ fontSize: '0.83rem' }}>{a.label}</span>
-                <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--green-700)', fontWeight: 700 }}>View →</span>
+                <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--green-700)', fontWeight: 700 }}>{t('dash.view')} →</span>
               </button>
             ))}
           </div>
@@ -361,7 +361,7 @@ function Portfolio({ d, onNavigate }) {
             )}
           </h3>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-1)' }}>
-            {m.gedsi.total.toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-3)' }}>total direct beneficiaries</span>
+            {m.gedsi.total.toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-3)' }}>{t('dash.totalDirectBeneficiaries')}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.6rem', marginTop: '0.75rem' }}>
             {[
@@ -381,7 +381,7 @@ function Portfolio({ d, onNavigate }) {
               </div>
             ))}
           </div>
-          <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', margin: '0.5rem 0 0' }}>A dash (—) means the field was not reported; 0 is a reported value.</p>
+          <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', margin: '0.5rem 0 0' }}>{t('dash.dashNote')}</p>
         </div>
       )}
 
@@ -411,7 +411,7 @@ function Portfolio({ d, onNavigate }) {
                       <td>{r.financial != null ? `${r.financial}%` : '—'}</td>
                       <td style={{ fontWeight: 700, color: flag ? 'var(--red-600)' : 'var(--text-2)' }}>
                         {r.variance != null ? `${r.variance > 0 ? '+' : ''}${r.variance} pp` : '—'}
-                        {flag && <span style={{ marginLeft: 6, fontSize: '0.62rem', color: 'var(--red-700)', background: 'var(--red-100)', borderRadius: 9999, padding: '0.05rem 0.4rem' }}>CHECK</span>}
+                        {flag && <span style={{ marginLeft: 6, fontSize: '0.62rem', color: 'var(--red-700)', background: 'var(--red-100)', borderRadius: 9999, padding: '0.05rem 0.4rem' }}>{t('dash.check')}</span>}
                       </td>
                     </tr>
                   );
@@ -482,7 +482,7 @@ function ProjectView({ d, projectId }) {
           <h3 className="db-h">{t('dash.indPerformance')}</h3>
           {inds.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noIndicators')}</p> : (
             <div style={{ overflowX: 'auto' }}><table className="db-table">
-              <thead><tr><th>{t('dash.code')}</th><th>{t('dash.indicator')}</th><th>{t('dash.baseline')}</th><th>{t('dash.target')}</th><th>{t('dash.current')}</th><th>Ach.</th></tr></thead>
+              <thead><tr><th>{t('dash.code')}</th><th>{t('dash.indicator')}</th><th>{t('dash.baseline')}</th><th>{t('dash.target')}</th><th>{t('dash.current')}</th><th>{t('dash.achievementShort')}</th></tr></thead>
               <tbody>
                 {inds.map((i) => {
                   const last = prog.filter((x) => x.indicator_id === i.id).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0];
@@ -641,8 +641,7 @@ function Geographic({ d }) {
 
 // ── Risks ────────────────────────────────────────────────────────────────────
 // 5x5 risk matrix band from likelihood x impact score (§37).
-function riskBand(score) {
-  const { t } = useTranslation();
+function riskBand(score, t) {
   if (score >= 15) return { key: 'critical', label: t('dash.critical'), bg: '#b3402f', fg: '#fff' };
   if (score >= 10) return { key: 'high', label: t('dash.high'), bg: '#e06636', fg: '#fff' };
   if (score >= 5) return { key: 'medium', label: t('dash.medium'), bg: '#e0a12a', fg: '#3a2e12' };
@@ -687,12 +686,12 @@ function Risks({ d }) {
                   <td style={{ fontWeight: 700, color: 'var(--text-3)', padding: '0 0.4rem', textAlign: 'right' }}>{i}</td>
                   {[1, 2, 3, 4, 5].map((l) => {
                     const n = cellCount(l, i);
-                    const band = riskBand(l * i);
+                    const band = riskBand(l * i, t);
                     const sel = cell && cell.l === l && cell.i === i;
                     return (
                       <td key={l} style={{ padding: 2 }}>
                         <button onClick={() => setCell(sel ? null : { l, i })}
-                          title={`Likelihood ${l} × Impact ${i} — ${band.label}`}
+                          title={t('dash.matrixCell', { likelihood: l, impact: i, band: band.label })}
                           style={{ width: 46, height: 40, border: sel ? '2px solid var(--ink)' : '1px solid rgba(0,0,0,0.08)', borderRadius: 6,
                             background: band.bg, color: band.fg, fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', opacity: n === 0 ? 0.4 : 1 }}>
                           {n || ''}
@@ -711,10 +710,10 @@ function Risks({ d }) {
           </table>
         </div>
         <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.6rem', flexWrap: 'wrap', fontSize: '0.7rem', color: 'var(--text-3)' }}>
-          {['low', 'medium', 'high', 'critical'].map((k) => { const b = riskBand(k === 'low' ? 1 : k === 'medium' ? 6 : k === 'high' ? 12 : 20); return (
+          {['low', 'medium', 'high', 'critical'].map((k) => { const b = riskBand(k === 'low' ? 1 : k === 'medium' ? 6 : k === 'high' ? 12 : 20, t); return (
             <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 11, height: 11, borderRadius: 3, background: b.bg }} />{b.label}</span>
           ); })}
-          {cell && <button onClick={() => setCell(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer' }}>Clear cell filter ×</button>}
+          {cell && <button onClick={() => setCell(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer' }}>{t('dash.clearCellFilter')}</button>}
         </div>
       </div>
 
@@ -728,7 +727,7 @@ function Risks({ d }) {
           <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noRisksCell')}</p>
         ) : (
         <div style={{ overflowX: 'auto' }}><table className="db-table">
-          <thead><tr><th>ID</th><th>{t('dash.type')}</th><th>{t('dash.description')}</th><th>{t('dash.rating')}</th><th>{t('dash.due')}</th><th>{t('dash.owner')}</th></tr></thead>
+          <thead><tr><th>{t('dash.id')}</th><th>{t('dash.type')}</th><th>{t('dash.description')}</th><th>{t('dash.rating')}</th><th>{t('dash.due')}</th><th>{t('dash.owner')}</th></tr></thead>
           <tbody>
             {tableRisks.slice(0, 40).map((r) => (
               <tr key={r.code}>
@@ -765,7 +764,7 @@ function Reporting({ d }) {
       <div className="db-card" style={{ marginTop: '1rem' }}>
         <h3 className="db-h">{t('dash.reportingPeriods')}</h3>
         <div style={{ overflowX: 'auto' }}><table className="db-table">
-          <thead><tr><th>{t('dash.tabProject')}</th><th>{t('dash.period')}</th><th>{t('dash.type')}</th><th>End</th><th>{t('dash.status')}</th></tr></thead>
+          <thead><tr><th>{t('dash.tabProject')}</th><th>{t('dash.period')}</th><th>{t('dash.type')}</th><th>{t('dash.end')}</th><th>{t('dash.status')}</th></tr></thead>
           <tbody>
             {d.reporting.slice(0, 40).map((r, i) => {
               const proj = d.projects.find((p) => p.id === r.project_id);
