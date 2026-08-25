@@ -26,6 +26,8 @@ import {
 } from '../lib/dashboardFilters';
 import KpiCard from '../components/ui/KpiCard';
 import Gedsi from '../components/ui/Gedsi';
+import { useTranslation } from 'react-i18next';
+import { fmtDate, fmtNum } from '../lib/locale';
 
 // ── Semantic colours (matched to the approved sample) ─────────────────────────
 const BLUE = '#2f6df0';
@@ -62,7 +64,7 @@ function fmtVUV(v) {
   if (n >= 1e9) return `VUV ${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `VUV ${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `VUV ${(n / 1e3).toFixed(1)}K`;
-  return `VUV ${n.toLocaleString()}`;
+  return `VUV ${fmtNum(n)}`;
 }
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 const pct1 = (n, d) => (d ? `${((n / d) * 100).toFixed(1)}%` : '0%');
@@ -71,7 +73,7 @@ function fmtCompact(v) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return n.toLocaleString();
+  return fmtNum(n);
 }
 const countBy = (rows, keyFn) => {
   const m = new Map();
@@ -80,6 +82,7 @@ const countBy = (rows, keyFn) => {
 };
 
 export default function Overview({ user }) {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const { filters, setFilter, reset, active } = useDashboardFilters();
   const [d, setD] = useState(null);
@@ -132,7 +135,7 @@ export default function Overview({ user }) {
   const totalBudget = sum(projects, (p) => p.budget_vuv);
 
   // ── Chart datasets ──────────────────────────────────────────────────────────
-  const statusData = Object.keys(byBucket).map((k) => ({ key: k, name: STATUS_BUCKETS_LABEL(k), value: byBucket[k], color: STATUS_COLOR[k] }));
+  const statusData = Object.keys(byBucket).map((k) => ({ key: k, name: STATUS_BUCKETS_LABEL(k, t), value: byBucket[k], color: STATUS_COLOR[k] }));
   const themeData = countBy(projects, (p) => p.category).map(([name, value]) => ({ name, value }));
   const provinceCounts = {}; for (const p of projects) for (const pv of (p.provinces || [])) provinceCounts[pv] = (provinceCounts[pv] || 0) + 1;
   const nationalCount = projects.filter((p) => !(p.provinces || []).length).length;
@@ -224,17 +227,17 @@ export default function Overview({ user }) {
   const pctOf = (n, dv) => (dv ? Math.round((n / dv) * 100) : 0);
 
   const perf = [
-    { key: 'ind', label: 'Indicators on track', frac: `${onTrackInd}/${totalIndicators}`, pct: pctOf(onTrackInd, totalIndicators), color: '#22a565' },
-    { key: 'act', label: 'Activities completed', frac: `${actsDone}/${acts.length}`, pct: pctOf(actsDone, acts.length), color: BLUE },
-    { key: 'bud', label: 'Budget utilisation', frac: fmtVUV(totalExp).replace('VUV ', ''), pct: util, color: '#7c3aed' },
-    { key: 'rep', label: 'Reporting compliance', frac: `${repsApproved}/${reps.length}`, pct: pctOf(repsApproved, reps.length), color: '#0e8f8a' },
+    { key: 'ind', label: t('overview.perfIndicators'), frac: `${onTrackInd}/${totalIndicators}`, pct: pctOf(onTrackInd, totalIndicators), color: '#22a565' },
+    { key: 'act', label: t('overview.perfActivities'), frac: `${actsDone}/${acts.length}`, pct: pctOf(actsDone, acts.length), color: BLUE },
+    { key: 'bud', label: t('overview.perfBudget'), frac: fmtVUV(totalExp).replace('VUV ', ''), pct: util, color: '#7c3aed' },
+    { key: 'rep', label: t('overview.perfReporting'), frac: `${repsApproved}/${reps.length}`, pct: pctOf(repsApproved, reps.length), color: '#0e8f8a' },
   ];
   const toneColor = { crit: '#b3402f', warn: '#d97706', ok: '#22a565' };
   const attn = [
-    { key: 'ovr', label: 'Overdue reports', value: repsOverdue, to: '/merl-reporting', tone: repsOverdue ? 'crit' : 'ok' },
-    { key: 'off', label: 'Indicators off track', value: offTrackInd, to: '/analytics/results', tone: offTrackInd ? 'warn' : 'ok' },
-    { key: 'del', label: 'Delayed activities', value: overdueActs, to: '/merl-reporting', tone: overdueActs ? 'warn' : 'ok' },
-    { key: 'rev', label: 'Awaiting review', value: repsAwaiting, to: '/review', tone: repsAwaiting ? 'warn' : 'ok' },
+    { key: 'ovr', label: t('overview.attnOverdue'), value: repsOverdue, to: '/merl-reporting', tone: repsOverdue ? 'crit' : 'ok' },
+    { key: 'off', label: t('overview.attnOffTrack'), value: offTrackInd, to: '/analytics/results', tone: offTrackInd ? 'warn' : 'ok' },
+    { key: 'del', label: t('overview.attnDelayed'), value: overdueActs, to: '/merl-reporting', tone: overdueActs ? 'warn' : 'ok' },
+    { key: 'rev', label: t('overview.attnAwaiting'), value: repsAwaiting, to: '/review', tone: repsAwaiting ? 'warn' : 'ok' },
   ];
   const genderSplit = (() => {
     const f = gedsi[0].value, m = gedsi[1].value;
@@ -250,10 +253,10 @@ export default function Overview({ user }) {
   // One institutional colour across the set — these categories are being
   // compared, not colour-coded, so four different hues would only add noise.
   const beneMini = [
-    { key: 'female', sym: 'female', label: 'Female', value: gedsi[0].value },
-    { key: 'male', sym: 'male', label: 'Male', value: gedsi[1].value },
-    { key: 'youth', sym: 'youth', label: 'Youth', value: gedsi[2].value },
-    { key: 'pwd', sym: 'disability', label: 'Disability', value: gedsi[3].value },
+    { key: 'female', sym: 'female', label: t('overview.beneFemale'), value: gedsi[0].value },
+    { key: 'male', sym: 'male', label: t('overview.beneMale'), value: gedsi[1].value },
+    { key: 'youth', sym: 'youth', label: t('overview.beneYouth'), value: gedsi[2].value },
+    { key: 'pwd', sym: 'disability', label: t('overview.beneDisability'), value: gedsi[3].value },
   ].filter((x) => x.value != null);
 
   // Beneficiaries reached per province (project → provinces → direct beneficiaries).
@@ -262,60 +265,59 @@ export default function Overview({ user }) {
   for (const b of bens) { const v = Number(b.total_direct) || 0; for (const pv of (provById.get(b.project_id) || [])) provBen[pv] = (provBen[pv] || 0) + v; }
 
   // Recent & upcoming reporting periods → status-badged table rows (all real data).
-  const fmtDate = (s) => (s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
   const daysUntil = (s) => Math.round((new Date(s.slice(0, 10)) - new Date(now2)) / 864e5);
   const reportStatus = (r) => {
-    if (r.submission_status === 'approved') return { label: 'Approved', tone: 'ok' };
-    if (['submitted', 'reviewed'].includes(r.submission_status)) return { label: 'Submitted', tone: 'info' };
-    if (!r.period_end) return { label: 'Pending', tone: 'warn' };
+    if (r.submission_status === 'approved') return { label: t('overview.statusApproved'), tone: 'ok' };
+    if (['submitted', 'reviewed'].includes(r.submission_status)) return { label: t('overview.statusSubmitted'), tone: 'info' };
+    if (!r.period_end) return { label: t('overview.statusPending'), tone: 'warn' };
     const dleft = daysUntil(r.period_end);
-    if (dleft < 0) return { label: 'Overdue', tone: 'crit' };
-    return { label: `Due in ${dleft} day${dleft === 1 ? '' : 's'}`, tone: dleft <= 7 ? 'crit' : 'warn' };
+    if (dleft < 0) return { label: t('overview.statusOverdue'), tone: 'crit' };
+    return { label: t('overview.dueInDays', { count: dleft }), tone: dleft <= 7 ? 'crit' : 'warn' };
   };
   const reportRows = [...reps]
     .filter((r) => r.period_end && daysUntil(r.period_end) >= -60)
     .sort((a, b) => (a.period_end || '').localeCompare(b.period_end || ''))
     .slice(0, 5)
-    .map((r) => ({ id: `${r.project_id}-${r.period_label}`, item: r.period_label || 'Reporting period', project: projName(r.project_id), due: r.period_end, status: reportStatus(r) }));
+    .map((r) => ({ id: `${r.project_id}-${r.period_label}`, item: r.period_label || t('overview.reportingPeriod'), project: projName(r.project_id), due: r.period_end, status: reportStatus(r) }));
 
   return (
     <div className="ovx">
       {/* Header — title + filters */}
       <div className="ovx-head rp-noprint">
         <div className="ovx-title">
-          <h1>Dashboard Overview</h1>
-          <p>Portfolio monitoring, evaluation &amp; reporting · Data as at <b>{dataAsAt}</b></p>
+          <h1>{t('overview.title')}</h1>
+          <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
         </div>
         <div className="ovx-filters">
-          <FilterSelect label="Financial Year" value={filters.fy} onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
-          <FilterSelect label="Status" value={filters.status} onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((k) => ({ value: k, label: STATUS_BUCKETS_LABEL(k) }))} />
-          <FilterSelect label="Theme" value={filters.theme} onChange={(v) => setFilter('theme', v)} options={themes.map((t) => ({ value: t, label: t }))} />
-          <FilterSelect label="Province" value={filters.province} onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} />
-          <FilterSelect label="Partner" value={filters.partner} onChange={(v) => setFilter('partner', v)} options={donors.map((x) => ({ value: x, label: x }))} />
-          <button className="ov-btn-ghost" onClick={reset} disabled={!active}>Reset</button>
-          <button className="ov-btn" onClick={exportPrint}><Printer size={14} /> Export</button>
+          <FilterSelect label={t('overview.filterFy')} value={filters.fy} onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
+          <FilterSelect label={t('overview.filterStatus')} value={filters.status} onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((k) => ({ value: k, label: STATUS_BUCKETS_LABEL(k, t) }))} />
+          <FilterSelect label={t('overview.filterTheme')} value={filters.theme} onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
+          <FilterSelect label={t('overview.filterProvince')} value={filters.province} onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} />
+          <FilterSelect label={t('overview.filterPartner')} value={filters.partner} onChange={(v) => setFilter('partner', v)} options={donors.map((x) => ({ value: x, label: x }))} />
+          <button className="ov-btn-ghost" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
+          <button className="ov-btn" onClick={exportPrint}><Printer size={14} /> {t('ui.export')}</button>
         </div>
       </div>
 
       {/* Level 1 — primary executive KPIs: Projects · Total Funding · Disbursed · Beneficiaries */}
       <div className="ovx-kpis">
-        <KpiCard label="Projects" value={total}
-          sub={`${activeProjects} active · ${completed} completed`} linkLabel="View projects" onClick={() => nav('/analytics/portfolio')} />
-        <KpiCard label="Total Funding" value={fmtVUV(totalBudget).replace('VUV', 'VT')}
-          sub={donors.length ? `${donors.length} funding partner${donors.length === 1 ? '' : 's'}` : 'Committed budget'} linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
-        <KpiCard label="Disbursed" value={fmtVUV(totalExp).replace('VUV', 'VT')}
-          sub={`${util}% of total funding`} progress={util} linkLabel="View financials" onClick={() => nav('/analytics/financial')} />
+        <KpiCard label={t('overview.kpiProjects')} value={total}
+          sub={t('overview.activeCompleted', { active: activeProjects, completed })} linkLabel={t('overview.viewProjects')} onClick={() => nav('/analytics/portfolio')} />
+        <KpiCard label={t('overview.kpiFunding')} value={fmtVUV(totalBudget).replace('VUV', 'VT')}
+          sub={donors.length ? t('overview.fundingPartners', { count: donors.length }) : t('overview.kpiFunding')} linkLabel={t('overview.viewFinancials')} onClick={() => nav('/analytics/financial')} />
+        <KpiCard label={t('overview.kpiDisbursed')} value={fmtVUV(totalExp).replace('VUV', 'VT')}
+          sub={t('overview.pctOfFunding', { pct: util })} progress={util} linkLabel={t('overview.viewFinancials')} onClick={() => nav('/analytics/financial')} />
         {/* The one KPI carrying symbols: the GEDSI split is read by comparing
             categories, which the shared pictogram family makes faster. */}
-        <KpiCard label="Beneficiaries" value={totalBen ? totalBen.toLocaleString() : '0'}
-          linkLabel="View beneficiaries" onClick={() => nav('/analytics/geographic')}>
+        <KpiCard label={t('overview.kpiBeneficiaries')} value={totalBen ? fmtNum(totalBen) : '0'}
+          linkLabel={t('overview.viewBeneficiaries')} onClick={() => nav('/analytics/geographic')}>
           {beneMini.length > 0 && (
             <div className="flex items-start justify-between gap-2">
               {beneMini.map((b) => (
                 <span key={b.key} className="flex min-w-0 flex-col items-start gap-0.5">
                   <span className="flex items-center gap-1 text-[var(--green-700)]">
                     <Gedsi name={b.sym} size={14} />
-                    <b className="text-[1rem] font-extrabold leading-none text-[var(--navy-900)]" style={{ fontFamily: 'var(--font-display)' }}>{b.value.toLocaleString()}</b>
+                    <b className="text-[1rem] font-extrabold leading-none text-[var(--navy-900)]" style={{ fontFamily: 'var(--font-display)' }}>{fmtNum(b.value)}</b>
                   </span>
                   <i className="whitespace-nowrap text-[0.64rem] not-italic text-[var(--text-3)]">{b.label}</i>
                 </span>
@@ -330,7 +332,7 @@ export default function Overview({ user }) {
         <ProjectLocations counts={provinceCounts} provBen={provBen} nationalCount={nationalCount}
           selected={filters.province} onSelect={(pv) => setFilter('province', pv)} onView={() => nav('/analytics/geographic')} />
         <div className="ovx-card">
-          <div className="ovx-card-h">Implementation Performance</div>
+          <div className="ovx-card-h">{t('overview.implementation')}</div>
           <div className="ovx-impl">
             <Donut size={128} data={statusData} center={[total, 'Total']} onSlice={(s) => setFilter('status', s.key)} />
             <div className="ovx-status-legend">
@@ -346,18 +348,18 @@ export default function Overview({ user }) {
           </div>
           {overallProgress != null && (
             <div className="ovx-impl-prog">
-              <div className="ovx-impl-prog-h"><span>Overall Progress</span><b>{overallProgress}%</b></div>
+              <div className="ovx-impl-prog-h"><span>{t('overview.overallProgress')}</span><b>{overallProgress}%</b></div>
               <div className="ovx-perf-bar"><div style={{ width: `${Math.min(100, overallProgress)}%`, background: '#22a565' }} /></div>
             </div>
           )}
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>View performance details <ArrowRight size={13} /></button>
+          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')} <ArrowRight size={13} /></button>
         </div>
       </div>
 
       {/* Level 3 — supporting analytics */}
       <div className="ovx-2">
         <div className="ovx-card">
-          <div className="ovx-card-h">Portfolio Performance</div>
+          <div className="ovx-card-h">{t('overview.portfolio')}</div>
           <div className="ovx-perf">
             {perf.map((p) => (
               <div key={p.key} className="ovx-perf-row">
@@ -367,10 +369,10 @@ export default function Overview({ user }) {
               </div>
             ))}
           </div>
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>View performance details <ArrowRight size={13} /></button>
+          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')} <ArrowRight size={13} /></button>
         </div>
         <div className="ovx-card">
-          <div className="ovx-card-h"><AlertTriangle size={16} style={{ color: '#d97706', flexShrink: 0 }} aria-hidden="true" /> Needs Attention</div>
+          <div className="ovx-card-h"><AlertTriangle size={16} style={{ color: '#d97706', flexShrink: 0 }} aria-hidden="true" /> {t('overview.needsAttention')}</div>
           {/* No per-row icon chip: the section heading above carries the one
               warning triangle, and each count carries its own tone. */}
           <div className="ovx-attn">
@@ -378,7 +380,7 @@ export default function Overview({ user }) {
               <button key={a.key} className="ovx-attn-row" onClick={() => nav(a.to)}>
                 <span className="ovx-attn-val" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>{a.value}</span>
                 <span className="ovx-attn-lbl">{a.label}</span>
-                <span className="ovx-attn-link" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>View all <ArrowRight size={12} /></span>
+                <span className="ovx-attn-link" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>{t('overview.viewAll')} <ArrowRight size={12} /></span>
               </button>
             ))}
           </div>
@@ -386,11 +388,11 @@ export default function Overview({ user }) {
       </div>
 
       <div className="ovx-card">
-        <div className="ovx-card-h">Recent Activity &amp; Upcoming Reports</div>
-        {reportRows.length === 0 ? <NoData label="Nothing due soon" height={120} /> : (
+        <div className="ovx-card-h">{t('overview.recentUpcoming')}</div>
+        {reportRows.length === 0 ? <NoData label={t('overview.nothingDueSoon')} height={120} /> : (
           <div className="ovx-rtbl-wrap">
             <table className="ovx-rtbl">
-              <thead><tr><th>Item</th><th>Project</th><th>Due date</th><th>Status</th></tr></thead>
+              <thead><tr><th>{t('overview.colItem')}</th><th>{t('overview.colProject')}</th><th>{t('overview.colDueDate')}</th><th>{t('overview.colStatus')}</th></tr></thead>
               <tbody>
                 {reportRows.map((r) => (
                   <tr key={r.id} onClick={() => nav('/analytics/reporting')}>
@@ -404,7 +406,7 @@ export default function Overview({ user }) {
             </table>
           </div>
         )}
-        <button className="ovx-cardlink" onClick={() => nav('/analytics/reporting')}>View all reports <ArrowRight size={13} /></button>
+        <button className="ovx-cardlink" onClick={() => nav('/analytics/reporting')}>{t('overview.viewAllReports')} <ArrowRight size={13} /></button>
       </div>
 
       <div className="ovx-updated">Last updated: {dataAsAt}</div>
@@ -416,29 +418,30 @@ export default function Overview({ user }) {
 // table (≈60%). Hover is linked both ways; clicking drives the shared province
 // filter. Local hover state keeps map/list highlighting off the page re-render.
 function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, onView }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(null);
   return (
     <div className="ovx-card ovx-loc">
-      <div className="ovx-card-h">Project Locations</div>
+      <div className="ovx-card-h">{t('overview.locations')}</div>
       <div className="ovx-locwrap">
         <div className="ovx-locmap">
           <VanuatuMapMini counts={counts} selected={selected} hovered={hover} onHover={setHover}
             onSelect={onSelect} />
         </div>
         <table className="ovx-provtbl">
-          <thead><tr><th>Province</th><th>Projects</th><th>Beneficiaries</th></tr></thead>
+          <thead><tr><th>{t('overview.colProvince')}</th><th>{t('overview.colProjects')}</th><th>{t('overview.colBeneficiaries')}</th></tr></thead>
           <tbody>
             {PROVINCE_LIST.map((pv) => (
               <tr key={pv} className={`${selected === pv ? 'sel' : ''}${hover === pv ? ' hov' : ''}`}
                 onClick={() => onSelect(pv)} onMouseEnter={() => setHover(pv)} onMouseLeave={() => setHover(null)}>
                 <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: fillDot(counts[pv] || 0, counts) }} /><span className="ovx-provtbl-nm">{pv}</span></td>
                 <td className="ovx-provtbl-num">{counts[pv] || 0}</td>
-                <td className="ovx-provtbl-num">{(provBen[pv] || 0).toLocaleString()}</td>
+                <td className="ovx-provtbl-num">{fmtNum(provBen[pv] || 0)}</td>
               </tr>
             ))}
             {nationalCount > 0 && (
               <tr className="nat">
-                <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: 'var(--text-3)' }} /><span className="ovx-provtbl-nm">National / multi-province</span></td>
+                <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: 'var(--text-3)' }} /><span className="ovx-provtbl-nm">{t('overview.nationalMulti')}</span></td>
                 <td className="ovx-provtbl-num">{nationalCount}</td>
                 <td className="ovx-provtbl-num">—</td>
               </tr>
@@ -446,21 +449,24 @@ function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, 
           </tbody>
         </table>
       </div>
-      <button className="ovx-cardlink" onClick={onView}>View coverage <ArrowRight size={13} /></button>
+      <button className="ovx-cardlink" onClick={onView}>{t('overview.viewCoverage')} <ArrowRight size={13} /></button>
     </div>
   );
 }
 
-function STATUS_BUCKETS_LABEL(k) {
-  return { on_track: 'On Track', at_risk: 'At Risk / Delayed', not_started: 'Not Started', completed: 'Completed' }[k] || k;
+function STATUS_BUCKETS_LABEL(k, t) {
+  return {
+    on_track: t('overview.bucketOnTrack'), at_risk: t('overview.bucketAtRisk'),
+    not_started: t('overview.bucketNotStarted'), completed: t('overview.bucketCompleted'),
+  }[k] || k;
 }
 
 // Province dot colour — matches the map choropleth shading (green by project count).
 function fillDot(c, counts) {
   if (!c) return 'color-mix(in srgb, var(--green-700) 22%, #ffffff)';
   const max = Math.max(1, ...Object.values(counts));
-  const t = 0.55 + 0.45 * (c / max);
-  return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
+  const ramp = 0.55 + 0.45 * (c / max);
+  return `color-mix(in srgb, var(--green-600) ${Math.round(ramp * 100)}%, #ffffff)`;
 }
 
 // ── Presentational pieces ─────────────────────────────────────────────────────
@@ -476,12 +482,13 @@ function Panel({ title, subtitle, children, footer }) {
   );
 }
 function FilterSelect({ label, value, onChange, options }) {
+  const { t } = useTranslation();
   return (
     <label className="ov-fsel">
       <span>{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
-        <option value="">All</option>
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        <option value="">{t('ui.all')}</option>
+        {options.map((o) => <option key={o.value} value={o.value}>{OPT.optionLabel(o)}</option>)}
       </select>
     </label>
   );
@@ -539,18 +546,21 @@ function Progress({ value }) {
     </div>
   );
 }
-function NoData({ label = 'No data', height = 180 }) {
-  return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}><span style={{ fontSize: '0.8rem' }}>{label}</span></div>;
+function NoData({ label, height = 180 }) {
+  const { t } = useTranslation();
+  const text = label ?? t('overview.noData');
+  return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}><span style={{ fontSize: '0.8rem' }}>{text}</span></div>;
 }
 
 function EmptyPortfolio() {
+  const { t } = useTranslation();
   const nav = useNavigate();
   return (
     <div className="ov" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
       <div style={{ textAlign: 'center', maxWidth: 440 }}>
-        <h2 style={{ margin: '0 0 0.4rem' }}>No project data available</h2>
-        <p style={{ color: 'var(--text-2)', margin: '0 0 1.2rem' }}>Add your first project to begin monitoring MERL performance.</p>
-        <button className="ov-btn" onClick={() => nav('/project-setup')}>Add a project</button>
+        <h2 style={{ margin: '0 0 0.4rem' }}>{t('overview.emptyTitle')}</h2>
+        <p style={{ color: 'var(--text-2)', margin: '0 0 1.2rem' }}>{t('overview.emptyBody')}</p>
+        <button className="ov-btn" onClick={() => nav('/project-setup')}>{t('overview.emptyCta')}</button>
       </div>
     </div>
   );

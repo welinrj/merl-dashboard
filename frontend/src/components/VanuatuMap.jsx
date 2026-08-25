@@ -6,6 +6,7 @@
 // clicking a province (map or card) filters the dashboard.
 // =============================================================================
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const GEO_URL = `${import.meta.env.BASE_URL}vanuatu-provinces.geojson`;
 const PROVINCE_ORDER = ['Torba', 'Sanma', 'Penama', 'Malampa', 'Shefa', 'Tafea'];
@@ -18,6 +19,7 @@ const W = 150, H = 300, PAD = 8;
 // Hover can be controlled from outside (`hovered`/`onHover`) so the map and a
 // province list can highlight each other; clicking drives the shared filter.
 export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSelect }) {
+  const { t } = useTranslation();
   const [features, setFeatures] = useState(null);
   const [innerHover, setInnerHover] = useState(null);
   const hover = hovered !== undefined ? hovered : innerHover;
@@ -67,10 +69,10 @@ export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSele
     // Bolder teal ramp so the islands read clearly against the sea panel;
     // provinces with no projects still show as distinct (lighter) land.
     if (c === 0) return 'color-mix(in srgb, var(--green-700) 22%, #ffffff)';
-    const t = 0.55 + 0.45 * (c / max);
-    return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
+    const ramp = 0.55 + 0.45 * (c / max);
+    return `color-mix(in srgb, var(--green-600) ${Math.round(ramp * 100)}%, #ffffff)`;
   };
-  if (!vb) return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.7rem' }}>Map…</div>;
+  if (!vb) return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.7rem' }}>{t('map.loading')}</div>;
   // When a province is selected, zoom the viewBox to its bounds and draw only it.
   const zoom = selected ? paths.find((p) => p.name === selected) : null;
   const viewBox = zoom
@@ -83,7 +85,7 @@ export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSele
   const shown = zoom ? [zoom] : paths;
   return (
     <svg viewBox={viewBox} width="100%" height="100%" preserveAspectRatio="xMidYMid meet"
-      role="img" aria-label={zoom ? `Map of ${zoom.name} province` : 'Projects by province map of Vanuatu'} style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}>
+      role="img" aria-label={zoom ? t('map.ariaProvince', { name: zoom.name }) : t('map.aria')} style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}>
       {shown.map((p) => {
         const isSel = selected === p.name;
         const isHover = hover === p.name;
@@ -93,7 +95,7 @@ export function VanuatuMapMini({ counts = {}, selected, hovered, onHover, onSele
             strokeWidth={isSel || isHover ? 2 : 1} vectorEffect="non-scaling-stroke"
             style={{ cursor: onSelect ? 'pointer' : 'default', opacity: hover && !isHover && !isSel ? 0.55 : 1, transition: 'opacity .15s, stroke .15s' }}
             onMouseEnter={() => setHover(p.name)} onMouseLeave={() => setHover(null)} onClick={() => onSelect?.(p.name)}>
-            <title>{p.name}: {counts[p.name] || 0} project(s)</title>
+            <title>{t('map.tooltip', { name: p.name, count: counts[p.name] || 0 })}</title>
           </path>
         );
       })}
@@ -113,6 +115,7 @@ function ringToPath(ring, bbox) {
 }
 
 export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, onSelect }) {
+  const { t } = useTranslation();
   const [features, setFeatures] = useState(null);
   const [hover, setHover] = useState(null);
 
@@ -142,15 +145,15 @@ export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, o
   const fill = (name) => {
     const c = counts[name] || 0;
     if (c === 0) return 'var(--surface-2)';
-    const t = 0.25 + 0.6 * (c / max); // 0.25..0.85 intensity
-    return `color-mix(in srgb, var(--green-600) ${Math.round(t * 100)}%, #ffffff)`;
+    const ramp = 0.25 + 0.6 * (c / max); // 0.25..0.85 intensity
+    return `color-mix(in srgb, var(--green-600) ${Math.round(ramp * 100)}%, #ffffff)`;
   };
 
   return (
     <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
       <div style={{ flex: '0 0 auto' }}>
         {bbox ? (
-          <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label="Projects by province map of Vanuatu" style={{ maxWidth: '100%' }}>
+          <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={t('map.aria')} style={{ maxWidth: '100%' }}>
             {paths.map((p) => {
               const isSel = selected === p.name;
               return (
@@ -159,13 +162,13 @@ export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, o
                   strokeWidth={isSel ? 2 : 1} style={{ cursor: 'pointer', opacity: hover && hover !== p.name ? 0.6 : 1, transition: 'opacity .15s' }}
                   onMouseEnter={() => setHover(p.name)} onMouseLeave={() => setHover(null)}
                   onClick={() => onSelect?.(p.name)}>
-                  <title>{p.name}: {counts[p.name] || 0} project(s)</title>
+                  <title>{t('map.tooltip', { name: p.name, count: counts[p.name] || 0 })}</title>
                 </path>
               );
             })}
           </svg>
         ) : (
-          <div style={{ width: W, height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.8rem' }}>Map…</div>
+          <div style={{ width: W, height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.8rem' }}>{t('map.loading')}</div>
         )}
       </div>
       <div style={{ flex: '1 1 140px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem', alignContent: 'start' }}>
@@ -189,7 +192,7 @@ export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, o
         })}
         {nationalCount > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.55rem', borderRadius: 8, border: '1px dashed var(--border)', background: 'var(--surface-1)' }}>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-2)', fontWeight: 600 }}>National</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-2)', fontWeight: 600 }}>{t('map.national')}</span>
             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-1)' }}>{nationalCount}</span>
           </div>
         )}

@@ -20,15 +20,17 @@ import FilterBar from '../components/ui/FilterBar';
 import VanuatuMap from '../components/VanuatuMap';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
+import { useTranslation } from 'react-i18next';
+import { fmtDate, fmtNum } from '../lib/locale';
 
 const TABS = [
-  { key: 'portfolio',  label: 'Executive Portfolio' },
-  { key: 'project',    label: 'Project' },
-  { key: 'results',    label: 'Results & Indicators' },
-  { key: 'financial',  label: 'Financial' },
-  { key: 'geographic', label: 'Geographic' },
-  { key: 'risks',      label: 'Risks' },
-  { key: 'reporting',  label: 'Reporting' },
+  { key: 'portfolio',  label: 'dash.tabPortfolio' },
+  { key: 'project',    label: 'dash.tabProject' },
+  { key: 'results',    label: 'dash.tabResults' },
+  { key: 'financial',  label: 'dash.tabFinancial' },
+  { key: 'geographic', label: 'dash.tabGeographic' },
+  { key: 'risks',      label: 'dash.tabRisks' },
+  { key: 'reporting',  label: 'dash.tabReporting' },
 ];
 
 const ACTIVE_STATUSES = ['approved', 'not_started', 'on_track', 'at_risk', 'delayed'];
@@ -51,6 +53,7 @@ const countBy = (rows, keyFn) => {
 const sum = (rows, f) => rows.reduce((a, r) => a + (Number(f(r)) || 0), 0);
 
 export default function Dashboards({ initialTab }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState(initialTab || 'portfolio');
   const [d, setD] = useState(null); // loaded datasets
   const [projectId, setProjectId] = useState('');
@@ -93,13 +96,13 @@ export default function Dashboards({ initialTab }) {
     const approved = (d?.reporting || []).filter((r) => r.submission_status === 'approved' && r.period_end);
     if (!approved.length) return null;
     const latest = approved.map((r) => r.period_end).sort().pop();
-    return new Date(latest).toLocaleDateString('en-VU', { year: 'numeric', month: 'short', day: 'numeric' });
+    return fmtDate(latest);
   }, [d]);
 
   if (loading || !d) {
     return (
       <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <PageHeader title="MERL Dashboard" subtitle="Portfolio monitoring across the L&D programme." />
+        <PageHeader title={t('dash.pageTitle')} subtitle={t('dash.pageSubtitle')} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.7rem' }}>
           {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
@@ -129,30 +132,30 @@ export default function Dashboards({ initialTab }) {
       `}</style>
 
       <PageHeader
-        title="MERL Dashboard"
-        subtitle="Portfolio monitoring across the L&D programme."
+        title={t('dash.pageTitle')}
+        subtitle={t('dash.pageSubtitle')}
         actions={dataAsAt ? (
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Data as at: <strong style={{ color: 'var(--text-2)' }}>{dataAsAt}</strong></span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{t('dash.dataAsAt')} <strong style={{ color: 'var(--text-2)' }}>{dataAsAt}</strong></span>
         ) : null}
       />
 
       {d.projects.length === 0 ? (
-        <EmptyState title="No project data available"
+        <EmptyState title={t('dash.noProjectData')}
           description="Register your first project to begin portfolio monitoring." />
       ) : (
       <>
-      <div className="db-tabs" role="tablist" aria-label="Dashboard views">
+      <div className="db-tabs" role="tablist" aria-label={t('dash.dashboardViews')}>
         {TABS.map(({ key, label }) => (
           <button key={key} role="tab" aria-selected={tab === key}
             className={`db-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
 
       {tab === 'project' && (
         <div style={{ marginBottom: '0.5rem', maxWidth: 420 }}>
-          <label className="field-label">Project</label>
+          <label className="field-label">{t('dash.tabProject')}</label>
           <select className="field-input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
             {d.projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
           </select>
@@ -174,8 +177,9 @@ export default function Dashboards({ initialTab }) {
 
 // ── Reusable bits ────────────────────────────────────────────────────────────
 function BarList({ rows, total, accent = 'var(--green-600)' }) {
+  const { t } = useTranslation();
   const max = Math.max(1, ...rows.map(([, n]) => n));
-  if (!rows.length) return <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>No data.</p>;
+  if (!rows.length) return <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noData')}</p>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
       {rows.map(([label, n]) => (
@@ -196,6 +200,7 @@ const perfTint = (s) => ({ on_track: '#16a34a', target_achieved: '#0891b2', atte
 
 // ── Executive Portfolio ──────────────────────────────────────────────────────
 function Portfolio({ d, onNavigate }) {
+  const { t, i18n } = useTranslation();
   const [flt, setFlt] = useState({ status: '', theme: '', province: '', donor: '' });
 
   // Distinct filter options from the loaded projects (§25).
@@ -236,10 +241,10 @@ function Portfolio({ d, onNavigate }) {
     const highRiskOverdue = risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
       && r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status)).length;
     const attention = [];
-    if (atRiskDelayed) attention.push({ label: `${atRiskDelayed} project${atRiskDelayed === 1 ? '' : 's'} at risk or delayed`, tab: 'portfolio', tone: 'amber' });
-    if (offTrack) attention.push({ label: `${offTrack} indicator${offTrack === 1 ? '' : 's'} off track`, tab: 'results', tone: 'red' });
-    if (reportsOverdue) attention.push({ label: `${reportsOverdue} report${reportsOverdue === 1 ? '' : 's'} overdue`, tab: 'reporting', tone: 'red' });
-    if (highRiskOverdue) attention.push({ label: `${highRiskOverdue} high-risk action${highRiskOverdue === 1 ? '' : 's'} overdue`, tab: 'risks', tone: 'red' });
+    if (atRiskDelayed) attention.push({ label: t('dash.attnProjects', { count: atRiskDelayed }), tab: 'portfolio', tone: 'amber' });
+    if (offTrack) attention.push({ label: t('dash.attnIndicators', { count: offTrack }), tab: 'results', tone: 'red' });
+    if (reportsOverdue) attention.push({ label: t('dash.attnReports', { count: reportsOverdue }), tab: 'reporting', tone: 'red' });
+    if (highRiskOverdue) attention.push({ label: t('dash.attnActions', { count: highRiskOverdue }), tab: 'risks', tone: 'red' });
 
     // Physical vs financial progress (§32).
     const physAgg = {};
@@ -283,41 +288,41 @@ function Portfolio({ d, onNavigate }) {
       byTheme: countBy(projects, (p) => p.category),
       byStatus: countBy(projects, (p) => OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)),
     };
-  }, [d, flt]);
+  }, [d, flt, t, i18n.resolvedLanguage]);
 
   return (
     <>
       <FilterBar
         filters={[
-          { key: 'status', label: 'Status', value: flt.status, onChange: (v) => setFlt((s) => ({ ...s, status: v })),
-            options: [{ value: '', label: 'All statuses' }, ...OPT.DOCC_PROJECT_STATUS] },
-          { key: 'theme', label: 'Theme / Sector', value: flt.theme, onChange: (v) => setFlt((s) => ({ ...s, theme: v })),
-            options: [{ value: '', label: 'All themes' }, ...opts.themes.map((t) => ({ value: t, label: OPT.labelOf(OPT.CLIMATE_THEME, t) || t }))] },
-          { key: 'province', label: 'Province', value: flt.province, onChange: (v) => setFlt((s) => ({ ...s, province: v })),
-            options: [{ value: '', label: 'All provinces' }, ...opts.provinces.map((p) => ({ value: p, label: p }))] },
-          { key: 'donor', label: 'Funding Partner', value: flt.donor, onChange: (v) => setFlt((s) => ({ ...s, donor: v })),
-            options: [{ value: '', label: 'All partners' }, ...opts.donors.map((x) => ({ value: x, label: x }))] },
+          { key: 'status', label: t('dash.status'), value: flt.status, onChange: (v) => setFlt((s) => ({ ...s, status: v })),
+            options: [{ value: '', label: t('dash.allStatuses') }, ...OPT.DOCC_PROJECT_STATUS] },
+          { key: 'theme', label: t('dash.themeSector'), value: flt.theme, onChange: (v) => setFlt((s) => ({ ...s, theme: v })),
+            options: [{ value: '', label: t('dash.allThemes') }, ...opts.themes.map((theme) => ({ value: theme, label: OPT.labelOf(OPT.CLIMATE_THEME, theme) || theme }))] },
+          { key: 'province', label: t('dash.province'), value: flt.province, onChange: (v) => setFlt((s) => ({ ...s, province: v })),
+            options: [{ value: '', label: t('dash.allProvinces') }, ...opts.provinces.map((p) => ({ value: p, label: p }))] },
+          { key: 'donor', label: t('dash.fundingPartner'), value: flt.donor, onChange: (v) => setFlt((s) => ({ ...s, donor: v })),
+            options: [{ value: '', label: t('dash.allPartners') }, ...opts.donors.map((x) => ({ value: x, label: x }))] },
         ]}
         onReset={() => setFlt({ status: '', theme: '', province: '', donor: '' })}
       />
       <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', margin: '0.6rem 0' }}>
-        Showing <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} projects
+        {t('dash.showing')} <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} projects
       </div>
       <div className="db-kpis">
-        <StatTile label="Total Projects" value={m.total} />
-        <StatTile label="Total Beneficiaries" value={m.beneficiaries ? m.beneficiaries.toLocaleString() : '—'} />
-        <StatTile label="Approved Budget" value={fmtAmount(m.totalBudget)} />
-        <StatTile label="Budget Utilisation" value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} />
-        <StatTile label="Indicator Achievement" value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" />
+        <StatTile label={t('dash.totalProjects')} value={m.total} />
+        <StatTile label={t('dash.totalBeneficiaries')} value={m.beneficiaries ? fmtNum(m.beneficiaries) : '—'} />
+        <StatTile label={t('dash.approvedBudget')} value={fmtAmount(m.totalBudget)} />
+        <StatTile label={t('dash.budgetUtilisation')} value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} />
+        <StatTile label={t('dash.indAchievement')} value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" />
       </div>
-      <MetricStrip title="Portfolio Summary" style={{ marginTop: '0.7rem' }} items={[
-        { label: 'Active', value: m.active },
-        { label: 'Completed', value: m.completed },
-        { label: 'At Risk / Delayed', value: m.atRisk + m.delayed, tone: (m.atRisk + m.delayed) ? 'warning' : undefined },
-        { label: 'Expenditure', value: fmtAmount(m.totalExp) },
-        { label: 'Activities Completed', value: m.actCompleted },
-        { label: 'Open Risks', value: m.openRisks, tone: m.openRisks ? 'warning' : undefined },
-        { label: 'Overdue Actions', value: m.overdue, tone: m.overdue ? 'danger' : undefined },
+      <MetricStrip title={t('dash.portfolioSummary')} style={{ marginTop: '0.7rem' }} items={[
+        { label: t('dash.active'), value: m.active },
+        { label: t('dash.completed'), value: m.completed },
+        { label: t('dash.atRiskDelayed'), value: m.atRisk + m.delayed, tone: (m.atRisk + m.delayed) ? 'warning' : undefined },
+        { label: t('dash.expenditure'), value: fmtAmount(m.totalExp) },
+        { label: t('dash.activitiesCompleted'), value: m.actCompleted },
+        { label: t('dash.openRisks'), value: m.openRisks, tone: m.openRisks ? 'warning' : undefined },
+        { label: t('dash.overdueActions'), value: m.overdue, tone: m.overdue ? 'danger' : undefined },
       ]} />
 
       {/* Attention Required (§31) */}
@@ -327,7 +332,7 @@ function Portfolio({ d, onNavigate }) {
               needs action. The rows below carry a status dot, not a repeat of
               the same triangle. */}
           <h3 className="db-h" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <AlertTriangle size={16} style={{ color: 'var(--gold-500)', flexShrink: 0 }} aria-hidden="true" /> Attention Required
+            <AlertTriangle size={16} style={{ color: 'var(--gold-500)', flexShrink: 0 }} aria-hidden="true" /> {t('dash.attentionRequired')}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             {m.attention.map((a, i) => (
@@ -335,7 +340,7 @@ function Portfolio({ d, onNavigate }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: '0.25rem 0', font: 'inherit', color: 'var(--text-1)' }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: a.tone === 'red' ? 'var(--red-600)' : 'var(--gold-500)' }} />
                 <span style={{ fontSize: '0.83rem' }}>{a.label}</span>
-                <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--green-700)', fontWeight: 700 }}>View →</span>
+                <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--green-700)', fontWeight: 700 }}>{t('dash.view')} →</span>
               </button>
             ))}
           </div>
@@ -357,7 +362,7 @@ function Portfolio({ d, onNavigate }) {
             )}
           </h3>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-1)' }}>
-            {m.gedsi.total.toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-3)' }}>total direct beneficiaries</span>
+            {fmtNum(m.gedsi.total)} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-3)' }}>{t('dash.totalDirectBeneficiaries')}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.6rem', marginTop: '0.75rem' }}>
             {[
@@ -369,7 +374,7 @@ function Portfolio({ d, onNavigate }) {
               ['Indirect', m.gedsi.indirect, 'indirect'],
             ].map(([lbl, val, sym]) => (
               <div key={lbl} style={{ background: 'var(--surface-1)', borderRadius: 'var(--radius-control)', padding: '0.5rem 0.65rem' }}>
-                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-1)' }}>{val != null ? val.toLocaleString() : '—'}</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-1)' }}>{val != null ? fmtNum(val) : '—'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', color: 'var(--text-3)' }}>
                   {sym && <Gedsi name={sym} size={14} style={{ color: 'var(--green-700)', flexShrink: 0 }} />}
                   {lbl}
@@ -377,26 +382,26 @@ function Portfolio({ d, onNavigate }) {
               </div>
             ))}
           </div>
-          <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', margin: '0.5rem 0 0' }}>A dash (—) means the field was not reported; 0 is a reported value.</p>
+          <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', margin: '0.5rem 0 0' }}>{t('dash.dashNote')}</p>
         </div>
       )}
 
       <div className="db-2">
-        <div className="db-card"><h3 className="db-h">Projects by Province</h3><BarList rows={m.byProvince} total={m.total} /></div>
-        <div className="db-card"><h3 className="db-h">Projects by Donor</h3><BarList rows={m.byDonor} total={m.total} accent="#2563eb" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.projectsByProvince')}</h3><BarList rows={m.byProvince} total={m.total} /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.projectsByDonor')}</h3><BarList rows={m.byDonor} total={m.total} accent="#2563eb" /></div>
       </div>
       <div className="db-2">
-        <div className="db-card"><h3 className="db-h">Projects by Theme / Sector</h3><BarList rows={m.byTheme} total={m.total} accent="#7c3aed" /></div>
-        <div className="db-card"><h3 className="db-h">Projects by Status</h3><BarList rows={m.byStatus} total={m.total} accent="#0891b2" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.projectsByTheme')}</h3><BarList rows={m.byTheme} total={m.total} accent="#7c3aed" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.projectsByStatus')}</h3><BarList rows={m.byStatus} total={m.total} accent="#0891b2" /></div>
       </div>
 
       {/* Physical vs Financial progress (§32) */}
       {m.pf.length > 0 && (
         <div className="db-card" style={{ marginTop: '1rem' }}>
-          <h3 className="db-h">Physical vs Financial Progress</h3>
+          <h3 className="db-h">{t('dash.physVsFin')}</h3>
           <div style={{ overflowX: 'auto' }}>
             <table className="db-table">
-              <thead><tr><th>Project</th><th>Physical</th><th>Financial</th><th>Variance</th></tr></thead>
+              <thead><tr><th>{t('dash.tabProject')}</th><th>{t('dash.physical')}</th><th>{t('dash.tabFinancial')}</th><th>{t('dash.variance')}</th></tr></thead>
               <tbody>
                 {m.pf.map((r) => {
                   const flag = r.variance != null && Math.abs(r.variance) >= 25;
@@ -407,7 +412,7 @@ function Portfolio({ d, onNavigate }) {
                       <td>{r.financial != null ? `${r.financial}%` : '—'}</td>
                       <td style={{ fontWeight: 700, color: flag ? 'var(--red-600)' : 'var(--text-2)' }}>
                         {r.variance != null ? `${r.variance > 0 ? '+' : ''}${r.variance} pp` : '—'}
-                        {flag && <span style={{ marginLeft: 6, fontSize: '0.62rem', color: 'var(--red-700)', background: 'var(--red-100)', borderRadius: 9999, padding: '0.05rem 0.4rem' }}>CHECK</span>}
+                        {flag && <span style={{ marginLeft: 6, fontSize: '0.62rem', color: 'var(--red-700)', background: 'var(--red-100)', borderRadius: 9999, padding: '0.05rem 0.4rem' }}>{t('dash.check')}</span>}
                       </td>
                     </tr>
                   );
@@ -426,9 +431,10 @@ function Portfolio({ d, onNavigate }) {
 
 // ── Project dashboard ────────────────────────────────────────────────────────
 function ProjectView({ d, projectId }) {
+  const { t } = useTranslation();
   const p = d.projects.find((x) => x.id === projectId);
   const fin = useMemo(() => latestByProject(d.financial.filter((f) => f.project_id === projectId)).get(projectId), [d, projectId]);
-  if (!p) return <p style={{ color: 'var(--text-3)' }}>Select a project.</p>;
+  if (!p) return <p style={{ color: 'var(--text-3)' }}>{t('dash.selectProject')}</p>;
   const acts = d.activities.filter((a) => a.project_id === projectId);
   const risks = d.risks.filter((r) => r.project_id === projectId);
   const inds = d.indicators.filter((i) => i.project_id === projectId);
@@ -459,25 +465,25 @@ function ProjectView({ d, projectId }) {
         </div>
       </div>
       <div className="db-kpis">
-        <StatTile label="Physical Progress" value={phys != null ? `${phys}%` : '—'} sub="avg of activities" />
-        <StatTile label="Financial Utilisation" value={fmtPct(utilisationPct(budget, exp))} />
-        <StatTile label="Beneficiaries" value={ben ? ben.toLocaleString() : '—'} />
-        <StatTile label="Latest Report" value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} />
+        <StatTile label={t('dash.physicalProgress')} value={phys != null ? `${phys}%` : '—'} sub="avg of activities" />
+        <StatTile label={t('dash.financialUtilisation')} value={fmtPct(utilisationPct(budget, exp))} />
+        <StatTile label={t('dash.beneficiaries')} value={ben ? fmtNum(ben) : '—'} />
+        <StatTile label={t('dash.latestReport')} value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} />
       </div>
       {(() => { const openRisksCount = risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length; return (
-        <MetricStrip title="Financial & Delivery Summary" style={{ marginTop: '0.7rem' }} items={[
-          { label: 'Approved Budget', value: fmtAmount(budget) },
-          { label: 'Expenditure', value: fmtAmount(exp) },
-          { label: 'Activities', value: `${acts.length} (${acts.filter((a) => a.status === 'completed').length} completed)` },
-          { label: 'Open Risks', value: openRisksCount, tone: openRisksCount ? 'warning' : undefined },
+        <MetricStrip title={t('dash.finDeliverySummary')} style={{ marginTop: '0.7rem' }} items={[
+          { label: t('dash.approvedBudget'), value: fmtAmount(budget) },
+          { label: t('dash.expenditure'), value: fmtAmount(exp) },
+          { label: t('dash.activities'), value: `${acts.length} (${acts.filter((a) => a.status === 'completed').length} completed)` },
+          { label: t('dash.openRisks'), value: openRisksCount, tone: openRisksCount ? 'warning' : undefined },
         ]} />
       ); })()}
       <div className="db-2">
         <div className="db-card">
-          <h3 className="db-h">Indicator Performance</h3>
-          {inds.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>No indicators.</p> : (
+          <h3 className="db-h">{t('dash.indPerformance')}</h3>
+          {inds.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noIndicators')}</p> : (
             <div style={{ overflowX: 'auto' }}><table className="db-table">
-              <thead><tr><th>Code</th><th>Indicator</th><th>Baseline</th><th>Target</th><th>Current</th><th>Ach.</th></tr></thead>
+              <thead><tr><th>{t('dash.code')}</th><th>{t('dash.indicator')}</th><th>{t('dash.baseline')}</th><th>{t('dash.target')}</th><th>{t('dash.current')}</th><th>{t('dash.achievementShort')}</th></tr></thead>
               <tbody>
                 {inds.map((i) => {
                   const last = prog.filter((x) => x.indicator_id === i.id).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0];
@@ -494,13 +500,13 @@ function ProjectView({ d, projectId }) {
           )}
         </div>
         <div className="db-card">
-          <h3 className="db-h">Activity Progress</h3>
-          {acts.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>No activities.</p> : (
+          <h3 className="db-h">{t('dash.activityProgress')}</h3>
+          {acts.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noActivities')}</p> : (
             <BarList rows={countBy(acts, (a) => OPT.labelOf(OPT.ACTIVITY_STATUS, a.status))} total={acts.length} />
           )}
-          <h3 className="db-h" style={{ marginTop: '1rem' }}>Risks</h3>
-          {risks.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>No risks.</p> : (
-            <BarList rows={countBy(risks, (r) => r.risk_rating || 'Unrated')} accent="#dc2626" />
+          <h3 className="db-h" style={{ marginTop: '1rem' }}>{t('dash.tabRisks')}</h3>
+          {risks.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noRisks')}</p> : (
+            <BarList rows={countBy(risks, (r) => ratingLabel(r.risk_rating, t))} accent="#dc2626" />
           )}
         </div>
       </div>
@@ -510,23 +516,24 @@ function ProjectView({ d, projectId }) {
 
 // ── Results & Indicators ─────────────────────────────────────────────────────
 function Results({ d }) {
+  const { t } = useTranslation();
   const perf = countBy(d.progress, (p) => OPT.labelOf(OPT.PERFORMANCE_STATUS, p.performance_status || 'no_data'));
   return (
     <>
-      <MetricStrip title="Results Framework" items={[
-        { label: 'Objectives', value: d.objectives.length },
-        { label: 'Outcomes', value: d.outcomes.length },
-        { label: 'Outputs', value: d.outputs.length },
-        { label: 'Indicators', value: d.indicators.length },
+      <MetricStrip title={t('dash.resultsFramework')} items={[
+        { label: t('dash.objectives'), value: d.objectives.length },
+        { label: t('dash.outcomes'), value: d.outcomes.length },
+        { label: t('dash.outputs'), value: d.outputs.length },
+        { label: t('dash.indicators'), value: d.indicators.length },
       ]} />
       <div className="db-2">
-        <div className="db-card"><h3 className="db-h">Indicator Performance Status</h3><BarList rows={perf} total={d.progress.length} accent="#0891b2" /></div>
-        <div className="db-card"><h3 className="db-h">Indicators by Level</h3><BarList rows={countBy(d.indicators, (i) => OPT.labelOf(OPT.INDICATOR_LEVEL, i.indicator_level || '—'))} total={d.indicators.length} accent="#7c3aed" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.indPerfStatus')}</h3><BarList rows={perf} total={d.progress.length} accent="#0891b2" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.indByLevel')}</h3><BarList rows={countBy(d.indicators, (i) => OPT.labelOf(OPT.INDICATOR_LEVEL, i.indicator_level || '—'))} total={d.indicators.length} accent="#7c3aed" /></div>
       </div>
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">Latest reported indicators</h3>
+        <h3 className="db-h">{t('dash.latestReported')}</h3>
         <div style={{ overflowX: 'auto' }}><table className="db-table">
-          <thead><tr><th>Indicator</th><th>Period</th><th>Current</th><th>Target</th><th>Achievement</th><th>Status</th></tr></thead>
+          <thead><tr><th>{t('dash.indicator')}</th><th>{t('dash.period')}</th><th>{t('dash.current')}</th><th>{t('dash.target')}</th><th>{t('dash.achievement')}</th><th>{t('dash.status')}</th></tr></thead>
           <tbody>
             {d.progress.slice(0, 30).map((r, idx) => (
               <tr key={idx}>
@@ -545,6 +552,7 @@ function Results({ d }) {
 
 // ── Financial ────────────────────────────────────────────────────────────────
 function Financial({ d }) {
+  const { t } = useTranslation();
   const fin = latestByProject(d.financial);
   const rows = d.projects.map((p) => {
     const f = fin.get(p.id);
@@ -556,17 +564,17 @@ function Financial({ d }) {
   return (
     <>
       <div className="db-kpis">
-        <StatTile label="Total Approved" value={fmtAmount(totalBudget)} />
-        <StatTile label="Utilisation" value={fmtPct(utilisationPct(totalBudget, totalExp))} />
+        <StatTile label={t('dash.totalApproved')} value={fmtAmount(totalBudget)} />
+        <StatTile label={t('dash.utilisation')} value={fmtPct(utilisationPct(totalBudget, totalExp))} />
       </div>
       <MetricStrip style={{ marginTop: '0.7rem' }} items={[
-        { label: 'Total Expenditure', value: fmtAmount(totalExp) },
-        { label: 'Remaining', value: fmtAmount(totalBudget - totalExp) },
+        { label: t('dash.totalExpenditure'), value: fmtAmount(totalExp) },
+        { label: t('dash.remaining'), value: fmtAmount(totalBudget - totalExp) },
       ]} />
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">Budget vs Expenditure by project</h3>
+        <h3 className="db-h">{t('dash.budgetVsExp')}</h3>
         <div style={{ overflowX: 'auto' }}><table className="db-table">
-          <thead><tr><th>Code</th><th>Project</th><th>Approved</th><th>Expenditure</th><th>Remaining</th><th>Utilisation</th></tr></thead>
+          <thead><tr><th>{t('dash.code')}</th><th>{t('dash.tabProject')}</th><th>{t('dash.approved')}</th><th>{t('dash.expenditure')}</th><th>{t('dash.remaining')}</th><th>{t('dash.utilisation')}</th></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.code}>
@@ -584,6 +592,7 @@ function Financial({ d }) {
 
 // ── Geographic ───────────────────────────────────────────────────────────────
 function Geographic({ d }) {
+  const { t } = useTranslation();
   const [province, setProvince] = useState(null);
   const locs = province ? d.locations.filter((l) => l.province === province) : d.locations;
   const provinceCounts = Object.fromEntries(countBy(d.locations, (l) => l.province)); // { province: sites }
@@ -597,17 +606,17 @@ function Geographic({ d }) {
   const withCoords = locs.filter((l) => l.latitude != null && l.longitude != null);
   return (
     <>
-      <MetricStrip title="Geographic Coverage" items={[
-        { label: 'Sites', value: locs.length },
-        { label: 'Provinces', value: Object.keys(provinceCounts).length },
-        { label: 'Area Councils', value: byAC.length },
-        { label: 'Geo-tagged Sites', value: withCoords.length },
+      <MetricStrip title={t('dash.geoCoverage')} items={[
+        { label: t('dash.sites'), value: locs.length },
+        { label: t('dash.provinces'), value: Object.keys(provinceCounts).length },
+        { label: t('dash.areaCouncils'), value: byAC.length },
+        { label: t('dash.geoSites'), value: withCoords.length },
       ]} />
 
       {/* Vanuatu geographic dashboard (§36) — click a province to filter. */}
       <div className="db-card" style={{ marginTop: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3 className="db-h" style={{ margin: 0 }}>Sites across Vanuatu</h3>
+          <h3 className="db-h" style={{ margin: 0 }}>{t('dash.sitesAcross')}</h3>
           {province && (
             <button onClick={() => setProvince(null)} style={{ background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>
               {province} · clear ×
@@ -621,7 +630,7 @@ function Geographic({ d }) {
       </div>
 
       <div className="db-2">
-        <div className="db-card"><h3 className="db-h">Beneficiaries by Province</h3><BarList rows={benByProvince} accent="#7c3aed" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.benByProvince')}</h3><BarList rows={benByProvince} accent="#7c3aed" /></div>
         <div className="db-card"><h3 className="db-h">Sites by Island{province ? ` · ${province}` : ''}</h3><BarList rows={byIsland} accent="#2563eb" /></div>
       </div>
       <div className="db-card" style={{ marginTop: '1rem' }}>
@@ -633,14 +642,25 @@ function Geographic({ d }) {
 
 // ── Risks ────────────────────────────────────────────────────────────────────
 // 5x5 risk matrix band from likelihood x impact score (§37).
-function riskBand(score) {
-  if (score >= 15) return { key: 'critical', label: 'Critical', bg: '#b3402f', fg: '#fff' };
-  if (score >= 10) return { key: 'high', label: 'High', bg: '#e06636', fg: '#fff' };
-  if (score >= 5) return { key: 'medium', label: 'Medium', bg: '#e0a12a', fg: '#3a2e12' };
-  return { key: 'low', label: 'Low', bg: '#2f8f6b', fg: '#fff' };
+// Risk ratings arrive as free text on the record ("High", "critical", …), so a
+// recognised value is shown in the reader's language and anything else is left
+// exactly as the officer typed it.
+function ratingLabel(rating, t) {
+  if (!rating) return t('dash.unrated');
+  const known = { low: 'dash.low', medium: 'dash.medium', high: 'dash.high', critical: 'dash.critical' };
+  const key = known[String(rating).toLowerCase()];
+  return key ? t(key) : rating;
+}
+
+function riskBand(score, t) {
+  if (score >= 15) return { key: 'critical', label: t('dash.critical'), bg: '#b3402f', fg: '#fff' };
+  if (score >= 10) return { key: 'high', label: t('dash.high'), bg: '#e06636', fg: '#fff' };
+  if (score >= 5) return { key: 'medium', label: t('dash.medium'), bg: '#e0a12a', fg: '#3a2e12' };
+  return { key: 'low', label: t('dash.low'), bg: '#2f8f6b', fg: '#fff' };
 }
 
 function Risks({ d }) {
+  const { t } = useTranslation();
   const [cell, setCell] = useState(null); // { l, i } selected matrix cell
   const open = d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status));
   const critical = d.risks.filter((r) => ['Critical', 'High'].includes(r.risk_rating));
@@ -657,32 +677,32 @@ function Risks({ d }) {
   return (
     <>
       <div className="db-kpis">
-        <StatTile label="Critical / High" value={critical.length} status={critical.length ? 'red' : 'green'} />
-        <StatTile label="Overdue Actions" value={overdue.length} status={overdue.length ? 'red' : 'green'} />
+        <StatTile label={t('dash.criticalHigh')} value={critical.length} status={critical.length ? 'red' : 'green'} />
+        <StatTile label={t('dash.overdueActions')} value={overdue.length} status={overdue.length ? 'red' : 'green'} />
       </div>
       <MetricStrip style={{ marginTop: '0.7rem' }} items={[
-        { label: 'Open', value: open.length, tone: open.length ? 'warning' : undefined },
-        { label: 'Resolved', value: resolved.length },
+        { label: t('dash.open'), value: open.length, tone: open.length ? 'warning' : undefined },
+        { label: t('dash.resolved'), value: resolved.length },
       ]} />
 
       {/* 5x5 Risk Matrix (§37) */}
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">Risk Matrix — Likelihood × Impact</h3>
+        <h3 className="db-h">{t('dash.riskMatrix')}</h3>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem' }}>
             <tbody>
               {[5, 4, 3, 2, 1].map((i) => (
                 <tr key={i}>
-                  {i === 5 && <td rowSpan={5} style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 0.3rem' }}>Impact →</td>}
+                  {i === 5 && <td rowSpan={5} style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 0.3rem' }}>{t('dash.impactAxis')}</td>}
                   <td style={{ fontWeight: 700, color: 'var(--text-3)', padding: '0 0.4rem', textAlign: 'right' }}>{i}</td>
                   {[1, 2, 3, 4, 5].map((l) => {
                     const n = cellCount(l, i);
-                    const band = riskBand(l * i);
+                    const band = riskBand(l * i, t);
                     const sel = cell && cell.l === l && cell.i === i;
                     return (
                       <td key={l} style={{ padding: 2 }}>
                         <button onClick={() => setCell(sel ? null : { l, i })}
-                          title={`Likelihood ${l} × Impact ${i} — ${band.label}`}
+                          title={t('dash.matrixCell', { likelihood: l, impact: i, band: band.label })}
                           style={{ width: 46, height: 40, border: sel ? '2px solid var(--ink)' : '1px solid rgba(0,0,0,0.08)', borderRadius: 6,
                             background: band.bg, color: band.fg, fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', opacity: n === 0 ? 0.4 : 1 }}>
                           {n || ''}
@@ -696,35 +716,35 @@ function Risks({ d }) {
                 <td /><td />
                 {[1, 2, 3, 4, 5].map((l) => <td key={l} style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-3)', paddingTop: 2 }}>{l}</td>)}
               </tr>
-              <tr><td /><td /><td colSpan={5} style={{ textAlign: 'center', fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingTop: 2 }}>Likelihood →</td></tr>
+              <tr><td /><td /><td colSpan={5} style={{ textAlign: 'center', fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingTop: 2 }}>{t('dash.likelihoodAxis')}</td></tr>
             </tbody>
           </table>
         </div>
         <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.6rem', flexWrap: 'wrap', fontSize: '0.7rem', color: 'var(--text-3)' }}>
-          {['low', 'medium', 'high', 'critical'].map((k) => { const b = riskBand(k === 'low' ? 1 : k === 'medium' ? 6 : k === 'high' ? 12 : 20); return (
+          {['low', 'medium', 'high', 'critical'].map((k) => { const b = riskBand(k === 'low' ? 1 : k === 'medium' ? 6 : k === 'high' ? 12 : 20, t); return (
             <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 11, height: 11, borderRadius: 3, background: b.bg }} />{b.label}</span>
           ); })}
-          {cell && <button onClick={() => setCell(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer' }}>Clear cell filter ×</button>}
+          {cell && <button onClick={() => setCell(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer' }}>{t('dash.clearCellFilter')}</button>}
         </div>
       </div>
 
       <div className="db-2">
-        <div className="db-card"><h3 className="db-h">By Category</h3><BarList rows={countBy(d.risks, (r) => OPT.labelOf(OPT.RISK_CATEGORY, r.category || 'other'))} total={d.risks.length} accent="#d97706" /></div>
-        <div className="db-card"><h3 className="db-h">By Rating</h3><BarList rows={countBy(d.risks, (r) => r.risk_rating || 'Unrated')} total={d.risks.length} accent="#dc2626" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.byCategory')}</h3><BarList rows={countBy(d.risks, (r) => OPT.labelOf(OPT.RISK_CATEGORY, r.category || 'other'))} total={d.risks.length} accent="#d97706" /></div>
+        <div className="db-card"><h3 className="db-h">{t('dash.byRating')}</h3><BarList rows={countBy(d.risks, (r) => ratingLabel(r.risk_rating, t))} total={d.risks.length} accent="#dc2626" /></div>
       </div>
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">{cell ? `Risks at Likelihood ${cell.l} × Impact ${cell.i}` : 'Open risks & issues'}</h3>
+        <h3 className="db-h">{cell ? t('dash.risksAtCell', { likelihood: cell.l, impact: cell.i }) : t('dash.openRisksIssues')}</h3>
         {tableRisks.length === 0 ? (
-          <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>No risks in this cell.</p>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noRisksCell')}</p>
         ) : (
         <div style={{ overflowX: 'auto' }}><table className="db-table">
-          <thead><tr><th>ID</th><th>Type</th><th>Description</th><th>Rating</th><th>Due</th><th>Owner</th></tr></thead>
+          <thead><tr><th>{t('dash.id')}</th><th>{t('dash.type')}</th><th>{t('dash.description')}</th><th>{t('dash.rating')}</th><th>{t('dash.due')}</th><th>{t('dash.owner')}</th></tr></thead>
           <tbody>
             {tableRisks.slice(0, 40).map((r) => (
               <tr key={r.code}>
                 <td>{r.code}</td><td>{OPT.labelOf(OPT.RISK_TYPE, r.type)}</td>
                 <td>{(r.description || '').slice(0, 60)}</td>
-                <td style={{ fontWeight: 700 }}>{r.risk_rating || '—'}</td>
+                <td style={{ fontWeight: 700 }}>{r.risk_rating ? ratingLabel(r.risk_rating, t) : '—'}</td>
                 <td style={{ color: r.due_date && r.due_date < today() ? '#dc2626' : 'inherit' }}>{r.due_date || '—'}</td>
                 <td>{r.responsible_person || '—'}</td>
               </tr>
@@ -739,22 +759,23 @@ function Risks({ d }) {
 
 // ── Reporting ────────────────────────────────────────────────────────────────
 function Reporting({ d }) {
+  const { t } = useTranslation();
   const by = (s) => d.reporting.filter((r) => r.submission_status === s).length;
   const overdue = d.reporting.filter((r) => r.period_end && r.period_end < today() && r.submission_status !== 'approved').length;
   return (
     <>
-      <MetricStrip title="Reporting Status" items={[
-        { label: 'Draft', value: by('draft') },
-        { label: 'Submitted', value: by('submitted') },
-        { label: 'Returned', value: by('returned'), tone: by('returned') ? 'warning' : undefined },
-        { label: 'Reviewed', value: by('reviewed') },
-        { label: 'Approved', value: by('approved'), tone: by('approved') ? 'success' : undefined },
-        { label: 'Overdue', value: overdue, tone: overdue ? 'danger' : undefined },
+      <MetricStrip title={t('dash.reportingStatus')} items={[
+        { label: t('dash.draft'), value: by('draft') },
+        { label: t('dash.submitted'), value: by('submitted') },
+        { label: t('dash.returned'), value: by('returned'), tone: by('returned') ? 'warning' : undefined },
+        { label: t('dash.reviewed'), value: by('reviewed') },
+        { label: t('dash.approved'), value: by('approved'), tone: by('approved') ? 'success' : undefined },
+        { label: t('dash.overdue'), value: overdue, tone: overdue ? 'danger' : undefined },
       ]} />
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">Reporting periods</h3>
+        <h3 className="db-h">{t('dash.reportingPeriods')}</h3>
         <div style={{ overflowX: 'auto' }}><table className="db-table">
-          <thead><tr><th>Project</th><th>Period</th><th>Type</th><th>End</th><th>Status</th></tr></thead>
+          <thead><tr><th>{t('dash.tabProject')}</th><th>{t('dash.period')}</th><th>{t('dash.type')}</th><th>{t('dash.end')}</th><th>{t('dash.status')}</th></tr></thead>
           <tbody>
             {d.reporting.slice(0, 40).map((r, i) => {
               const proj = d.projects.find((p) => p.id === r.project_id);

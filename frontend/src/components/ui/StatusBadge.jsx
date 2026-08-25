@@ -11,6 +11,8 @@
 //   neutral (grey)   No Data / Closed / Inactive
 //   info    (teal)   In progress / Submitted / Under review
 
+import { useTranslation } from 'react-i18next';
+
 const TONES = {
   success: { col: 'var(--green-600)', bg: 'var(--green-50)',  txt: 'var(--green-800)' },
   warning: { col: 'var(--gold-500)',  bg: 'var(--gold-100)',  txt: '#8a6416' },
@@ -21,32 +23,33 @@ const TONES = {
 
 // Map known status codes/labels to a tone + display label.
 const STATUS_MAP = {
-  on_track:   ['success', 'On Track'],   green:     ['success', 'On Track'],
-  completed:  ['success', 'Completed'],  approved:  ['success', 'Approved'],
-  verified:   ['success', 'Verified'],   active:    ['success', 'Active'],
-  at_risk:    ['warning', 'At Risk'],    amber:     ['warning', 'At Risk'],
-  pending:    ['warning', 'Pending'],    attention: ['warning', 'Attention'],
-  returned:   ['warning', 'Returned'],
-  no_progress:['danger',  'No Progress'],red:       ['danger',  'Off Track'],
-  delayed:    ['danger',  'Delayed'],    off_track: ['danger',  'Off Track'],
-  rejected:   ['danger',  'Rejected'],   high:      ['danger',  'High'],
-  critical:   ['danger',  'Critical'],   overdue:   ['danger',  'Overdue'],
-  draft:      ['neutral', 'Draft'],      inactive:  ['neutral', 'Inactive'],
-  closed:     ['neutral', 'Closed'],     none:      ['neutral', 'No Data'],
-  unrated:    ['neutral', 'Unrated'],
-  submitted:  ['info',    'Submitted'],  reviewed:  ['info',    'Under Review'],
-  in_progress:['info',    'In Progress'],
+  on_track:   ['success', 'status.on_track'],    green:     ['success', 'status.on_track'],
+  completed:  ['success', 'status.completed'],   approved:  ['success', 'status.approved'],
+  verified:   ['success', 'status.verified'],    active:    ['success', 'status.active'],
+  at_risk:    ['warning', 'status.at_risk'],     amber:     ['warning', 'status.at_risk'],
+  pending:    ['warning', 'status.pending'],     attention: ['warning', 'status.attention'],
+  returned:   ['warning', 'status.returned'],
+  no_progress:['danger',  'status.no_progress'], red:       ['danger',  'status.off_track'],
+  delayed:    ['danger',  'status.delayed'],     off_track: ['danger',  'status.off_track'],
+  rejected:   ['danger',  'status.rejected'],    high:      ['danger',  'status.high'],
+  critical:   ['danger',  'status.critical'],    overdue:   ['danger',  'status.overdue'],
+  draft:      ['neutral', 'status.draft'],       inactive:  ['neutral', 'status.inactive'],
+  closed:     ['neutral', 'status.closed'],      none:      ['neutral', 'status.no_data'],
+  unrated:    ['neutral', 'status.unrated'],
+  submitted:  ['info',    'status.submitted'],   reviewed:  ['info',    'status.under_review'],
+  in_progress:['info',    'status.in_progress'],
 };
 
 export default function StatusBadge({ status, tone, label, size = 'sm' }) {
-  let t = tone, l = label;
-  if (status && (!t || !l)) {
+  const { t } = useTranslation();
+  let resolvedTone = tone, l = label;
+  if (status && (!resolvedTone || !l)) {
     const key = String(status).toLowerCase();
     const hit = STATUS_MAP[key];
-    if (hit) { t = t || hit[0]; l = l || hit[1]; }
-    else { t = t || 'neutral'; l = l || String(status); }
+    if (hit) { resolvedTone = resolvedTone || hit[0]; l = l || t(hit[1]); }
+    else { resolvedTone = resolvedTone || 'neutral'; l = l || String(status); }
   }
-  const m = TONES[t] || TONES.neutral;
+  const m = TONES[resolvedTone] || TONES.neutral;
   const pad = size === 'md' ? '0.2rem 0.6rem' : '0.15rem 0.5rem';
   const fs = size === 'md' ? '0.75rem' : '0.6875rem';
   return (

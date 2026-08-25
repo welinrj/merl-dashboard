@@ -524,6 +524,17 @@
 .dsh-head-title { font-size: clamp(1.1rem,2.5vw,1.45rem); font-weight: 800; font-family: var(--font-display); color: var(--navy-900); line-height: 1.15; }
 .dsh-head-sub { font-size: .78rem; color: var(--text-3); }
 .dsh-head-actions { margin-left: auto; display: flex; align-items: center; gap: .75rem; }
+/* Phones: the header stays one row. Its title is the only elastic part and it
+   grows with the language ("Review & Approval" is 17 characters, the French
+   "Revue et approbation" is 20), so at this width it wrapped under the search
+   and account controls. The controls are fixed-size, which leaves the title no
+   room worth having — and the page repeats its own name in the PageHeader an
+   inch below — so the header keeps just the controls here. */
+@media (max-width: 768px) {
+  .dsh-head { gap: .6rem; padding: .7rem .9rem; }
+  .dsh-head-title, .dsh-head-sub { display: none; }
+  .dsh-head-actions { gap: .5rem; }
+}
 .dsh-bell { position: relative; background: none; border: none; cursor: pointer; color: var(--text-3); display: flex; }
 .dsh-bell-badge { position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 9999px; background: var(--red-600); color: #fff; font-size: .58rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .dsh-user { display: flex; align-items: center; gap: .5rem; background: none; border: none; cursor: pointer; padding: .1rem; }

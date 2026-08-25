@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { Search, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from './icons';
 import EmptyState from './EmptyState';
 import { SkeletonRows } from './LoadingSkeleton';
+import { useTranslation } from 'react-i18next';
 
 const cmp = (a, b) => {
   if (a == null && b == null) return 0;
@@ -31,6 +32,7 @@ export default function DataTable({
   pageSizeOptions = [10, 25, 50], pageSize: initialPageSize = 10,
   loading = false, empty, toolbar, dense = false, minWidth = 720, stickyHeader = true,
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
@@ -135,21 +137,21 @@ export default function DataTable({
       {!loading && total > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.6rem 0.9rem', borderTop: '1px solid var(--border)', fontSize: '0.8rem', color: 'var(--text-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span>Rows</span>
+            <span>{t('ui.rows')}</span>
             <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-              aria-label="Rows per page" className="field-input" style={{ width: 'auto', padding: '0.2rem 0.4rem' }}>
+              aria-label={t('ui.rowsPerPage')} className="field-input" style={{ width: 'auto', padding: '0.2rem 0.4rem' }}>
               {pageSizeOptions.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span>{total === 0 ? 0 : start + 1}–{Math.min(start + pageSize, total)} of {total}</span>
+            <span>{t('ui.rangeOf', { from: total === 0 ? 0 : start + 1, to: Math.min(start + pageSize, total), total })}</span>
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={curPage <= 1}
-              aria-label="Previous page" className="btn-secondary" style={{ padding: '0.25rem', borderRadius: 6, cursor: curPage <= 1 ? 'not-allowed' : 'pointer', opacity: curPage <= 1 ? 0.5 : 1 }}>
+              aria-label={t('ui.previousPage')} className="btn-secondary" style={{ padding: '0.25rem', borderRadius: 6, cursor: curPage <= 1 ? 'not-allowed' : 'pointer', opacity: curPage <= 1 ? 0.5 : 1 }}>
               <ChevronLeft size={16} aria-hidden="true" />
             </button>
-            <span style={{ minWidth: 60, textAlign: 'center' }}>Page {curPage}/{pageCount}</span>
+            <span style={{ minWidth: 60, textAlign: 'center' }}>{t('ui.pageOf', { current: curPage, total: pageCount })}</span>
             <button onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={curPage >= pageCount}
-              aria-label="Next page" className="btn-secondary" style={{ padding: '0.25rem', borderRadius: 6, cursor: curPage >= pageCount ? 'not-allowed' : 'pointer', opacity: curPage >= pageCount ? 0.5 : 1 }}>
+              aria-label={t('ui.nextPage')} className="btn-secondary" style={{ padding: '0.25rem', borderRadius: 6, cursor: curPage >= pageCount ? 'not-allowed' : 'pointer', opacity: curPage >= pageCount ? 0.5 : 1 }}>
               <ChevronRight size={16} aria-hidden="true" />
             </button>
           </div>

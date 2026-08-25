@@ -10,9 +10,34 @@
 // with a separate display label.
 // =============================================================================
 
+import i18n from '../i18n';
+
+// The stored values below are the canonical English wording from the government
+// forms, so they double as the translation key: "Loss & Damage" → opt.loss_damage,
+// "not_started" → opt.not_started. The `opt` namespace in i18n.js carries the
+// display label for each one in every supported language.
+const optionKey = (value) =>
+  `opt.${String(value).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')}`;
+
+/**
+ * Display label for one option in the active language.
+ *
+ * Falls back to the label carried on the option when the value isn't part of a
+ * controlled vocabulary — the same `<Select>` components are fed both these
+ * lists and dynamic ones (users, objectives, project codes), and a person's
+ * name must never be run through the option dictionary.
+ */
+export const optionLabel = (option) => {
+  if (!option) return '';
+  const key = optionKey(option.value);
+  return i18n.exists(key) ? i18n.t(key) : (option.label ?? option.value ?? '');
+};
+
 /** Look up a display label for a stored value; falls back to the raw value. */
-export const labelOf = (options, value) =>
-  options.find(o => o.value === value)?.label ?? value ?? '';
+export const labelOf = (options, value) => {
+  const option = options.find(o => o.value === value);
+  return option ? optionLabel(option) : (value ?? '');
+};
 
 // ── Project (operational) status — stored as lowercase tokens ────────────────
 export const PROJECT_STATUS = [
