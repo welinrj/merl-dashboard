@@ -14,7 +14,7 @@ import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight,
-  CheckCircle2, AlertTriangle,
+  CheckCircle2, AlertTriangle, MapPin,
 } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
@@ -23,8 +23,10 @@ import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
 import { useTranslation } from 'react-i18next';
-import { localised } from '../lib/contentLocale';
+import { localised, sourceRow } from '../lib/contentLocale';
 import TranslationPanel from '../components/ui/TranslationPanel';
+import VillageSelect from '../components/ui/VillageSelect';
+import MapPinPicker from '../components/ui/MapPinPicker';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const toNull = (v) => (v === '' || v === undefined ? null : v);
@@ -456,8 +458,8 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
   const codeChip = (c, bg) => ({ fontSize: '0.68rem', fontWeight: 700, color: '#fff', background: bg, padding: '0.12rem 0.4rem', borderRadius: 6, flexShrink: 0, marginTop: 2 });
   const actions = (kind, row) => (
     <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-      <button onClick={() => openEdit(kind, row)} aria-label={`Edit ${kind} ${row.code}`} title={`Edit ${kind}`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-      <button onClick={() => delNode(kind, row)} aria-label={`Delete ${kind} ${row.code}`} title={`Delete ${kind}`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+      <button onClick={() => openEdit(kind, row)} aria-label={t('ps.editNamed', { what: t(`ps.node${kind.charAt(0).toUpperCase()}${kind.slice(1)}`), code: row.code ?? '' })} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+      <button onClick={() => delNode(kind, row)} aria-label={t('ps.deleteNamed', { what: t(`ps.node${kind.charAt(0).toUpperCase()}${kind.slice(1)}`), code: row.code ?? '' })} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
     </span>
   );
 
@@ -617,8 +619,8 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
                   <td>{i.target_value ?? '—'}</td>
                   <td>{i.frequency ? OPT.labelOf(OPT.REPORTING_FREQUENCY, i.frequency) : '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(i)} aria-label={`Edit indicator ${i.code ?? ''}`} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-                    <button onClick={() => del(i)} aria-label={`Delete indicator ${i.code ?? ''}`} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+                    <button onClick={() => setEditing(i)} aria-label={t('ps.editNamed', { what: t('ps.indicatorWord'), code: i.code ?? '' })} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(i)} aria-label={t('ps.deleteNamed', { what: t('ps.indicatorWord'), code: i.code ?? '' })} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -750,8 +752,8 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
                   <td>{OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</td>
                   <td>{a.physical_progress_pct != null ? `${a.physical_progress_pct}%` : '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(a)} aria-label={`Edit activity ${a.code ?? ''}`} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-                    <button onClick={() => del(a)} aria-label={`Delete activity ${a.code ?? ''}`} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+                    <button onClick={() => setEditing(a)} aria-label={t('ps.editNamed', { what: t('ps.activityWord'), code: a.code ?? '' })} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(a)} aria-label={t('ps.deleteNamed', { what: t('ps.activityWord'), code: a.code ?? '' })} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -853,6 +855,14 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
 function LocationsStep({ projectId, locations, reload }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
+  // The whole register, once: it is reference data of a few thousand rows at
+  // most, and filtering it per keystroke in the browser beats a request per one.
+  const [villages, setVillages] = useState([]);
+  const loadVillages = useCallback(async () => {
+    const { data } = await supabase.from('v_ref_villages').select('*');
+    setVillages(data ?? []);
+  }, []);
+  useEffect(() => { loadVillages(); }, [loadVillages]);
   const del = async (row) => {
     if (!(await confirmDialog({ title:t('ps.deleteLocation'), message:t('ps.deleteLocationConfirm'), confirmLabel:t('ps.deleteLbl') }))) return;
     const { error } = await supabase.rpc('delete_project_location', { p_id: row.id });
@@ -867,15 +877,17 @@ function LocationsStep({ projectId, locations, reload }) {
       {locations.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noLocations')}</p> : (
         <div className="ps-desktop" style={{ overflowX: 'auto' }}>
           <table className="ps-table">
-            <thead><tr><th>{t('ps.province')}</th><th>{t('ps.island')}</th><th>{t('ps.areaCouncil')}</th><th>{t('ps.community')}</th><th>{t('ps.beneficiaries')}</th><th></th></tr></thead>
+            <thead><tr><th>{t('ps.province')}</th><th>{t('ps.island')}</th><th>{t('ps.areaCouncil')}</th><th>{t('ps.community')}</th><th>{t('ps.statusCol')}</th><th>{t('ps.beneficiaries')}</th><th></th></tr></thead>
             <tbody>
               {locations.map((l) => (
                 <tr key={l.id}>
                   <td>{l.province || '—'}</td><td>{l.island || '—'}</td><td>{l.area_council || '—'}</td>
-                  <td>{l.community || '—'}</td><td>{l.beneficiaries ?? '—'}</td>
+                  <td>{l.community || '—'}</td>
+                  <td>{l.status ? OPT.labelOf(OPT.ACTIVITY_STATUS, l.status) : '—'}</td>
+                  <td>{l.beneficiaries ?? '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setEditing(l)} aria-label={`Edit location ${l.code ?? ''}`} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-                    <button onClick={() => del(l)} aria-label={`Delete location ${l.code ?? ''}`} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+                    <button onClick={() => setEditing(l)} aria-label={t('ps.editNamed', { what: t('ps.locationWord'), code: l.community || l.island || l.province || '' })} title={t('ps.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                    <button onClick={() => del(l)} aria-label={t('ps.deleteNamed', { what: t('ps.locationWord'), code: l.community || l.island || l.province || '' })} title={t('ps.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}
@@ -897,46 +909,154 @@ function LocationsStep({ projectId, locations, reload }) {
         </div>
       )}
       {editing !== null && (
-        <LocationForm projectId={projectId} initial={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
+        <LocationForm projectId={projectId} initial={editing} villages={villages}
+          onVillageAdded={loadVillages}
+          onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
     </div>
   );
 }
 
-function LocationForm({ projectId, initial, onClose, onSaved }) {
+function LocationForm({ projectId, initial, villages, onVillageAdded, onClose, onSaved }) {
   const { t } = useTranslation();
-  const base = { province: '', island: '', area_council: '', community: '', latitude: '', longitude: '', intervention: '', status: '', beneficiaries: '' };
-  const [v, setV] = useState({ ...base, ...(initial?.id ? initial : {}) });
+  const base = {
+    province: '', island: '', area_council: '', community: '', latitude: '', longitude: '',
+    intervention: '', status: '', beneficiaries: '', village_id: null,
+  };
+  const [v, setV] = useState({ ...base, ...(initial?.id ? sourceRow(initial) : {}) });
+  const [showMap, setShowMap] = useState(false);
+  const [adding, setAdding] = useState(null);   // { name } while naming a new village
   const dirty = useDirty(v);
-  useEffect(() => setV({ ...base, ...(initial?.id ? initial : {}) }), [initial?.id]); // eslint-disable-line
+  useEffect(() => {
+    setV({ ...base, ...(initial?.id ? sourceRow(initial) : {}) });
+    setShowMap(false); setAdding(null);
+  }, [initial?.id]); // eslint-disable-line
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
-  const setProvince = (e) => setV((s) => ({ ...s, province: e.target.value, island: '', area_council: '' }));
+  // Changing province invalidates the island and area council under it, and the
+  // village that was chosen within them.
+  const setProvince = (e) => setV((s) => ({
+    ...s, province: e.target.value, island: '', area_council: '', village_id: null,
+  }));
+
+  // Picking a known village fills in what the register knows, without
+  // overwriting anything the officer has already chosen by hand.
+  const onVillage = ({ name, villageId, island, areaCouncil, latitude, longitude }) => {
+    setV((s) => ({
+      ...s,
+      community: name,
+      village_id: villageId ?? null,
+      island: island ?? s.island,
+      area_council: areaCouncil ?? s.area_council,
+      latitude: latitude ?? (villageId ? s.latitude : s.latitude),
+      longitude: longitude ?? (villageId ? s.longitude : s.longitude),
+    }));
+  };
+
   const save = async () => {
     // Every field here is optional on its own, but a location with none of them
     // is not a location — it used to save as a blank row.
     if (!v.province && !v.island && !v.community.trim()) {
       return toast.error(t('ps.locationEmpty'));
     }
+    const lat = toNum(v.latitude), lon = toNum(v.longitude);
+    // Caught here as well as in the database, so the officer reads a sentence
+    // about the field they filled in rather than a constraint name.
+    if (lat != null && (lat < -90 || lat > 90)) return toast.error(t('ps.latitudeRange'));
+    if (lon != null && (lon < -180 || lon > 180)) return toast.error(t('ps.longitudeRange'));
+    // A single coordinate places nothing, and half a pin is worse than none:
+    // it looks like a location on the map and points at the wrong ocean.
+    if ((lat == null) !== (lon == null)) return toast.error(t('ps.coordinatePair'));
+
     const { error } = await supabase.rpc('upsert_project_location', {
       p_id: initial?.id ?? null, p_project_id: projectId, p_province: toNull(v.province), p_island: toNull(v.island),
-      p_area_council: toNull(v.area_council), p_community: toNull(v.community), p_latitude: toNum(v.latitude),
-      p_longitude: toNum(v.longitude), p_intervention: toNull(v.intervention), p_status: toNull(v.status),
-      p_beneficiaries: toNum(v.beneficiaries),
+      p_area_council: toNull(v.area_council), p_community: toNull(v.community), p_latitude: lat,
+      p_longitude: lon, p_intervention: toNull(v.intervention), p_status: toNull(v.status),
+      p_beneficiaries: toNum(v.beneficiaries), p_village_id: v.village_id ?? null,
     });
     if (error) return toast.error(dbErrorMessage(error));
     onSaved();
   };
+
+  // Adding a village writes it to the shared register, so the next officer
+  // finds it in the list instead of typing a fourth spelling.
+  const saveVillage = async () => {
+    const lat = toNum(v.latitude), lon = toNum(v.longitude);
+    if (lat == null || lon == null) return toast.error(t('ps.villageNeedsPin'));
+    const { data, error } = await supabase.rpc('add_village', {
+      p_name: adding.name, p_province_code: toNull(v.province), p_island: toNull(v.island),
+      p_area_council: toNull(v.area_council), p_latitude: lat, p_longitude: lon,
+    });
+    if (error) return toast.error(dbErrorMessage(error));
+    const row = Array.isArray(data) ? data[0] : data;
+    setV((s) => ({ ...s, community: row?.name ?? adding.name, village_id: row?.id ?? null }));
+    setAdding(null);
+    toast.success(t('ps.villageAdded', { name: row?.name ?? adding.name }));
+    onVillageAdded?.();
+  };
+
+  const fromRegister = Boolean(v.village_id);
+
   return (
     <Modal title={t(initial?.id ? 'ps.editLocationTitle' : 'ps.addLocationTitle')} onClose={onClose} onSave={save}
       saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
       <Field label={t('ps.province')}><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
       <Field label={t('ps.island')}><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
       <Field label={t('ps.areaCouncil')}><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
-      <Field label={t('ps.communitySite')}><input className="field-input" value={v.community ?? ''} onChange={set('community')} /></Field>
-      <Field label={t('ps.latitude')}><input type="number" min="-90" max="90" step="any" className="field-input" value={v.latitude ?? ''} onChange={set('latitude')} /></Field>
-      <Field label={t('ps.longitude')}><input type="number" min="-180" max="180" step="any" className="field-input" value={v.longitude ?? ''} onChange={set('longitude')} /></Field>
+      <Field label={t('ps.communitySite')}>
+        <VillageSelect
+          value={v.community ?? ''} villageId={v.village_id} villages={villages}
+          province={v.province} island={v.island}
+          onSelect={onVillage}
+          onAddRequest={(name) => { setAdding({ name }); setShowMap(true); }}
+        />
+      </Field>
+
+      <Field label={t('ps.latitude')} hint={fromRegister ? t('ps.villageCoordsFromRegister') : undefined}>
+        <input type="number" min="-90" max="90" step="any" className="field-input" value={v.latitude ?? ''} onChange={set('latitude')} />
+      </Field>
+      <Field label={t('ps.longitude')}>
+        <input type="number" min="-180" max="180" step="any" className="field-input" value={v.longitude ?? ''} onChange={set('longitude')} />
+      </Field>
+
+      <div className="ps-full">
+        <button type="button" className="ps-maptoggle" onClick={() => setShowMap((o) => !o)}>
+          <MapPin size={13} aria-hidden="true" /> {t(showMap ? 'ps.hideMap' : 'ps.pinOnMap')}
+        </button>
+        {showMap && (
+          <div className="ps-mapbox">
+            {adding && (
+              <div className="ps-addvillage">
+                <strong>{t('ps.villageAddTitle')}</strong>
+                <p>{t('ps.villageAddBody', { name: adding.name })}</p>
+                <div className="ps-addvillage-actions">
+                  <button type="button" style={btn('var(--green-700)')} onClick={saveVillage}>{t('ps.villageAddSave')}</button>
+                  <button type="button" style={ghostBtn} onClick={() => setAdding(null)}>{t('ps.cancel')}</button>
+                </div>
+              </div>
+            )}
+            <MapPinPicker
+              latitude={toNum(v.latitude)} longitude={toNum(v.longitude)}
+              province={v.province} villages={villages}
+              onChange={({ latitude, longitude }) => setV((s) => ({
+                // Moving the pin detaches the village: the coordinates no longer
+                // describe the place the register holds.
+                ...s, latitude, longitude, village_id: adding ? s.village_id : null,
+              }))}
+            />
+          </div>
+        )}
+      </div>
+
       <Field className="ps-full" label={t('ps.intervention')}><input className="field-input" value={v.intervention ?? ''} onChange={set('intervention')} /></Field>
-      <Field label={t('ps.implementationStatus')}><input className="field-input" value={v.status ?? ''} onChange={set('status')} /></Field>
+      <Field label={t('ps.implementationStatus')}>
+        {/* A location saved before this was a controlled value may hold wording
+            migration 0037 could not map. Offer it as-is rather than letting the
+            select show blank and quietly write the status away on the next save. */}
+        <Select value={v.status ?? ''} onChange={set('status')} allowBlank
+          options={v.status && !OPT.ACTIVITY_STATUS.some((o) => o.value === v.status)
+            ? [...OPT.ACTIVITY_STATUS, { value: v.status, label: v.status }]
+            : OPT.ACTIVITY_STATUS} />
+      </Field>
       <Field label={t('ps.beneficiaries')}><input type="number" min="0" className="field-input" value={v.beneficiaries ?? ''} onChange={set('beneficiaries')} /></Field>
         <TranslationPanel table="project_locations" row={initial} onSaved={onSaved}
           labels={{ intervention: t('ps.intervention') }} />
