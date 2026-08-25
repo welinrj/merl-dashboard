@@ -26,6 +26,7 @@ import {
 } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
 import { localised } from '../lib/contentLocale';
+import TranslationPanel from '../components/ui/TranslationPanel';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 // The DoCC M&E Officer is the official Reviewer/Approver; System Administrator
@@ -654,6 +655,7 @@ export default function MerlReporting({ user }) {
           indicators={indicators}
           onCancel={() => setEditing(null)}
           onSave={saveRecord}
+          onTranslated={loadRecords}
         />
       )}
     </div>
@@ -697,7 +699,7 @@ function PeriodForm({ onCancel, onSave }) {
 }
 
 // ── Generic module record form ───────────────────────────────────────────────
-function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onSave }) {
+function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onSave, onTranslated }) {
   const { t } = useTranslation();
   const seed = useMemo(() => {
     const base = {};
@@ -763,8 +765,12 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
             ))}
           </div>
         )}
+        <TranslationPanel table={module.view.replace(/^v_/, '')} row={initial} onSaved={onTranslated}
+          labels={Object.fromEntries(module.fields.map((f) => [f.name, t(f.label)]))} />
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-          <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>{initial?.id ? 'Save changes' : 'Add record'}</button>
+          <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>
+            {t(initial?.id ? 'merl.saveChanges' : 'merl.addRecord')}
+          </button>
           <button style={btnSecondary()} onClick={onCancel}>{t('merl.cancel')}</button>
         </div>
       </div>

@@ -24,6 +24,7 @@ import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
 import { useTranslation } from 'react-i18next';
 import { localised } from '../lib/contentLocale';
+import TranslationPanel from '../components/ui/TranslationPanel';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const toNull = (v) => (v === '' || v === undefined ? null : v);
@@ -326,11 +327,18 @@ function ProfileStep({ project, users, onSaved }) {
   const [v, setV] = useState(blank);
   const [saving, setSaving] = useState(false);
 
+  // The full record as entered. The list this form was opened from carries only
+  // a few columns and is localised for display, so the translation panel below
+  // needs this row to see every translatable field and its source text.
+  const [record, setRecord] = useState(null);
+
   useEffect(() => {
-    if (!project) { setV(blank); return; }
-    // Load the full row for editing.
+    if (!project) { setV(blank); setRecord(null); return; }
+    // Load the full row for editing. Deliberately not localised: this form edits
+    // the record in the language it was entered in.
     supabase.from('v_projects').select('*').eq('id', project.id).single().then(({ data }) => {
       if (!data) return;
+      setRecord(data);
       setV({
         ...blank, ...data,
         provinces: data.provinces ?? [],
@@ -418,8 +426,12 @@ function ProfileStep({ project, users, onSaved }) {
         <Field label={t('ps.estDirect')}><input type="number" min="0" className="field-input" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></Field>
         <Field label={t('ps.estIndirect')}><input type="number" min="0" className="field-input" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></Field>
       </div>
+      <TranslationPanel table="projects" row={record} onSaved={() => onSaved(project?.id)}
+        labels={{ name: t('ps.projectTitle'), description: t('ps.description') }} />
       <div style={{ marginTop: '1rem' }}>
-        <button style={{ ...btn('var(--green-700)'), ...(saving ? disabledBtn : null) }} onClick={save} disabled={saving}>{saving ? 'Saving…' : project ? 'Save changes' : 'Create project'}</button>
+        <button style={{ ...btn('var(--green-700)'), ...(saving ? disabledBtn : null) }} onClick={save} disabled={saving}>
+          {saving ? t('ps.saving') : t(project ? 'ps.saveChanges' : 'ps.createProject')}
+        </button>
       </div>
     </div>
   );
@@ -548,9 +560,11 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
     toast.success(row?.id ? t('ps.savedToast') : t('ps.addedToast'));
     onSaved();
   };
-  const title = `${row?.id ? 'Edit' : 'New'} ${kind}`;
+  const Kind = kind.charAt(0).toUpperCase() + kind.slice(1);
+  const title = t(`ps.${row?.id ? 'edit' : 'new'}${Kind}`);
   return (
-    <Modal title={title.charAt(0).toUpperCase() + title.slice(1)} onClose={onClose} onSave={save} saveLabel={row?.id ? 'Save' : 'Add'} dirty={dirty}>
+    <Modal title={title} onClose={onClose} onSave={save}
+      saveLabel={t(row?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
       <Field label={t('ps.statementReq')} className="ps-full">
         <textarea className="field-input" rows={2} value={v.statement} onChange={set('statement')} />
       </Field>
@@ -563,6 +577,8 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
         <Field label={t('ps.responsibleOfficerLc')}><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={users.map((u) => ({ value: u.id, label: u.full_name }))} allowBlank /></Field>
       )}
       {row?.id && <Field label={t('ps.status')}><Select value={v.status ?? ''} onChange={set('status')} options={OPT.RECORD_STATUS} allowBlank /></Field>}
+        <TranslationPanel table={`${kind}s`} row={row} onSaved={onSaved}
+          labels={{ statement: t('ps.statementReq'), notes: t('ps.notes') }} />
     </Modal>
   );
 }
@@ -678,7 +694,8 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
     onSaved();
   };
   return (
-    <Modal title={`${initial?.id ? 'Edit' : 'Add'} indicator`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
+    <Modal title={t(initial?.id ? 'ps.editIndicatorTitle' : 'ps.addIndicatorTitle')} onClose={onClose} onSave={save}
+      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
       <Field className="ps-full" label={t('ps.indicatorNameReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
       <Field label={t('ps.level')}><Select value={v.indicator_level ?? ''} onChange={set('indicator_level')} options={OPT.INDICATOR_LEVEL} allowBlank /></Field>
       <Field label={t('ps.unitOfMeasurement')}><input className="field-input" value={v.unit ?? ''} onChange={set('unit')} /></Field>
@@ -699,6 +716,9 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
       <Field className="ps-full" label={t('ps.assumptions')}><textarea className="field-input" rows={2} value={v.assumptions ?? ''} onChange={set('assumptions')} /></Field>
       <Field label={t('ps.qualitativeIndicator')}><input type="checkbox" checked={!!v.is_qualitative} onChange={set('is_qualitative', 'checkbox')} style={{ width: 18, height: 18 }} /></Field>
       <Field label={t('ps.higherIsBetter')}><input type="checkbox" checked={!!v.higher_is_better} onChange={set('higher_is_better', 'checkbox')} style={{ width: 18, height: 18 }} /></Field>
+        <TranslationPanel table="project_indicators" row={initial} onSaved={onSaved}
+          labels={{ name: t('ps.indicatorNameReq'), definition: t('ps.definition'),
+                    data_source: t('ps.dataSource') }} />
     </Modal>
   );
 }
@@ -802,7 +822,8 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
     onSaved();
   };
   return (
-    <Modal title={`${initial?.id ? 'Edit' : 'Add'} activity`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
+    <Modal title={t(initial?.id ? 'ps.editActivityTitle' : 'ps.addActivityTitle')} onClose={onClose} onSave={save}
+      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
       <Field className="ps-full" label={t('ps.activityTitleReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
       <Field label={t('ps.linkedOutputReq')}><Select value={v.output_id} onChange={set('output_id')} options={outputs.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} /></Field>
       <Field label={t('ps.linkedOutcome')}><Select value={v.outcome_id ?? ''} onChange={set('outcome_id')} options={outcomes.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
@@ -822,6 +843,8 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
       <Field className="ps-full" label={t('ps.keyAchievement')}><textarea className="field-input" rows={2} value={v.key_achievement ?? ''} onChange={set('key_achievement')} /></Field>
       <Field label={t('ps.nextAction')}><input className="field-input" value={v.next_action ?? ''} onChange={set('next_action')} /></Field>
       <Field label={t('ps.nextActionDue')}><input type="date" className="field-input" value={v.next_action_due || ''} onChange={set('next_action_due')} /></Field>
+        <TranslationPanel table="project_activities" row={initial} onSaved={onSaved}
+          labels={{ name: t('ps.activityTitleReq'), description: t('ps.description') }} />
     </Modal>
   );
 }
@@ -904,7 +927,8 @@ function LocationForm({ projectId, initial, onClose, onSaved }) {
     onSaved();
   };
   return (
-    <Modal title={`${initial?.id ? 'Edit' : 'Add'} location`} onClose={onClose} onSave={save} saveLabel={initial?.id ? 'Save' : 'Add'} dirty={dirty}>
+    <Modal title={t(initial?.id ? 'ps.editLocationTitle' : 'ps.addLocationTitle')} onClose={onClose} onSave={save}
+      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
       <Field label={t('ps.province')}><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
       <Field label={t('ps.island')}><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
       <Field label={t('ps.areaCouncil')}><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
@@ -914,6 +938,8 @@ function LocationForm({ projectId, initial, onClose, onSaved }) {
       <Field className="ps-full" label={t('ps.intervention')}><input className="field-input" value={v.intervention ?? ''} onChange={set('intervention')} /></Field>
       <Field label={t('ps.implementationStatus')}><input className="field-input" value={v.status ?? ''} onChange={set('status')} /></Field>
       <Field label={t('ps.beneficiaries')}><input type="number" min="0" className="field-input" value={v.beneficiaries ?? ''} onChange={set('beneficiaries')} /></Field>
+        <TranslationPanel table="project_locations" row={initial} onSaved={onSaved}
+          labels={{ intervention: t('ps.intervention') }} />
     </Modal>
   );
 }

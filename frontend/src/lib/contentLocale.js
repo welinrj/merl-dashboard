@@ -113,3 +113,43 @@ export function translationOrigin(row, column, lang = i18n.resolvedLanguage) {
 
 /** True when the record is being read in a language it was not written in. */
 export const isTranslatedView = (lang = i18n.resolvedLanguage) => !isSourceLanguage(lang);
+
+/**
+ * The prose columns that carry a translation, per table. Mirrors
+ * merl.translatable_fields from migration 0036 — the database is the authority
+ * and refuses a write to anything not in its own registry, so drift here fails
+ * loudly at save time rather than silently doing nothing.
+ *
+ * Deliberately absent: person and organisation names, acronyms, codes, file
+ * names and place names. Machine-translating "Water Security Torba" as a phrase
+ * is fine; translating the province inside it is not.
+ */
+export const TRANSLATABLE_FIELDS = {
+  projects:           ['name', 'description', 'review_note'],
+  objectives:         ['statement', 'notes'],
+  outcomes:           ['statement'],
+  outputs:            ['statement'],
+  project_indicators: ['name', 'definition', 'means_of_verification', 'verification_method',
+                       'collection_method', 'data_source', 'disaggregation', 'assumptions'],
+  indicator_progress: ['narrative', 'variance_reason', 'corrective_action'],
+  project_activities: ['name', 'description', 'key_achievement', 'issue_delay', 'next_action'],
+  financial_progress: ['narrative'],
+  project_locations:  ['intervention'],
+  beneficiaries:      ['comments', 'other_vulnerable', 'data_source'],
+  risks_issues:       ['description', 'mitigation', 'latest_update'],
+  learning_updates:   ['key_achievements', 'major_results', 'challenges', 'lessons_learned',
+                       'successful_approaches', 'what_did_not_work', 'corrective_actions',
+                       'recommendations', 'emerging_opportunities', 'next_period_priorities',
+                       'success_story'],
+  reporting_periods:  ['review_comments', 'reopen_reason'],
+  evidence:           ['title', 'description'],
+};
+
+/** The translatable columns of a table, or an empty list if it has none. */
+export const translatableColumns = (table) => TRANSLATABLE_FIELDS[table] ?? [];
+
+/** "means_of_verification" → "Means of verification", when no label is supplied. */
+export const humaniseColumn = (column) => {
+  const words = String(column).replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};

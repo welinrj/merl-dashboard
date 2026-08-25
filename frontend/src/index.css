@@ -790,3 +790,36 @@
   .dsh, .dsh-main, .dsh-scroll { display: block; overflow: visible; }
   .ov-panel, .ov-kpi { break-inside: avoid; }
 }
+
+/* ── Translation correction panel ─────────────────────────────────────────────
+   Sits at the foot of a record form when the portal is in a language the record
+   was not entered in. Deliberately quiet: the record's own fields are the task,
+   this is the occasional correction. */
+.tr-panel { grid-column: 1 / -1; margin-top: .9rem; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--surface-1); overflow: hidden; }
+.tr-panel-head { width: 100%; display: flex; align-items: center; gap: .5rem;
+  padding: .6rem .8rem; background: none; border: none; cursor: pointer; font: inherit;
+  font-size: .82rem; font-weight: 700; color: var(--text-2); text-align: left; }
+.tr-panel-count { display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.25rem; height: 1.25rem; padding: 0 .35rem; border-radius: 9999px;
+  background: var(--white); border: 1px solid var(--border);
+  font-size: .68rem; font-weight: 700; color: var(--text-3); }
+.tr-panel-chev { margin-left: auto; font-size: 1rem; color: var(--text-3); }
+.tr-panel-body { padding: 0 .8rem .8rem; display: grid; gap: .8rem; }
+.tr-panel-note { margin: 0 0 .2rem; font-size: .72rem; line-height: 1.5; color: var(--text-3); }
+.tr-field { display: grid; gap: .3rem; }
+.tr-field-head { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
+.tr-badge { font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: .05rem .4rem; border-radius: 9999px; background: var(--surface-2); color: var(--text-3); }
+.tr-badge.corrected { background: var(--green-50); color: var(--green-800); }
+/* The source text is reference, not an input — it reads as a quotation. */
+.tr-source { margin: 0; padding: .3rem .55rem; border-left: 2px solid var(--border);
+  font-size: .78rem; line-height: 1.5; color: var(--text-3); white-space: pre-wrap; }
+.tr-field-actions { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.tr-save, .tr-reset { display: inline-flex; align-items: center; gap: .3rem; min-height: 32px;
+  padding: .3rem .7rem; border-radius: 6px; font: inherit; font-size: .76rem; font-weight: 700;
+  cursor: pointer; }
+.tr-save { background: var(--green-700); color: #fff; border: 1px solid var(--green-700); }
+.tr-save:disabled { opacity: .5; cursor: not-allowed; }
+.tr-reset { background: var(--white); color: var(--text-2); border: 1px solid var(--border); }
+.tr-reset:disabled { opacity: .5; cursor: not-allowed; }
