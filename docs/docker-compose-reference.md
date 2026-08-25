@@ -28,6 +28,23 @@ with `docker network create dmp-net`), which is how the proxy reaches
   changing them requires `docker compose up -d --build frontend`.
 - Healthcheck: HTTP GET on `:3000` every 30 s.
 
+### translate-service (`dmp-translate`)
+
+- Keeps the French copy of the officer-entered records up to date (migration
+  `0036`): polls the database for text with no translation or whose English has
+  been edited, translates it, writes it back.
+- **Optional.** With `TRANSLATE_PROVIDER` blank the worker idles and records
+  render in the language they were entered in. The portal is fully usable
+  without this container.
+- Holds `SUPABASE_SERVICE_ROLE_KEY`, so it is **not** published through the
+  proxy and exposes only internal port **8081**.
+- Health: `GET /health` reports the provider, last run, and counts of
+  translated / skipped / failed fields — a stalled queue is visible without
+  opening a shell:
+  `docker compose exec translate-service wget -qO- localhost:8081/health`
+- Coverage from the database side:
+  `SELECT * FROM public.translation_coverage('fr');`
+
 ### proxy (`dmp-proxy`)
 
 - `nginx:1.27-alpine`, the only container with published ports

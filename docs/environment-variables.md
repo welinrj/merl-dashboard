@@ -25,6 +25,34 @@ must rebuild the frontend image after changing them**
 | `VITE_SUPABASE_URL` | yes | Public URL of the Supabase API gateway. Production: `https://api.dmp.gov.vu`. Staging: the Supabase Cloud project URL. |
 | `VITE_SUPABASE_ANON_KEY` | yes | Supabase anonymous (public) API key. Safe for the browser — access control is enforced by Row-Level Security. |
 
+### Record translation worker (optional)
+
+The portal is bilingual. Its interface ships translated in the frontend bundle;
+the *records* — project names, indicator statements, risk narratives, everything
+an officer types into a form — are translated by the `translate-service`
+container and stored in the database (migration `0036`). Leave
+`TRANSLATE_PROVIDER` blank and the worker idles: records then render in the
+language they were entered in, which is what the portal falls back to anyway.
+Staging runs this way.
+
+These are read at container start, not baked into the bundle, so changing them
+needs only `docker compose up -d translate-service`.
+
+| Variable | Required | Description |
+|---|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | for translation | The backlog and write functions are granted to `service_role` only. **This key bypasses Row-Level Security** — it belongs in this file on the server and must never reach the frontend build. Copy it from `/opt/supabase/docker/.env`. |
+| `SUPABASE_INTERNAL_URL` | no | Reach Supabase over the internal Docker network (`http://supabase-kong:8000`) instead of back out through the public hostname. Defaults to `VITE_SUPABASE_URL`. |
+| `TRANSLATE_PROVIDER` | for translation | `deepl`, `google`, `libretranslate`, or blank to disable. `deepl` and `google` send record text to a third-party API; `libretranslate` can run as a container on this server so nothing leaves DoCC infrastructure. |
+| `TRANSLATE_API_KEY` | for deepl/google | Provider API key. Not used by `libretranslate`. |
+| `TRANSLATE_ENDPOINT` | no | Override the provider's API base URL. Required for a self-hosted LibreTranslate (e.g. `http://libretranslate:5000`). |
+| `TRANSLATE_TARGET_LANG` | no | Language to produce. Default `fr`. |
+| `TRANSLATE_BATCH_LIMIT` | no | Fields claimed per pass. Default `100`. |
+| `TRANSLATE_POLL_SECONDS` | no | Idle interval. Default `60`; a full batch drains immediately rather than waiting. |
+
+Project codes, bare acronyms, figures, dates, URLs and file paths are never sent
+to the provider, and province names, `Vanuatu`, `DoCC` and donor acronyms are
+shielded inside prose. See `translate-service/README.md`.
+
 ## 2. Frontend development (`frontend/.env.local`)
 
 | Variable | Required | Description |
