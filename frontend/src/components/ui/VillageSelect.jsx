@@ -24,10 +24,12 @@ const MAX_SUGGESTIONS = 8;
  * @param {string}   [province]   narrows the list; the form's province
  * @param {string}   [island]     narrows it further
  * @param {Function} onSelect     ({ name, villageId, island, areaCouncil, latitude, longitude })
+ * @param {boolean}  [canAdd]     false where the register does not exist yet, so
+ *                                the officer is not offered a save that cannot work
  * @param {Function} onAddRequest called when the officer says their village isn't listed
  */
 export default function VillageSelect({
-  value, villageId, villages = [], province, island, onSelect, onAddRequest,
+  value, villageId, villages = [], province, island, canAdd = true, onSelect, onAddRequest,
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -141,11 +143,13 @@ export default function VillageSelect({
             </button>
           )) : (
             <p className="vs-empty">
-              {villages.length === 0 ? t('ps.villageGazetteerEmpty') : t('ps.villageNoMatch')}
+              {!canAdd ? t('ps.villageRegisterUnavailable')
+                : villages.length === 0 ? t('ps.villageGazetteerEmpty')
+                : t('ps.villageNoMatch')}
             </p>
           )}
 
-          {!exact && query.trim() !== '' && (
+          {canAdd && !exact && query.trim() !== '' && (
             <button type="button" className="vs-add" onClick={() => { setOpen(false); onAddRequest(query.trim()); }}>
               <Plus size={13} aria-hidden="true" /> {t('ps.villageAddThis', { name: query.trim() })}
             </button>

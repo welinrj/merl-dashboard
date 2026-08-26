@@ -135,3 +135,15 @@ export function dbErrorMessage(error, fallback) {
   // already written for the officer reading them.
   return raw;
 }
+
+// PostgREST resolves an RPC by the exact set of argument names it is given, so
+// calling one with an argument the deployed function does not have is a 404
+// (PGRST202) rather than the argument being ignored. The frontend and the
+// database are deployed separately, so a bundle can be ahead of the schema —
+// and unlike a read, a write cannot simply drop the column and carry on
+// silently: it has to try again without the argument the older function never
+// had, and only then report a failure.
+export const isMissingRpcArgument = (error, argument) =>
+  Boolean(error)
+  && (error.code === 'PGRST202' || /could not find the function/i.test(error.message ?? ''))
+  && new RegExp(argument, 'i').test(`${error.message ?? ''}${error.hint ?? ''}${error.details ?? ''}`);
