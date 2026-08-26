@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 // One icon: the bell that opens the panel.
 import { Bell } from './ui/icons';
 import { supabase } from '../supabaseClient';
-import { localised } from '../lib/contentLocale';
+import { localised, i18nCols } from '../lib/contentLocale';
 
 const REVIEWER = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 const EDITOR = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER', 'ROLE_DATA_ENTRY'];
@@ -27,8 +27,8 @@ export default function NotificationBell({ user }) {
 
   const load = useCallback(async () => {
     const [rp, pj] = await Promise.all([
-      localised(supabase.from('v_reporting_periods').select('id, project_id, period_label, period_end, submission_status, review_comments, i18n')),
-      localised(supabase.from('v_projects').select('id, code, i18n')),
+      localised(() => supabase.from('v_reporting_periods').select(i18nCols('id, project_id, period_label, period_end, submission_status, review_comments'))),
+      localised(() => supabase.from('v_projects').select(i18nCols('id, code'))),
     ]);
     setRows(rp.data ?? []);
     const m = {};

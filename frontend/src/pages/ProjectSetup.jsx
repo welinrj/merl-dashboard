@@ -23,7 +23,7 @@ import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
 import { useTranslation } from 'react-i18next';
-import { localised, sourceRow } from '../lib/contentLocale';
+import { localised, sourceRow, i18nCols } from '../lib/contentLocale';
 import TranslationPanel from '../components/ui/TranslationPanel';
 import VillageSelect from '../components/ui/VillageSelect';
 import MapPinPicker from '../components/ui/MapPinPicker';
@@ -78,7 +78,7 @@ export default function ProjectSetup({ user }) {
   const project = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await localised(supabase.from('v_projects').select('id, code, name, status, i18n').order('code'));
+    const { data } = await localised(() => supabase.from('v_projects').select(i18nCols('id, code, name, status')).order('code'));
     setProjects(data ?? []);
     return data ?? [];
   }, [lang]);
@@ -859,6 +859,9 @@ function LocationsStep({ projectId, locations, reload }) {
   // most, and filtering it per keystroke in the browser beats a request per one.
   const [villages, setVillages] = useState([]);
   const loadVillages = useCallback(async () => {
+    // Absent before migration 0037, so the error is expected rather than
+    // reported: the picker falls back to a plain name box and the map, which is
+    // what it does for a village the register has never heard of anyway.
     const { data } = await supabase.from('v_ref_villages').select('*');
     setVillages(data ?? []);
   }, []);

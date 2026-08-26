@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, FolderKanban, Target, ListChecks } from './ui/icons';
 import { supabase } from '../supabaseClient';
-import { localised } from '../lib/contentLocale';
+import { localised, i18nCols } from '../lib/contentLocale';
 
 const GROUPS = {
   project:   { label: 'gs.project',   icon: FolderKanban, accent: '#2563eb' },
@@ -34,9 +34,9 @@ export default function GlobalSearch() {
 
   const load = useCallback(async () => {
     const [pj, ind, act] = await Promise.all([
-      localised(supabase.from('v_projects').select('id, code, name, status, i18n')),
-      localised(supabase.from('v_project_indicators').select('id, code, name, project_id, i18n')),
-      localised(supabase.from('v_project_activities').select('id, code, name, project_id, i18n')),
+      localised(() => supabase.from('v_projects').select(i18nCols('id, code, name, status'))),
+      localised(() => supabase.from('v_project_indicators').select(i18nCols('id, code, name, project_id'))),
+      localised(() => supabase.from('v_project_activities').select(i18nCols('id, code, name, project_id'))),
     ]);
     setData({ projects: pj.data ?? [], indicators: ind.data ?? [], activities: act.data ?? [] });
   }, [lang]);

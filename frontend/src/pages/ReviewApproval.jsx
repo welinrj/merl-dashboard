@@ -17,7 +17,7 @@ import StatusBadge from '../components/ui/StatusBadge';
 import StatTile from '../components/ui/StatTile';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
-import { localised } from '../lib/contentLocale';
+import { localised, i18nCols } from '../lib/contentLocale';
 
 // Read-only modules summarised in the review drawer so the officer can see what
 // they are approving before they act. Period-scoped modules are matched on the
@@ -55,7 +55,7 @@ export default function ReviewApproval({ user }) {
     setLoading(true);
     const [rp, pj] = await Promise.all([
       localised(supabase.from('v_reporting_periods').select('*')),
-      localised(supabase.from('v_projects').select('id, code, name, i18n')),
+      localised(() => supabase.from('v_projects').select(i18nCols('id, code, name'))),
     ]);
     setRows(rp.error ? [] : (rp.data ?? []));
     const map = {};

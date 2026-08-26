@@ -15,7 +15,7 @@ import PageHeader from '../components/ui/PageHeader';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime, fmtNum } from '../lib/locale';
-import { localised } from '../lib/contentLocale';
+import { localised, i18nCols } from '../lib/contentLocale';
 
 
 const REPORT_TYPES = [
@@ -56,7 +56,7 @@ export default function Reports() {
   useEffect(() => {
     (async () => {
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
-      const q = (v, cols) => localised(supabase.from(v).select(cols));
+      const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
       const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op, learn] = await Promise.all([
         q('v_projects', '*'),
         q('v_financial_progress', '*'),

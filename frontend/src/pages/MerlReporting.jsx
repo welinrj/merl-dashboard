@@ -25,7 +25,7 @@ import {
   utilisationPct, fundsAvailable, riskRating, fmtAmount, fmtPct,
 } from '../lib/docc/reporting';
 import { useTranslation } from 'react-i18next';
-import { localised } from '../lib/contentLocale';
+import { localised, i18nCols } from '../lib/contentLocale';
 import TranslationPanel from '../components/ui/TranslationPanel';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
@@ -271,7 +271,7 @@ export default function MerlReporting({ user }) {
 
   // ── Load projects once ──────────────────────────────────────────────────────
   useEffect(() => {
-    localised(supabase.from('v_projects').select('id, code, name, status, i18n').order('code'))
+    localised(() => supabase.from('v_projects').select(i18nCols('id, code, name, status')).order('code'))
       .then(({ data, error }) => {
         if (error) { toast.error(t('merl.couldNotLoad')); return; }
         setProjects(data ?? []);
@@ -284,8 +284,8 @@ export default function MerlReporting({ user }) {
   const loadContext = useCallback(async (pid) => {
     if (!pid) return;
     const [ind, act, per] = await Promise.all([
-      localised(supabase.from('v_project_indicators').select('id, code, name, target_value, i18n').eq('project_id', pid).order('code')),
-      localised(supabase.from('v_project_activities').select('id, code, name, i18n').eq('project_id', pid).order('code')),
+      localised(() => supabase.from('v_project_indicators').select(i18nCols('id, code, name, target_value')).eq('project_id', pid).order('code')),
+      localised(() => supabase.from('v_project_activities').select(i18nCols('id, code, name')).eq('project_id', pid).order('code')),
       localised(supabase.from('v_reporting_periods').select('*').eq('project_id', pid).order('created_at', { ascending: false })),
     ]);
     setIndicators(ind.data ?? []);
