@@ -17,6 +17,7 @@ this repository.
 |---|---|
 | [System Administrator Guide](admin-manual.md) | Day-to-day administration: users, projects, audit log, health checks, troubleshooting |
 | [Migration Runbook](migration-runbook.md) | **Step-by-step migration onto the Vanuatu Government server** |
+| [Migrations 0034–0037 Runbook](migrations-0034-0037-runbook.md) | **Applying the scoping, translation and village-gazetteer migrations to production** |
 | [Backup & Restore](backup-restore.md) | Daily backups, off-server copies, disaster recovery |
 | [Docker Compose Reference](docker-compose-reference.md) | Service operations, updates, boot order |
 | [Environment Variables](environment-variables.md) | Every configuration value and secret-handling rules |
