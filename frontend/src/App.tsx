@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
-  LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin,
+  LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin, ProjectAnalysis,
   AlertTriangle, FolderOpen, FileBarChart, Settings, LogOut, Menu,
   Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck,
 } from './components/ui/icons';
@@ -10,6 +10,7 @@ import { LANGUAGES } from './i18n';
 
 import Overview from './pages/Overview';
 import Dashboards from './pages/Dashboards';
+import ProjectPortfolioAnalysis from './pages/ProjectPortfolioAnalysis';
 import ProjectSetup from './pages/ProjectSetup';
 import MerlReporting from './pages/MerlReporting';
 import Reports from './pages/Reports';
@@ -101,6 +102,9 @@ const NAV_ITEMS: SideItem[] = [
   // Reporting — so they are named for the analysis, not the record they show.
   { key: 'results', path: '/analytics/results', Icon: Target },
   { key: 'finances', path: '/analytics/financial', Icon: Wallet },
+  // Financial Analysis reads the whole portfolio; this reads one project across
+  // every module. Neither replaces the other.
+  { key: 'projectAnalysis', path: '/analytics/project-portfolio', Icon: ProjectAnalysis },
   { key: 'locations', path: '/analytics/geographic', Icon: MapPin },
   { key: 'risks', path: '/analytics/risks', Icon: AlertTriangle },
   // The periodic reporting workspace: Forms 4, 6, 8, 9, 10 and 12 against a
@@ -116,11 +120,11 @@ const NAV_ITEMS: SideItem[] = [
 // Navigation by role (spec §18). Functions a role can't use are hidden.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
   // System Administrator — full portal incl. Administration
-  ROLE_ADMIN:        ['overview', 'projects', 'results', 'activities', 'finances', 'locations', 'risks', 'reports', 'review', 'documents', 'admin'],
+  ROLE_ADMIN:        ['overview', 'projects', 'results', 'activities', 'finances', 'projectAnalysis', 'locations', 'risks', 'reports', 'review', 'documents', 'admin'],
   // DoCC M&E Officer — portfolio-wide MERL + Review & Approval; no Administration
-  ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'activities', 'finances', 'locations', 'risks', 'reports', 'review', 'documents'],
+  ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'activities', 'finances', 'projectAnalysis', 'locations', 'risks', 'reports', 'review', 'documents'],
   // Project Manager — assigned projects only (route data is project-scoped by RLS)
-  ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'activities', 'finances', 'locations', 'risks', 'reports', 'documents'],
+  ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'activities', 'finances', 'projectAnalysis', 'locations', 'risks', 'reports', 'documents'],
   // Data Entry / Project Officer — data entry for assigned projects; no approval/admin
   ROLE_DATA_ENTRY:   ['overview', 'projects', 'results', 'activities', 'locations', 'risks', 'documents'],
   // Viewer / Executive — read-only overview, projects, results and reports
@@ -529,6 +533,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboards" element={gate('/dashboards') ? <Overview user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/analytics/project-portfolio" element={allowed.includes('projectAnalysis') ? <ProjectPortfolioAnalysis /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analytics/:lens" element={allowed.includes('overview') ? <AnalyticsRoute /> : <Navigate to={defaultPath} replace />} />
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />

@@ -6,6 +6,7 @@
 // public.v_* views; no separate dashboard tables.
 // =============================================================================
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 // One icon on this page: the warning triangle that marks Attention Required.
 // Every other metric, tab and heading is carried by its label and its number.
 import { AlertTriangle } from '../components/ui/icons';
@@ -206,7 +207,18 @@ const perfTint = (s) => ({ on_track: '#16a34a', target_achieved: '#0891b2', atte
 // ── Executive Portfolio ──────────────────────────────────────────────────────
 function Portfolio({ d, onNavigate }) {
   const { t, i18n } = useTranslation();
-  const [flt, setFlt] = useState({ status: '', theme: '', province: '', donor: '' });
+  // Project Portfolio Analysis drills through to here with ?project=<id>, so the
+  // reader does not have to find the same project again. It is an ordinary
+  // filter once it arrives — clearable like any other, and absent by default.
+  const [params, setParams] = useSearchParams();
+  const handedOver = params.get('project') ?? '';
+  const [flt, setFlt] = useState({ status: '', theme: '', province: '', donor: '', project: handedOver });
+  useEffect(() => { setFlt((f) => (f.project === handedOver ? f : { ...f, project: handedOver })); }, [handedOver]);
+  const clearHandover = (value) => setParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (value) next.set('project', value); else next.delete('project');
+    return next;
+  }, { replace: true });
 
   // Distinct filter options from the loaded projects (§25).
   const opts = useMemo(() => {
@@ -221,7 +233,8 @@ function Portfolio({ d, onNavigate }) {
   const m = useMemo(() => {
     // Apply the global filters to the project set, then scope child data to it.
     const projects = d.projects.filter((p) =>
-      (!flt.status || p.status === flt.status)
+      (!flt.project || p.id === flt.project)
+      && (!flt.status || p.status === flt.status)
       && (!flt.theme || p.category === flt.theme)
       && (!flt.province || (p.provinces || []).includes(flt.province))
       && (!flt.donor || p.donor === flt.donor));
@@ -307,8 +320,16 @@ function Portfolio({ d, onNavigate }) {
             options: [{ value: '', label: t('dash.allProvinces') }, ...opts.provinces.map((p) => ({ value: p, label: p }))] },
           { key: 'donor', label: t('dash.fundingPartner'), value: flt.donor, onChange: (v) => setFlt((s) => ({ ...s, donor: v })),
             options: [{ value: '', label: t('dash.allPartners') }, ...opts.donors.map((x) => ({ value: x, label: x }))] },
+          // Only offered once a project has actually been handed over, so the
+          // portfolio view is not cluttered with a filter nobody asked for.
+          ...(flt.project ? [{
+            key: 'project', label: t('dash.project'), value: flt.project,
+            onChange: (v) => { setFlt((s2) => ({ ...s2, project: v })); clearHandover(v); },
+            options: [{ value: '', label: t('dash.allProjects') },
+              ...d.projects.filter((p) => p.id === flt.project).map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))],
+          }] : []),
         ]}
-        onReset={() => setFlt({ status: '', theme: '', province: '', donor: '' })}
+        onReset={() => { setFlt({ status: '', theme: '', province: '', donor: '', project: '' }); clearHandover(''); }}
       />
       <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', margin: '0.6rem 0' }}>
         {t('dash.showing')} <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} projects

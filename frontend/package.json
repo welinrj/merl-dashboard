@@ -42,6 +42,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "node scripts/run-tests.mjs",
     "check:supabase": "node scripts/check-supabase.mjs"
   },
   "overrides": {

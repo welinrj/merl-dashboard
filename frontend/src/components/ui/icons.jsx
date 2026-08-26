@@ -29,6 +29,7 @@ import {
   Activity,                      // Indicators
   Task as ListChecks,            // Activities & Workplan
   Wallet2 as Wallet,             // Finances
+  PresentionChart as ProjectAnalysis, // Project Portfolio Analysis — one project, end to end
   Location as MapPin,            // Locations
   Danger as AlertTriangle,       // Risks & Issues, and every warning in the app
   Chart2 as FileBarChart,        // Reports
@@ -78,6 +79,7 @@ import {
 
 export {
   LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin,
+  ProjectAnalysis,
   AlertTriangle, FileBarChart, ClipboardCheck, FolderOpen, Settings,
   LogOut, Menu, Bell, Search,
   Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck,
