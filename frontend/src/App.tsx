@@ -143,6 +143,17 @@ const LENS_TO_TAB: Record<string, string> = {
   geographic: 'geographic', risks: 'risks', portfolio: 'portfolio', reporting: 'reporting',
 };
 
+// …and to the access key that owns it. Gating the whole /analytics/:lens route
+// on 'overview' let a role reach a lens its sidebar deliberately hides: every
+// role has 'overview', so a Viewer could open Financial Analysis by typing the
+// URL. A lens is now gated exactly as its sidebar entry is.
+const LENS_TO_ACCESS: Record<string, NavKey> = {
+  results: 'results', indicators: 'results', financial: 'finances',
+  geographic: 'locations', risks: 'risks',
+  // The portfolio and reporting tabs are the Overview material every role has.
+  portfolio: 'overview', reporting: 'overview',
+};
+
 // ── Login screen ──────────────────────────────────────────────────────────────
 interface LoginScreenProps {
   onLogin: (user: AppUser) => void;
@@ -534,7 +545,7 @@ export default function App() {
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboards" element={gate('/dashboards') ? <Overview user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analytics/project-portfolio" element={allowed.includes('projectAnalysis') ? <ProjectPortfolioAnalysis /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/analytics/:lens" element={allowed.includes('overview') ? <AnalyticsRoute /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/analytics/:lens" element={<AnalyticsRoute allowed={allowed} fallback={defaultPath} />} />
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/reports" element={gate('/reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
@@ -550,8 +561,12 @@ export default function App() {
   );
 }
 
-// /analytics/:lens → the tabbed analytics dashboard with the tab preselected.
-function AnalyticsRoute() {
+// /analytics/:lens → the tabbed analytics dashboard with the tab preselected,
+// but only where the role may see that lens. An unknown lens falls back to the
+// portfolio tab, which every role can see.
+function AnalyticsRoute({ allowed, fallback }: { allowed: NavKey[]; fallback: string }) {
   const { lens } = useParams();
+  const key = LENS_TO_ACCESS[lens ?? ''] ?? 'overview';
+  if (!allowed.includes(key)) return <Navigate to={fallback} replace />;
   return <Dashboards initialTab={LENS_TO_TAB[lens ?? ''] ?? 'portfolio'} />;
 }

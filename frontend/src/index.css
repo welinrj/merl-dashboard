@@ -536,6 +536,13 @@
   .dsh-head-actions { gap: .5rem; }
 }
 .dsh-bell { position: relative; background: none; border: none; cursor: pointer; color: var(--text-3); display: flex; }
+/* The bell and the hamburger are bare 18px icons, which is well under the ~40px
+   a finger needs. Growing the button would move the unread badge (anchored to
+   it) and reflow the header, so the hit area is extended with a transparent
+   pseudo-element instead: same picture, same layout, a target you can hit. */
+.dsh-bell::after,
+.dsh-hamburger::after { content: ''; position: absolute; inset: -12px; }
+.dsh-hamburger { position: relative; }
 .dsh-bell-badge { position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 9999px; background: var(--red-600); color: #fff; font-size: .58rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .dsh-user { display: flex; align-items: center; gap: .5rem; background: none; border: none; cursor: pointer; padding: .1rem; }
 .dsh-avatar { width: 36px; height: 36px; border-radius: 8px; background: var(--navy-800); color: #fff; font-size: .78rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }

@@ -1,0 +1,27 @@
+{
+ "v_projects":[
+  {"id":"pa","code":"DEMO-0001","name":"Community Coastal Resilience","status":"on_track","category":"Climate Change Adaptation","donor":"GCF","currency":"VUV","budget_vuv":1000000,"spent_vuv":300000,"start_date":"2026-01-01","end_date":"2026-12-31","provinces":["SANMA"],"lead_agency":"DoCC","executing_agency":"DoCC","project_manager_name":"A. Officer","est_direct_beneficiaries":500,"registration_status":"approved","description":"Coastal protection works.","updated_at":"2026-07-01T00:00:00Z","i18n":{}},
+  {"id":"pb","code":"DEMO-0008","name":"Water Security Torba","status":"not_started","category":"Climate Change Adaptation","donor":"GEF","currency":"VUV","budget_vuv":160000000,"spent_vuv":0,"start_date":"2026-08-01","end_date":"2031-08-01","provinces":["TORBA"],"lead_agency":"DoCC","registration_status":"approved","updated_at":"2026-07-01T00:00:00Z","i18n":{}}],
+ "v_objectives":[{"id":"o1","project_id":"pa","code":"OBJ-01","statement":"Coastal communities are resilient","status":"approved","i18n":{}}],
+ "v_outcomes":[{"id":"oc1","project_id":"pa","objective_id":"o1","code":"OUT-01","statement":"Reduced coastal erosion","status":"approved","i18n":{}}],
+ "v_outputs":[{"id":"op1","project_id":"pa","outcome_id":"oc1","code":"OP-01","statement":"Seawalls constructed","status":"approved","i18n":{}}],
+ "v_project_activities":[{"id":"a1","project_id":"pa","code":"ACT-01","name":"Seawall construction","status":"in_progress","output_id":"op1","output_code":"OP-01","province":"SANMA","planned_end_date":"2026-06-01","physical_progress_pct":40,"next_action":"Award contract","next_action_due":"2026-05-01","i18n":{}}],
+ "v_project_indicators":[{"id":"i1","project_id":"pa","code":"IND-01","name":"Households protected","unit":"households","baseline_value":100,"target_value":900,"outcome_id":"oc1","indicator_level":"outcome","frequency":"Quarterly","data_source":"Field survey","is_qualitative":false,"higher_is_better":true,"i18n":{}}],
+ "v_indicator_progress":[{"id":"g1","project_id":"pa","indicator_id":"i1","indicator_code":"IND-01","indicator_name":"Households protected","reporting_period":"Q1 2026","period_target":100,"actual_this_period":40,"cumulative_actual":140,"final_target":900,"achievement_pct":40,"performance_status":"off_track","created_at":"2026-04-01T00:00:00Z","updated_at":"2026-04-01T00:00:00Z","i18n":{}}],
+ "v_financial_progress":[{"id":"f1","project_id":"pa","reporting_period":"Q1 2026","approved_budget":1000000,"period_budget":250000,"cumulative_expenditure":300000,"remaining_balance":700000,"utilisation_pct":30,"funds_received":500000,"created_at":"2026-04-01T00:00:00Z","i18n":{}}],
+ "v_beneficiaries":[{"id":"b1","project_id":"pa","reporting_period":"Q1 2026","total_direct":120,"female":70,"male":50,"youth":30,"persons_with_disability":8,"indirect":400,"double_counting_check":true,"i18n":{}}],
+ "v_project_locations":[{"id":"l1","project_id":"pa","province":"SANMA","island":"Espiritu Santo","area_council":"Big Bay Coast","community":"Matantas","latitude":-15.14,"longitude":166.98,"status":"in_progress","beneficiaries":220,"village_id":null,"i18n":{}}],
+ "v_risks_issues":[{"id":"r1","project_id":"pa","code":"RSK-01","type":"risk","description":"Cyclone season delays works","likelihood":5,"impact":4,"risk_rating":"Critical","status":"open","due_date":"2026-05-01","mitigation":"Pre-position materials","responsible_person":"Works Unit","i18n":{}}],
+ "v_reporting_periods":[
+  {"id":"p1","project_id":"pa","period_label":"Q1 2026","period_type":"quarterly","period_start":"2026-01-01","period_end":"2026-03-31","submission_status":"approved","approved_at":"2026-04-10T00:00:00Z","reporting_officer_name":"A. Officer","is_locked":true,"i18n":{}},
+  {"id":"p2","project_id":"pa","period_label":"Q2 2026","period_type":"quarterly","period_start":"2026-04-01","period_end":"2026-06-30","submission_status":"submitted","reporting_officer_name":"A. Officer","is_locked":false,"i18n":{}}],
+ "v_learning_updates":[{"id":"lu1","project_id":"pa","reporting_period":"Q1 2026","key_achievements":"Seawall design approved","i18n":{}}],
+ "v_evidence":[{"id":"e1","project_id":"pa","code":"EVD-01","title":"Site photos","document_type":"photograph","reporting_period":"Q1 2026","i18n":{}}],
+ "v_ref_villages":[{"id":"v1","name":"Matantas","province_code":"SANMA","island":"Espiritu Santo","area_council":"Big Bay Coast","latitude":-15.14,"longitude":166.98,"source":"gazetteer","verified":true}],
+ "v_report_runs":[{"id":"rr1","report_type":"project","report_label":"Project report","generated_at":"2026-07-01T00:00:00Z"}],
+ "v_admin_users":[{"id":"u1","email":"admin@docc.gov.vu","full_name":"Test Admin","role":"system_admin","active":true}],
+ "v_user_project_assignments":[{"user_id":"u1","project_id":"pa","is_active":true}],
+ "v_my_permissions":[{"code":"projects.view_all"},{"code":"projects.edit"},{"code":"reports.export"}],
+ "v_indicator_status":[], "v_indicator_trends":[], "v_srf_analytics":[], "v_activities":[],
+ "v_activity_milestones":[], "v_project_documents":[], "v_domain_budget":[], "v_engagement_stats":[]
+}
