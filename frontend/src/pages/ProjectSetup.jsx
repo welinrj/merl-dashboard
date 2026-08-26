@@ -18,7 +18,7 @@ import {
 } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
-import { dbErrorMessage } from '../lib/dbError';
+import { dbErrorMessage, isMissingRpcArgument } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
@@ -858,11 +858,17 @@ function LocationsStep({ projectId, locations, reload }) {
   // The whole register, once: it is reference data of a few thousand rows at
   // most, and filtering it per keystroke in the browser beats a request per one.
   const [villages, setVillages] = useState([]);
+  // An empty register and a register that does not exist look the same in the
+  // dropdown but are not the same offer: before migration 0037 there is nowhere
+  // to save a new village to, so the form must not invite the officer to add
+  // one and then fail on them.
+  const [hasRegister, setHasRegister] = useState(true);
   const loadVillages = useCallback(async () => {
+    const { data, error } = await supabase.from('v_ref_villages').select('*');
     // Absent before migration 0037, so the error is expected rather than
     // reported: the picker falls back to a plain name box and the map, which is
     // what it does for a village the register has never heard of anyway.
-    const { data } = await supabase.from('v_ref_villages').select('*');
+    setHasRegister(!error);
     setVillages(data ?? []);
   }, []);
   useEffect(() => { loadVillages(); }, [loadVillages]);
@@ -913,14 +919,14 @@ function LocationsStep({ projectId, locations, reload }) {
       )}
       {editing !== null && (
         <LocationForm projectId={projectId} initial={editing} villages={villages}
-          onVillageAdded={loadVillages}
+          hasRegister={hasRegister} onVillageAdded={loadVillages}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
     </div>
   );
 }
 
-function LocationForm({ projectId, initial, villages, onVillageAdded, onClose, onSaved }) {
+function LocationForm({ projectId, initial, villages, hasRegister = true, onVillageAdded, onClose, onSaved }) {
   const { t } = useTranslation();
   const base = {
     province: '', island: '', area_council: '', community: '', latitude: '', longitude: '',
@@ -970,12 +976,21 @@ function LocationForm({ projectId, initial, villages, onVillageAdded, onClose, o
     // it looks like a location on the map and points at the wrong ocean.
     if ((lat == null) !== (lon == null)) return toast.error(t('ps.coordinatePair'));
 
-    const { error } = await supabase.rpc('upsert_project_location', {
+    const args = {
       p_id: initial?.id ?? null, p_project_id: projectId, p_province: toNull(v.province), p_island: toNull(v.island),
       p_area_council: toNull(v.area_council), p_community: toNull(v.community), p_latitude: lat,
       p_longitude: lon, p_intervention: toNull(v.intervention), p_status: toNull(v.status),
       p_beneficiaries: toNum(v.beneficiaries), p_village_id: v.village_id ?? null,
-    });
+    };
+    let { error } = await supabase.rpc('upsert_project_location', args);
+    // Before migration 0037 the function has no p_village_id, and PostgREST
+    // rejects the whole call rather than ignoring the extra argument. The
+    // location itself is what the officer came to save, so save it: only the
+    // link to the register is lost, and that register does not exist yet.
+    if (isMissingRpcArgument(error, 'p_village_id')) {
+      const { p_village_id: _dropped, ...older } = args;
+      ({ error } = await supabase.rpc('upsert_project_location', older));
+    }
     if (error) return toast.error(dbErrorMessage(error));
     onSaved();
   };
@@ -1009,6 +1024,7 @@ function LocationForm({ projectId, initial, villages, onVillageAdded, onClose, o
         <VillageSelect
           value={v.community ?? ''} villageId={v.village_id} villages={villages}
           province={v.province} island={v.island}
+          canAdd={hasRegister}
           onSelect={onVillage}
           onAddRequest={(name) => { setAdding({ name }); setShowMap(true); }}
         />
