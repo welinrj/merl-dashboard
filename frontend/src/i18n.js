@@ -1279,7 +1279,6 @@ const resources = {
       shell: {
         department:       'Department of Climate Change (DoCC)',
         productName:      'MERL Dashboard',
-        staging:          'Staging',
         signOut:          'Sign Out',
         toggleMenu:       'Toggle menu',
         accountMenu:      'Account menu',
@@ -1850,7 +1849,6 @@ const resources = {
       shell: {
         department:       'Dipatmen blong Klaemet Jenj (DoCC)',
         productName:      'Dasbod MERL',
-        staging:          'Testing',
         signOut:          'Saenaot',
         toggleMenu:       'Openem o klosem menu',
         accountMenu:      'Menu blong akaon',
@@ -3307,7 +3305,6 @@ const resources = {
       shell: {
         department:       'Département du changement climatique (DoCC)',
         productName:      'Tableau de bord MERL',
-        staging:          'Préproduction',
         signOut:          'Se déconnecter',
         toggleMenu:       'Afficher ou masquer le menu',
         accountMenu:      'Menu du compte',

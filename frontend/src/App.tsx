@@ -37,11 +37,6 @@ interface SideItem {
   hasSub?: boolean;
 }
 
-// ── Environment ───────────────────────────────────────────────────────────────
-// VITE_APP_ENV is set to "production" in the production build .env file.
-// The "Staging" badge is shown only when NOT in production.
-const IS_STAGING = import.meta.env.VITE_APP_ENV !== 'production';
-
 // Base-aware asset URL so the coat of arms resolves under the GitHub Pages
 // project path (/merl-dashboard/) as well as at the site root. HashRouter
 // keeps the document at BASE_URL on every route, so this stays correct.
@@ -496,9 +491,6 @@ export default function App() {
           </div>
           <div className="dsh-head-actions">
             <GlobalSearch />
-            {IS_STAGING && (
-              <span style={{ fontSize: '0.72rem', color: 'var(--green-700)', padding: '0.25rem 0.6rem', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 9999, fontWeight: 700 }}>{t('shell.staging')}</span>
-            )}
             <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
               {LANGUAGES.map(({ code, label, name }) => (
                 <button key={code} onClick={() => void i18n.changeLanguage(code)}
