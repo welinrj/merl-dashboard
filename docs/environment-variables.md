@@ -9,7 +9,9 @@ committed to source control.**
 | `/opt/supabase/docker/.env` | Self-hosted Supabase backend | supplied by the supabase/docker distribution |
 
 For local development, the frontend also reads `frontend/.env.local`
-(template: `frontend/.env.example`).
+(template: `frontend/.env.example`). Contributor tooling — the 21st.dev MCP
+server registered in `.mcp.json` — reads one variable from the developer's own
+shell instead; see §6.
 
 ---
 
@@ -126,3 +128,33 @@ It reports three checks and exits non-zero if any fail:
 A green run confirms the frontend↔backend link; if the app still shows empty
 dashboards afterwards, that means the database has no operational data yet, not
 a broken connection.
+
+## 6. Developer tooling (`API_KEY_21ST`)
+
+Not part of any deployment tier. This one lives on a contributor's own
+machine; nothing the portal builds or serves reads it.
+
+`.mcp.json` (committed) registers the 21st.dev component MCP server for Claude
+Code and other MCP clients. It carries **no key** — the header value is written
+`${API_KEY_21ST}`, which the client expands from the environment as it starts:
+
+```json
+{ "mcpServers": { "21st": {
+  "type": "http",
+  "url": "https://21st.dev/api/mcp",
+  "headers": { "x-api-key": "${API_KEY_21ST}" }
+} } }
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `API_KEY_21ST` | for the 21st MCP server | Personal 21st.dev API key (`21st_sk_…`). Export it from a shell profile the MCP client inherits — never write the literal key into `.mcp.json`, which is tracked by git. |
+
+```bash
+export API_KEY_21ST=21st_sk_...   # ~/.bashrc, ~/.zshrc, or your MCP client's own env settings
+```
+
+Leave it unset and the server just fails to authenticate — the portal, its
+build and every other tool carry on unaffected. A key that has been pasted into
+a tracked file, a chat window or a pull request is a leaked key: rotate it at
+21st.dev rather than trying to scrub it.
