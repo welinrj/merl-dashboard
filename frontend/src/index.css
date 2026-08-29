@@ -227,14 +227,6 @@
   .data-table tbody tr { transition: background 0.12s; }
   .data-table tr:hover td { background: var(--green-50); }
   .data-table tr:last-child td { border-bottom: none; }
-
-  .progress-bar {
-    height: 6px; background: var(--green-100);
-    border-radius: 9999px; overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%; border-radius: 9999px; transition: width 0.4s ease;
-  }
 }
 
 @layer utilities {
@@ -249,16 +241,6 @@
   }
   .font-display { font-family: var(--font-display) !important; }
   .font-mono    { font-family: var(--font-mono) !important; }
-  .animate-fade-up { animation: fadeUp 0.35s ease both; }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .animate-fade { animation: fadeIn 0.25s ease both; }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
 }
 
 /* ── App shell (top navigation) ──────────────────────────────────────────── */
@@ -449,70 +431,6 @@
 @media (max-width: 640px) {
   .page-pad { padding: 1.25rem 1rem; }
   .grid-kpi { grid-template-columns: 1fr; }
-}
-
-/* ── Dashboard hero (emblem / stone-wall image banner) ────────────────────── */
-.dash-hero {
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-  height: 400px;
-  background: #12100e;               /* dark base shown behind the artwork */
-  border-bottom: 1px solid #2a251d;
-}
-/* The supplied artwork covering the band. The image URL is set inline (it is a
-   hashed/base-pathed public asset); anchored left so the emblem stays in view,
-   with a very slow zoom so the banner feels alive (see dh-kenburns). */
-.dash-hero-bg {
-  position: absolute; inset: 0; z-index: 0;
-  background-size: cover; background-position: left center; background-repeat: no-repeat;
-  transform-origin: 30% 45%;
-  animation: dh-kenburns 24s ease-in-out infinite alternate;
-}
-/* Legibility scrim — darkens the right side where the title sits (and adds a
-   soft floor vignette) without hiding the emblem on the left. */
-.dash-hero::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  background:
-    linear-gradient(90deg, rgba(10,12,10,0.42) 0%, rgba(10,12,10,0.04) 34%, rgba(10,12,10,0.16) 60%, rgba(10,12,10,0.66) 100%),
-    linear-gradient(0deg, rgba(10,12,10,0.30), transparent 42%);
-}
-.dash-hero-copy { position: absolute; top: 50%; right: 60px; transform: translateY(-50%); z-index: 6; max-width: 440px; text-align: right; }
-.dash-hero-eyebrow {
-  font-family: var(--font-display); font-weight: 700; font-size: 0.7rem;
-  letter-spacing: 0.22em; text-transform: uppercase; color: #efcf8e; opacity: 1;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
-}
-.dash-hero-title {
-  font-family: var(--font-display);
-  font-weight: 800; font-size: clamp(1.5rem, 4.8vw, 2.6rem);
-  line-height: 1.05; letter-spacing: -0.03em; color: #ffffff; margin: 0.5rem 0;
-  text-shadow: 0 2px 22px rgba(0,0,0,0.62), 0 1px 3px rgba(0,0,0,0.55);
-  overflow-wrap: break-word;
-}
-.dash-hero-title b { font-weight: 800; color: #efcf8e; }
-/* Kept in a class (not inline) so the width can relax on phones — an inline
-   max-width would be unbeatable by the media query below. */
-.dash-hero-sub {
-  color: #e4dac6; font-size: 0.92rem; font-weight: 500; line-height: 1.5;
-  max-width: 360px; margin: 0 0 0 auto;
-  text-shadow: 0 1px 8px rgba(0,0,0,0.5);
-}
-
-/* Phones: image as a backdrop; centre the copy over a stronger, even scrim so
-   it stays legible whatever part of the artwork shows through. */
-@media (max-width: 768px) {
-  .dash-hero { height: auto; min-height: 300px; display: flex; flex-direction: column; justify-content: center; }
-  .dash-hero-bg { background-position: center; }
-  .dash-hero::after { background: linear-gradient(0deg, rgba(10,12,10,0.72), rgba(10,12,10,0.48)); }
-  .dash-hero-copy { position: static; transform: none; padding: 1.6rem 1.25rem; max-width: none; width: 100%; min-width: 0; text-align: left; }
-  .dash-hero-sub { max-width: none; margin: 0; }
-}
-
-@keyframes dh-kenburns { from { transform: scale(1); } to { transform: scale(1.06); } }
-
-@media (prefers-reduced-motion: reduce) {
-  .dash-hero-bg { animation: none !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

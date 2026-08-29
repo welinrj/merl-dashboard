@@ -1,6 +1,6 @@
 # 005 — Retire dead animation code
 
-- **Status**: TODO
+- **Status**: DONE
 - **Severity**: MEDIUM
 - **Commit**: bbf9324
 - **Category**: Purpose & frequency
