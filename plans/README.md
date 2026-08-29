@@ -8,11 +8,23 @@ executor needs no context beyond the plan itself.
 
 | # | Title | Severity | Category | Status |
 | --- | --- | --- | --- | --- |
-| [001](001-motion-tokens.md) | Add motion tokens to `:root` | LOW (enabling) | Cohesion & tokens | TODO |
-| [002](002-touch-press-feedback.md) | Give buttons a press state for touch | **HIGH** | Purpose / Physicality | TODO |
-| [003](003-mobile-drawer.md) | Fix the mobile sidebar drawer and its backdrop | MEDIUM | Easing / Cohesion | TODO |
-| [004](004-skeleton-shimmer.md) | Unify the two skeleton shimmers and make them linear | MEDIUM | Easing / Cohesion / A11y | TODO |
+| [001](001-motion-tokens.md) | Add motion tokens to `:root` | LOW (enabling) | Cohesion & tokens | **DONE** |
+| [002](002-touch-press-feedback.md) | Give buttons a press state for touch | **HIGH** | Purpose / Physicality | **DONE** |
+| [003](003-mobile-drawer.md) | Fix the mobile sidebar drawer and its backdrop | MEDIUM | Easing / Cohesion | **DONE** |
+| [004](004-skeleton-shimmer.md) | Unify the two skeleton shimmers and make them linear | MEDIUM | Easing / Cohesion / A11y | **DONE** |
 | [005](005-retire-dead-motion.md) | Retire dead animation code | MEDIUM | Purpose & frequency | TODO |
+
+## Status
+
+001–004 are applied (see the commit that flipped their Status fields). 005 is
+still TODO — it deletes unreachable code and two dependencies, which changes
+nothing a user can see, so it was kept out of the visible-change batch.
+
+One deviation from plan 003 as written: the plan did not account for
+`.dsh-overlay` being defined *only* inside `@media (max-width: 760px)`. Keeping
+the element mounted at all widths would have put an unstyled block into the
+desktop layout, so a base `.dsh-overlay { display: none; }` rule was added
+outside the media query and `display: block` set inside it.
 
 ## Recommended order
 

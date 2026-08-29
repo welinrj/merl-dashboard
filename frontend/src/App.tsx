@@ -461,7 +461,13 @@ export default function App() {
   return (
     <DashboardFilterProvider>
     <div className="dsh">
-      {sidebarOpen && <div className="dsh-overlay" onClick={() => setSidebarOpen(false)} />}
+      {/* Always mounted so it can fade out with the panel; CSS keeps it inert
+          (pointer-events: none, and display: none above the drawer breakpoint). */}
+      <div
+        className={`dsh-overlay${sidebarOpen ? ' open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden={!sidebarOpen}
+      />
 
       {/* ── Sidebar ── */}
       <aside className={`dsh-side${sidebarOpen ? ' open' : ''}`}>

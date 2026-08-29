@@ -1,6 +1,6 @@
 # 002 — Give buttons a press state for touch
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: bbf9324
 - **Severity**: HIGH
 - **Category**: Purpose & frequency / Physicality
