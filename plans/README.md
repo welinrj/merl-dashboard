@@ -12,13 +12,19 @@ executor needs no context beyond the plan itself.
 | [002](002-touch-press-feedback.md) | Give buttons a press state for touch | **HIGH** | Purpose / Physicality | **DONE** |
 | [003](003-mobile-drawer.md) | Fix the mobile sidebar drawer and its backdrop | MEDIUM | Easing / Cohesion | **DONE** |
 | [004](004-skeleton-shimmer.md) | Unify the two skeleton shimmers and make them linear | MEDIUM | Easing / Cohesion / A11y | **DONE** |
-| [005](005-retire-dead-motion.md) | Retire dead animation code | MEDIUM | Purpose & frequency | TODO |
+| [005](005-retire-dead-motion.md) | Retire dead animation code | MEDIUM | Purpose & frequency | **DONE** |
 
 ## Status
 
-001–004 are applied (see the commit that flipped their Status fields). 005 is
-still TODO — it deletes unreachable code and two dependencies, which changes
-nothing a user can see, so it was kept out of the visible-change batch.
+All five plans are applied. 001–004 landed first (the user-visible motion
+fixes); 005 followed separately because it deletes unreachable code and two
+dependencies and changes nothing on screen, so it did not belong in the same
+diff as the visible changes.
+
+Removing `.dash-hero*` in 005 also removed the codebase's only
+`prefers-reduced-motion` block — which is fine, because it guarded an element
+no JSX renders. The two real ones added by 002 and 004 are what now provides
+actual reduced-motion coverage.
 
 One deviation from plan 003 as written: the plan did not account for
 `.dsh-overlay` being defined *only* inside `@media (max-width: 760px)`. Keeping
