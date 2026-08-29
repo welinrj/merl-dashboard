@@ -1,6 +1,6 @@
 # 001 — Add motion tokens to :root
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: bbf9324
 - **Severity**: LOW (enabling — plans 002–004 consume these tokens)
 - **Category**: Cohesion & tokens

@@ -1,6 +1,6 @@
 # 003 — Fix the mobile sidebar drawer and its backdrop
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: bbf9324
 - **Severity**: MEDIUM
 - **Category**: Easing & duration / Cohesion

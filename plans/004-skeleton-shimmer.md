@@ -1,6 +1,6 @@
 # 004 — Unify the two skeleton shimmers and make them linear
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: bbf9324
 - **Severity**: MEDIUM
 - **Category**: Easing & duration / Cohesion / Accessibility

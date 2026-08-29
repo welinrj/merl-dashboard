@@ -12,20 +12,26 @@ const loadingLabel = () => i18n.t('ui.loading');
 //   <SkeletonCard />   // a card-shaped placeholder
 //   <SkeletonRows rows={5} cols={6} />  // table placeholder
 
+// Shares --dur-shimmer and `linear` with .ov-skel in index.css so both
+// skeletons sweep at the same speed — a skeleton is constant motion, and
+// `ease-in-out` made it stall at each end and read as a pulse.
 const shimmer = {
   background: 'linear-gradient(90deg, var(--surface-1) 25%, var(--surface-2) 37%, var(--surface-1) 63%)',
   backgroundSize: '400% 100%',
-  animation: 'merl-skeleton 1.3s ease-in-out infinite',
+  animation: 'merl-skeleton var(--dur-shimmer) linear infinite',
   borderRadius: 6,
 };
 
-// Keyframes injected once.
+// Keyframes injected once. The reduced-motion rule lives here rather than in
+// index.css because the animation above is an inline style — a stylesheet
+// media query can't override one, hence the data attribute and !important.
 function Keyframes() {
-  return <style>{`@keyframes merl-skeleton{0%{background-position:100% 0}100%{background-position:0 0}}`}</style>;
+  return <style>{`@keyframes merl-skeleton{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion: reduce){[data-merl-skeleton]{animation:none!important;background:var(--surface-2)!important}}`}</style>;
 }
 
 export function Skeleton({ width = '100%', height = 14, radius, style }) {
-  return <span aria-hidden="true" style={{ display: 'block', width, height, ...shimmer, ...(radius != null ? { borderRadius: radius } : null), ...style }} />;
+  return <span aria-hidden="true" data-merl-skeleton="" style={{ display: 'block', width, height, ...shimmer, ...(radius != null ? { borderRadius: radius } : null), ...style }} />;
 }
 
 export function SkeletonText({ lines = 3 }) {

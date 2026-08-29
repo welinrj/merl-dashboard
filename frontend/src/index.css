@@ -47,6 +47,17 @@
   --shadow-lg: 0 6px 20px -6px rgba(28,21,18,0.18);
   /* A faint top highlight that reads as a light catching the raised edge. */
   --edge-hi: inset 0 1px 0 rgba(255,255,255,0.75);
+  /* Motion — entrances/exits use --ease-out, on-screen movement --ease-in-out,
+     drawers --ease-drawer. UI motion stays under 300ms; --dur-shimmer is the
+     one exception (constant, looping skeleton sweep). Reference these instead
+     of hand-typing a duration or a bare `ease`. */
+  --ease-out:     cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out:  cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer:  cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast:     150ms;  /* hover, colour change, press */
+  --dur-base:     200ms;  /* dropdowns, drawers */
+  --dur-slow:     260ms;  /* modals */
+  --dur-shimmer:  1400ms; /* skeleton sweep */
   --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-ui:      'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
@@ -129,7 +140,9 @@
     gap: 0.4rem; border-radius: var(--radius-control); padding: 0.5rem 1rem;
     font-size: 0.8125rem; font-weight: 600; font-family: var(--font-ui);
     line-height: 1; letter-spacing: -0.01em;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
     cursor: pointer; border: none; white-space: nowrap;
   }
   /* Flat buttons — colour change on hover, no lift or glow. */
@@ -145,6 +158,22 @@
   .btn-gold:hover:not(:disabled) { background: var(--gold-400); }
   .btn-danger { background: var(--red-600); color: var(--white); }
   .btn-danger:hover:not(:disabled) { background: var(--red-700); }
+
+  /* Press feedback. Phones have no hover, so without an :active state every
+     tap of Save/Submit/Delete reads as "nothing happened" until the async
+     work resolves. Kept in the flat house style — a colour step plus a dip
+     small enough to register as pressure, not a bounce. */
+  .btn:active:not(:disabled) { transform: scale(0.97); }
+  .btn-primary:active:not(:disabled)   { background: var(--green-800); }
+  .btn-secondary:active:not(:disabled) { background: var(--surface-2); border-color: var(--border-strong); }
+  .btn-gold:active:not(:disabled)      { background: var(--gold-500); filter: brightness(0.94); }
+  .btn-danger:active:not(:disabled)    { background: var(--red-700); filter: brightness(0.92); }
+  /* Reduced motion drops the movement, not the feedback — the colour step
+     still confirms the tap. */
+  @media (prefers-reduced-motion: reduce) {
+    .btn { transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+    .btn:active:not(:disabled) { transform: none; }
+  }
 
   .field-label {
     display: block; font-size: 0.6875rem; font-weight: 700;
@@ -550,6 +579,10 @@
 .dsh-user-name { font-size: .8rem; font-weight: 700; color: var(--text-1); }
 .dsh-user-role { font-size: .68rem; color: var(--text-3); }
 .dsh-hamburger { display: none; background: none; border: none; cursor: pointer; color: var(--text-2); }
+/* The sidebar is only a drawer below 760px, so the scrim is inert above it.
+   It's always in the DOM (it has to be, to fade both ways), so this keeps it
+   out of the layout entirely at desktop widths. */
+.dsh-overlay { display: none; }
 
 /* Global search (command palette) */
 .gs-trigger { display: inline-flex; align-items: center; gap: .5rem; background: var(--surface-1); border: 1px solid var(--border); border-radius: 9px; padding: .4rem .7rem; cursor: pointer; color: var(--text-3); font-size: .8rem; }
@@ -756,8 +789,15 @@
 .ov-table th { font-size: .66rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); }
 .ov-table td:nth-child(2) { white-space: normal; min-width: 160px; }
 
-.ov-skel { border-radius: 8px; background: linear-gradient(90deg,var(--surface-1) 25%,var(--surface-2) 37%,var(--surface-1) 63%); background-size: 400% 100%; animation: ovShimmer 1.4s ease infinite; }
+.ov-skel { border-radius: 8px; background: linear-gradient(90deg,var(--surface-1) 25%,var(--surface-2) 37%,var(--surface-1) 63%); background-size: 400% 100%; animation: ovShimmer var(--dur-shimmer) linear infinite; }
 @keyframes ovShimmer { 0% { background-position: 100% 0 } 100% { background-position: -100% 0 } }
+
+/* A skeleton is constant motion, so it travels at a constant speed — `ease`
+   made the sweep stall at each end and read as a pulse. Under reduced motion
+   it goes static but stays visible: it still has to read as "loading". */
+@media (prefers-reduced-motion: reduce) {
+  .ov-skel { animation: none; background: var(--surface-2); }
+}
 
 /* Responsive */
 @media (max-width: 1200px) {
@@ -781,10 +821,19 @@
   .ov-tiles.b5, .ov-tiles.r4 { grid-template-columns: repeat(2,1fr); }
 }
 @media (max-width: 760px) {
-  .dsh-side { position: fixed; z-index: 60; height: 100dvh; transform: translateX(-100%); transition: transform .2s ease; box-shadow: var(--shadow-lg); }
+  .dsh-side { position: fixed; z-index: 60; height: 100dvh; transform: translateX(-100%); transition: transform var(--dur-base) var(--ease-drawer); box-shadow: var(--shadow-lg); }
   .dsh-side.open { transform: translateX(0); }
   .dsh-hamburger { display: flex; }
-  .dsh-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 55; }
+  /* The scrim fades with the panel instead of hard-cutting. It stays mounted
+     so it can animate both ways, which makes pointer-events load-bearing —
+     without it the closed overlay would swallow every click on the page. */
+  .dsh-overlay {
+    display: block;
+    position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 55;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--dur-base) var(--ease-drawer);
+  }
+  .dsh-overlay.open { opacity: 1; pointer-events: auto; }
   .ov-kpis { grid-template-columns: repeat(2,1fr); }
   .ov-grid4 { grid-template-columns: 1fr; }
   .dsh-user-meta { display: none; }
