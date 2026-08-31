@@ -290,10 +290,10 @@ export default function ProjectSetup({ user }) {
         )}
         {step === 'indicators' && project && (
           <IndicatorsStep projectId={projectId} userId={user?.id} indicators={indicators} objectives={objectives}
-            outcomes={outcomes} outputs={outputs} users={users} reload={() => loadFramework(projectId)} />
+            outcomes={outcomes} outputs={outputs} reload={() => loadFramework(projectId)} />
         )}
         {step === 'activities' && project && (
-          <ActivitiesStep projectId={projectId} userId={user?.id} outputs={outputs} outcomes={outcomes} activities={activities} users={users}
+          <ActivitiesStep projectId={projectId} userId={user?.id} outputs={outputs} outcomes={outcomes} activities={activities}
             reload={() => loadFramework(projectId)} />
         )}
         {step === 'locations' && project && (
@@ -689,7 +689,7 @@ function ResultModal({ editing, projectId, userId, users, onClose, onSaved }) {
 const qualTag = { marginLeft: 6, fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-3)', background: 'var(--surface-1)', borderRadius: 4, padding: '0.05rem 0.35rem', textTransform: 'uppercase', letterSpacing: '0.04em' };
 const miniChip = { fontSize: '0.72rem', color: 'var(--text-2)', background: 'var(--surface-1)', borderRadius: 6, padding: '0.15rem 0.45rem' };
 
-function IndicatorsStep({ projectId, userId, indicators, objectives, outcomes, outputs, users, reload }) {
+function IndicatorsStep({ projectId, userId, indicators, objectives, outcomes, outputs, reload }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
@@ -754,20 +754,23 @@ function IndicatorsStep({ projectId, userId, indicators, objectives, outcomes, o
       )}
       {editing !== null && (
         <IndicatorForm projectId={projectId} userId={userId} initial={editing} objectives={objectives} outcomes={outcomes}
-          outputs={outputs} users={users} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
+          outputs={outputs} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
     </div>
   );
 }
 
-function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outputs, users, onClose, onSaved }) {
+function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outputs, onClose, onSaved }) {
   const { t } = useTranslation();
   const seed = useMemo(() => ({
     name: '', indicator_level: '', definition: '', unit: '', baseline_value: '', baseline_year: '',
     target_value: '', target_date: '', frequency: '', data_source: '', collection_method: '',
     means_of_verification: '', verification_method: '', disaggregation: '', assumptions: '',
     responsible_officer_id: '', objective_id: '', outcome_id: '', output_id: '', is_qualitative: false, higher_is_better: true,
+    responsible_officer: '',
     ...(initial?.id ? initial : {}),
+    // Spread after the row, so an older indicator shows the officer it has.
+    responsible_officer: initial?.id ? officerName(initial, 'responsible_officer') : '',
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [initial?.id]);
   const [v, setV] = useState(seed);
@@ -776,15 +779,13 @@ function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outpu
     draftKey('ps', userId, projectId, 'indicator', initial?.id ?? 'new'),
     v, { baseline: seed, onRestore: (values) => setV((s) => ({ ...s, ...values })) });
   const set = (k, t) => (e) => setV((s) => ({ ...s, [k]: t === 'checkbox' ? e.target.checked : e.target.value }));
-  const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
-
   const save = async () => {
     if (!v.name.trim()) return toast.error(t('ps.indicatorNameRequired'));
     const year = toNum(v.baseline_year);
     if (year != null && (year < 1980 || year > 2100)) {
       return toast.error(t('ps.baselineYearRange'));
     }
-    const { error } = await supabase.rpc('upsert_project_indicator', {
+    const args = {
       p_id: initial?.id ?? null, p_project_id: projectId, p_name: v.name, p_unit: toNull(v.unit),
       p_baseline_value: toNum(v.baseline_value), p_target_value: toNum(v.target_value),
       p_means_of_verification: toNull(v.means_of_verification), p_frequency: toNull(v.frequency),
@@ -795,7 +796,16 @@ function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outpu
       p_verification_method: toNull(v.verification_method), p_assumptions: toNull(v.assumptions),
       p_objective_id: toNull(v.objective_id), p_outcome_id: toNull(v.outcome_id), p_output_id: toNull(v.output_id),
       p_is_qualitative: !!v.is_qualitative, p_higher_is_better: !!v.higher_is_better,
-    });
+      p_responsible_officer: toNull(v.responsible_officer?.trim()),
+    };
+    let { error } = await supabase.rpc('upsert_project_indicator', args);
+    // Before migration 0039 the function has no officer-name parameter. Save the
+    // indicator without it rather than losing the whole entry, and say so.
+    if (isMissingRpcArgument(error, 'p_responsible_officer')) {
+      const { p_responsible_officer: _dropped, ...older } = args;
+      ({ error } = await supabase.rpc('upsert_project_indicator', older));
+      if (!error) toast(t('ps.officerNameUnavailable'), { icon: '\u26a0\ufe0f' });
+    }
     if (error) return toast.error(dbErrorMessage(error));
     draft.clear();
     onSaved();
@@ -812,7 +822,9 @@ function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outpu
       <Field label={t('ps.finalTarget')}><input type="number" className="field-input" value={v.target_value ?? ''} onChange={set('target_value')} /></Field>
       <Field label={t('ps.targetDate')}><input type="date" className="field-input" value={v.target_date || ''} onChange={set('target_date')} /></Field>
       <Field label={t('ps.reportingFrequency')}><Select value={v.frequency ?? ''} onChange={set('frequency')} options={OPT.REPORTING_FREQUENCY} allowBlank /></Field>
-      <Field label={t('ps.responsibleOfficer')}><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={userOpts} allowBlank /></Field>
+      <Field label={t('ps.responsibleOfficer')} hint={t('ps.officerNameHint')}>
+        <input className="field-input" value={v.responsible_officer ?? ''} onChange={set('responsible_officer')} autoComplete="off" />
+      </Field>
       <Field label={t('ps.dataSource')}><input className="field-input" value={v.data_source ?? ''} onChange={set('data_source')} /></Field>
       <Field label={t('ps.collectionMethod')}><input className="field-input" value={v.collection_method ?? ''} onChange={set('collection_method')} /></Field>
       <Field label={t('ps.disaggregation')}><input className="field-input" value={v.disaggregation ?? ''} onChange={set('disaggregation')} /></Field>
@@ -831,7 +843,7 @@ function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outpu
 }
 
 // ── Step 4: Activities ───────────────────────────────────────────────────────
-function ActivitiesStep({ projectId, userId, outputs, outcomes, activities, users, reload }) {
+function ActivitiesStep({ projectId, userId, outputs, outcomes, activities, reload }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
@@ -881,14 +893,14 @@ function ActivitiesStep({ projectId, userId, outputs, outcomes, activities, user
         </div>
       )}
       {editing !== null && (
-        <ActivityForm projectId={projectId} userId={userId} initial={editing} outputs={outputs} outcomes={outcomes} users={users}
+        <ActivityForm projectId={projectId} userId={userId} initial={editing} outputs={outputs} outcomes={outcomes}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
     </div>
   );
 }
 
-function ActivityForm({ projectId, userId, initial, outputs, outcomes, users, onClose, onSaved }) {
+function ActivityForm({ projectId, userId, initial, outputs, outcomes, onClose, onSaved }) {
   const { t } = useTranslation();
   const firstOutputId = outputs[0]?.id ?? '';
   const seed = useMemo(() => ({
@@ -897,7 +909,10 @@ function ActivityForm({ projectId, userId, initial, outputs, outcomes, users, on
     planned_start_date: '', planned_end_date: '', actual_start_date: '', actual_end_date: '',
     planned_budget: '', actual_expenditure: '', physical_progress_pct: '', key_achievement: '',
     issue_delay: '', next_action: '', next_action_due: '',
+    responsible_officer: '',
     ...(initial?.id ? initial : {}),
+    // Spread after the row, so an older activity shows the officer it has.
+    responsible_officer: initial?.id ? officerName(initial, 'responsible_officer') : '',
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [initial?.id, firstOutputId]);
   const [v, setV] = useState(seed);
@@ -907,8 +922,6 @@ function ActivityForm({ projectId, userId, initial, outputs, outcomes, users, on
     v, { baseline: seed, onRestore: (values) => setV((s) => ({ ...s, ...values })) });
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setProvince = (e) => setV((s) => ({ ...s, province: e.target.value, island: '', area_council: '' }));
-  const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
-
   const save = async () => {
     if (!v.name.trim()) return toast.error(t('ps.activityTitleRequired'));
     if (!v.output_id) return toast.error(t('ps.selectParentOutput'));
@@ -919,7 +932,7 @@ function ActivityForm({ projectId, userId, initial, outputs, outcomes, users, on
     if (v.planned_start_date && v.planned_end_date && v.planned_end_date < v.planned_start_date) {
       return toast.error(t('ps.endBeforeStart'));
     }
-    const { error } = await supabase.rpc('upsert_project_activity_full', {
+    const args = {
       p_id: initial?.id ?? null, p_output_id: v.output_id, p_name: v.name, p_description: toNull(v.description),
       p_responsible_officer_id: toNull(v.responsible_officer_id), p_status: v.status, p_outcome_id: toNull(v.outcome_id),
       p_responsible_org: toNull(v.responsible_org), p_province: toNull(v.province), p_island: toNull(v.island),
@@ -929,7 +942,16 @@ function ActivityForm({ projectId, userId, initial, outputs, outcomes, users, on
       p_planned_budget: toNum(v.planned_budget), p_actual_expenditure: toNum(v.actual_expenditure),
       p_physical_progress_pct: toNum(v.physical_progress_pct), p_key_achievement: toNull(v.key_achievement),
       p_issue_delay: toNull(v.issue_delay), p_next_action: toNull(v.next_action), p_next_action_due: toNull(v.next_action_due),
-    });
+      p_responsible_officer: toNull(v.responsible_officer?.trim()),
+    };
+    let { error } = await supabase.rpc('upsert_project_activity_full', args);
+    // Before migration 0039 the function has no officer-name parameter. Save the
+    // activity without it rather than losing the whole entry, and say so.
+    if (isMissingRpcArgument(error, 'p_responsible_officer')) {
+      const { p_responsible_officer: _dropped, ...older } = args;
+      ({ error } = await supabase.rpc('upsert_project_activity_full', older));
+      if (!error) toast(t('ps.officerNameUnavailable'), { icon: '\u26a0\ufe0f' });
+    }
     if (error) return toast.error(dbErrorMessage(error));
     draft.clear();
     onSaved();
@@ -942,7 +964,9 @@ function ActivityForm({ projectId, userId, initial, outputs, outcomes, users, on
       <Field label={t('ps.linkedOutcome')}><Select value={v.outcome_id ?? ''} onChange={set('outcome_id')} options={outcomes.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
       <Field className="ps-full" label={t('ps.description')}><textarea className="field-input" rows={2} value={v.description ?? ''} onChange={set('description')} /></Field>
       <Field label={t('ps.responsibleOrg')}><input className="field-input" value={v.responsible_org ?? ''} onChange={set('responsible_org')} /></Field>
-      <Field label={t('ps.responsibleOfficer')}><Select value={v.responsible_officer_id ?? ''} onChange={set('responsible_officer_id')} options={userOpts} allowBlank /></Field>
+      <Field label={t('ps.responsibleOfficer')} hint={t('ps.officerNameHint')}>
+        <input className="field-input" value={v.responsible_officer ?? ''} onChange={set('responsible_officer')} autoComplete="off" />
+      </Field>
       <Field label={t('ps.status')}><Select value={v.status} onChange={set('status')} options={OPT.ACTIVITY_STATUS} /></Field>
       <Field label={t('ps.physicalProgressPct')}><input type="number" min="0" max="100" className="field-input" value={v.physical_progress_pct ?? ''} onChange={set('physical_progress_pct')} /></Field>
       <Field label={t('ps.province')}><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>

@@ -224,6 +224,9 @@ export interface ProjectActivityRecord {
   code: string;
   name: string;
   description: string | null;
+  // The officer as written on the form (migration 0039). The *_id link and the
+  // *_name it resolves to are what the portal recorded before that.
+  responsible_officer: string | null;
   responsible_officer_id: string | null;
   responsible_officer_name: string | null;
   status: ActivityStatus | 'cancelled';
@@ -242,6 +245,9 @@ export interface ProjectIndicatorRecord {
   linked_level: LinkedLevel | null;
   linked_id: string | null;
   linked_code: string | null;
+  // The officer as written on the form (migration 0039).
+  responsible_officer: string | null;
+  responsible_officer_id: string | null;
 }
 
 // ── Datasets ─────────────────────────────────────────────────────────────────
