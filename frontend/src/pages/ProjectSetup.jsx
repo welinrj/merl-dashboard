@@ -347,6 +347,15 @@ const PROFILE_BLANK = {
   est_direct_beneficiaries: '', est_indirect_beneficiaries: '', expected_primary_outcome: '',
 };
 
+// The officer's name as the form should show it. Once migration 0038 is in, the
+// column is the only source: null there means the officer cleared the box, and
+// it has to stay cleared rather than the old account link surfacing again on the
+// next read. Before that migration the column is absent altogether — undefined,
+// not null — and the linked account's name the view serves is all there is.
+const officerName = (row, key) => (row[key] !== undefined
+  ? (row[key] ?? '')
+  : (row[`${key}_name`] ?? ''));
+
 function ProfileStep({ project, userId, onSaved }) {
   const { t } = useTranslation();
   const blank = PROFILE_BLANK;
@@ -378,12 +387,9 @@ function ProfileStep({ project, userId, onSaved }) {
       const saved = {
         ...blank, ...data,
         provinces: data.provinces ?? [],
-        // Before 0038 the officer was only a link, and the view still serves
-        // that account's name — show it, so editing an older project does not
-        // present three empty boxes where an officer was recorded.
-        project_manager: data.project_manager ?? data.project_manager_name ?? '',
-        me_officer: data.me_officer ?? data.me_officer_name ?? '',
-        finance_officer: data.finance_officer ?? data.finance_officer_name ?? '',
+        project_manager: officerName(data, 'project_manager'),
+        me_officer: officerName(data, 'me_officer'),
+        finance_officer: officerName(data, 'finance_officer'),
         budget_vuv: data.budget_vuv ?? '', start_date: data.start_date ?? '', end_date: data.end_date ?? '',
         approval_date: data.approval_date ?? '',
         est_direct_beneficiaries: data.est_direct_beneficiaries ?? '',

@@ -33,15 +33,40 @@ COMMENT ON COLUMN merl.projects.me_officer IS
 COMMENT ON COLUMN merl.projects.finance_officer IS
     'Finance Officer as written on Form 1. Free text: the officer need not hold a portal account.';
 
--- Carry across what the links already say, so the register reads the same the
--- moment this lands rather than only after each project is next edited.
-UPDATE merl.projects p SET
-    project_manager = COALESCE(p.project_manager, (SELECT u.full_name FROM merl.users u WHERE u.id = p.project_manager_id)),
-    me_officer      = COALESCE(p.me_officer,      (SELECT u.full_name FROM merl.users u WHERE u.id = p.me_officer_id)),
-    finance_officer = COALESCE(p.finance_officer, (SELECT u.full_name FROM merl.users u WHERE u.id = p.finance_officer_id))
-WHERE p.project_manager_id IS NOT NULL
-   OR p.me_officer_id IS NOT NULL
-   OR p.finance_officer_id IS NOT NULL;
+-- Carry across what the links already say, so every project already on the
+-- register carries its officer into the new column at once. Doing it here, and
+-- not leaving the read to fall back to the linked account's name, is what makes
+-- clearing a name work: once the column is the only source, an emptied box
+-- stays empty instead of the old link surfacing again on the next read.
+--
+-- The backfill has to step around trg_scope_projects (0035), a BEFORE UPDATE
+-- row trigger calling merl.require_project_access(NEW.id), which refuses any
+-- write from a caller with no portal account — and a migration, running as the
+-- database owner rather than as an officer, never has one. It is disabled for
+-- this one statement and put straight back. The audit trigger is deliberately
+-- left running, so the backfill is recorded like any other change to these rows.
+DO $$
+DECLARE
+    v_scoped BOOLEAN := EXISTS (
+        SELECT FROM pg_trigger
+        WHERE tgrelid = 'merl.projects'::regclass AND tgname = 'trg_scope_projects');
+BEGIN
+    IF v_scoped THEN
+        ALTER TABLE merl.projects DISABLE TRIGGER trg_scope_projects;
+    END IF;
+
+    UPDATE merl.projects p SET
+        project_manager = COALESCE(p.project_manager, (SELECT u.full_name FROM merl.users u WHERE u.id = p.project_manager_id)),
+        me_officer      = COALESCE(p.me_officer,      (SELECT u.full_name FROM merl.users u WHERE u.id = p.me_officer_id)),
+        finance_officer = COALESCE(p.finance_officer, (SELECT u.full_name FROM merl.users u WHERE u.id = p.finance_officer_id))
+    WHERE p.project_manager_id IS NOT NULL
+       OR p.me_officer_id IS NOT NULL
+       OR p.finance_officer_id IS NOT NULL;
+
+    IF v_scoped THEN
+        ALTER TABLE merl.projects ENABLE TRIGGER trg_scope_projects;
+    END IF;
+END $$;
 
 -- 2. Serve them from the read view ---------------------------------------------
 -- Appended rather than written out in full: CREATE OR REPLACE VIEW may add
