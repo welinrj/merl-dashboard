@@ -116,9 +116,59 @@
 
   /* KPI stat tiles: flat bordered surfaces (no float / lift). */
   .stat-tile {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 0.9rem 1rem;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
     box-shadow: var(--shadow-sm);
     transition: border-color 0.2s ease;
   }
+
+  /* ── Executive KPI row (Project Portfolio Analysis) ──────────────────────
+     Six tiles. An auto-fit track fitted five across and stranded the sixth
+     alone on the next row, which reads as a mistake rather than a layout; six
+     divides evenly by three and by two, so every breakpoint below fills its
+     rows. */
+  .grid-kpi-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+
+  /* Each tile jumps to the section that explains it, so it has to behave like
+     a control. A <button> centres its content vertically once it stretches to
+     the row height, which left the six tiles sitting at four different heights
+     — the tile takes the full height instead, so tops and bottoms line up and
+     every card in the row is the same size. */
+  .kpi-jump {
+    display: block; width: 100%; padding: 0; border: 0; background: transparent;
+    text-align: left; cursor: pointer; font: inherit;
+    border-radius: var(--radius-card);
+    transition: transform 160ms var(--ease-out);
+  }
+  .kpi-jump > .stat-tile { height: 100%; }
+  /* The same border shift the other clickable cards use — surfaces here stay
+     flat, so no lift and no shadow change. Hover is gated: on a touch screen it
+     latches after a tap and reads as a stuck state. */
+  @media (hover: hover) and (pointer: fine) {
+    .kpi-jump:hover > .stat-tile { border-color: var(--green-200); }
+  }
+  /* Press feedback: the tile answers the tap before the scroll begins. */
+  .kpi-jump:active { transform: scale(0.97); }
+
+  /* ── Time vs money vs results ────────────────────────────────────────────
+     One scale, four measures, each read against the calendar tick. */
+  .ppa-bar-track {
+    position: relative; height: 12px; border-radius: 999px;
+    background: var(--surface-1); border: 1px solid var(--border); overflow: hidden;
+  }
+  /* Rounded, so the fill sits inside the track instead of ending on a hard
+     vertical cut against a rounded end. */
+  .ppa-bar-fill { height: 100%; border-radius: 999px; }
+  /* The calendar marker used to overhang the track top and bottom, which read
+     as a rendering artifact rather than a reference line. It now sits inside
+     it, full height, as a hairline. */
+  .ppa-bar-tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--text-2); opacity: 0.75; }
 
   .section-title {
     font-family: var(--font-display);
@@ -416,6 +466,12 @@
 .grid-kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .grid-main-side { display: grid; grid-template-columns: 1fr 260px; gap: 1rem; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+/* A grid item defaults to min-width:auto, so it refuses to shrink below its
+   content — and a Recharts ResponsiveContainer reports the width it was last
+   given, which pinned the financial card at 476px inside a 390px phone and
+   scrolled the whole page sideways. Letting the column shrink is what makes
+   `width: 100%` inside it mean the column, not the content. */
+.grid-2 > * { min-width: 0; }
 .grid-dash-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 .grid-dash-2 { display: grid; grid-template-columns: 1.7fr 1fr; gap: 1rem; }
 
@@ -718,6 +774,13 @@
 }
 
 /* Responsive */
+@media (max-width: 900px) {
+  .grid-kpi-6 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kpi-jump { transition: none; }
+  .kpi-jump:active { transform: none; }
+}
 @media (max-width: 1200px) {
   .ov-grid4 { grid-template-columns: repeat(2,1fr); }
   .ov-kpis { grid-template-columns: repeat(3,1fr); }
