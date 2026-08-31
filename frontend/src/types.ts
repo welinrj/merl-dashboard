@@ -156,6 +156,12 @@ export interface ProjectRegistration {
   currency: string;
   executing_agency: string | null;
   implementing_partners: string[];
+  // The officer as written on Form 1 (migration 0038). The *_id link and the
+  // *_name it resolves to are what the portal recorded before that, and are
+  // kept so an older project still shows who was responsible.
+  project_manager: string | null;
+  me_officer: string | null;
+  finance_officer: string | null;
   project_manager_id: string | null;
   project_manager_name: string | null;
   me_officer_id: string | null;

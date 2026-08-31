@@ -281,7 +281,7 @@ export default function ProjectSetup({ user }) {
 
       <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
         {step === 'profile' && (
-          <ProfileStep project={project} users={users} userId={user?.id}
+          <ProfileStep project={project} userId={user?.id}
             onSaved={async (id) => { await loadProjects(); setProjectId(id); toast.success(t('ps.projectSaved')); }} />
         )}
         {step === 'results' && project && (
@@ -337,11 +337,26 @@ const PROFILE_BLANK = {
   name: '', acronym: '', description: '', status: 'pipeline', category: '', lead_agency: '',
   executing_agency: '', donor: '', funding_window: '', currency: 'VUV', budget_vuv: '',
   start_date: '', end_date: '', approval_date: '', project_type: '', primary_climate_theme: '',
-  coverage_type: '', provinces: [], project_manager_id: '', me_officer_id: '', finance_officer_id: '',
+  coverage_type: '', provinces: [],
+  // Officers are typed in by name. The matching *_id links are not edited here
+  // any more, but they stay in the form's values so a save hands each one back
+  // as it found it — upsert_project writes whatever it is given, so dropping
+  // these keys would clear the link on the next save.
+  project_manager: '', me_officer: '', finance_officer: '',
+  project_manager_id: '', me_officer_id: '', finance_officer_id: '',
   est_direct_beneficiaries: '', est_indirect_beneficiaries: '', expected_primary_outcome: '',
 };
 
-function ProfileStep({ project, users, userId, onSaved }) {
+// The officer's name as the form should show it. Once migration 0038 is in, the
+// column is the only source: null there means the officer cleared the box, and
+// it has to stay cleared rather than the old account link surfacing again on the
+// next read. Before that migration the column is absent altogether — undefined,
+// not null — and the linked account's name the view serves is all there is.
+const officerName = (row, key) => (row[key] !== undefined
+  ? (row[key] ?? '')
+  : (row[`${key}_name`] ?? ''));
+
+function ProfileStep({ project, userId, onSaved }) {
   const { t } = useTranslation();
   const blank = PROFILE_BLANK;
   const [v, setV] = useState(blank);
@@ -372,6 +387,9 @@ function ProfileStep({ project, users, userId, onSaved }) {
       const saved = {
         ...blank, ...data,
         provinces: data.provinces ?? [],
+        project_manager: officerName(data, 'project_manager'),
+        me_officer: officerName(data, 'me_officer'),
+        finance_officer: officerName(data, 'finance_officer'),
         budget_vuv: data.budget_vuv ?? '', start_date: data.start_date ?? '', end_date: data.end_date ?? '',
         approval_date: data.approval_date ?? '',
         est_direct_beneficiaries: data.est_direct_beneficiaries ?? '',
@@ -401,7 +419,7 @@ function ProfileStep({ project, users, userId, onSaved }) {
       toast.error(t('ps.budgetNegative')); return;
     }
     setSaving(true);
-    const { data, error } = await supabase.rpc('upsert_project', {
+    const args = {
       p_id: project?.id ?? null, p_name: v.name, p_acronym: toNull(v.acronym), p_description: toNull(v.description),
       p_status: v.status, p_category: toNull(v.category), p_lead_agency: toNull(v.lead_agency),
       p_executing_agency: toNull(v.executing_agency), p_donor: toNull(v.donor), p_funding_window: toNull(v.funding_window),
@@ -413,7 +431,21 @@ function ProfileStep({ project, users, userId, onSaved }) {
       p_est_direct_beneficiaries: toNum(v.est_direct_beneficiaries),
       p_est_indirect_beneficiaries: toNum(v.est_indirect_beneficiaries),
       p_expected_primary_outcome: toNull(v.expected_primary_outcome),
-    });
+      p_project_manager: toNull(v.project_manager?.trim()),
+      p_me_officer: toNull(v.me_officer?.trim()),
+      p_finance_officer: toNull(v.finance_officer?.trim()),
+    };
+    let { data, error } = await supabase.rpc('upsert_project', args);
+    // Before migration 0038 the function has no officer-name parameters, and
+    // PostgREST rejects the whole call rather than ignoring the extra ones. The
+    // project itself is what the officer came to save, so save it — and say
+    // plainly that the three names could not go with it, rather than dropping
+    // typed-in text without a word.
+    if (isMissingRpcArgument(error, 'p_project_manager')) {
+      const { p_project_manager: _pm, p_me_officer: _me, p_finance_officer: _fo, ...older } = args;
+      ({ data, error } = await supabase.rpc('upsert_project', older));
+      if (!error) toast(t('ps.officerNamesUnavailable'), { icon: '\u26a0\ufe0f' });
+    }
     setSaving(false);
     if (error) { toast.error(dbErrorMessage(error)); return; }
     // Saved as a record — what is on screen is the new starting point, and the
@@ -424,7 +456,6 @@ function ProfileStep({ project, users, userId, onSaved }) {
     onSaved(data);
   };
 
-  const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
   return (
     <div>
       <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{t('ps.projectProfile')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 1 })}</span></h3>
@@ -463,10 +494,19 @@ function ProfileStep({ project, users, userId, onSaved }) {
           </select>
         </Field>
 
+        {/* Typed in, not chosen from the portal's user list: the focal point is
+            often in a partner agency or a province and has no account here, and
+            a dropdown of accounts left those projects with no officer at all. */}
         <h4 className="ps-sec">{t('ps.responsibleOfficers')}</h4>
-        <Field label={t('ps.projectManager')}><Select value={v.project_manager_id ?? ''} onChange={set('project_manager_id')} options={userOpts} allowBlank /></Field>
-        <Field label={t('ps.meOfficer')}><Select value={v.me_officer_id ?? ''} onChange={set('me_officer_id')} options={userOpts} allowBlank /></Field>
-        <Field label={t('ps.financeOfficer')}><Select value={v.finance_officer_id ?? ''} onChange={set('finance_officer_id')} options={userOpts} allowBlank /></Field>
+        <Field label={t('ps.projectManager')} hint={t('ps.officerNameHint')}>
+          <input className="field-input" value={v.project_manager ?? ''} onChange={set('project_manager')} autoComplete="off" />
+        </Field>
+        <Field label={t('ps.meOfficer')}>
+          <input className="field-input" value={v.me_officer ?? ''} onChange={set('me_officer')} autoComplete="off" />
+        </Field>
+        <Field label={t('ps.financeOfficer')}>
+          <input className="field-input" value={v.finance_officer ?? ''} onChange={set('finance_officer')} autoComplete="off" />
+        </Field>
 
         <h4 className="ps-sec">{t('ps.expectedReach')}</h4>
         <Field label={t('ps.estDirect')}><input type="number" min="0" className="field-input" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></Field>
