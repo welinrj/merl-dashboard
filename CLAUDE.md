@@ -50,6 +50,28 @@ time rather than silently.
 - App lives in `frontend/` (Vite + React 18 + TypeScript, `.tsx`/`.jsx`). Build/typecheck with `cd frontend && npm run build` and `npx tsc --noEmit` before committing.
 - Styling: Tailwind 3 (`@tailwind` directives in `src/index.css`, tokens as CSS custom properties in `:root`) plus inline styles on the pages. Shared UI primitives live in `src/components/ui/`; the `cn` helper is in `src/lib/utils.ts`; the `@/*` alias maps to `src/`.
 
+## Drafts — unfinished forms are never lost
+
+Every data-entry form autosaves what has been typed into a local **draft**
+(`lib/formDraft.js` + `components/ui/DraftStatus.jsx`), so an officer can move
+between forms, switch project or period, or close the browser on a phone and
+find their entry where they left it. A draft lives in `localStorage`, keyed per
+user (a shared field laptop must not leak one officer's entry to the next) and
+expiring after 30 days; it never reaches the database.
+
+Wiring a new form up is three lines: memoise the form's starting values as
+`seed`, call
+`useFormDraft(draftKey(...), v, { baseline: seed, onRestore: setV })`, render
+`<DraftStatus draft={draft} />`, and call `draft.clear()` after a successful
+save. Closing a form keeps the draft; only Cancel (and the explicit "Discard
+draft") throws it away.
+
+Drafting does **not** relax validation. A record still reaches the database only
+through its save path with every required field filled, and a section counts as
+complete only when it holds a saved record — a draft never does. In MERL
+Reporting the sections marked `requiredForSubmission` in `MODULES` must each
+hold at least one saved record before a reporting period can be submitted.
+
 ## Geography — provinces, islands, area councils, villages
 
 `constants/vanuatuGeo.js` mirrors the province/island/area-council seed from

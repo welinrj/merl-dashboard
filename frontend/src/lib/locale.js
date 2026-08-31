@@ -27,6 +27,11 @@ export const fmtDateTime = (value) => (value
   })
   : '—');
 
+/** Time of day only — "14:03" — for things that happened during this sitting. */
+export const fmtTime = (value) => (value
+  ? new Date(value).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' })
+  : '—');
+
 /** Thousands-separated count — "1,680" in English, "1 680" in French. */
 export const fmtNum = (value, dash = '—') => (value == null || value === ''
   ? dash
