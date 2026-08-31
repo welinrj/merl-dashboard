@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
+import ChangePasswordModal from '../components/ui/ChangePasswordModal';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
@@ -133,6 +134,9 @@ function UsersTab() {
   const [busy, setBusy]         = useState(false);
   const [cred, setCred]         = useState(null);
   const [assignFor, setAssignFor] = useState(null); // user whose project assignments are open
+  // Whose password the administrator is setting. Distinct from the reset
+  // above: that generates a temporary one to pass on, this chooses it.
+  const [passwordFor, setPasswordFor] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -253,8 +257,12 @@ function UsersTab() {
                       </span>
                     </td>
                     <td className="py-2.5 text-right whitespace-nowrap">
-                      <button onClick={() => resetPassword(u)} disabled={busy || !u.has_login}
+                      <button onClick={() => setPasswordFor(u)} disabled={busy || !u.has_login}
                         className="text-xs font-semibold text-green-700 hover:underline disabled:text-gray-300 disabled:no-underline mr-3">
+                        {t('pw.setPassword')}
+                      </button>
+                      <button onClick={() => resetPassword(u)} disabled={busy || !u.has_login}
+                        className="text-xs font-semibold text-gray-600 hover:underline disabled:text-gray-300 disabled:no-underline mr-3">
                         {t('adm.resetPassword')}
                       </button>
                       <button onClick={() => toggleActive(u)} disabled={busy}
@@ -311,6 +319,10 @@ function UsersTab() {
 
       {assignFor && (
         <AssignProjectsModal user={assignFor} onClose={() => setAssignFor(null)} />
+      )}
+
+      {passwordFor && (
+        <ChangePasswordModal adminFor={passwordFor} onClose={() => setPasswordFor(null)} onDone={load} />
       )}
     </div>
   );
