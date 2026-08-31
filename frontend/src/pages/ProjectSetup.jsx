@@ -784,9 +784,9 @@ function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outpu
     target_value: '', target_date: '', frequency: '', data_source: '', collection_method: '',
     means_of_verification: '', verification_method: '', disaggregation: '', assumptions: '',
     responsible_officer_id: '', objective_id: '', outcome_id: '', output_id: '', is_qualitative: false, higher_is_better: true,
-    responsible_officer: '',
     ...(initial?.id ? initial : {}),
-    // Spread after the row, so an older indicator shows the officer it has.
+    // After the spread, so an older indicator shows the officer it has —
+    // and a new one starts blank rather than carrying the row's shape.
     responsible_officer: initial?.id ? officerName(initial, 'responsible_officer') : '',
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [initial?.id]);
@@ -926,9 +926,9 @@ function ActivityForm({ projectId, userId, initial, outputs, outcomes, onClose, 
     planned_start_date: '', planned_end_date: '', actual_start_date: '', actual_end_date: '',
     planned_budget: '', actual_expenditure: '', physical_progress_pct: '', key_achievement: '',
     issue_delay: '', next_action: '', next_action_due: '',
-    responsible_officer: '',
     ...(initial?.id ? initial : {}),
-    // Spread after the row, so an older activity shows the officer it has.
+    // After the spread, so an older activity shows the officer it has —
+    // and a new one starts blank rather than carrying the row's shape.
     responsible_officer: initial?.id ? officerName(initial, 'responsible_officer') : '',
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [initial?.id, firstOutputId]);
