@@ -27,6 +27,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { localised, i18nCols } from '../lib/contentLocale';
 import TranslationPanel from '../components/ui/TranslationPanel';
+import DraftStatus, { DraftChip } from '../components/ui/DraftStatus';
+import { useFormDraft, useDraftPresence, draftKey, clearDraft } from '../lib/formDraft';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 // The DoCC M&E Officer is the official Reviewer/Approver; System Administrator
@@ -39,11 +41,19 @@ const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(
 // ── Module definitions ───────────────────────────────────────────────────────
 // type: text | number | textarea | select | date | checkbox
 // options: static [{value,label}] ; dynamicOptions: 'indicators' | 'activities'
+//
+// requiredForSubmission marks the sections a periodic report cannot be read
+// without — progress against the indicators, the money, and the narrative. The
+// period cannot be submitted until each of them holds at least one saved record.
+// Beneficiaries and Evidence stay optional: a period can genuinely reach nobody
+// new, and evidence is supporting material. Work in progress is kept as a local
+// draft (lib/formDraft.js) and is deliberately *not* counted here — only a saved
+// record, which has passed the required-field checks, completes a section.
 const MODULES = [
   {
     key: 'indicator_progress', label: 'merl.modIndicatorProgress', form: '4',
     view: 'v_indicator_progress', rpc: 'upsert_indicator_progress', del: 'delete_indicator_progress',
-    periodScoped: true,
+    periodScoped: true, requiredForSubmission: true,
     fields: [
       { name: 'indicator_id', label: 'merl.indicator', type: 'select', dynamicOptions: 'indicators', required: true },
       { name: 'period_target', label: 'merl.periodTarget', type: 'number' },
@@ -67,7 +77,7 @@ const MODULES = [
   {
     key: 'financial_progress', label: 'merl.modFinancialProgress', form: '6',
     view: 'v_financial_progress', rpc: 'upsert_financial_progress', del: 'delete_financial_progress',
-    periodScoped: true,
+    periodScoped: true, requiredForSubmission: true,
     fields: [
       { name: 'approved_budget', label: 'merl.approvedProjectBudget', type: 'number' },
       { name: 'annual_budget', label: 'merl.annualBudget', type: 'number' },
@@ -160,7 +170,7 @@ const MODULES = [
   {
     key: 'learning_updates', label: 'merl.modLearning', form: '10',
     view: 'v_learning_updates', rpc: 'upsert_learning_update', del: 'delete_learning_update',
-    periodScoped: true,
+    periodScoped: true, requiredForSubmission: true,
     fields: [
       { name: 'key_achievements', label: 'merl.keyAchievements', type: 'textarea' },
       { name: 'major_results', label: 'merl.majorResults', type: 'textarea' },
@@ -330,13 +340,36 @@ export default function MerlReporting({ user }) {
     return src.map((o) => ({ value: o.id, label: `${o.code} · ${o.name}` }));
   };
 
+  // ── Drafts ──────────────────────────────────────────────────────────────────
+  // Where an unfinished entry is kept. Scoped to the officer, the project, the
+  // reporting period (for the period-scoped modules), the module and the row, so
+  // moving between forms — or between projects and periods — never shows one
+  // form's half-finished entry inside another.
+  const draftKeyFor = useCallback((m, recordId) => (m && projectId
+    ? draftKey('merl', user?.id, projectId, m.periodScoped ? activePeriod : 'all', m.key, recordId || 'new')
+    : null), [user?.id, projectId, activePeriod]);
+
+  // "Draft" markers on the module tabs: only new-record drafts, because those
+  // are the ones an officer would otherwise have no way of finding again.
+  const newDraftKeys = useMemo(
+    () => MODULES.map((m) => draftKeyFor(m, null)).filter(Boolean),
+    [draftKeyFor]);
+  const draftsPresent = useDraftPresence(newDraftKeys);
+  const moduleHasDraft = (m) => draftsPresent.has(draftKeyFor(m, null));
+
   // ── Save a module record via its upsert RPC ─────────────────────────────────
+  // This is the submission step: a record only reaches the database once every
+  // required field is filled. Anything short of that stays a draft.
   const saveRecord = async (values) => {
     const m = activeModule;
-    for (const f of m.fields) {
-      if (f.required && (values[f.name] === '' || values[f.name] == null)) {
-        toast.error(t('merl.fieldRequired', { field: t(f.label) })); return;
-      }
+    const missing = m.fields
+      .filter((f) => f.required && (values[f.name] === '' || values[f.name] == null))
+      .map((f) => t(f.label));
+    if (missing.length) {
+      toast.error(missing.length === 1
+        ? t('merl.fieldRequired', { field: missing[0] })
+        : t('draft.missingRequired', { fields: missing.join(', ') }));
+      return;
     }
     // Cross-field rules the database also enforces, checked here first so the
     // officer is told which figures disagree rather than seeing a constraint.
@@ -359,6 +392,8 @@ export default function MerlReporting({ user }) {
     }
     const { error } = await supabase.rpc(m.rpc, params);
     if (error) { toast.error(dbErrorMessage(error)); return; }
+    // The record is saved, so its draft has served its purpose.
+    clearDraft(draftKeyFor(m, editing?.id));
     toast.success(editing?.id ? t('merl.updatedToast') : t('merl.addedToast'));
     setEditing(null);
     loadRecords();
@@ -423,6 +458,33 @@ export default function MerlReporting({ user }) {
     const done = scopedModules.filter((m) => (sections[m.key] || 0) > 0).length;
     return { done, total: scopedModules.length, pct: scopedModules.length ? Math.round((done / scopedModules.length) * 100) : 0 };
   }, [scopedModules, sections]);
+
+  // Required sections — the ones that gate submission (see MODULES above).
+  const requiredModules = useMemo(() => MODULES.filter((m) => m.requiredForSubmission), []);
+  const missingRequired = useMemo(
+    () => requiredModules.filter((m) => (sections[m.key] || 0) === 0),
+    [requiredModules, sections]);
+
+  // Submitting the period is the moment the report has to be complete: a
+  // section with only a draft in it is not filled in, so it is turned back here
+  // with the officer sent straight to the section that needs work.
+  const submitPeriod = async () => {
+    if (missingRequired.length) {
+      toast.error(t('merl.submitBlocked', { sections: missingRequired.map((m) => t(m.label)).join(', ') }));
+      selectTab(missingRequired[0].key);
+      return;
+    }
+    const pending = MODULES.filter((m) => moduleHasDraft(m));
+    if (pending.length) {
+      const ok = await confirmDialog({
+        title: t('merl.submitDraftsTitle'),
+        message: t('merl.submitDrafts', { sections: pending.map((m) => t(m.label)).join(', ') }),
+        confirmLabel: t('merl.submitAnyway'), cancelLabel: t('merl.backToDrafts'), danger: false,
+      });
+      if (!ok) { selectTab(pending[0].key); return; }
+    }
+    periodAction('submit_reporting_period', currentPeriodRow.id);
+  };
 
   return (
     <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -492,7 +554,10 @@ export default function MerlReporting({ user }) {
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && (
-              <button style={btn('var(--green-600)')} onClick={() => periodAction('submit_reporting_period', currentPeriodRow.id)}>
+              <button style={btn('var(--green-600)')} onClick={submitPeriod}
+                title={missingRequired.length
+                  ? t('merl.submitBlocked', { sections: missingRequired.map((m) => t(m.label)).join(', ') })
+                  : undefined}>
                 <Send size={14} /> {t('merl.submit')}
               </button>
             )}
@@ -523,6 +588,10 @@ export default function MerlReporting({ user }) {
               <strong style={{ fontSize: '0.85rem', color: 'var(--text-1)' }}>{t('merl.periodCompletion')}</strong>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.4rem' }}>
                 {t('merl.sectionsWithData', { done: completion.done, total: completion.total })}
+                {' · '}
+                {t('merl.requiredSectionsDone', {
+                  done: requiredModules.length - missingRequired.length, total: requiredModules.length,
+                })}
               </span>
             </div>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 800, color: completion.pct === 100 ? '#16a34a' : 'var(--text-1)' }}>
@@ -535,17 +604,25 @@ export default function MerlReporting({ user }) {
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {scopedModules.map((m) => {
               const has = (sections[m.key] || 0) > 0;
+              // A required section still missing its data is what holds the
+              // submission up, so it is called out rather than left neutral.
+              const blocking = !has && m.requiredForSubmission;
               return (
                 <button key={m.key} onClick={() => selectTab(m.key)}
                   title={has ? `${sections[m.key]} record(s) this period` : 'No data yet for this period'}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: 9999,
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.6rem', minHeight: 32, borderRadius: 9999,
                     fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
-                    border: `1px solid ${has ? '#16a34a55' : 'var(--border)'}`,
-                    background: has ? '#dcece2' : 'var(--white)', color: has ? '#155e34' : 'var(--text-3)' }}>
+                    border: `1px solid ${has ? '#16a34a55' : blocking ? '#d9a62966' : 'var(--border)'}`,
+                    background: has ? '#dcece2' : blocking ? '#fdf3dc' : 'var(--white)',
+                    color: has ? '#155e34' : blocking ? '#8a6416' : 'var(--text-3)' }}>
                   {has
                     ? <CheckCircle2 size={13} />
-                    : <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid var(--text-3)', display: 'inline-block' }} />}
+                    : <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: '50%', border: `1.5px solid ${blocking ? '#8a6416' : 'var(--text-3)'}`, display: 'inline-block' }} />}
                   {t(m.label)}
+                  {m.requiredForSubmission && (
+                    <span style={{ fontWeight: 700, opacity: 0.75 }}>· {t('merl.requiredSection')}</span>
+                  )}
+                  {moduleHasDraft(m) && <DraftChip />}
                 </button>
               );
             })}
@@ -568,6 +645,8 @@ export default function MerlReporting({ user }) {
         {MODULES.map((m) => (
           <button key={m.key} className={`mr-tab${tab === m.key ? ' active' : ''}`} onClick={() => selectTab(m.key)}>
             {t(m.label)}
+            {/* An unfinished entry is only useful if it can be found again. */}
+            {moduleHasDraft(m) && <DraftChip style={{ marginLeft: '0.35rem' }} />}
           </button>
         ))}
       </div>
@@ -651,6 +730,7 @@ export default function MerlReporting({ user }) {
         <RecordForm
           module={activeModule}
           initial={editing}
+          draftKey={draftKeyFor(activeModule, editing?.id)}
           dynamicOptions={dynamicOptions}
           indicators={indicators}
           onCancel={() => setEditing(null)}
@@ -699,7 +779,7 @@ function PeriodForm({ onCancel, onSave }) {
 }
 
 // ── Generic module record form ───────────────────────────────────────────────
-function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onSave, onTranslated }) {
+function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators, onCancel, onSave, onTranslated }) {
   const { t } = useTranslation();
   const seed = useMemo(() => {
     const base = {};
@@ -710,6 +790,40 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
   useEffect(() => setV(seed), [seed]);
   const set = (name, type) => (e) =>
     setV((s) => ({ ...s, [name]: type === 'checkbox' ? e.target.checked : e.target.value }));
+
+  // Unfinished entries are kept locally, so the officer can leave this form for
+  // another one — or close the browser on a phone — and find them again here.
+  // The draft only restores fields this module actually has.
+  const draft = useFormDraft(key, v, {
+    baseline: seed,
+    onRestore: (values) => setV((s) => ({ ...s, ...values })),
+  });
+
+  const missingRequired = module.fields
+    .filter((f) => f.required && (v[f.name] === '' || v[f.name] == null))
+    .map((f) => t(f.label));
+
+  // Closing keeps whatever has been typed rather than throwing it away — no
+  // "discard your changes?" dialog to dismiss in a hurry and regret. Discarding
+  // is still one click away, on the draft line and on the reopened form.
+  const closeKeepingDraft = () => {
+    if (draft.flush()) toast.success(t('draft.keptOnClose'));
+    onCancel();
+  };
+
+  // Cancel means cancel: it throws the entry away, draft included, and says so
+  // first. Everything else on this form errs towards keeping the work.
+  const cancelDiscardingDraft = async () => {
+    if (draft.status !== 'idle' || draft.hasDraft) {
+      const ok = await confirmDialog({
+        title: t('draft.discardTitle'), message: t('draft.discardMessage'),
+        confirmLabel: t('draft.discardConfirm'), cancelLabel: t('draft.keep'),
+      });
+      if (!ok) return;
+    }
+    draft.clear();
+    onCancel();
+  };
 
   // Live derived previews
   const ind = indicators.find((i) => i.id === v.indicator_id);
@@ -728,12 +842,15 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}
-      onClick={onCancel}>
+      onClick={closeKeepingDraft}>
       <div style={{ background: 'var(--white)', borderRadius: 12, width: '100%', maxWidth: 720, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-          <strong style={{ fontSize: '1rem' }}>{initial?.id ? t('merl.edit') : t('merl.add')} — {t(module.label)}</strong>
-          <button onClick={onCancel} aria-label={t('ui.close')} title={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.8rem' }}>
+          <div style={{ minWidth: 0 }}>
+            <strong style={{ fontSize: '1rem' }}>{initial?.id ? t('merl.edit') : t('merl.add')} — {t(module.label)}</strong>
+            <DraftStatus draft={draft} style={{ marginTop: '0.2rem' }} />
+          </div>
+          <button onClick={closeKeepingDraft} aria-label={t('ui.close')} title={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0 }}><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="mr-form-grid">
           {module.fields.map((f) => (
@@ -767,11 +884,20 @@ function RecordForm({ module, initial, dynamicOptions, indicators, onCancel, onS
         )}
         <TranslationPanel table={module.view.replace(/^v_/, '')} row={initial} onSaved={onTranslated}
           labels={Object.fromEntries(module.fields.map((f) => [f.name, t(f.label)]))} />
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+        {/* Saving is the submission step — it is refused until the required
+            fields are in, which is exactly why the draft above exists. */}
+        {missingRequired.length > 0 && (
+          <p style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', fontSize: '0.75rem', color: 'var(--text-2)', margin: '0.8rem 0 0' }}>
+            <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+            <span>{t('draft.missingRequired', { fields: missingRequired.join(', ') })}</span>
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
           <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>
             {t(initial?.id ? 'merl.saveChanges' : 'merl.addRecord')}
           </button>
-          <button style={btnSecondary()} onClick={onCancel}>{t('merl.cancel')}</button>
+          <button style={btnSecondary()} onClick={closeKeepingDraft}>{t('draft.saveAndClose')}</button>
+          <button style={btnSecondary()} onClick={cancelDiscardingDraft}>{t('merl.cancel')}</button>
         </div>
       </div>
     </div>

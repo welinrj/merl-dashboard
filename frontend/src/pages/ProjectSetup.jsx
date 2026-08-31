@@ -9,7 +9,7 @@
 // Reads through the public.v_* views; writes through the SECURITY DEFINER RPCs.
 // Shows a completion tick per section (Enter once -> structured data).
 // =============================================================================
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -27,18 +27,22 @@ import { localised, sourceRow, i18nCols } from '../lib/contentLocale';
 import TranslationPanel from '../components/ui/TranslationPanel';
 import VillageSelect from '../components/ui/VillageSelect';
 import MapPinPicker from '../components/ui/MapPinPicker';
+import DraftStatus, { DraftChip } from '../components/ui/DraftStatus';
+import { useFormDraft, useDraftPrefixes, draftKey } from '../lib/formDraft';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const toNull = (v) => (v === '' || v === undefined ? null : v);
 const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 const toArr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
 
+// `draftKind` is the segment the step's forms build their draft keys from, so a
+// step can be marked when it holds work that was left unfinished.
 const STEPS = [
-  { key: 'profile',    label: 'ps.projectProfile', form: 'Form 1' },
-  { key: 'results',    label: 'ps.resultsFramework', form: 'Form 2' },
-  { key: 'indicators', label: 'ps.indicators', form: 'Form 3' },
-  { key: 'activities', label: 'ps.activities', form: 'Form 5' },
-  { key: 'locations',  label: 'ps.locations', form: 'Form 7' },
+  { key: 'profile',    label: 'ps.projectProfile', form: 'Form 1', draftKind: 'profile' },
+  { key: 'results',    label: 'ps.resultsFramework', form: 'Form 2', draftKind: 'result' },
+  { key: 'indicators', label: 'ps.indicators', form: 'Form 3', draftKind: 'indicator' },
+  { key: 'activities', label: 'ps.activities', form: 'Form 5', draftKind: 'activity' },
+  { key: 'locations',  label: 'ps.locations', form: 'Form 7', draftKind: 'location' },
 ];
 
 const btn = (bg, extra = {}) => ({
@@ -143,6 +147,15 @@ export default function ProjectSetup({ user }) {
     return out;
   }, [project, objectives, outcomes, outputs, indicators, activities, locations]);
 
+  // Unfinished entries, per step — an officer who left one halfway through can
+  // see from here which step to go back to.
+  const stepDraftPrefix = useCallback((s) => draftKey(
+    'ps', user?.id, s.key === 'profile' ? (projectId ?? 'new') : projectId, s.draftKind,
+  ), [user?.id, projectId]);
+  const stepDraftPrefixes = useMemo(() => STEPS.map(stepDraftPrefix), [stepDraftPrefix]);
+  const draftedPrefixes = useDraftPrefixes(stepDraftPrefixes);
+  const stepHasDraft = (s) => draftedPrefixes.has(stepDraftPrefix(s));
+
   const stepIndex = STEPS.findIndex((s) => s.key === step);
   const goPrev = () => setStep(STEPS[Math.max(0, stepIndex - 1)].key);
   const goNext = () => setStep(STEPS[Math.min(STEPS.length - 1, stepIndex + 1)].key);
@@ -227,6 +240,7 @@ export default function ProjectSetup({ user }) {
               style={disabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>
               {done ? <span className="ps-tick"><Check size={11} /></span> : <span style={{ width: 16, textAlign: 'center', color: 'var(--text-3)' }}>{STEPS.indexOf(s) + 1}</span>}
               {t(s.label)}
+              {stepHasDraft(s) && <DraftChip />}
             </button>
           );
         })}
@@ -267,23 +281,23 @@ export default function ProjectSetup({ user }) {
 
       <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
         {step === 'profile' && (
-          <ProfileStep project={project} users={users}
+          <ProfileStep project={project} users={users} userId={user?.id}
             onSaved={async (id) => { await loadProjects(); setProjectId(id); toast.success(t('ps.projectSaved')); }} />
         )}
         {step === 'results' && project && (
-          <ResultsStep projectId={projectId} objectives={objectives} outcomes={outcomes} outputs={outputs}
+          <ResultsStep projectId={projectId} userId={user?.id} objectives={objectives} outcomes={outcomes} outputs={outputs}
             indicators={indicators} activities={activities} users={users} reload={() => loadFramework(projectId)} />
         )}
         {step === 'indicators' && project && (
-          <IndicatorsStep projectId={projectId} indicators={indicators} objectives={objectives}
+          <IndicatorsStep projectId={projectId} userId={user?.id} indicators={indicators} objectives={objectives}
             outcomes={outcomes} outputs={outputs} users={users} reload={() => loadFramework(projectId)} />
         )}
         {step === 'activities' && project && (
-          <ActivitiesStep outputs={outputs} outcomes={outcomes} activities={activities} users={users}
+          <ActivitiesStep projectId={projectId} userId={user?.id} outputs={outputs} outcomes={outcomes} activities={activities} users={users}
             reload={() => loadFramework(projectId)} />
         )}
         {step === 'locations' && project && (
-          <LocationsStep projectId={projectId} locations={locations} reload={() => loadFramework(projectId)} />
+          <LocationsStep projectId={projectId} userId={user?.id} locations={locations} reload={() => loadFramework(projectId)} />
         )}
         {step !== 'profile' && !project && (
           <p style={{ color: 'var(--text-3)' }}>{t('ps.saveProfileFirst')}</p>
@@ -317,17 +331,31 @@ export default function ProjectSetup({ user }) {
 }
 
 // ── Step 1: Project Profile ──────────────────────────────────────────────────
-function ProfileStep({ project, users, onSaved }) {
+// Module scope, so the draft baseline for a new project is one stable object
+// rather than a fresh one on every render.
+const PROFILE_BLANK = {
+  name: '', acronym: '', description: '', status: 'pipeline', category: '', lead_agency: '',
+  executing_agency: '', donor: '', funding_window: '', currency: 'VUV', budget_vuv: '',
+  start_date: '', end_date: '', approval_date: '', project_type: '', primary_climate_theme: '',
+  coverage_type: '', provinces: [], project_manager_id: '', me_officer_id: '', finance_officer_id: '',
+  est_direct_beneficiaries: '', est_indirect_beneficiaries: '', expected_primary_outcome: '',
+};
+
+function ProfileStep({ project, users, userId, onSaved }) {
   const { t } = useTranslation();
-  const blank = {
-    name: '', acronym: '', description: '', status: 'pipeline', category: '', lead_agency: '',
-    executing_agency: '', donor: '', funding_window: '', currency: 'VUV', budget_vuv: '',
-    start_date: '', end_date: '', approval_date: '', project_type: '', primary_climate_theme: '',
-    coverage_type: '', provinces: [], project_manager_id: '', me_officer_id: '', finance_officer_id: '',
-    est_direct_beneficiaries: '', est_indirect_beneficiaries: '', expected_primary_outcome: '',
-  };
+  const blank = PROFILE_BLANK;
   const [v, setV] = useState(blank);
   const [saving, setSaving] = useState(false);
+  // What the form started from — blank for a new project, the saved row when
+  // editing. The draft is the difference between this and what is on screen.
+  const [seed, setSeed] = useState(blank);
+  // Which project the values on screen belong to. Drafts only run once that is
+  // the project being edited, so the fetch below cannot land on top of a
+  // restored draft, and switching project cannot file one project's entries
+  // under the next one's key while its row is still loading.
+  const currentId = project?.id ?? 'new';
+  const [loadedId, setLoadedId] = useState(project ? null : 'new');
+  const ready = loadedId === currentId;
 
   // The full record as entered. The list this form was opened from carries only
   // a few columns and is localised for display, so the translation panel below
@@ -335,23 +363,34 @@ function ProfileStep({ project, users, onSaved }) {
   const [record, setRecord] = useState(null);
 
   useEffect(() => {
-    if (!project) { setV(blank); setRecord(null); return; }
+    if (!project) { setV(blank); setSeed(blank); setRecord(null); setLoadedId('new'); return; }
     // Load the full row for editing. Deliberately not localised: this form edits
     // the record in the language it was entered in.
     supabase.from('v_projects').select('*').eq('id', project.id).single().then(({ data }) => {
-      if (!data) return;
+      if (!data) { setLoadedId(project.id); return; }
       setRecord(data);
-      setV({
+      const saved = {
         ...blank, ...data,
         provinces: data.provinces ?? [],
         budget_vuv: data.budget_vuv ?? '', start_date: data.start_date ?? '', end_date: data.end_date ?? '',
         approval_date: data.approval_date ?? '',
         est_direct_beneficiaries: data.est_direct_beneficiaries ?? '',
         est_indirect_beneficiaries: data.est_indirect_beneficiaries ?? '',
-      });
+      };
+      setV(saved);
+      setSeed(saved);
+      setLoadedId(data.id);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id]);
+
+  // A profile half-filled on a phone in the field survives leaving this step,
+  // switching project, or closing the browser — it is restored on the way back.
+  const draft = useFormDraft(draftKey('ps', userId, currentId, 'profile'), v, {
+    baseline: seed,
+    enabled: ready,
+    onRestore: (values) => setV((s) => ({ ...s, ...values })),
+  });
 
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setMulti = (k) => (e) => setV((s) => ({ ...s, [k]: Array.from(e.target.selectedOptions).map((o) => o.value) }));
@@ -377,6 +416,11 @@ function ProfileStep({ project, users, onSaved }) {
     });
     setSaving(false);
     if (error) { toast.error(dbErrorMessage(error)); return; }
+    // Saved as a record — what is on screen is the new starting point, and the
+    // draft has done its job. Without moving the baseline, the values just saved
+    // would read as a fresh draft the moment this returns.
+    setSeed(v);
+    draft.clear();
     onSaved(data);
   };
 
@@ -430,17 +474,26 @@ function ProfileStep({ project, users, onSaved }) {
       </div>
       <TranslationPanel table="projects" row={record} onSaved={() => onSaved(project?.id)}
         labels={{ name: t('ps.projectTitle'), description: t('ps.description') }} />
-      <div style={{ marginTop: '1rem' }}>
+      {/* The title is what the project is filed under, so it is the one thing
+          that cannot be left for later — everything else can sit in the draft. */}
+      {!v.name.trim() && (
+        <p style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', fontSize: '0.75rem', color: 'var(--text-2)', margin: '0.9rem 0 0' }}>
+          <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+          <span>{t('draft.missingRequired', { fields: t('ps.projectTitle') })}</span>
+        </p>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
         <button style={{ ...btn('var(--green-700)'), ...(saving ? disabledBtn : null) }} onClick={save} disabled={saving}>
           {saving ? t('ps.saving') : t(project ? 'ps.saveChanges' : 'ps.createProject')}
         </button>
+        <DraftStatus draft={draft} />
       </div>
     </div>
   );
 }
 
 // ── Step 2: Results Framework (Objective → Outcome → Output) ─────────────────
-function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = [], activities = [], users = [], reload }) {
+function ResultsStep({ projectId, userId, objectives, outcomes, outputs, indicators = [], activities = [], users = [], reload }) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState({});
   const [editing, setEditing] = useState(null); // { kind, parentId, row }
@@ -522,7 +575,7 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
         );
       })}
       {editing && (
-        <ResultModal editing={editing} projectId={projectId} users={users}
+        <ResultModal editing={editing} projectId={projectId} userId={userId} users={users}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
     </div>
@@ -532,14 +585,20 @@ function ResultsStep({ projectId, objectives, outcomes, outputs, indicators = []
 // Objective / Outcome / Output form modal (§18-20), using the existing
 // create_/update_ RPC parameters (climate theme, expected outcome, notes,
 // responsible officer, status). No schema change required.
-function ResultModal({ editing, projectId, users, onClose, onSaved }) {
+function ResultModal({ editing, projectId, userId, users, onClose, onSaved }) {
   const { t } = useTranslation();
   const { kind, parentId, row } = editing;
-  const base = kind === 'objective'
-    ? { statement: '', climate_theme: '', expected_outcome: '', notes: '', status: '' }
-    : { statement: '', responsible_officer_id: '', status: '' };
-  const [v, setV] = useState({ ...base, ...(row?.id ? row : {}) });
-  const dirty = useDirty(v);
+  const seed = useMemo(() => {
+    const base = kind === 'objective'
+      ? { statement: '', climate_theme: '', expected_outcome: '', notes: '', status: '' }
+      : { statement: '', responsible_officer_id: '', status: '' };
+    return { ...base, ...(row?.id ? row : {}) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, row?.id]);
+  const [v, setV] = useState(seed);
+  const draft = useFormDraft(
+    draftKey('ps', userId, projectId, 'result', kind, parentId ?? '-', row?.id ?? 'new'),
+    v, { baseline: seed, onRestore: (values) => setV((s) => ({ ...s, ...values })) });
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const save = async () => {
     if (!v.statement.trim()) { toast.error(t('ps.statementRequired')); return; }
@@ -559,6 +618,7 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
         : await supabase.rpc('create_output', { p_outcome_id: parentId, p_statement: S, p_responsible_officer_id: v.responsible_officer_id || null });
     }
     if (res.error) { toast.error(dbErrorMessage(res.error)); return; }
+    draft.clear();
     toast.success(row?.id ? t('ps.savedToast') : t('ps.addedToast'));
     onSaved();
   };
@@ -566,7 +626,7 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
   const title = t(`ps.${row?.id ? 'edit' : 'new'}${Kind}`);
   return (
     <Modal title={title} onClose={onClose} onSave={save}
-      saveLabel={t(row?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
+      saveLabel={t(row?.id ? 'ps.save' : 'ps.add')} draft={draft}>
       <Field label={t('ps.statementReq')} className="ps-full">
         <textarea className="field-input" rows={2} value={v.statement} onChange={set('statement')} />
       </Field>
@@ -589,7 +649,7 @@ function ResultModal({ editing, projectId, users, onClose, onSaved }) {
 const qualTag = { marginLeft: 6, fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-3)', background: 'var(--surface-1)', borderRadius: 4, padding: '0.05rem 0.35rem', textTransform: 'uppercase', letterSpacing: '0.04em' };
 const miniChip = { fontSize: '0.72rem', color: 'var(--text-2)', background: 'var(--surface-1)', borderRadius: 6, padding: '0.15rem 0.45rem' };
 
-function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, users, reload }) {
+function IndicatorsStep({ projectId, userId, indicators, objectives, outcomes, outputs, users, reload }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
@@ -653,24 +713,28 @@ function IndicatorsStep({ projectId, indicators, objectives, outcomes, outputs, 
         </div>
       )}
       {editing !== null && (
-        <IndicatorForm projectId={projectId} initial={editing} objectives={objectives} outcomes={outcomes}
+        <IndicatorForm projectId={projectId} userId={userId} initial={editing} objectives={objectives} outcomes={outcomes}
           outputs={outputs} users={users} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
     </div>
   );
 }
 
-function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, users, onClose, onSaved }) {
+function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outputs, users, onClose, onSaved }) {
   const { t } = useTranslation();
-  const base = {
+  const seed = useMemo(() => ({
     name: '', indicator_level: '', definition: '', unit: '', baseline_value: '', baseline_year: '',
     target_value: '', target_date: '', frequency: '', data_source: '', collection_method: '',
     means_of_verification: '', verification_method: '', disaggregation: '', assumptions: '',
     responsible_officer_id: '', objective_id: '', outcome_id: '', output_id: '', is_qualitative: false, higher_is_better: true,
-  };
-  const [v, setV] = useState({ ...base, ...(initial?.id ? initial : {}) });
-  const dirty = useDirty(v);
-  useEffect(() => setV({ ...base, ...(initial?.id ? initial : {}) }), [initial?.id]); // eslint-disable-line
+    ...(initial?.id ? initial : {}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [initial?.id]);
+  const [v, setV] = useState(seed);
+  useEffect(() => setV(seed), [seed]);
+  const draft = useFormDraft(
+    draftKey('ps', userId, projectId, 'indicator', initial?.id ?? 'new'),
+    v, { baseline: seed, onRestore: (values) => setV((s) => ({ ...s, ...values })) });
   const set = (k, t) => (e) => setV((s) => ({ ...s, [k]: t === 'checkbox' ? e.target.checked : e.target.value }));
   const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
 
@@ -693,11 +757,12 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
       p_is_qualitative: !!v.is_qualitative, p_higher_is_better: !!v.higher_is_better,
     });
     if (error) return toast.error(dbErrorMessage(error));
+    draft.clear();
     onSaved();
   };
   return (
     <Modal title={t(initial?.id ? 'ps.editIndicatorTitle' : 'ps.addIndicatorTitle')} onClose={onClose} onSave={save}
-      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
+      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} draft={draft}>
       <Field className="ps-full" label={t('ps.indicatorNameReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
       <Field label={t('ps.level')}><Select value={v.indicator_level ?? ''} onChange={set('indicator_level')} options={OPT.INDICATOR_LEVEL} allowBlank /></Field>
       <Field label={t('ps.unitOfMeasurement')}><input className="field-input" value={v.unit ?? ''} onChange={set('unit')} /></Field>
@@ -726,7 +791,7 @@ function IndicatorForm({ projectId, initial, objectives, outcomes, outputs, user
 }
 
 // ── Step 4: Activities ───────────────────────────────────────────────────────
-function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
+function ActivitiesStep({ projectId, userId, outputs, outcomes, activities, users, reload }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   const del = async (row) => {
@@ -776,25 +841,30 @@ function ActivitiesStep({ outputs, outcomes, activities, users, reload }) {
         </div>
       )}
       {editing !== null && (
-        <ActivityForm initial={editing} outputs={outputs} outcomes={outcomes} users={users}
+        <ActivityForm projectId={projectId} userId={userId} initial={editing} outputs={outputs} outcomes={outcomes} users={users}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
     </div>
   );
 }
 
-function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
+function ActivityForm({ projectId, userId, initial, outputs, outcomes, users, onClose, onSaved }) {
   const { t } = useTranslation();
-  const base = {
-    name: '', output_id: outputs[0]?.id ?? '', outcome_id: '', description: '', responsible_officer_id: '',
+  const firstOutputId = outputs[0]?.id ?? '';
+  const seed = useMemo(() => ({
+    name: '', output_id: firstOutputId, outcome_id: '', description: '', responsible_officer_id: '',
     responsible_org: '', status: 'not_started', province: '', island: '', area_council: '', community: '',
     planned_start_date: '', planned_end_date: '', actual_start_date: '', actual_end_date: '',
     planned_budget: '', actual_expenditure: '', physical_progress_pct: '', key_achievement: '',
     issue_delay: '', next_action: '', next_action_due: '',
-  };
-  const [v, setV] = useState({ ...base, ...(initial?.id ? initial : {}) });
-  const dirty = useDirty(v);
-  useEffect(() => setV({ ...base, ...(initial?.id ? initial : {}) }), [initial?.id]); // eslint-disable-line
+    ...(initial?.id ? initial : {}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [initial?.id, firstOutputId]);
+  const [v, setV] = useState(seed);
+  useEffect(() => setV(seed), [seed]);
+  const draft = useFormDraft(
+    draftKey('ps', userId, projectId, 'activity', initial?.id ?? 'new'),
+    v, { baseline: seed, onRestore: (values) => setV((s) => ({ ...s, ...values })) });
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setProvince = (e) => setV((s) => ({ ...s, province: e.target.value, island: '', area_council: '' }));
   const userOpts = users.map((u) => ({ value: u.id, label: u.full_name }));
@@ -821,11 +891,12 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
       p_issue_delay: toNull(v.issue_delay), p_next_action: toNull(v.next_action), p_next_action_due: toNull(v.next_action_due),
     });
     if (error) return toast.error(dbErrorMessage(error));
+    draft.clear();
     onSaved();
   };
   return (
     <Modal title={t(initial?.id ? 'ps.editActivityTitle' : 'ps.addActivityTitle')} onClose={onClose} onSave={save}
-      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
+      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} draft={draft}>
       <Field className="ps-full" label={t('ps.activityTitleReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
       <Field label={t('ps.linkedOutputReq')}><Select value={v.output_id} onChange={set('output_id')} options={outputs.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} /></Field>
       <Field label={t('ps.linkedOutcome')}><Select value={v.outcome_id ?? ''} onChange={set('outcome_id')} options={outcomes.map((o) => ({ value: o.id, label: `${o.code} ${o.statement}` }))} allowBlank /></Field>
@@ -852,7 +923,7 @@ function ActivityForm({ initial, outputs, outcomes, users, onClose, onSaved }) {
 }
 
 // ── Step 5: Locations ────────────────────────────────────────────────────────
-function LocationsStep({ projectId, locations, reload }) {
+function LocationsStep({ projectId, userId, locations, reload }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(null);
   // The whole register, once: it is reference data of a few thousand rows at
@@ -918,7 +989,7 @@ function LocationsStep({ projectId, locations, reload }) {
         </div>
       )}
       {editing !== null && (
-        <LocationForm projectId={projectId} initial={editing} villages={villages}
+        <LocationForm projectId={projectId} userId={userId} initial={editing} villages={villages}
           hasRegister={hasRegister} onVillageAdded={loadVillages}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
@@ -926,20 +997,24 @@ function LocationsStep({ projectId, locations, reload }) {
   );
 }
 
-function LocationForm({ projectId, initial, villages, hasRegister = true, onVillageAdded, onClose, onSaved }) {
+function LocationForm({ projectId, userId, initial, villages, hasRegister = true, onVillageAdded, onClose, onSaved }) {
   const { t } = useTranslation();
-  const base = {
+  const seed = useMemo(() => ({
     province: '', island: '', area_council: '', community: '', latitude: '', longitude: '',
     intervention: '', status: '', beneficiaries: '', village_id: null,
-  };
-  const [v, setV] = useState({ ...base, ...(initial?.id ? sourceRow(initial) : {}) });
+    ...(initial?.id ? sourceRow(initial) : {}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [initial?.id]);
+  const [v, setV] = useState(seed);
   const [showMap, setShowMap] = useState(false);
   const [adding, setAdding] = useState(null);   // { name } while naming a new village
-  const dirty = useDirty(v);
   useEffect(() => {
-    setV({ ...base, ...(initial?.id ? sourceRow(initial) : {}) });
+    setV(seed);
     setShowMap(false); setAdding(null);
-  }, [initial?.id]); // eslint-disable-line
+  }, [seed]);
+  const draft = useFormDraft(
+    draftKey('ps', userId, projectId, 'location', initial?.id ?? 'new'),
+    v, { baseline: seed, onRestore: (values) => setV((s) => ({ ...s, ...values })) });
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   // Changing province invalidates the island and area council under it, and the
   // village that was chosen within them.
@@ -992,6 +1067,7 @@ function LocationForm({ projectId, initial, villages, hasRegister = true, onVill
       ({ error } = await supabase.rpc('upsert_project_location', older));
     }
     if (error) return toast.error(dbErrorMessage(error));
+    draft.clear();
     onSaved();
   };
 
@@ -1016,7 +1092,7 @@ function LocationForm({ projectId, initial, villages, hasRegister = true, onVill
 
   return (
     <Modal title={t(initial?.id ? 'ps.editLocationTitle' : 'ps.addLocationTitle')} onClose={onClose} onSave={save}
-      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} dirty={dirty}>
+      saveLabel={t(initial?.id ? 'ps.save' : 'ps.add')} draft={draft}>
       <Field label={t('ps.province')}><Select value={v.province ?? ''} onChange={setProvince} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} allowBlank /></Field>
       <Field label={t('ps.island')}><Select value={v.island ?? ''} onChange={set('island')} options={islandsForProvince(v.province).map((i) => ({ value: i, label: i }))} allowBlank /></Field>
       <Field label={t('ps.areaCouncil')}><Select value={v.area_council ?? ''} onChange={set('area_council')} options={areaCouncilsForProvince(v.province).map((a) => ({ value: a, label: a }))} allowBlank /></Field>
@@ -1101,34 +1177,46 @@ function Select({ value, onChange, options, allowBlank }) {
     </select>
   );
 }
-// Returns true once the form value differs from its initial snapshot (§22).
-function useDirty(v) {
-  const ref = useRef();
-  if (ref.current === undefined) ref.current = JSON.stringify(v);
-  return JSON.stringify(v) !== ref.current;
-}
-
-function Modal({ title, children, onClose, onSave, saveLabel, dirty }) {
+// A form modal that never loses work: closing it (the ✕, the backdrop, or
+// "Save draft & close") keeps what has been typed as a local draft and restores
+// it next time the same form is opened. Cancel is the one way out that throws
+// the entry away, and it asks first. Saving is unchanged — it still runs the
+// form's own required-field checks before anything reaches the database.
+function Modal({ title, children, onClose, onSave, saveLabel, draft }) {
   const { t } = useTranslation();
-  // Unsaved-changes guard (§22): confirm before discarding edits.
-  const guardedClose = async () => {
-    if (dirty && !(await confirmDialog({
+  // Anything typed but not yet saved to the record — a draft in the making.
+  const hasDraft = Boolean(draft && (draft.status !== 'idle' || draft.hasDraft));
+
+  const closeKeepingDraft = () => {
+    if (draft?.flush()) toast.success(t('draft.keptOnClose'));
+    onClose();
+  };
+
+  const cancelDiscardingDraft = async () => {
+    // Unsaved-changes guard (§22): confirm before discarding the entry.
+    if (hasDraft && !(await confirmDialog({
       title: t('ps.discardChangesQ'), message: t('ps.unsavedChanges'),
       confirmLabel: t('ps.discardChanges'), cancelLabel: t('ps.stay'),
     }))) return;
+    draft?.clear();
     onClose();
   };
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }} onClick={guardedClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }} onClick={closeKeepingDraft}>
       <div style={{ background: 'var(--white)', borderRadius: 14, width: '100%', maxWidth: 760, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-          <strong style={{ fontSize: '1rem' }}>{title}</strong>
-          <button onClick={guardedClose} aria-label={t('ps.close')} title={t('ps.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} aria-hidden="true" /></button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.8rem' }}>
+          <div style={{ minWidth: 0 }}>
+            <strong style={{ fontSize: '1rem' }}>{title}</strong>
+            <DraftStatus draft={draft} style={{ marginTop: '0.2rem' }} />
+          </div>
+          <button onClick={closeKeepingDraft} aria-label={t('ps.close')} title={t('ps.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0 }}><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="ps-grid">{children}</div>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
           <button style={btn('var(--green-700)')} onClick={onSave}>{saveLabel}</button>
-          <button style={ghostBtn} onClick={guardedClose}>{t('ps.cancel')}</button>
+          {draft && <button style={ghostBtn} onClick={closeKeepingDraft}>{t('draft.saveAndClose')}</button>}
+          <button style={ghostBtn} onClick={cancelDiscardingDraft}>{t('ps.cancel')}</button>
         </div>
       </div>
     </div>
