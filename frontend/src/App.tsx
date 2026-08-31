@@ -19,6 +19,7 @@ import ReviewApproval from './pages/ReviewApproval';
 import ErrorBoundary from './components/ErrorBoundary';
 import GlobalSearch from './components/GlobalSearch';
 import NotificationBell from './components/NotificationBell';
+import ChangePasswordModal from './components/ui/ChangePasswordModal';
 import { DashboardFilterProvider } from './lib/dashboardFilters';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavKey } from './types';
@@ -425,6 +426,9 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);   // mobile nav dropdown
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // Every officer can change their own password, from the account menu —
+  // the only place that is reachable on a phone as well as a desktop.
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const { t, i18n } = useTranslation();
   const location = useLocation();
 
@@ -526,6 +530,10 @@ export default function App() {
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
                       <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: 2 }}>{t(`roles.${user.role}`)}</div>
                     </div>
+                    <button onClick={() => { setUserMenuOpen(false); setPasswordOpen(true); }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-2)', fontSize: '0.8rem', fontWeight: 600 }}>
+                      <Lock size={16} aria-hidden="true" /> {t('pw.changePassword')}
+                    </button>
                     <button onClick={() => { setUserMenuOpen(false); void supabase.auth.signOut(); setUser(null); }}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)', fontSize: '0.8rem', fontWeight: 600 }}>
                       <LogOut size={16} aria-hidden="true" /> {t('shell.signOut')}
@@ -554,6 +562,8 @@ export default function App() {
           </ErrorBoundary>
         </div>
       </div>
+
+      {passwordOpen && <ChangePasswordModal onClose={() => setPasswordOpen(false)} />}
     </div>
     </DashboardFilterProvider>
   );

@@ -1238,6 +1238,30 @@ const resources = {
         dueInDays_other: 'Due in {{count}} days',
         reportingPeriod: 'Reporting period',
       },
+      // Passwords — self-service for every officer, plus the administrator's
+      // own path to any account (migration 0040).
+      pw: {
+        changePassword:  'Change password',
+        changeTitle:     'Change your password',
+        changeSubtitle:  'You will stay signed in on this device.',
+        setPassword:     'Set password',
+        setForTitle:     'Set a password',
+        setForSubtitle:  'For {{name}} ({{email}}).',
+        current:         'Current password',
+        new:             'New password',
+        confirm:         'Confirm new password',
+        rule:            'At least {{count}} characters.',
+        tooShort:        'The new password must be at least {{count}} characters.',
+        mismatch:        'The two new passwords do not match.',
+        adminSignsOut:   'This signs the account out everywhere. They will need the new password to sign in again.',
+        changedToast:    'Your password has been changed.',
+        setForToast:     'Password set for {{name}}.',
+        saving:          'Saving…',
+        cancel:          'Cancel',
+        close:           'Close',
+        show:            'Show password',
+        hide:            'Hide password',
+      },
       // Draft autosave — shared by every data-entry form (lib/formDraft.js).
       draft: {
         saving:          'Saving draft…',
@@ -3292,6 +3316,30 @@ const resources = {
         dueInDays_one: 'Échéance dans {{count}} jour',
         dueInDays_other: 'Échéance dans {{count}} jours',
         reportingPeriod: 'Période de rapport',
+      },
+      // Mots de passe — libre-service pour chaque agent, plus l'accès de
+      // l'administrateur à tout compte (migration 0040).
+      pw: {
+        changePassword:  'Changer le mot de passe',
+        changeTitle:     'Changer votre mot de passe',
+        changeSubtitle:  'Vous resterez connecté sur cet appareil.',
+        setPassword:     'Définir le mot de passe',
+        setForTitle:     'Définir un mot de passe',
+        setForSubtitle:  'Pour {{name}} ({{email}}).',
+        current:         'Mot de passe actuel',
+        new:             'Nouveau mot de passe',
+        confirm:         'Confirmer le nouveau mot de passe',
+        rule:            'Au moins {{count}} caractères.',
+        tooShort:        'Le nouveau mot de passe doit comporter au moins {{count}} caractères.',
+        mismatch:        'Les deux nouveaux mots de passe ne correspondent pas.',
+        adminSignsOut:   'Cela déconnecte le compte partout. Le nouveau mot de passe sera nécessaire pour se reconnecter.',
+        changedToast:    'Votre mot de passe a été changé.',
+        setForToast:     'Mot de passe défini pour {{name}}.',
+        saving:          'Enregistrement…',
+        cancel:          'Annuler',
+        close:           'Fermer',
+        show:            'Afficher le mot de passe',
+        hide:            'Masquer le mot de passe',
       },
       // Brouillons automatiques — communs à tous les formulaires de saisie.
       draft: {
