@@ -466,10 +466,27 @@ function ProfileStep({ project, userId, onSaved }) {
         <Field label={t('ps.status')}><Select value={v.status} onChange={set('status')} options={OPT.DOCC_PROJECT_STATUS} /></Field>
         <Field className="ps-full" label={t('ps.description')}><textarea className="field-input" rows={2} value={v.description ?? ''} onChange={set('description')} /></Field>
 
+        {/* Typed in rather than chosen from the standard list. The DoCC's own
+            vocabulary never covered every project — and because those lists
+            stored their label as the value, what is kept here is unchanged in
+            kind: the same readable text, just no longer limited to the twelve
+            answers the list happened to offer.
+
+            maxLength matches the column each field lands in (category and
+            expected_primary_outcome are VARCHAR(120), project_type VARCHAR(60)),
+            so an over-long entry is stopped at the keyboard rather than coming
+            back from the database as "value too long for type character
+            varying". */}
         <h4 className="ps-sec">{t('ps.classification')}</h4>
-        <Field label={t('ps.themeSector')}><Select value={v.category ?? ''} onChange={set('category')} options={OPT.CLIMATE_THEME} allowBlank /></Field>
-        <Field label={t('ps.projectType')}><Select value={v.project_type ?? ''} onChange={set('project_type')} options={OPT.PROJECT_TYPE} allowBlank /></Field>
-        <Field label={t('ps.expectedPrimaryOutcome')}><Select value={v.expected_primary_outcome ?? ''} onChange={set('expected_primary_outcome')} options={OPT.EXPECTED_OUTCOME} allowBlank /></Field>
+        <Field label={t('ps.themeSector')} hint={t('ps.classificationHint')}>
+          <input className="field-input" maxLength={120} value={v.category ?? ''} onChange={set('category')} />
+        </Field>
+        <Field label={t('ps.projectType')}>
+          <input className="field-input" maxLength={60} value={v.project_type ?? ''} onChange={set('project_type')} />
+        </Field>
+        <Field label={t('ps.expectedPrimaryOutcome')}>
+          <input className="field-input" maxLength={120} value={v.expected_primary_outcome ?? ''} onChange={set('expected_primary_outcome')} />
+        </Field>
 
         <h4 className="ps-sec">{t('ps.implementingInstitutions')}</h4>
         <Field label={t('ps.leadDept')}><input className="field-input" value={v.lead_agency ?? ''} onChange={set('lead_agency')} /></Field>
