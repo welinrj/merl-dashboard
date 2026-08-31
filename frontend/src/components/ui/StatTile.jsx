@@ -21,24 +21,17 @@ const STATUS_LABEL = { green: 'On track', amber: 'Needs attention', red: 'Critic
  * @param {React.ReactNode} props.value   the headline number/text (rendered in ink)
  * @param {React.ReactNode} [props.sub]   optional secondary line (muted)
  * @param {'green'|'amber'|'red'|'none'} [props.status]  shows a small status dot by the label
+ * @param {boolean} [props.placeholder]   the value is an absence ("Not reported"),
+ *                                        not a measurement — see below
  * @param {object} [props.style]          extra styles merged onto the tile
  */
-export default function StatTile({ label, value, sub, status, style }) {
+export default function StatTile({ label, value, sub, status, placeholder = false, style }) {
   return (
-    <div
-      className="stat-tile"
-      style={{
-        background: 'var(--white)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-card)',
-        padding: '0.9rem 1rem',
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.3rem',
-        ...style,
-      }}
-    >
+    // The tile's surface lives in the .stat-tile rule, not here. Set inline it
+    // could never be restyled by a stylesheet — an inline border beats any
+    // selector — so a hover or state rule on a clickable tile silently did
+    // nothing. Per-call overrides still work: `style` merges last.
+    <div className="stat-tile" style={style}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minHeight: 16 }}>
         {status && (
           <span
@@ -51,7 +44,14 @@ export default function StatTile({ label, value, sub, status, style }) {
           {label}
         </span>
       </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-1)', lineHeight: 1.1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      {/* An absent measurement is set in the body face at reading size, not in
+          display type: "Not reported" rendered as large as a real figure shouts
+          louder than the numbers beside it, wraps onto two lines, and stops the
+          eye on the one tile with nothing to say. It stays legible — it is
+          still the tile's answer — but it reads as an absence. */}
+      <div style={placeholder
+        ? { fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-3)', lineHeight: 1.25, minWidth: 0 }
+        : { fontFamily: 'var(--font-display)', fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-1)', lineHeight: 1.1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {value}
       </div>
       {sub && (

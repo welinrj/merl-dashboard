@@ -238,13 +238,13 @@ function Comparison({ comparison }) {
                 {known ? fmtPct(b.pct) : t('ppa.notReported')}
               </span>
             </div>
-            <div style={{ position: 'relative', height: 10, background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
+            <div className="ppa-bar-track">
               {known && (
-                <div style={{ width: `${Math.min(100, b.pct)}%`, height: '100%', background: TONE[tone].bar }} />
+                <div className="ppa-bar-fill" style={{ width: `${Math.min(100, b.pct)}%`, background: TONE[tone].bar }} />
               )}
               {/* The calendar marker, so every bar is read against the same line. */}
               {typeof elapsed === 'number' && b.key !== 'time' && (
-                <span aria-hidden="true" style={{ position: 'absolute', top: -2, bottom: -2, left: `${Math.min(100, elapsed)}%`, width: 2, background: 'var(--text-2)' }} />
+                <span aria-hidden="true" className="ppa-bar-tick" style={{ left: `${Math.min(100, elapsed)}%` }} />
               )}
             </div>
           </div>
@@ -810,43 +810,48 @@ export default function ProjectPortfolioAnalysis() {
           </div>
 
           {/* 4 — executive KPIs. Each jumps to the section that explains it. */}
-          <div className="grid-stats">
-            <button type="button" onClick={() => jump('ppa-health')} style={kpiBtn}>
+          <div className="grid-kpi-6">
+            <button type="button" onClick={() => jump('ppa-health')} className="kpi-jump">
               <StatTile label={t('ppa.kpiHealth')} status={tile(a.health.status)}
                 value={t(`ppa.health_${a.health.status}`)}
                 sub={t('ppa.kpiHealthSub')} />
             </button>
-            <button type="button" onClick={() => jump('ppa-financial')} style={kpiBtn}>
+            <button type="button" onClick={() => jump('ppa-financial')} className="kpi-jump">
               <StatTile label={t('ppa.kpiBudget')} status={tile(a.dimensions.financial.status)}
                 value={typeof a.financial.utilisationPct === 'number' ? fmtPct(a.financial.utilisationPct) : t('ppa.notReported')}
+                placeholder={typeof a.financial.utilisationPct !== 'number'}
                 sub={a.financial.hasRecords
                   ? t('ppa.kpiBudgetSub', { spent: fmtAmount(a.financial.spent), budget: fmtAmount(a.financial.approved) })
                   : t('ppa.noFinancialRecords')} />
             </button>
-            <button type="button" onClick={() => jump('ppa-implementation')} style={kpiBtn}>
+            <button type="button" onClick={() => jump('ppa-implementation')} className="kpi-jump">
               <StatTile label={t('ppa.kpiImplementation')} status={tile(a.dimensions.schedule.status)}
                 value={typeof a.implementation.pct === 'number' ? fmtPct(a.implementation.pct) : t('ppa.notReported')}
+                placeholder={typeof a.implementation.pct !== 'number'}
                 sub={a.implementation.basis === 'physical'
                   ? t('ppa.basisPhysical', { counted: a.implementation.counted, total: a.implementation.total })
                   : a.implementation.basis === 'status'
                     ? t('ppa.basisStatus', { counted: a.implementation.counted, total: a.implementation.total })
                     : t('ppa.noActivities')} />
             </button>
-            <button type="button" onClick={() => jump('ppa-results')} style={kpiBtn}>
+            <button type="button" onClick={() => jump('ppa-results')} className="kpi-jump">
               <StatTile label={t('ppa.kpiResults')} status={tile(a.dimensions.results.status)}
                 value={typeof a.results.achievementPct === 'number' ? fmtPct(a.results.achievementPct) : t('ppa.notReported')}
+                placeholder={typeof a.results.achievementPct !== 'number'}
                 sub={a.results.due > 0
                   ? t('ppa.kpiResultsSub', { meeting: a.results.meeting, due: a.results.due })
                   : t('ppa.noIndicatorsDue')} />
             </button>
-            <button type="button" onClick={() => jump('ppa-timeline')} style={kpiBtn}>
+            <button type="button" onClick={() => jump('ppa-timeline')} className="kpi-jump">
               <StatTile label={t('ppa.kpiTime')} status="none"
                 value={typeof a.timeElapsedPct === 'number' ? fmtPct(a.timeElapsedPct) : t('ppa.notReported')}
+                placeholder={typeof a.timeElapsedPct !== 'number'}
                 sub={project.end_date ? t('ppa.kpiTimeSub', { date: fmtDate(project.end_date) }) : t('ppa.noDates')} />
             </button>
-            <button type="button" onClick={() => jump('ppa-beneficiaries')} style={kpiBtn}>
+            <button type="button" onClick={() => jump('ppa-beneficiaries')} className="kpi-jump">
               <StatTile label={t('ppa.kpiBeneficiaries')} status="none"
                 value={a.beneficiaries.reached != null ? fmtNum(a.beneficiaries.reached) : t('ppa.notReported')}
+                placeholder={a.beneficiaries.reached == null}
                 sub={a.beneficiaries.target != null
                   ? t('ppa.kpiBeneficiariesSub', { target: fmtNum(a.beneficiaries.target) })
                   : t('ppa.noBeneficiaryTarget')} />
@@ -1221,11 +1226,6 @@ export default function ProjectPortfolioAnalysis() {
 // A KPI tile is a button, so the whole tile is the target rather than a small
 // link inside it — but it must not look like one, so the button contributes no
 // styling of its own.
-const kpiBtn = {
-  display: 'block', width: '100%', padding: 0, border: 0, background: 'transparent',
-  textAlign: 'left', cursor: 'pointer', font: 'inherit',
-};
-
 // ── Timeline ─────────────────────────────────────────────────────────────────
 
 /**
