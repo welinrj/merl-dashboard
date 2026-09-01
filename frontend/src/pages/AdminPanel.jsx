@@ -7,22 +7,22 @@ import { useTranslation } from 'react-i18next';
 import { fmtDateTime } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
 
-// The five official user types. `id` is the DB enum value (merl.user_role).
+// The four official user types. `id` is the DB enum value (merl.user_role).
+// Data Entry / Project Officer was retired in migration 0041 — it is neither
+// offered here nor accepted by admin_create_user.
 const DB_ROLES = [
   { id: 'system_admin',       label: 'adm.roleAdmin',                 color: 'bg-red-100 text-red-700' },
   { id: 'docc_me_officer',    label: 'adm.roleMeo',                     color: 'bg-blue-100 text-blue-700' },
   { id: 'project_manager',    label: 'adm.rolePm', color: 'bg-green-100 text-green-700' },
-  { id: 'data_entry_officer', label: 'adm.roleDataEntry',         color: 'bg-amber-100 text-amber-700' },
   { id: 'viewer',             label: 'adm.roleViewer',                   color: 'bg-gray-100 text-gray-700' },
 ];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-// App-side role codes (UserRole in types.ts), same five official roles.
+// App-side role codes (UserRole in types.ts), same four official roles.
 const ROLES = [
   { id: 'ROLE_ADMIN',        label: 'adm.roleAdmin',                 color: 'bg-red-100 text-red-700' },
   { id: 'ROLE_DOCC_MEO',     label: 'adm.roleMeo',                     color: 'bg-blue-100 text-blue-700' },
   { id: 'ROLE_PROJ_MANAGER', label: 'adm.rolePm', color: 'bg-green-100 text-green-700' },
-  { id: 'ROLE_DATA_ENTRY',   label: 'adm.roleDataEntry',         color: 'bg-amber-100 text-amber-700' },
   { id: 'ROLE_VIEWER',       label: 'adm.roleViewer',                   color: 'bg-gray-100 text-gray-700' },
 ];
 
@@ -54,8 +54,9 @@ function TabButton({ label, active, onClick }) {
 }
 
 // ── Project-assignment modal ─────────────────────────────────────────────────
-// Assign/unassign projects to a Project Manager or Data Entry Officer. Portfolio
-// roles (System Admin / DoCC M&E Officer) need no assignment — they see all.
+// Assign/unassign projects to a Project Manager. Every other role is
+// portfolio-wide (System Admin / DoCC M&E Officer / Viewer) and needs no
+// assignment — they see all.
 function AssignProjectsModal({ user, onClose }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
@@ -81,7 +82,7 @@ function AssignProjectsModal({ user, onClose }) {
     setBusy(projectId); setErr('');
     const { error } = isOn
       ? await supabase.rpc('unassign_user_project', { p_user_id: user.id, p_project_id: projectId })
-      : await supabase.rpc('assign_user_project', { p_user_id: user.id, p_project_id: projectId, p_assignment_type: user.role === 'project_manager' ? 'manager' : 'data_entry' });
+      : await supabase.rpc('assign_user_project', { p_user_id: user.id, p_project_id: projectId, p_assignment_type: 'manager' });
     setBusy(null);
     if (error) { setErr(dbErrorMessage(error)); return; }
     setAssigned(prev => { const n = new Set(prev); if (isOn) n.delete(projectId); else n.add(projectId); return n; });
@@ -130,7 +131,7 @@ function UsersTab() {
   const [loading, setLoading]   = useState(true);
   const [err, setErr]           = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm]         = useState({ email: '', full_name: '', role: 'data_entry_officer', organisation: '' });
+  const [form, setForm]         = useState({ email: '', full_name: '', role: 'project_manager', organisation: '' });
   const [busy, setBusy]         = useState(false);
   const [cred, setCred]         = useState(null);
   const [assignFor, setAssignFor] = useState(null); // user whose project assignments are open
@@ -156,7 +157,7 @@ function UsersTab() {
     setBusy(false);
     if (error) { setErr(dbErrorMessage(error)); return; }
     setCred({ email: form.email.trim().toLowerCase(), password: data });
-    setForm({ email: '', full_name: '', role: 'data_entry_officer', organisation: '' });
+    setForm({ email: '', full_name: '', role: 'project_manager', organisation: '' });
     setShowForm(false);
     load();
   };
@@ -269,7 +270,7 @@ function UsersTab() {
                         className="text-xs font-semibold text-gray-600 hover:underline mr-3">
                         {u.active ? 'Deactivate' : 'Activate'}
                       </button>
-                      {['project_manager', 'data_entry_officer'].includes(u.role) && (
+                      {u.role === 'project_manager' && (
                         <button onClick={() => setAssignFor(u)} disabled={busy}
                           className="text-xs font-semibold text-blue-600 hover:underline mr-3">
                           {t('adm.assignProjects')}

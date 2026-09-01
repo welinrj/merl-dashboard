@@ -15,14 +15,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 // The database enum merl.user_role (supabase/migrations/0002_role_alignment.sql)
 // uses snake_case values; the app uses the ROLE_* constants in types.ts.
 
-// Official DB enum values (migration 0031). The legacy values (administrator,
-// docc_senior_officer, field_staff) are still accepted on read so the app keeps
-// working across the rename regardless of deploy order.
+// Official DB enum values (migration 0031, less the role retired by 0041). The
+// legacy values (administrator, docc_senior_officer, field_staff) are still
+// accepted on read so the app keeps working across the rename regardless of
+// deploy order.
 export type DbUserRole =
   | 'system_admin'
   | 'docc_me_officer'
   | 'project_manager'
-  | 'data_entry_officer'
   | 'viewer';
 
 // Read mapping accepts BOTH the official and the legacy DB values.
@@ -31,12 +31,16 @@ const DB_TO_APP_ROLE: Record<string, UserRole> = {
   system_admin:        'ROLE_ADMIN',
   docc_me_officer:     'ROLE_DOCC_MEO',
   project_manager:     'ROLE_PROJ_MANAGER',
-  data_entry_officer:  'ROLE_DATA_ENTRY',
   viewer:              'ROLE_VIEWER',
   // legacy (pre-0031) — kept for a seamless transition
   administrator:       'ROLE_ADMIN',
   docc_senior_officer: 'ROLE_VIEWER',
-  field_staff:         'ROLE_DATA_ENTRY',
+  // retired (0041) — the enum value survives in the database because Postgres
+  // cannot drop one, and 0041 moved every account off it. An account that
+  // somehow still carries it signs in read-only instead of throwing below,
+  // which would leave an officer staring at a blank portal.
+  data_entry_officer:  'ROLE_VIEWER',
+  field_staff:         'ROLE_VIEWER',
 };
 
 // Write mapping always targets the official DB values.
@@ -44,7 +48,6 @@ const APP_TO_DB_ROLE: Record<UserRole, DbUserRole> = {
   ROLE_ADMIN:        'system_admin',
   ROLE_DOCC_MEO:     'docc_me_officer',
   ROLE_PROJ_MANAGER: 'project_manager',
-  ROLE_DATA_ENTRY:   'data_entry_officer',
   ROLE_VIEWER:       'viewer',
 };
 

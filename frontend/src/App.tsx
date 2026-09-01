@@ -121,8 +121,6 @@ const TAB_ACCESS: Record<UserRole, NavKey[]> = {
   ROLE_DOCC_MEO:     ['overview', 'projects', 'results', 'activities', 'finances', 'projectAnalysis', 'locations', 'risks', 'reports', 'review', 'documents'],
   // Project Manager — assigned projects only (route data is project-scoped by RLS)
   ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'activities', 'finances', 'projectAnalysis', 'locations', 'risks', 'reports', 'documents'],
-  // Data Entry / Project Officer — data entry for assigned projects; no approval/admin
-  ROLE_DATA_ENTRY:   ['overview', 'projects', 'results', 'activities', 'locations', 'risks', 'documents'],
   // Viewer / Executive — read-only overview, projects, results and reports
   ROLE_VIEWER:       ['overview', 'projects', 'results', 'reports'],
 };
