@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Typecheck & build frontend
+    name: Typecheck, test & build frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +22,13 @@ jobs:
         working-directory: frontend
 
       - run: npx tsc --noEmit
+        working-directory: frontend
+
+      # Ahead of the build, so a broken check fails on the cheap step rather
+      # than after a full bundle. The runner (scripts/run-tests.mjs) bundles
+      # each test with esbuild before handing it to node --test, so it needs
+      # node_modules but not dist.
+      - run: npm test
         working-directory: frontend
 
       - run: npm run build
