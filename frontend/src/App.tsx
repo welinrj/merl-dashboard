@@ -482,11 +482,21 @@ export default function App() {
           {visibleNav.map(({ key, path, search, Icon }) => (
             <NavLink key={key} to={{ pathname: path, search: search ?? '' }}
               onClick={() => setSidebarOpen(false)}
-              className={key === activeItem.key ? 'active' : ''}>
+              className={() => (key === activeItem.key ? 'active' : '')}>
               <Icon size={16} aria-hidden="true" />{t(`nav.${key}`)}
             </NavLink>
           ))}
         </nav>
+        {/* Decorative only — hidden from assistive technology. */}
+        <svg className="dsh-foliage" viewBox="0 0 240 250" aria-hidden="true" focusable="false">
+          <path d="M100 250C64 214 48 168 66 122c40 14 62 62 58 128Z" fill="#7fbf9b" opacity=".5" />
+          <path d="M66 122c22 30 34 76 34 128" stroke="#5fa981" strokeWidth="2" opacity=".45" fill="none" />
+          <path d="M156 250c-8-52 8-104 52-128 10 52-10 100-24 128Z" fill="#4e9fb5" opacity=".45" />
+          <path d="M208 122c-30 30-48 76-52 128" stroke="#3e8ca1" strokeWidth="2" opacity=".45" fill="none" />
+          <path d="M24 250c-14-44-6-88 26-118 16 44 8 88-4 118Z" fill="#e0a12a" opacity=".3" />
+          <path d="M124 250c-2-58 20-104 62-124-2 56-28 100-44 124Z" fill="#8fd0ae" opacity=".3" />
+          <path d="M66 250c-24-40-24-84 2-116 20 38 16 82 6 116Z" fill="#3e8ca1" opacity=".35" />
+        </svg>
       </aside>
 
       {/* ── Main column ── */}
@@ -499,14 +509,11 @@ export default function App() {
           </div>
           <div className="dsh-head-actions">
             <GlobalSearch />
-            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <div className="dsh-lang">
               {LANGUAGES.map(({ code, label, name }) => (
                 <button key={code} onClick={() => void i18n.changeLanguage(code)}
                   lang={code} aria-label={name} title={name}
-                  aria-pressed={i18n.resolvedLanguage === code}
-                  style={{ padding: '0.34rem 0.6rem', fontSize: '0.72rem', fontWeight: 700, border: 'none', cursor: 'pointer',
-                    background: i18n.resolvedLanguage === code ? 'var(--green-600)' : 'var(--white)',
-                    color: i18n.resolvedLanguage === code ? '#fff' : 'var(--text-3)' }}>
+                  aria-pressed={i18n.resolvedLanguage === code}>
                   {label}
                 </button>
               ))}
