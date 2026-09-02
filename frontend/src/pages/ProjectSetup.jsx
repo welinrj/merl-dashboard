@@ -1,19 +1,31 @@
 // =============================================================================
-// ProjectSetup.jsx — DoCC Standardised MERL "Project Setup" wizard.
-// Covers the setup half of the DoCC form as a stepped workflow:
+// ProjectSetup.jsx — DoCC Standardised MERL "Project Setup".
+// Covers the setup half of the DoCC form as five independent sections:
 //   1. Project Profile   (Form 1)  -> upsert_project
 //   2. Results Framework (Form 2)  -> objective/outcome/output RPCs (0009)
 //   3. Indicators        (Form 3)  -> upsert_project_indicator
 //   4. Activities        (Form 5)  -> upsert_project_activity_full
 //   5. Locations         (Form 7)  -> upsert_project_location
 // Reads through the public.v_* views; writes through the SECURITY DEFINER RPCs.
-// Shows a completion tick per section (Enter once -> structured data).
+//
+// This page used to be a wizard: five steps, with 2-5 locked until a project
+// existed, and Previous/Next to walk between them. That shape fits creating a
+// project, which happens once per project. It fought the job officers actually
+// do here — opening a project months later to correct one field — because
+// reaching that field meant walking the wizard to it.
+//
+// So the model is completeness, not sequence. Every section is open at any
+// time, each carries its own state chip and its own save, and what is missing
+// is named rather than implied by which step you have reached. The reason the
+// wizard locked steps 2-5 has not gone away — those sections write against a
+// project id, so they need a saved project — but it is enforced at save time,
+// with a sentence, instead of by a shut door.
 // =============================================================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, ArrowLeft, ArrowRight,
+  Check, Plus, Pencil, Trash2, ChevronRight, ChevronDown, X, Send,
   CheckCircle2, AlertTriangle, MapPin,
 } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
@@ -24,26 +36,56 @@ import * as OPT from '../constants/formOptions';
 import { islandsForProvince, areaCouncilsForProvince, PROVINCE_LIST } from '../constants/vanuatuGeo';
 import { useTranslation } from 'react-i18next';
 import { localised, sourceRow, i18nCols } from '../lib/contentLocale';
+import { fmtDate, fmtNum } from '../lib/locale';
 import TranslationPanel from '../components/ui/TranslationPanel';
 import VillageSelect from '../components/ui/VillageSelect';
 import MapPinPicker from '../components/ui/MapPinPicker';
 import DraftStatus, { DraftChip } from '../components/ui/DraftStatus';
 import { useFormDraft, useDraftPrefixes, draftKey } from '../lib/formDraft';
+import {
+  checkSection, summarise, sectionState, SECTION_DONE, SECTION_PARTIAL,
+} from '../lib/completion';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const toNull = (v) => (v === '' || v === undefined ? null : v);
 const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 const toArr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
 
-// `draftKind` is the segment the step's forms build their draft keys from, so a
-// step can be marked when it holds work that was left unfinished.
-const STEPS = [
-  { key: 'profile',    label: 'ps.projectProfile', form: 'Form 1', draftKind: 'profile' },
-  { key: 'results',    label: 'ps.resultsFramework', form: 'Form 2', draftKind: 'result' },
-  { key: 'indicators', label: 'ps.indicators', form: 'Form 3', draftKind: 'indicator' },
-  { key: 'activities', label: 'ps.activities', form: 'Form 5', draftKind: 'activity' },
-  { key: 'locations',  label: 'ps.locations', form: 'Form 7', draftKind: 'location' },
+// `draftKind` is the segment each section's forms build their draft keys from,
+// so a section can be marked when it holds work that was left unfinished. These
+// segments are unchanged from the wizard: an officer who left a half-filled form
+// before this page changed shape finds it waiting in the same place.
+const SECTIONS = [
+  { key: 'profile',    label: 'ps.projectProfile',   form: 1, draftKind: 'profile' },
+  { key: 'results',    label: 'ps.resultsFramework', form: 2, draftKind: 'result' },
+  { key: 'indicators', label: 'ps.indicators',       form: 3, draftKind: 'indicator' },
+  { key: 'activities', label: 'ps.activities',       form: 5, draftKind: 'activity' },
+  { key: 'locations',  label: 'ps.locations',        form: 7, draftKind: 'location' },
 ];
+
+// What the profile has to carry before the project counts as set up. These are
+// the fields the rest of the portal reads: Financial Analysis needs a budget,
+// the timeline needs both dates, Geographic Coverage needs provinces, and every
+// list and report needs a title and a status. The other twenty-odd fields on
+// Form 1 are useful but nothing downstream breaks without them, so they are not
+// allowed to hold up a submission.
+const REQUIRED_PROFILE_FIELDS = [
+  { name: 'name',        label: 'ps.projectTitle' },
+  { name: 'status',      label: 'ps.status' },
+  { name: 'start_date',  label: 'ps.startDate' },
+  { name: 'end_date',    label: 'ps.endDate' },
+  { name: 'budget_vuv',  label: 'ps.approvedBudget' },
+  { name: 'provinces',   label: 'ps.provinces' },
+];
+
+// A value counts as entered when it is more than whitespace, and an empty
+// multi-select counts as unanswered rather than as "no provinces".
+const hasValue = (row, name) => {
+  const v = row?.[name];
+  if (Array.isArray(v)) return v.length > 0;
+  if (v === null || v === undefined) return false;
+  return String(v).trim() !== '';
+};
 
 const btn = (bg, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 0.85rem',
@@ -63,6 +105,24 @@ const rowGhost = (extra = {}) => ({
   cursor: 'pointer', color: 'var(--text-2)', background: 'none', ...extra,
 });
 
+// ── The state chip carried by every section, in both columns ────────────────
+// One component so the rail and the section headers can never disagree about
+// what state a section is in.
+function StateChip({ section, t }) {
+  const state = sectionState(section);
+  const done = state === SECTION_DONE;
+  const partial = state === SECTION_PARTIAL;
+  const label = done ? t('ps.chipDone')
+    : partial ? t('ps.chipPartial', { filled: section.filled, total: section.total })
+      : t('ps.chipEmpty');
+  return (
+    <span className={`ps-chip${done ? ' is-done' : partial ? ' is-partial' : ''}`}>
+      {done && <Check size={11} aria-hidden="true" />}
+      {label}
+    </span>
+  );
+}
+
 export default function ProjectSetup({ user }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
@@ -70,7 +130,11 @@ export default function ProjectSetup({ user }) {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState(null); // null = choosing / new
   const [users, setUsers] = useState([]);
-  const [step, setStep] = useState('profile');
+  // Which sections are expanded. Any section can be opened at any time; the
+  // profile starts open because it is where a new project begins.
+  const [open, setOpen] = useState({ profile: true });
+  const [submitting, setSubmitting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
   const [objectives, setObjectives] = useState([]);
   const [outcomes, setOutcomes] = useState([]);
@@ -78,8 +142,17 @@ export default function ProjectSetup({ user }) {
   const [indicators, setIndicators] = useState([]);
   const [activities, setActivities] = useState([]);
   const [locations, setLocations] = useState([]);
+  // The selected project's full row. The dropdown only carries enough to label
+  // an option; the identity card and the profile checks need the rest. Fetched
+  // here rather than lifted out of ProfileStep on purpose — that component's
+  // load is what gates its draft restore, and a project's row is a few hundred
+  // bytes, so a second read is cheaper than making draft handling conditional
+  // on a parent's fetch landing.
+  const [projectRow, setProjectRow] = useState(null);
 
   const project = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
+
+  const sectionRefs = useRef({});
 
   const loadProjects = useCallback(async () => {
     const { data } = await localised(() => supabase.from('v_projects').select(i18nCols('id, code, name, status')).order('code'));
@@ -93,19 +166,25 @@ export default function ProjectSetup({ user }) {
   }, [loadProjects]);
 
   // Deep-link from Global Search (§59): ?project=<id> selects that project.
+  // It used to jump to the Results step; there are no steps now, so it simply
+  // opens the project with every section reachable.
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const pid = searchParams.get('project');
     if (pid && projects.some((p) => p.id === pid)) {
       setProjectId(pid);
-      setStep('results');
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, projects, setSearchParams]);
 
   const loadFramework = useCallback(async (pid) => {
-    if (!pid) { setObjectives([]); setOutcomes([]); setOutputs([]); setIndicators([]); setActivities([]); setLocations([]); return; }
-    const [obj, oc, op, ind, act, loc] = await Promise.all([
+    if (!pid) {
+      setObjectives([]); setOutcomes([]); setOutputs([]); setIndicators([]);
+      setActivities([]); setLocations([]); setProjectRow(null);
+      return;
+    }
+    const [row, obj, oc, op, ind, act, loc] = await Promise.all([
+      supabase.from('v_projects').select('*').eq('id', pid).single(),
       localised(supabase.from('v_objectives').select('*').eq('project_id', pid).order('code')),
       localised(supabase.from('v_outcomes').select('*').eq('project_id', pid).order('code')),
       localised(supabase.from('v_outputs').select('*').eq('project_id', pid).order('code')),
@@ -113,60 +192,113 @@ export default function ProjectSetup({ user }) {
       localised(supabase.from('v_project_activities').select('*').eq('project_id', pid).order('code')),
       localised(supabase.from('v_project_locations').select('*').eq('project_id', pid).order('created_at')),
     ]);
+    setProjectRow(row.data ?? null);
     setObjectives(obj.data ?? []); setOutcomes(oc.data ?? []); setOutputs(op.data ?? []);
     setIndicators(ind.data ?? []); setActivities(act.data ?? []); setLocations(loc.data ?? []);
   }, [lang]);
 
   useEffect(() => { loadFramework(projectId); }, [projectId, loadFramework]);
 
-  const completion = {
-    profile: !!project,
-    results: objectives.length > 0 && outputs.length > 0,
-    indicators: indicators.length > 0,
-    activities: activities.length > 0,
-    locations: locations.length > 0,
-  };
-  const setupPct = Math.round((Object.values(completion).filter(Boolean).length / STEPS.length) * 100);
-
-  // Readiness for MERL reporting (§16): concrete, clickable setup issues.
-  const issues = useMemo(() => {
+  // ── Completeness ───────────────────────────────────────────────────────────
+  // Built as checks so what is missing can be named. The arithmetic on top of
+  // them is lib/completion.js, the same module MERL Reporting rolls its period
+  // up with — one definition of "how complete is this record" for both pages.
+  //
+  // Labels are resolved here rather than carried as keys, because several of
+  // them are counts and need the plural rule applied with the number.
+  const sections = useMemo(() => {
     if (!project) return [];
-    const out = [];
-    if (objectives.length === 0) out.push({ label: t('ps.addObjective'), step: 'results' });
-    if (outcomes.length === 0) out.push({ label: t('ps.addOutcome'), step: 'results' });
-    if (outputs.length === 0) out.push({ label: t('ps.addOutput'), step: 'results' });
-    if (indicators.length === 0) out.push({ label: t('ps.addIndicator'), step: 'indicators' });
     const noBaseline = indicators.filter((i) => i.baseline_value == null).length;
-    if (noBaseline) out.push({ label: t('ps.missingBaseline', { count: noBaseline }), step: 'indicators' });
     const noTarget = indicators.filter((i) => i.target_value == null && !i.is_qualitative).length;
-    if (noTarget) out.push({ label: t('ps.missingTarget', { count: noTarget }), step: 'indicators' });
     const noFreq = indicators.filter((i) => !i.frequency).length;
-    if (noFreq) out.push({ label: t('ps.missingFreq', { count: noFreq }), step: 'indicators' });
-    if (activities.length === 0) out.push({ label: t('ps.addActivity'), step: 'activities' });
-    if (locations.length === 0) out.push({ label: t('ps.addLocation'), step: 'locations' });
-    return out;
-  }, [project, objectives, outcomes, outputs, indicators, activities, locations]);
+    return [
+      checkSection('profile',
+        REQUIRED_PROFILE_FIELDS.map((f) => ({ ok: hasValue(projectRow, f.name), label: t(f.label) })),
+        { label: 'ps.projectProfile' }),
+      checkSection('results', [
+        { ok: objectives.length > 0, label: t('ps.addObjective') },
+        { ok: outcomes.length > 0, label: t('ps.addOutcome') },
+        { ok: outputs.length > 0, label: t('ps.addOutput') },
+      ], { label: 'ps.resultsFramework' }),
+      checkSection('indicators', [
+        { ok: indicators.length > 0, label: t('ps.addIndicator') },
+        // Only asked once there is an indicator to ask it of — otherwise a
+        // project with no indicators would fail three checks for one problem.
+        indicators.length > 0 && { ok: noBaseline === 0, label: t('ps.missingBaseline', { count: noBaseline }) },
+        indicators.length > 0 && { ok: noTarget === 0, label: t('ps.missingTarget', { count: noTarget }) },
+        indicators.length > 0 && { ok: noFreq === 0, label: t('ps.missingFreq', { count: noFreq }) },
+      ], { label: 'ps.indicators' }),
+      checkSection('activities', [
+        { ok: activities.length > 0, label: t('ps.addActivity') },
+      ], { label: 'ps.activities' }),
+      checkSection('locations', [
+        { ok: locations.length > 0, label: t('ps.addLocation') },
+      ], { label: 'ps.locations' }),
+    ];
+  }, [project, projectRow, objectives, outcomes, outputs, indicators, activities, locations, t]);
 
-  // Unfinished entries, per step — an officer who left one halfway through can
-  // see from here which step to go back to.
-  const stepDraftPrefix = useCallback((s) => draftKey(
+  const byKey = useMemo(() => Object.fromEntries(sections.map((s) => [s.key, s])), [sections]);
+  const summary = useMemo(() => summarise(sections), [sections]);
+
+  // Unfinished entries, per section — keyed exactly as the wizard keyed them.
+  const sectionDraftPrefix = useCallback((s) => draftKey(
     'ps', user?.id, s.key === 'profile' ? (projectId ?? 'new') : projectId, s.draftKind,
   ), [user?.id, projectId]);
-  const stepDraftPrefixes = useMemo(() => STEPS.map(stepDraftPrefix), [stepDraftPrefix]);
-  const draftedPrefixes = useDraftPrefixes(stepDraftPrefixes);
-  const stepHasDraft = (s) => draftedPrefixes.has(stepDraftPrefix(s));
+  const draftPrefixes = useMemo(() => SECTIONS.map(sectionDraftPrefix), [sectionDraftPrefix]);
+  const draftedPrefixes = useDraftPrefixes(draftPrefixes);
+  const sectionHasDraft = (s) => draftedPrefixes.has(sectionDraftPrefix(s));
 
-  const stepIndex = STEPS.findIndex((s) => s.key === step);
-  const goPrev = () => setStep(STEPS[Math.max(0, stepIndex - 1)].key);
-  const goNext = () => setStep(STEPS[Math.min(STEPS.length - 1, stepIndex + 1)].key);
+  const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }));
 
-  // Why Next is unavailable, in the user's terms — every step after the profile
-  // writes against a project id, so there has to be a saved project first.
-  const atLastStep = stepIndex === STEPS.length - 1;
-  const nextBlockedReason = !project
-    ? 'Create the project to continue.'
-    : atLastStep ? 'Last step.' : null;
-  const nextDisabled = atLastStep || !project;
+  // Opening from the rail or the banner: expand it, then bring it into view.
+  // Expanding first means the scroll lands on the section's content rather than
+  // on a collapsed header that is about to grow.
+  const jumpTo = useCallback((key) => {
+    setOpen((o) => ({ ...o, [key]: true }));
+    requestAnimationFrame(() => {
+      sectionRefs.current[key]?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, []);
+
+  // The first section holding an unmet check — where "fix this" should land.
+  const firstBlocking = summary.missingRequired[0];
+  // Every unmet check, with the section it belongs to, so the banner can say
+  // where they are rather than only how many there are.
+  const blockingIssues = useMemo(
+    () => summary.missingRequired.flatMap((s) => (s.issues ?? []).map((i) => ({ ...i, section: s }))),
+    [summary]);
+
+  // Where that work is. "2 required fields, in Project Profile" is the sentence
+  // worth reading; the same sentence naming all five sections is the bare count
+  // again with more words, and it is what overflows the banner in French.
+  const missing = summary.missingRequired;
+  const blockingWhere = missing.length === 1
+    ? t('ps.whereOne', { section: t(missing[0].label) })
+    : missing.length === 2
+      ? t('ps.whereTwo', { first: t(missing[0].label), second: t(missing[1].label) })
+      : t('ps.whereMany', { count: missing.length, first: t(missing[0]?.label ?? '') });
+
+  const submitForReview = async () => {
+    if (!project) return;
+    if (summary.missingRequired.length) {
+      toast.error(t('ps.submitBlocked', { section: t(summary.missingRequired[0].label) }));
+      jumpTo(summary.missingRequired[0].key);
+      return;
+    }
+    const pending = SECTIONS.filter((s) => sectionHasDraft(s));
+    if (pending.length && !(await confirmDialog({
+      title: t('merl.submitDraftsTitle'),
+      message: t('merl.submitDrafts', { sections: pending.map((s) => t(s.label)).join(', ') }),
+      confirmLabel: t('merl.submitAnyway'), cancelLabel: t('merl.backToDrafts'), danger: false,
+    }))) { jumpTo(pending[0].key); return; }
+
+    setSubmitting(true);
+    const { error } = await supabase.rpc('submit_project_for_review', { p_id: project.id });
+    setSubmitting(false);
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success(t('ps.submittedForReview'));
+    loadFramework(projectId);
+  };
 
   if (!canEdit) {
     return (
@@ -177,14 +309,64 @@ export default function ProjectSetup({ user }) {
     );
   }
 
+  const duration = projectRow?.start_date && projectRow?.end_date
+    ? `${fmtDate(projectRow.start_date)} → ${fmtDate(projectRow.end_date)}`
+    : null;
+
   return (
-    <div className="page-pad" style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-pad ps-page">
       <style>{`
-        .ps-steps{display:flex;gap:.4rem;flex-wrap:wrap;margin:1rem 0}
-        .ps-step{display:flex;align-items:center;gap:.4rem;padding:.5rem .8rem;border-radius:9999px;border:1px solid var(--border);background:var(--white);cursor:pointer;font-size:.8125rem;font-weight:600;color:var(--text-2)}
-        .ps-step.active{background:var(--green-600);color:#fff;border-color:var(--green-600)}
-        .ps-tick{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--green-100);color:var(--green-700)}
-        .ps-step.active .ps-tick{background:rgba(255,255,255,.25);color:#fff}
+        .ps-page{max-width:1200px;margin:0 auto}
+        .ps-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:1rem;align-items:start;margin-top:.9rem}
+        .ps-rail{position:sticky;top:1rem;display:flex;flex-direction:column;gap:.7rem}
+        .ps-idcard{border:1px solid var(--border);border-radius:10px;background:var(--white);padding:.9rem}
+        .ps-idcard h2{margin:0;font-size:.95rem;line-height:1.25;font-family:var(--font-display)}
+        .ps-idmeta{margin-top:.2rem;font-size:.7rem;color:var(--text-3);font-family:var(--font-mono)}
+        .ps-ring-row{display:flex;align-items:center;gap:.7rem;margin:.8rem 0 .2rem}
+        .ps-ring{flex-shrink:0}
+        .ps-ring-cap{font-size:.68rem;color:var(--text-3);line-height:1.3}
+        .ps-facts{list-style:none;margin:.8rem 0 0;padding:.7rem 0 0;border-top:1px solid var(--border);
+          display:flex;flex-direction:column;gap:.35rem}
+        .ps-facts li{display:flex;justify-content:space-between;gap:.5rem;font-size:.74rem}
+        .ps-facts dt{color:var(--text-3)}
+        .ps-facts dd{margin:0;font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+        .ps-seclist{border:1px solid var(--border);border-radius:10px;background:var(--white);overflow:hidden}
+        .ps-seclist button{display:flex;align-items:center;gap:.45rem;width:100%;padding:.5rem .7rem;
+          border:none;border-bottom:1px solid var(--border);background:none;cursor:pointer;font:inherit;
+          font-size:.78rem;font-weight:600;color:var(--text-2);text-align:left}
+        .ps-seclist button:last-child{border-bottom:none}
+        .ps-seclist button:hover{background:var(--surface-1)}
+        .ps-seclist .ps-secname{flex:1;min-width:0;overflow-wrap:anywhere}
+        /* Chips carry their own words, which are longer in French — they wrap
+           rather than stretching the rail or clipping. */
+        .ps-chip{display:inline-flex;align-items:center;gap:.22rem;flex-shrink:0;
+          padding:.12rem .4rem;border-radius:9999px;font-size:.65rem;font-weight:700;
+          border:1px solid var(--border);background:var(--white);color:var(--text-3);
+          white-space:normal;text-align:center;line-height:1.25}
+        .ps-chip.is-done{border-color:#16a34a55;background:#dcece2;color:#155e34}
+        .ps-chip.is-partial{border-color:#d9a62966;background:#fdf3dc;color:#8a6416}
+        .ps-banner{border:1px solid #d9a62966;background:#fdf3dc;border-radius:10px;padding:.75rem .9rem;margin-bottom:.8rem}
+        .ps-banner-head{display:flex;gap:.45rem;align-items:flex-start;font-size:.85rem;font-weight:700;color:#8a6416}
+        .ps-banner ul{margin:.45rem 0 0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.2rem}
+        .ps-banner li{font-size:.79rem;color:var(--text-2)}
+        .ps-linkbtn{background:none;border:none;padding:0;color:var(--green-700);cursor:pointer;
+          text-decoration:underline;font:inherit;text-align:left}
+        .ps-ok{border:1px solid #16a34a55;background:#dcece2;border-radius:10px;padding:.7rem .9rem;
+          margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem;color:#155e34;font-weight:700;font-size:.85rem}
+        .ps-section{border:1px solid var(--border);border-radius:10px;background:var(--white);margin-bottom:.7rem;overflow:hidden;scroll-margin-top:1rem}
+        .ps-sechead{display:flex;align-items:center;gap:.55rem;width:100%;padding:.7rem .9rem;border:none;
+          background:none;cursor:pointer;font:inherit;text-align:left}
+        .ps-sechead:hover{background:var(--surface-1)}
+        .ps-sechead .ps-title{font-size:.9rem;font-weight:700;min-width:0;overflow-wrap:anywhere}
+        .ps-sechead .ps-form{font-size:.7rem;color:var(--text-3);flex-shrink:0}
+        .ps-secbody{padding:0 .9rem 1rem;border-top:1px solid var(--border)}
+        .ps-submitbar{position:sticky;bottom:0;z-index:5;margin-top:.9rem;
+          display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
+          padding:.7rem .9rem;border:1px solid var(--border);border-radius:10px;
+          background:var(--white);box-shadow:0 -2px 10px rgba(20,45,40,.06)}
+        .ps-submitcount{font-size:.8rem;font-weight:700}
+        .ps-submitwhy{font-size:.75rem;color:var(--text-3);max-width:42ch}
+
         .ps-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem}
         .ps-full{grid-column:1 / -1}
         .ps-sec{grid-column:1 / -1;margin:1.4rem 0 0;padding-bottom:.4rem;
@@ -192,138 +374,284 @@ export default function ProjectSetup({ user }) {
           letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
         .ps-sec-first{margin-top:0}
         .field-hint{display:block;margin-top:.25rem;font-size:.72rem;color:var(--text-3)}
+        /* Inputs are sized to what goes in them. A three-letter acronym in a
+           985px box reads as a mistake and makes the form impossible to scan;
+           these caps are maxima, so every one of them still shrinks on a phone. */
+        .ps-w-title .field-input{max-width:640px}
+        .ps-w-acronym .field-input{max-width:170px}
+        .ps-w-currency .field-input{max-width:140px}
+        .ps-w-date .field-input{max-width:170px}
+        .ps-w-budget .field-input{max-width:220px}
+        .ps-w-num .field-input{max-width:170px}
+        .ps-w-med .field-input{max-width:420px}
         .ps-table{width:100%;border-collapse:collapse;font-size:.85rem}
         .ps-table th,.ps-table td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
         .ps-table th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)}
         .ps-card{border:1px solid var(--border);border-radius:10px;background:var(--white);padding:.75rem;margin-bottom:.5rem}
         .ps-cards{display:none}
-        @media (max-width:640px){.ps-grid{grid-template-columns:1fr}.ps-desktop{display:none}.ps-cards{display:block}}
+
+        /* The rail is a wide-screen idea: below 1024px it becomes a normal block
+           above the sections rather than a column competing with the forms. */
+        @media (max-width:1024px){
+          .ps-layout{grid-template-columns:1fr}
+          .ps-rail{position:static}
+        }
+        @media (max-width:640px){
+          .ps-grid{grid-template-columns:1fr}
+          .ps-desktop{display:none}
+          .ps-cards{display:block}
+          .ps-submitbar{position:static;box-shadow:none}
+        }
       `}</style>
 
-      <PageHeader
-        title={t('ps.projectSetup')}
-        subtitle={t('ps.pageSubtitle')}
-        actions={project ? (
-          <div style={{ textAlign: 'right', minWidth: 170 }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: setupPct === 100 ? 'var(--green-700)' : 'var(--text-3)' }}>
-              Setup {setupPct}% complete
-            </div>
-            <div style={{ width: '100%', height: 7, background: 'var(--surface-1)', borderRadius: 9999, marginTop: 5, overflow: 'hidden' }}>
-              <div style={{ width: `${setupPct}%`, height: '100%', background: setupPct === 100 ? 'var(--green-600)' : 'var(--gold-500)', transition: 'width 0.25s' }} />
-            </div>
-          </div>
-        ) : null}
-      />
+      <PageHeader title={t('ps.projectSetup')} subtitle={t('ps.pageSubtitle')} />
 
       {/* Project selector */}
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ flex: '1 1 320px' }}>
-          <label className="field-label">{t('ps.project')}</label>
-          <select className="field-input" value={projectId ?? ''} onChange={(e) => { setProjectId(e.target.value || null); setStep('profile'); }}>
+        <div style={{ flex: '1 1 320px', maxWidth: 520 }}>
+          <label className="field-label" htmlFor="ps-project">{t('ps.project')}</label>
+          <select id="ps-project" className="field-input" value={projectId ?? ''}
+            onChange={(e) => { setProjectId(e.target.value || null); setOpen({ profile: true }); }}>
             <option value="">{t('ps.selectProject')}</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
           </select>
         </div>
-        <button style={btn('var(--green-700)')} onClick={() => { setProjectId(null); setStep('profile'); }}>
-          <Plus size={16} /> {t('ps.newProject')}
+        <button style={btn('var(--green-700)')} onClick={() => { setProjectId(null); setOpen({ profile: true }); }}>
+          <Plus size={16} aria-hidden="true" /> {t('ps.newProject')}
         </button>
       </div>
 
-      {/* Steps */}
-      <div className="ps-steps">
-        {STEPS.map((s) => {
-          const done = completion[s.key];
-          const disabled = s.key !== 'profile' && !project;
-          return (
-            <button key={s.key} className={`ps-step${step === s.key ? ' active' : ''}`}
-              onClick={() => !disabled && setStep(s.key)} disabled={disabled}
-              style={disabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>
-              {done ? <span className="ps-tick"><Check size={11} /></span> : <span style={{ width: 16, textAlign: 'center', color: 'var(--text-3)' }}>{STEPS.indexOf(s) + 1}</span>}
-              {t(s.label)}
-              {stepHasDraft(s) && <DraftChip />}
-            </button>
-          );
-        })}
-      </div>
+      <div className="ps-layout">
+        {/* ── Left rail: what this project is, and how far along it is ─────── */}
+        <aside className="ps-rail">
+          <div className="ps-idcard">
+            {project ? (
+              <>
+                <h2>{project.name}</h2>
+                <div className="ps-idmeta">
+                  {project.code}
+                  {projectRow?.created_at && <> · {t('ps.createdOn', { date: fmtDate(projectRow.created_at) })}</>}
+                </div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <span className="ps-chip">{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, project.status)}</span>
+                </div>
 
-      {project && (
-        <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-2)' }}>
-          {t('ps.editing')} <strong>{project.code}</strong> — {project.name}
-          <span style={{ marginLeft: '0.5rem', color: 'var(--text-3)' }}>({OPT.labelOf(OPT.DOCC_PROJECT_STATUS, project.status)})</span>
-        </div>
-      )}
+                <div className="ps-ring-row">
+                  <Ring pct={summary.requiredPct} />
+                  <span className="ps-ring-cap">
+                    {t('ps.ofRequiredFields', { forms: SECTIONS.length })}
+                  </span>
+                </div>
 
-      {project && (
-        <div className="card" style={{ padding: '0.75rem 0.9rem', marginBottom: '0.75rem', borderLeft: `3px solid ${issues.length ? 'var(--gold-500)' : 'var(--green-600)'}` }}>
-          {issues.length === 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--green-700)', fontWeight: 700, fontSize: '0.85rem' }}>
-              <CheckCircle2 size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> {t('ps.readyForReporting')}
-            </div>
-          ) : (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#8a6416', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.4rem' }}>
-                <AlertTriangle size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> {issues.length} setup issue{issues.length === 1 ? '' : 's'} require attention
+                <dl className="ps-facts">
+                  <li><dt>{t('ps.approvedBudget')}</dt>
+                    <dd>{projectRow?.budget_vuv != null && projectRow.budget_vuv !== ''
+                      ? `${fmtNum(projectRow.budget_vuv)} ${projectRow.currency ?? ''}`.trim()
+                      : t('ps.notSet')}</dd></li>
+                  <li><dt>{t('ps.duration')}</dt><dd>{duration ?? t('ps.notSet')}</dd></li>
+                  <li><dt>{t('ps.provinces')}</dt>
+                    <dd>{projectRow?.provinces?.length ? projectRow.provinces.join(', ') : t('ps.notSet')}</dd></li>
+                  <li><dt>{t('ps.indicators')}</dt><dd>{fmtNum(indicators.length)}</dd></li>
+                </dl>
+              </>
+            ) : (
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-3)' }}>{t('ps.noProjectSelected')}</p>
+            )}
+          </div>
+
+          {project && (
+            <nav className="ps-seclist" aria-label={t('ps.sectionsNav')}>
+              {SECTIONS.map((s) => (
+                <button key={s.key} onClick={() => jumpTo(s.key)}>
+                  <span className="ps-secname">{t(s.label)}</span>
+                  {sectionHasDraft(s) && <DraftChip />}
+                  <StateChip section={byKey[s.key]} t={t} />
+                </button>
+              ))}
+            </nav>
+          )}
+        </aside>
+
+        {/* ── Right column: the sections themselves ────────────────────────── */}
+        <div>
+          {project && blockingIssues.length > 0 && (
+            <div className="ps-banner" role="status">
+              <div className="ps-banner-head">
+                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+                {/* Named, not counted: which sections hold the work is the part
+                    that tells an officer where to go. */}
+                <span>{t('ps.blockingSummary', { count: blockingIssues.length, where: blockingWhere })}</span>
               </div>
-              <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                {issues.map((it, i) => (
-                  <li key={i} style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>
-                    <button onClick={() => setStep(it.step)}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--green-700)', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}>
-                      {it.label}
-                    </button>
+              <ul>
+                {blockingIssues.map((it, n) => (
+                  <li key={n}>
+                    <button className="ps-linkbtn" onClick={() => jumpTo(it.section.key)}>{it.label}</button>
                   </li>
                 ))}
               </ul>
-            </>
+              {firstBlocking && (
+                <button className="ps-linkbtn" style={{ marginTop: '0.5rem', fontWeight: 700 }}
+                  onClick={() => jumpTo(firstBlocking.key)}>
+                  {t('ps.goToFirst', { section: t(firstBlocking.label) })} →
+                </button>
+              )}
+            </div>
+          )}
+          {project && blockingIssues.length === 0 && (
+            <div className="ps-ok">
+              <CheckCircle2 size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> {t('ps.readyForReporting')}
+            </div>
+          )}
+
+          {SECTIONS.map((s) => {
+            const isOpen = !!open[s.key];
+            const sec = byKey[s.key];
+            return (
+              <section key={s.key} className="ps-section" ref={(el) => { sectionRefs.current[s.key] = el; }}>
+                <button className="ps-sechead" onClick={() => toggle(s.key)} aria-expanded={isOpen}>
+                  {isOpen ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+                  <span className="ps-title">{t(s.label)}</span>
+                  <span className="ps-form">{t('ps.form', { n: s.form })}</span>
+                  <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                    {sectionHasDraft(s) && <DraftChip />}
+                    {project && <StateChip section={sec} t={t} />}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="ps-secbody">
+                    {s.key === 'profile' && (
+                      <ProfileStep project={project} userId={user?.id}
+                        onSaved={async (id) => { await loadProjects(); setProjectId(id); toast.success(t('ps.projectSaved')); }} />
+                    )}
+                    {/* Every section below writes against a project id. The
+                        wizard locked them shut; they are open now and say what
+                        is needed instead. */}
+                    {s.key !== 'profile' && !project && (
+                      <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', margin: '0.9rem 0 0' }}>
+                        {t('ps.saveProfileFirst')}
+                      </p>
+                    )}
+                    {s.key === 'results' && project && (
+                      <ResultsStep projectId={projectId} userId={user?.id} objectives={objectives} outcomes={outcomes} outputs={outputs}
+                        indicators={indicators} activities={activities} users={users} reload={() => loadFramework(projectId)} />
+                    )}
+                    {s.key === 'indicators' && project && (
+                      <IndicatorsStep projectId={projectId} userId={user?.id} indicators={indicators} objectives={objectives}
+                        outcomes={outcomes} outputs={outputs} reload={() => loadFramework(projectId)} />
+                    )}
+                    {s.key === 'activities' && project && (
+                      <ActivitiesStep projectId={projectId} userId={user?.id} outputs={outputs} outcomes={outcomes} activities={activities}
+                        reload={() => loadFramework(projectId)} />
+                    )}
+                    {s.key === 'locations' && project && (
+                      <LocationsStep projectId={projectId} userId={user?.id} locations={locations} reload={() => loadFramework(projectId)} />
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+
+          {project && (
+            <div className="ps-submitbar">
+              <span className="ps-submitcount">
+                {t('ps.sectionsComplete', { done: summary.done, total: summary.total })}
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
+                {summary.missingRequired.length > 0 && (
+                  <span className="ps-submitwhy">
+                    {t('ps.submitDisabledWhy', {
+                      count: missing.length, section: t(missing[0].label),
+                    })}
+                  </span>
+                )}
+                <button style={ghostBtn} onClick={() => setPreviewing(true)}>{t('ps.preview')}</button>
+                <button
+                  style={{ ...btn('var(--green-700)'), ...(summary.missingRequired.length || submitting ? disabledBtn : null) }}
+                  onClick={submitForReview}
+                  disabled={summary.missingRequired.length > 0 || submitting}>
+                  <Send size={15} aria-hidden="true" /> {submitting ? t('ps.submitting') : t('ps.submitForReview')}
+                </button>
+              </div>
+            </div>
           )}
         </div>
-      )}
-
-      <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
-        {step === 'profile' && (
-          <ProfileStep project={project} userId={user?.id}
-            onSaved={async (id) => { await loadProjects(); setProjectId(id); toast.success(t('ps.projectSaved')); }} />
-        )}
-        {step === 'results' && project && (
-          <ResultsStep projectId={projectId} userId={user?.id} objectives={objectives} outcomes={outcomes} outputs={outputs}
-            indicators={indicators} activities={activities} users={users} reload={() => loadFramework(projectId)} />
-        )}
-        {step === 'indicators' && project && (
-          <IndicatorsStep projectId={projectId} userId={user?.id} indicators={indicators} objectives={objectives}
-            outcomes={outcomes} outputs={outputs} reload={() => loadFramework(projectId)} />
-        )}
-        {step === 'activities' && project && (
-          <ActivitiesStep projectId={projectId} userId={user?.id} outputs={outputs} outcomes={outcomes} activities={activities}
-            reload={() => loadFramework(projectId)} />
-        )}
-        {step === 'locations' && project && (
-          <LocationsStep projectId={projectId} userId={user?.id} locations={locations} reload={() => loadFramework(projectId)} />
-        )}
-        {step !== 'profile' && !project && (
-          <p style={{ color: 'var(--text-3)' }}>{t('ps.saveProfileFirst')}</p>
-        )}
       </div>
 
-      {/* Wizard nav.
-          Next is blocked until the profile is saved, because every later step
-          writes against a project id. It used to render in full solid teal
-          while disabled — inline styles cannot express :disabled — so it looked
-          clickable and simply did nothing. Both buttons now carry a visible
-          disabled state, and when Next is blocked the reason is written next to
-          it rather than left for the user to work out. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-        <button style={{ ...ghostBtn, ...(stepIndex === 0 ? disabledBtn : null) }}
-          onClick={goPrev} disabled={stepIndex === 0}>
-          <ArrowLeft size={15} aria-hidden="true" /> {t('ps.previous')}
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginLeft: 'auto' }}>
-          {nextBlockedReason && (
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>{nextBlockedReason}</span>
-          )}
-          <button style={{ ...btn('var(--green-700)'), ...(nextDisabled ? disabledBtn : null) }}
-            onClick={goNext} disabled={nextDisabled} title={nextBlockedReason || undefined}>
-            {t('ps.next')} <ArrowRight size={15} aria-hidden="true" />
+      {previewing && (
+        <PreviewModal project={project} row={projectRow} sections={sections} byKey={byKey}
+          counts={{ objectives, outcomes, outputs, indicators, activities, locations }}
+          onClose={() => setPreviewing(false)} />
+      )}
+    </div>
+  );
+}
+
+// A completeness ring. An SVG rather than a bar because the rail is narrow and
+// a ring holds its number in the middle, where a bar needs a line of its own.
+function Ring({ pct }) {
+  const size = 56, stroke = 6, r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const done = pct >= 100;
+  return (
+    <svg className="ps-ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-1)" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={done ? 'var(--green-600)' : 'var(--gold-500)'} strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={`${(circ * Math.min(pct, 100)) / 100} ${circ}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
+        style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', fontWeight: 800, fill: 'var(--text-1)' }}>
+        {pct}%
+      </text>
+    </svg>
+  );
+}
+
+// Read-only summary of what has been entered, for a last look before submitting.
+// Everything shown is already in memory — this opens no new query.
+function PreviewModal({ project, row, sections, byKey, counts, onClose }) {
+  const { t } = useTranslation();
+  const line = (label, value) => (
+    <li><dt>{label}</dt><dd>{value == null || value === '' ? t('ps.notSet') : value}</dd></li>
+  );
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }} onClick={onClose}>
+      <div style={{ background: 'var(--white)', borderRadius: 14, width: '100%', maxWidth: 720, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.8rem' }}>
+          <strong style={{ fontSize: '1rem' }}>{t('ps.previewTitle', { name: project?.name ?? '' })}</strong>
+          <button onClick={onClose} aria-label={t('ps.close')} title={t('ps.close')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0 }}>
+            <X size={18} aria-hidden="true" />
           </button>
+        </div>
+        <dl className="ps-facts" style={{ borderTop: 'none', paddingTop: 0 }}>
+          {line(t('ps.projectTitle'), project?.name)}
+          {line(t('ps.status'), OPT.labelOf(OPT.DOCC_PROJECT_STATUS, project?.status))}
+          {line(t('ps.approvedBudget'), row?.budget_vuv != null && row.budget_vuv !== ''
+            ? `${fmtNum(row.budget_vuv)} ${row.currency ?? ''}`.trim() : null)}
+          {line(t('ps.startDate'), row?.start_date ? fmtDate(row.start_date) : null)}
+          {line(t('ps.endDate'), row?.end_date ? fmtDate(row.end_date) : null)}
+          {line(t('ps.provinces'), row?.provinces?.length ? row.provinces.join(', ') : null)}
+        </dl>
+        <h4 className="ps-sec">{t('ps.sectionsNav')}</h4>
+        <dl className="ps-facts" style={{ borderTop: 'none', paddingTop: 0 }}>
+          {line(t('ps.resultsFramework'), t('ps.previewResults', {
+            objectives: counts.objectives.length, outcomes: counts.outcomes.length, outputs: counts.outputs.length,
+          }))}
+          {line(t('ps.indicators'), counts.indicators.length)}
+          {line(t('ps.activities'), counts.activities.length)}
+          {line(t('ps.locations'), counts.locations.length)}
+        </dl>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.8rem' }}>
+          {sections.map((s) => (
+            <span key={s.key} style={{ display: 'inline-flex' }}>
+              <StateChip section={byKey[s.key]} t={t} />
+            </span>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+          <button style={ghostBtn} onClick={onClose}>{t('ps.close')}</button>
         </div>
       </div>
     </div>
@@ -458,12 +786,11 @@ function ProfileStep({ project, userId, onSaved }) {
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{t('ps.projectProfile')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 1 })}</span></h3>
       <div className="ps-grid">
         <h4 className="ps-sec ps-sec-first">{t('ps.identification')}</h4>
-        <Field className="ps-full" label={t('ps.projectTitleReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
-        <Field label={t('ps.acronym')}><input className="field-input" value={v.acronym ?? ''} onChange={set('acronym')} /></Field>
-        <Field label={t('ps.status')}><Select value={v.status} onChange={set('status')} options={OPT.DOCC_PROJECT_STATUS} /></Field>
+        <Field className="ps-full ps-w-title" label={t('ps.projectTitleReq')}><input className="field-input" value={v.name} onChange={set('name')} /></Field>
+        <Field className="ps-w-acronym" label={t('ps.acronym')}><input className="field-input" value={v.acronym ?? ''} onChange={set('acronym')} /></Field>
+        <Field className="ps-w-med" label={t('ps.status')}><Select value={v.status} onChange={set('status')} options={OPT.DOCC_PROJECT_STATUS} /></Field>
         <Field className="ps-full" label={t('ps.description')}><textarea className="field-input" rows={2} value={v.description ?? ''} onChange={set('description')} /></Field>
 
         {/* Typed in rather than chosen from the standard list. The DoCC's own
@@ -495,13 +822,13 @@ function ProfileStep({ project, userId, onSaved }) {
         <h4 className="ps-sec">{t('ps.funding')}</h4>
         <Field label={t('ps.donor')}><Select value={v.donor ?? ''} onChange={set('donor')} options={OPT.DONOR} allowBlank /></Field>
         <Field label={t('ps.fundingWindow')}><input className="field-input" value={v.funding_window ?? ''} onChange={set('funding_window')} /></Field>
-        <Field label={t('ps.approvedBudget')}><input type="number" min="0" className="field-input" value={v.budget_vuv} onChange={set('budget_vuv')} /></Field>
-        <Field label={t('ps.currency')}><Select value={v.currency} onChange={set('currency')} options={OPT.CURRENCY} /></Field>
+        <Field className="ps-w-budget" label={t('ps.approvedBudget')}><input type="number" min="0" className="field-input" value={v.budget_vuv} onChange={set('budget_vuv')} /></Field>
+        <Field className="ps-w-currency" label={t('ps.currency')}><Select value={v.currency} onChange={set('currency')} options={OPT.CURRENCY} /></Field>
 
         <h4 className="ps-sec">{t('ps.timeline')}</h4>
-        <Field label={t('ps.startDate')}><input type="date" className="field-input" value={v.start_date || ''} onChange={set('start_date')} /></Field>
-        <Field label={t('ps.endDate')}><input type="date" className="field-input" value={v.end_date || ''} onChange={set('end_date')} /></Field>
-        <Field label={t('ps.approvalDate')}><input type="date" className="field-input" value={v.approval_date || ''} onChange={set('approval_date')} /></Field>
+        <Field className="ps-w-date" label={t('ps.startDate')}><input type="date" className="field-input" value={v.start_date || ''} onChange={set('start_date')} /></Field>
+        <Field className="ps-w-date" label={t('ps.endDate')}><input type="date" className="field-input" value={v.end_date || ''} onChange={set('end_date')} /></Field>
+        <Field className="ps-w-date" label={t('ps.approvalDate')}><input type="date" className="field-input" value={v.approval_date || ''} onChange={set('approval_date')} /></Field>
 
         <h4 className="ps-sec">{t('ps.geographicCoverage')}</h4>
         <Field label={t('ps.coverageType')}><Select value={v.coverage_type ?? ''} onChange={set('coverage_type')} options={OPT.COVERAGE_TYPE} allowBlank /></Field>
@@ -526,8 +853,8 @@ function ProfileStep({ project, userId, onSaved }) {
         </Field>
 
         <h4 className="ps-sec">{t('ps.expectedReach')}</h4>
-        <Field label={t('ps.estDirect')}><input type="number" min="0" className="field-input" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></Field>
-        <Field label={t('ps.estIndirect')}><input type="number" min="0" className="field-input" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></Field>
+        <Field className="ps-w-num" label={t('ps.estDirect')}><input type="number" min="0" className="field-input" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></Field>
+        <Field className="ps-w-num" label={t('ps.estIndirect')}><input type="number" min="0" className="field-input" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></Field>
       </div>
       <TranslationPanel table="projects" row={record} onSaved={() => onSaved(project?.id)}
         labels={{ name: t('ps.projectTitle'), description: t('ps.description') }} />
@@ -575,8 +902,7 @@ function ResultsStep({ projectId, userId, objectives, outcomes, outputs, indicat
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.resultsFramework')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 2 })}</span></h3>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '0.5rem' }}>
         <button style={btn('var(--green-700)')} onClick={() => openAdd('objective')}><Plus size={14} /> {t('ps.objective')}</button>
       </div>
       {objectives.length === 0 && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noObjectives')}</p>}
@@ -716,8 +1042,7 @@ function IndicatorsStep({ projectId, userId, indicators, objectives, outcomes, o
   };
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.indicators')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 3 })}</span></h3>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '0.5rem' }}>
         <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.indicator')}</button>
       </div>
       {indicators.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noIndicators')}</p> : (
@@ -871,8 +1196,7 @@ function ActivitiesStep({ projectId, userId, outputs, outcomes, activities, relo
   if (outputs.length === 0) return <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.needOutput')}</p>;
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.activities')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 5 })}</span></h3>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '0.5rem' }}>
         <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.activity')}</button>
       </div>
       {activities.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noActivities')}</p> : (
@@ -1031,8 +1355,7 @@ function LocationsStep({ projectId, userId, locations, reload }) {
   };
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('ps.geographicImplementation')} <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{t('ps.form', { n: 7 })}</span></h3>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '0.5rem' }}>
         <button style={btn('var(--green-700)')} onClick={() => setEditing({})}><Plus size={14} /> {t('ps.location')}</button>
       </div>
       {locations.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('ps.noLocations')}</p> : (

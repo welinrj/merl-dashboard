@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { localised, i18nCols } from '../lib/contentLocale';
 import TranslationPanel from '../components/ui/TranslationPanel';
 import DraftStatus, { DraftChip } from '../components/ui/DraftStatus';
+import { summarise, recordCountSections } from '../lib/completion';
 import { useFormDraft, useDraftPresence, draftKey, clearDraft } from '../lib/formDraft';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
@@ -453,17 +454,23 @@ export default function MerlReporting({ user }) {
 
   // Period completion (§40): which period-scoped modules have at least one record
   // for the active period, and an overall completion % for the header.
+  //
+  // The arithmetic lives in lib/completion.js, which Project Setup uses for its
+  // completeness ring as well. Here a module is the present-or-absent case —
+  // filled once it holds one record for the period — while Project Setup counts
+  // checks within a form; `summarise` treats both the same way, so the two pages
+  // cannot end up disagreeing about whether the same project is ready.
+  //
+  // Every module with requiredForSubmission is also periodScoped, so rolling up
+  // the scoped list finds all of them.
   const scopedModules = useMemo(() => MODULES.filter((m) => m.periodScoped), []);
-  const completion = useMemo(() => {
-    const done = scopedModules.filter((m) => (sections[m.key] || 0) > 0).length;
-    return { done, total: scopedModules.length, pct: scopedModules.length ? Math.round((done / scopedModules.length) * 100) : 0 };
-  }, [scopedModules, sections]);
+  const completion = useMemo(
+    () => summarise(recordCountSections(scopedModules, sections)),
+    [scopedModules, sections]);
 
-  // Required sections — the ones that gate submission (see MODULES above).
-  const requiredModules = useMemo(() => MODULES.filter((m) => m.requiredForSubmission), []);
-  const missingRequired = useMemo(
-    () => requiredModules.filter((m) => (sections[m.key] || 0) === 0),
-    [requiredModules, sections]);
+  // Required sections — the ones that gate submission (see MODULES above). These
+  // are the module objects themselves, so they still carry `label` and `key`.
+  const missingRequired = completion.missingRequired;
 
   // Submitting the period is the moment the report has to be complete: a
   // section with only a draft in it is not filled in, so it is turned back here
@@ -590,7 +597,7 @@ export default function MerlReporting({ user }) {
                 {t('merl.sectionsWithData', { done: completion.done, total: completion.total })}
                 {' · '}
                 {t('merl.requiredSectionsDone', {
-                  done: requiredModules.length - missingRequired.length, total: requiredModules.length,
+                  done: completion.requiredDone, total: completion.requiredTotal,
                 })}
               </span>
             </div>
