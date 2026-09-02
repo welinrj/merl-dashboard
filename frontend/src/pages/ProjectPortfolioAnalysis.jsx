@@ -22,8 +22,8 @@
 //
 // Reads go through the same views, with the same user token, as the rest of the
 // portal: merl.can_access_project() already restricts every one of them to the
-// projects a Project Manager or Data Entry Officer is assigned to, so analysis
-// shows exactly what that officer could already see elsewhere.
+// projects a Project Manager is assigned to, so analysis shows exactly what
+// that officer could already see elsewhere.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';

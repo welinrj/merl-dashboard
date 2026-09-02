@@ -491,7 +491,6 @@ const resources = {
         roleAdmin: 'System Administrator',
         roleMeo: 'DoCC M&E Officer',
         rolePm: 'Project Manager / Project Focal Point',
-        roleDataEntry: 'Data Entry / Project Officer',
         roleViewer: 'Viewer / Executive',
         catAdaptation: 'Climate Adaptation',
         catMitigation: 'Climate Mitigation',
@@ -1491,7 +1490,6 @@ const resources = {
         ROLE_ADMIN:        'System Administrator',
         ROLE_DOCC_MEO:     'DoCC M&E Officer',
         ROLE_PROJ_MANAGER: 'Project Manager / Project Focal Point',
-        ROLE_DATA_ENTRY:   'Data Entry / Project Officer',
         ROLE_VIEWER:       'Viewer / Executive',
       },
       common: {
@@ -1912,7 +1910,6 @@ const resources = {
         ROLE_ADMIN:        'Administreta blong Sistem',
         ROLE_DOCC_MEO:     'Ofisa blong M&E long DoCC',
         ROLE_PROJ_MANAGER: 'Manija blong Projek / Fokol Poen',
-        ROLE_DATA_ENTRY:   'Ofisa blong Putum Deta / Ofisa blong Projek',
         ROLE_VIEWER:       'Luk nomo / Eksekutiv',
       },
       common: {
@@ -2570,7 +2567,6 @@ const resources = {
         roleAdmin: 'Administrateur système',
         roleMeo: 'Chargé de S&E du DoCC',
         rolePm: 'Chef de projet / point focal',
-        roleDataEntry: 'Agent de saisie / chargé de projet',
         roleViewer: 'Consultation / direction',
         catAdaptation: 'Adaptation climatique',
         catMitigation: 'Atténuation climatique',
@@ -3570,7 +3566,6 @@ const resources = {
         ROLE_ADMIN:        'Administrateur système',
         ROLE_DOCC_MEO:     'Chargé de S&E du DoCC',
         ROLE_PROJ_MANAGER: 'Chef de projet / Point focal du projet',
-        ROLE_DATA_ENTRY:   'Agent de saisie / Chargé de projet',
         ROLE_VIEWER:       'Consultation / Direction',
       },
       common: {

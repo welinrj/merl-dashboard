@@ -2,7 +2,7 @@
 // NotificationBell.jsx — header notifications (spec §58).
 // A lightweight, role-aware notification centre driven by the reporting
 // workflow: reports awaiting review (DoCC M&E Officer / Admin), periods returned
-// for correction and overdue reporting (Project Manager / Data Entry). Reads the
+// for correction and overdue reporting (Project Manager). Reads the
 // RLS-scoped public.v_reporting_periods view, so each user sees only their remit.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -14,7 +14,7 @@ import { supabase } from '../supabaseClient';
 import { localised, i18nCols } from '../lib/contentLocale';
 
 const REVIEWER = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
-const EDITOR = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER', 'ROLE_DATA_ENTRY'];
+const EDITOR = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export default function NotificationBell({ user }) {
