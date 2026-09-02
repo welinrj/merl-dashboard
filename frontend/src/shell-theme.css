@@ -1,0 +1,249 @@
+/* ── Shell theme ─────────────────────────────────────────────────────────────
+   Applies the approved dashboard UI concept to the existing portal.
+
+   Loaded AFTER index.css (see main.jsx) so it overrides the shell rules there
+   without editing them — revert by removing the one import. It changes surface
+   and colour only: no layout class is renamed, no page markup is restructured,
+   so every page keeps working exactly as before.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* The shell used its own blue scale, unrelated to the teal/gold/brick tokens
+     the rest of the portal is built on. Same variable names, portal colours —
+     everything referencing them re-themes at once. */
+  --navy-900: #08302f;
+  --navy-800: #0b4443;
+  --navy-700: #0c5b59;
+  --navy-active: #0e6e6e;
+
+  --shell-gap: 16px;
+  --shell-radius: 14px;
+  --shell-bg: #f4f6f3;
+  --shell-page: linear-gradient(128deg, #e2ebe7 0%, #eaf1ed 46%, #f4f8f4 100%);
+
+  /* KPI accents, in reading order across the row */
+  --kpi-1: #0e6e6e;
+  --kpi-2: #2f7fa6;
+  --kpi-3: #e0a12a;
+  --kpi-4: #b3402f;
+
+  --side-w: 216px;
+}
+
+.dsh {
+  background: var(--shell-page);
+  padding: var(--shell-gap);
+  gap: 0;
+}
+
+.app-shell {
+  border-radius: calc(var(--shell-radius) + var(--shell-gap));
+  box-shadow: none;
+}
+
+.dsh-side {
+  width: var(--side-w);
+  background: linear-gradient(180deg, #12514c 0%, #08302f 100%);
+  color: #d6e5e2;
+  border-radius: var(--shell-radius) 0 0 var(--shell-radius);
+  top: var(--shell-gap);
+  height: calc(100dvh - (var(--shell-gap) * 2));
+  overflow: hidden;
+  position: sticky;
+  isolation: isolate;
+}
+
+/* Crest beside a two-line lockup instead of above a centred one. A grid, not a
+   flex row: the two text lines are siblings of the image, so a row would put
+   all three side by side in a 216px rail. The product name leads and the
+   department sits under it — at rail width the long official name can't be the
+   line an officer scans for. */
+.dsh-brand {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  column-gap: 0.6rem;
+  row-gap: 1px;
+  align-items: center;
+  text-align: left;
+  padding: 1.05rem 0.85rem 1rem 1rem;
+  border-bottom: none;
+  position: relative;
+  z-index: 2;
+}
+.dsh-brand img {
+  width: 34px;
+  height: 34px;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+.dsh-brand-title {
+  grid-column: 2;
+  grid-row: 1;
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.15;
+}
+.dsh-brand-dept {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.57rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dsh-nav {
+  padding: 0.25rem 0 0.5rem 0.75rem;
+  gap: 3px;
+  position: relative;
+  z-index: 2;
+}
+/* The active item is a pill in the content colour that runs to the sidebar's
+   right edge, so the selected module reads as continuous with the page it
+   opens — the single strongest cue in the whole shell. */
+.dsh-nav a {
+  gap: 0.62rem;
+  padding: 0.52rem 0.6rem 0.52rem 0.75rem;
+  margin-right: -6px;
+  border-radius: 20px 0 0 20px;
+  font-size: 0.79rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.dsh-nav a:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.dsh-nav a.active {
+  background: var(--shell-bg);
+  color: var(--green-900);
+  font-weight: 600;
+  border-radius: 20px 0 0 20px;
+}
+.dsh-nav a svg { color: rgba(255, 255, 255, 0.62); }
+.dsh-nav a.active svg { color: var(--green-600); }
+
+/* Decorative, sits under the navigation and never intercepts a click. */
+.dsh-foliage {
+  position: absolute;
+  left: -26px;
+  bottom: -14px;
+  width: 232px;
+  z-index: 0;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.dsh-main {
+  background: var(--shell-bg);
+  border-radius: 0 var(--shell-radius) var(--shell-radius) 0;
+  overflow: hidden;
+}
+.dsh-scroll { padding: 0 0 var(--shell-gap); }
+
+.dsh-head {
+  margin: 14px 14px 0;
+  padding: 0.62rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  position: static;
+}
+.dsh-head-title { font-size: 0.98rem; font-weight: 700; color: var(--green-900); }
+.dsh-head-sub { font-size: 0.7rem; }
+.dsh-head-actions { gap: 0.6rem; }
+
+/* Language toggle — a segmented pill rather than a bordered box. */
+.dsh-lang {
+  display: flex;
+  background: var(--surface-1);
+  border-radius: 999px;
+  padding: 2px;
+}
+.dsh-lang button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.dsh-lang button:hover { color: var(--text-2); }
+.dsh-lang button[aria-pressed='true'] {
+  background: var(--white);
+  color: var(--green-700);
+  box-shadow: var(--shadow-sm);
+}
+
+.dsh-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--green-800);
+  font-size: 0.72rem;
+}
+.dsh-user-name { font-size: 0.76rem; font-weight: 600; }
+.dsh-user-role { font-size: 0.65rem; }
+
+.gs-trigger { border-radius: 999px; }
+
+/* One radius and one shadow across every card class the pages already use, so
+   the softer surface arrives everywhere without touching a page file. */
+.card,
+.db-card,
+.ov-panel,
+.ovx-card,
+.stat-tile,
+.ov-filters,
+.ov-strip,
+.ov-action {
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(20, 45, 40, 0.05), 0 2px 8px rgba(20, 45, 40, 0.04);
+}
+
+/* KPI row — a coloured edge per metric, reading left to right. The colour is a
+   locator, not a status: it tells an officer which tile they are looking at
+   when they come back to it, and nothing about performance. */
+.ovx-kpis > * { border-left: 4px solid var(--border); }
+.ovx-kpis > *:nth-child(1) { border-left-color: var(--kpi-1); }
+.ovx-kpis > *:nth-child(2) { border-left-color: var(--kpi-2); }
+.ovx-kpis > *:nth-child(3) { border-left-color: var(--kpi-3); }
+.ovx-kpis > *:nth-child(4) { border-left-color: var(--kpi-4); }
+
+.ov-btn,
+.ov-btn-ghost {
+  border-radius: 999px;
+  padding: 0.48rem 1rem;
+}
+.ov-btn { background: var(--green-600); }
+.ov-btn:hover { background: var(--green-700); }
+.ov-btn-ghost { border-color: var(--green-600); color: var(--green-700); }
+
+/* The frame is a large-screen idea. On a phone the shell goes back to full
+   bleed — a rounded card inset inside a 380px viewport wastes the width an
+   officer needs for a data table. */
+@media (max-width: 1024px) {
+  .dsh { padding: 0; }
+  .dsh-side {
+    border-radius: 0;
+    top: 0;
+    height: 100dvh;
+  }
+  .dsh-main { border-radius: 0; }
+  .dsh-head { margin: 0; border-radius: 0; border: none; border-bottom: 1px solid var(--border); }
+  .dsh-nav a, .dsh-nav a.active { border-radius: 20px; margin-right: 0; }
+  .dsh-nav { padding: 0.25rem 0.6rem 0.5rem; }
+  .app-shell { border-radius: 0; }
+}
+
+@media print {
+  .dsh { padding: 0; background: none; }
+  .dsh-main { border-radius: 0; background: none; }
+}
