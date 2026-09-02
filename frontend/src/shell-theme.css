@@ -247,3 +247,10 @@
   .dsh { padding: 0; background: none; }
   .dsh-main { border-radius: 0; background: none; }
 }
+
+/* index.css takes the rail off-canvas as a drawer at 760px; the rule above put
+   it back in flow, so the drawer kept its 216px column on a phone — translated
+   out of sight but still holding the width, leaving the page ~175px to use. */
+@media (max-width: 760px) {
+  .dsh-side { position: fixed; }
+}
