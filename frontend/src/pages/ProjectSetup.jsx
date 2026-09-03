@@ -318,6 +318,12 @@ export default function ProjectSetup({ user }) {
       <style>{`
         .ps-page{max-width:1200px;margin:0 auto}
         .ps-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:1rem;align-items:start;margin-top:.9rem}
+        /* With no project chosen the rail holds one line of text — a column
+           reserved for it just makes the form narrower for nothing, so the
+           notice goes full width above the form and the grid collapses. */
+        .ps-layout.is-empty{grid-template-columns:1fr}
+        .ps-layout.is-empty .ps-rail{position:static}
+        .ps-layout.is-empty .ps-idcard{padding:.7rem .9rem}
         .ps-rail{position:sticky;top:1rem;display:flex;flex-direction:column;gap:.7rem}
         .ps-idcard{border:1px solid var(--border);border-radius:10px;background:var(--white);padding:.9rem}
         .ps-idcard h2{margin:0;font-size:.95rem;line-height:1.25;font-family:var(--font-display)}
@@ -421,7 +427,7 @@ export default function ProjectSetup({ user }) {
         </button>
       </div>
 
-      <div className="ps-layout">
+      <div className={`ps-layout${project ? '' : ' is-empty'}`}>
         {/* ── Left rail: what this project is, and how far along it is ─────── */}
         <aside className="ps-rail">
           <div className="ps-idcard">
