@@ -1,0 +1,8 @@
+/* Overview coverage map refinements */
+.coverage-map__summary {
+  display: none !important;
+}
+
+.coverage-map__frame {
+  margin-top: 0 !important;
+}
