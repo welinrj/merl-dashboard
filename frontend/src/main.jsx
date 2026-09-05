@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { ConfirmHost } from './lib/confirm';
+import DataAvailabilityGuard from './components/DataAvailabilityGuard';
 
 // i18n must be imported before App so translations are ready
 import './i18n';
@@ -43,6 +44,7 @@ root.render(
       <HashRouter>
         <App />
         <ConfirmHost />
+        <DataAvailabilityGuard />
         <Toaster
           position="top-right"
           toastOptions={{
