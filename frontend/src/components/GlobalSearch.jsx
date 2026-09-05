@@ -1,9 +1,9 @@
 // =============================================================================
-// GlobalSearch.jsx — portal-wide command palette (spec §59).
-// A header search that finds projects, indicators and activities across the
-// standardised dataset and jumps to the owning project in Project Setup. Opens
-// on click or ⌘K / Ctrl-K; navigable by keyboard; reads the RLS-scoped public.v_*
-// views so results are naturally limited to what the signed-in user may see.
+// GlobalSearch.jsx — portal-wide search.
+// Finds projects, indicators and activities across the RLS-scoped MERL views
+// and opens the owning project. The result list uses one restrained visual
+// treatment; type is communicated by its label and icon rather than a different
+// coloured tile for every result kind.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,9 +13,9 @@ import { supabase } from '../supabaseClient';
 import { localised, i18nCols } from '../lib/contentLocale';
 
 const GROUPS = {
-  project:   { label: 'gs.project',   icon: FolderKanban, accent: '#2563eb' },
-  indicator: { label: 'gs.indicator', icon: Target,       accent: '#0e7490' },
-  activity:  { label: 'gs.activity',  icon: ListChecks,   accent: '#7c3aed' },
+  project:   { label: 'gs.project',   icon: FolderKanban },
+  indicator: { label: 'gs.indicator', icon: Target },
+  activity:  { label: 'gs.activity',  icon: ListChecks },
 };
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
 
@@ -25,8 +25,7 @@ export default function GlobalSearch() {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
-  const [data, setData] = useState(null); // null = not loaded yet
-  // Drop the cached index when the language changes so the next open reloads.
+  const [data, setData] = useState(null);
   useEffect(() => { setData(null); }, [lang]);
   const [active, setActive] = useState(0);
   const inputRef = useRef(null);
@@ -41,7 +40,6 @@ export default function GlobalSearch() {
     setData({ projects: pj.data ?? [], indicators: ind.data ?? [], activities: act.data ?? [] });
   }, [lang]);
 
-  // Open on ⌘K / Ctrl-K anywhere in the app.
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
@@ -95,7 +93,6 @@ export default function GlobalSearch() {
     else if (e.key === 'Enter') { e.preventDefault(); go(results[active]); }
   };
 
-  // Keep the active row scrolled into view.
   useEffect(() => {
     const el = listRef.current?.querySelector('[data-active="true"]');
     el?.scrollIntoView({ block: 'nearest' });
@@ -134,14 +131,14 @@ export default function GlobalSearch() {
                     <button key={`${r.type}-${r.id}`} data-active={i === active}
                       className={`gs-item${i === active ? ' active' : ''}`}
                       onMouseEnter={() => setActive(i)} onClick={() => go(r)}>
-                      <span className="gs-item-ic" style={{ background: `color-mix(in srgb, ${g.accent} 15%, #fff)`, color: g.accent }}>
-                        <Icon size={16} aria-hidden="true" />
+                      <span className="gs-item-ic" style={{ width: 22, height: 22, borderRadius: 0, color: 'var(--text-3)' }}>
+                        <Icon size={15} aria-hidden="true" />
                       </span>
                       <span className="gs-item-txt">
                         <span className="gs-item-name">{r.code ? `${r.code} · ` : ''}{r.name}</span>
                         <span className="gs-item-type">{t(g.label)}</span>
                       </span>
-                      {i === active && <span aria-hidden="true" style={{ color: 'var(--text-3)', flexShrink: 0, fontSize: '0.8rem', lineHeight: 1 }}>&crarr;</span>}
+                      {i === active && <span aria-hidden="true" style={{ color: 'var(--text-3)', flexShrink: 0, fontSize: '0.75rem', lineHeight: 1 }}>Enter</span>}
                     </button>
                   );
                 })
