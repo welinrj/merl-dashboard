@@ -6,3 +6,74 @@
 .coverage-map__frame {
   margin-top: 0 !important;
 }
+
+/*
+ * Area Council boundaries use a qualitative colour treatment instead of a
+ * sequential choropleth gradient. Colours intentionally distinguish adjacent
+ * councils rather than encoding project count. Project totals remain available
+ * in tooltips, popups and the ranked coverage panel.
+ *
+ * Leaflet writes polygon fill-opacity below 1, while project/village point
+ * markers use 1 / .95. That lets this override recolour only boundary polygons
+ * and leave the point symbology untouched on both Overview and Geographic
+ * Coverage maps.
+ */
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]) {
+  transition: fill .12s ease, fill-opacity .12s ease, stroke .12s ease !important;
+}
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 1),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 1) { fill: #4f86c6 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 2),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 2) { fill: #d97757 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 3),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 3) { fill: #5aa879 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 4),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 4) { fill: #9b6fc4 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 5),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 5) { fill: #d6a53f !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 6),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 6) { fill: #3d9fa3 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 7),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 7) { fill: #c8648a !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 8),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 8) { fill: #7b8f45 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 9),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 9) { fill: #6a75c8 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 10),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 10) { fill: #c07d38 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 11),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 11) { fill: #4d9972 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 12),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 12) { fill: #b56f9f !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 13),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 13) { fill: #c9a84d !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 14),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 14) { fill: #508fa8 !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 15),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n + 15) { fill: #d16a6a !important; }
+
+.coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n),
+.geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n) { fill: #6f9d58 !important; }
+
+/* The old legend described the removed count gradient, so hide it rather than
+   implying that the new qualitative colours encode project totals. */
+.coverage-map__legend,
+.geo-map__legend {
+  display: none !important;
+}
