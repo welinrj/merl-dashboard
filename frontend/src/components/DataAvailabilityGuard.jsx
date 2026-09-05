@@ -37,14 +37,11 @@ export default function DataAvailabilityGuard() {
         <h2 id="data-availability-title" style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-1)' }}>
           {t('ppa.sectionFailed')}
         </h2>
-        <p style={{ margin: '0.55rem 0 1rem', fontSize: '0.84rem', lineHeight: 1.5, color: 'var(--text-2)' }}>
-          {t('dash.dataUnavailable', { defaultValue: 'Data could not be retrieved. Dashboard values are hidden to prevent a failed request being shown as zero.' })}
-        </p>
         <button
           type="button"
           className="btn btn-primary"
           onClick={() => window.location.reload()}
-          style={{ width: '100%' }}
+          style={{ width: '100%', marginTop: '1rem' }}
         >
           {t('ppa.retry')}
         </button>
