@@ -1,15 +1,4 @@
-// ChangePasswordModal.jsx — one dialog for both ways a password gets changed.
-//
-//   <ChangePasswordModal onClose={...} />                     an officer's own
-//   <ChangePasswordModal adminFor={userRow} onClose={...} />  an administrator's
-//
-// Self-service asks for the current password and proves it server-side; the
-// administrator's form does not, because they do not have it. Everything else —
-// the length rule, the confirmation field, the wording — is shared, so the two
-// paths cannot drift apart.
-//
-// The database is the authority on what it will accept (migration 0040):
-// these checks only save a round trip and put the message beside the field.
+// ChangePasswordModal.jsx — shared self-service/admin password dialog.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -17,7 +6,6 @@ import { supabase } from '../../supabaseClient';
 import { dbErrorMessage } from '../../lib/dbError';
 import { Eye, EyeOff, Lock, X } from './icons';
 
-// Mirrors merl.assert_password_acceptable in migration 0040.
 const MIN_LENGTH = 10;
 
 export default function ChangePasswordModal({ adminFor = null, onClose, onDone = null }) {
@@ -30,8 +18,6 @@ export default function ChangePasswordModal({ adminFor = null, onClose, onDone =
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
-  // Only complain about a mismatch once there is something to mismatch, so the
-  // message does not sit under the box while it is still being typed.
   const tooShort = next.length > 0 && next.length < MIN_LENGTH;
   const mismatch = confirm.length > 0 && next !== confirm;
   const ready = next.length >= MIN_LENGTH && next === confirm
@@ -78,10 +64,10 @@ export default function ChangePasswordModal({ adminFor = null, onClose, onDone =
 
   return (
     <div onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 70,
+      style={{ position: 'fixed', inset: 0, background: 'rgba(22,18,29,0.42)', zIndex: 70,
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}>
       <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{ background: 'var(--white)', borderRadius: 14, width: '100%', maxWidth: 420,
+        style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', width: '100%', maxWidth: 420,
           padding: '1.2rem', boxShadow: 'var(--shadow-lg)', marginTop: '4vh' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.9rem' }}>
           <div style={{ minWidth: 0 }}>
@@ -122,16 +108,11 @@ export default function ChangePasswordModal({ adminFor = null, onClose, onDone =
 
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.1rem', flexWrap: 'wrap' }}>
           <button onClick={submit} disabled={!ready}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.55rem 0.9rem',
-              fontSize: '0.8125rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none',
-              color: '#fff', background: 'var(--green-700)',
-              cursor: ready ? 'pointer' : 'not-allowed', opacity: ready ? 1 : 0.45 }}>
+            className="btn btn-primary"
+            style={{ cursor: ready ? 'pointer' : 'not-allowed', opacity: ready ? 1 : 0.45 }}>
             {busy ? t('pw.saving') : isAdmin ? t('pw.setPassword') : t('pw.changePassword')}
           </button>
-          <button onClick={onClose}
-            style={{ padding: '0.55rem 0.9rem', fontSize: '0.8125rem', fontWeight: 600,
-              borderRadius: 'var(--radius-control)', background: 'var(--white)',
-              border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer' }}>
+          <button onClick={onClose} className="btn btn-secondary">
             {t('pw.cancel')}
           </button>
         </div>
