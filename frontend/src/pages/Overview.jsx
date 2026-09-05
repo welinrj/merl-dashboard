@@ -2,22 +2,16 @@
 // Overview.jsx — MERL Project Portfolio Dashboard (Executive Overview)
 //
 // Executive reading order:
-//   1. Overall progress · Projects · Budget utilisation · Beneficiaries
-//   2. Needs attention · Implementation performance
-//   3. Portfolio/results performance · Geographic coverage
-//   4. Reporting and upcoming deadlines
+//   1. Portfolio status
+//   2. Management attention + implementation status
+//   3. Results performance + geographic coverage
+//   4. Reporting obligations
 //
-// All figures are read live from the existing Supabase public.v_* views. There
-// are no mock KPI values in this page. If one of the required backend reads
-// fails, the dashboard now shows a retryable connection error instead of
-// silently treating the failure as an empty portfolio.
+// All figures are read live from the existing Supabase public.v_* views.
 // =============================================================================
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
-} from 'recharts';
-import { AlertTriangle, Printer, ArrowRight } from '../components/ui/icons';
+import { AlertTriangle, Printer } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
@@ -25,28 +19,28 @@ import { VanuatuMapMini } from '../components/VanuatuMap';
 import {
   useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
 } from '../lib/dashboardFilters';
-import KpiCard from '../components/ui/KpiCard';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
 
 const C = {
-  violet: '#6b55a7',
-  green: '#22a565',
-  amber: '#e0a12a',
-  red: '#dc2626',
+  violet: '#5a4784',
+  green: '#228a57',
+  amber: '#c88918',
+  red: '#c8463d',
 };
 
 const STATUS_COLOR = {
   on_track: C.green,
   at_risk: C.amber,
   not_started: C.red,
-  completed: '#7c3aed',
+  completed: C.violet,
 };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const sum = (rows, getter) => rows.reduce((a, r) => a + (Number(getter(r)) || 0), 0);
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+const rankOf = (row) => row?.created_at ?? row?.reporting_period ?? '';
 
 function fmtVUV(v) {
   const n = Number(v) || 0;
@@ -65,11 +59,54 @@ function statusLabel(key, t) {
   }[key] || key;
 }
 
+function uniqueProjects(rows) {
+  return new Set(rows.map((row) => row.project_id).filter(Boolean)).size;
+}
+
 export default function Overview() {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
+  const isFr = lang?.startsWith('fr');
   const nav = useNavigate();
   const { filters, setFilter, reset, active } = useDashboardFilters();
+
+  const copy = isFr ? {
+    portfolioStatus: 'État du portefeuille',
+    managementAttention: 'Priorités de gestion',
+    performanceCoverage: 'Performance et couverture',
+    reportingObligations: 'Obligations de rapportage',
+    filters: 'Filtres',
+    lastUpdated: 'Mis à jour',
+    sincePrevious: 'depuis le rapport précédent',
+    projectsAffected: (n) => `${n} projet${n > 1 ? 's' : ''} concerné${n > 1 ? 's' : ''}`,
+    olderThan30: (n) => `${n} depuis plus de 30 jours`,
+    review: 'Examiner',
+    statusDistribution: 'Répartition du statut de mise en œuvre',
+    statusHint: 'Sélectionnez un statut pour filtrer le portefeuille.',
+    resultsPerformance: 'Performance des résultats',
+    coverageConcentration: 'Concentration géographique',
+    projectsLabel: 'projets',
+    beneficiariesLabel: 'bénéficiaires',
+    national: 'National / multi-provinces',
+  } : {
+    portfolioStatus: 'Portfolio status',
+    managementAttention: 'Management attention',
+    performanceCoverage: 'Performance and coverage',
+    reportingObligations: 'Reporting obligations',
+    filters: 'Filters',
+    lastUpdated: 'Updated',
+    sincePrevious: 'since previous report',
+    projectsAffected: (n) => `${n} project${n === 1 ? '' : 's'} affected`,
+    olderThan30: (n) => `${n} more than 30 days overdue`,
+    review: 'Review',
+    statusDistribution: 'Implementation status distribution',
+    statusHint: 'Select a status to filter the portfolio.',
+    resultsPerformance: 'Results performance',
+    coverageConcentration: 'Geographic concentration',
+    projectsLabel: 'projects',
+    beneficiariesLabel: 'beneficiaries',
+    national: 'National / multi-province',
+  };
 
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -141,7 +178,6 @@ export default function Overview() {
   const inScope = (rows) => rows.filter((r) => ids.has(r.project_id));
 
   const financial = inScope(data.financial);
-  const risks = inScope(data.risks);
   const beneficiaries = inScope(data.beneficiaries);
   const activities = inScope(data.activities);
   const indicators = inScope(data.indicators);
@@ -158,26 +194,53 @@ export default function Overview() {
   const completed = byBucket.completed;
   const activeProjects = total - completed;
 
-  const latestFinance = new Map();
+  // Current budget utilisation plus a like-for-like previous-period trend for
+  // projects that actually have at least two financial records.
+  const financeByProject = new Map();
   for (const row of financial) {
-    const prev = latestFinance.get(row.project_id);
-    if (!prev || (row.created_at ?? '') > (prev.created_at ?? '')) {
-      latestFinance.set(row.project_id, row);
+    const list = financeByProject.get(row.project_id) ?? [];
+    list.push(row);
+    financeByProject.set(row.project_id, list);
+  }
+  let totalExpenditure = 0;
+  let trendBudget = 0;
+  let trendCurrentExpenditure = 0;
+  let trendPreviousExpenditure = 0;
+  let trendFinanceProjects = 0;
+  for (const [projectId, rows] of financeByProject) {
+    rows.sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''));
+    const latest = rows[rows.length - 1];
+    totalExpenditure += Number(latest?.cumulative_expenditure) || 0;
+    if (rows.length > 1) {
+      const previous = rows[rows.length - 2];
+      const project = projects.find((p) => p.id === projectId);
+      trendBudget += Number(project?.budget_vuv) || Number(latest?.approved_budget) || 0;
+      trendCurrentExpenditure += Number(latest?.cumulative_expenditure) || 0;
+      trendPreviousExpenditure += Number(previous?.cumulative_expenditure) || 0;
+      trendFinanceProjects += 1;
     }
   }
   const totalBudget = sum(projects, (p) => p.budget_vuv);
-  const totalExpenditure = [...latestFinance.values()]
-    .reduce((a, f) => a + (Number(f.cumulative_expenditure) || 0), 0);
   const budgetUtilisation = totalBudget ? Math.round((totalExpenditure / totalBudget) * 100) : 0;
+  const budgetTrend = trendFinanceProjects && trendBudget
+    ? Math.round((trendCurrentExpenditure / trendBudget) * 100)
+      - Math.round((trendPreviousExpenditure / trendBudget) * 100)
+    : null;
 
-  // Latest recorded result per indicator. This keeps the headline result from
-  // overweighting indicators that have more historical reporting periods.
-  const latestProgress = new Map();
+  // Latest and previous recorded result per indicator. The headline progress
+  // uses the latest result only; the trend compares indicators with two records.
+  const progressByIndicator = new Map();
   for (const row of progress) {
-    const prev = latestProgress.get(row.indicator_id);
-    const rank = row.created_at ?? row.reporting_period ?? '';
-    const prevRank = prev?.created_at ?? prev?.reporting_period ?? '';
-    if (!prev || rank > prevRank) latestProgress.set(row.indicator_id, row);
+    const list = progressByIndicator.get(row.indicator_id) ?? [];
+    list.push(row);
+    progressByIndicator.set(row.indicator_id, list);
+  }
+  const latestProgress = new Map();
+  const previousProgress = new Map();
+  for (const [indicatorId, rows] of progressByIndicator) {
+    rows.sort((a, b) => rankOf(a).localeCompare(rankOf(b)));
+    latestProgress.set(indicatorId, rows[rows.length - 1]);
+    if (rows.length > 1) previousProgress.set(indicatorId, rows[rows.length - 2]);
   }
 
   const latestAchievement = indicators
@@ -186,6 +249,23 @@ export default function Overview() {
     .map(Number);
   const overallProgress = latestAchievement.length
     ? Math.round(latestAchievement.reduce((a, b) => a + b, 0) / latestAchievement.length)
+    : null;
+
+  const pairedCurrent = [];
+  const pairedPrevious = [];
+  for (const ind of indicators) {
+    const current = latestProgress.get(ind.id)?.achievement_pct;
+    const previous = previousProgress.get(ind.id)?.achievement_pct;
+    if (current != null && previous != null) {
+      pairedCurrent.push(Number(current));
+      pairedPrevious.push(Number(previous));
+    }
+  }
+  const progressTrend = pairedCurrent.length
+    ? Math.round(
+      pairedCurrent.reduce((a, b) => a + b, 0) / pairedCurrent.length
+      - pairedPrevious.reduce((a, b) => a + b, 0) / pairedPrevious.length,
+    )
     : null;
 
   const indicatorStatus = { on_track: 0, attention_required: 0, off_track: 0, no_data: 0 };
@@ -232,26 +312,67 @@ export default function Overview() {
   }
 
   const now = todayIso();
-  const overdueActivities = activities.filter((a) => (
-    a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < now
-  )).length;
-  const overdueReports = reporting.filter((r) => (
+  const daysUntil = (date) => Math.round((new Date(date.slice(0, 10)) - new Date(now)) / 864e5);
+
+  const overdueRows = reporting.filter((r) => (
     r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < now
-  )).length;
-  const awaitingReview = reporting.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
-  const offTrackIndicators = indicatorStatus.off_track;
+  ));
+  const overdueReports = overdueRows.length;
+  const overdue30 = overdueRows.filter((r) => daysUntil(r.period_end) < -30).length;
+
+  const delayedRows = activities.filter((a) => (
+    a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < now
+  ));
+  const awaitingRows = reporting.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status));
+  const offTrackRows = [...latestProgress.values()].filter((r) => r?.performance_status === 'off_track');
 
   const attention = [
-    { key: 'reports', label: t('overview.attnOverdue'), value: overdueReports, to: '/merl-reporting', tone: overdueReports ? 'critical' : 'clear' },
-    { key: 'indicators', label: t('overview.attnOffTrack'), value: offTrackIndicators, to: '/analytics/results', tone: offTrackIndicators ? 'warning' : 'clear' },
-    { key: 'activities', label: t('overview.attnDelayed'), value: overdueActivities, to: '/merl-reporting', tone: overdueActivities ? 'warning' : 'clear' },
-    { key: 'review', label: t('overview.attnAwaiting'), value: awaitingReview, to: '/review', tone: awaitingReview ? 'warning' : 'clear' },
+    {
+      key: 'reports',
+      label: t('overview.attnOverdue'),
+      value: overdueReports,
+      context: `${copy.olderThan30(overdue30)} · ${copy.projectsAffected(uniqueProjects(overdueRows))}`,
+      to: '/merl-reporting',
+      tone: overdueReports ? 'critical' : 'clear',
+    },
+    {
+      key: 'indicators',
+      label: t('overview.attnOffTrack'),
+      value: offTrackRows.length,
+      context: copy.projectsAffected(uniqueProjects(offTrackRows)),
+      to: '/analytics/results',
+      tone: offTrackRows.length ? 'warning' : 'clear',
+    },
+    {
+      key: 'activities',
+      label: t('overview.attnDelayed'),
+      value: delayedRows.length,
+      context: copy.projectsAffected(uniqueProjects(delayedRows)),
+      to: '/merl-reporting',
+      tone: delayedRows.length ? 'warning' : 'clear',
+    },
+    {
+      key: 'review',
+      label: t('overview.attnAwaiting'),
+      value: awaitingRows.length,
+      context: copy.projectsAffected(uniqueProjects(awaitingRows)),
+      to: '/review',
+      tone: awaitingRows.length ? 'warning' : 'clear',
+    },
   ];
+
+  const attentionProjectIds = new Set([
+    ...overdueRows.map((r) => r.project_id),
+    ...offTrackRows.map((r) => r.project_id),
+    ...delayedRows.map((r) => r.project_id),
+    ...awaitingRows.map((r) => r.project_id),
+  ].filter(Boolean));
 
   const statusData = Object.keys(byBucket).map((key) => ({
     key,
     name: statusLabel(key, t),
     value: byBucket[key],
+    percent: pct(byBucket[key], total),
     color: STATUS_COLOR[key],
   }));
 
@@ -271,12 +392,6 @@ export default function Overview() {
       detail: `${fmtNum(activitiesDone)} / ${fmtNum(activities.length)}`,
     },
     {
-      key: 'budget',
-      label: t('overview.perfBudget'),
-      value: budgetUtilisation,
-      detail: fmtVUV(totalExpenditure),
-    },
-    {
       key: 'reporting',
       label: t('overview.perfReporting'),
       value: pct(reportsApproved, reporting.length),
@@ -285,7 +400,6 @@ export default function Overview() {
   ];
 
   const projectName = (id) => data.projects.find((p) => p.id === id)?.name || '—';
-  const daysUntil = (date) => Math.round((new Date(date.slice(0, 10)) - new Date(now)) / 864e5);
   const reportStatus = (row) => {
     if (row.submission_status === 'approved') return { label: t('overview.statusApproved'), tone: 'ok' };
     if (['submitted', 'reviewed'].includes(row.submission_status)) return { label: t('overview.statusSubmitted'), tone: 'info' };
@@ -311,17 +425,21 @@ export default function Overview() {
     <div className="ovx">
       <OverviewStyles />
 
-      <section className="ovx-heading rp-noprint">
+      <header className="ovx-heading rp-noprint">
         <div>
           <h1>{t('overview.title')}</h1>
-          <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
+          <p>{t('overview.subtitle')}</p>
         </div>
-        <button type="button" className="ovx-export" onClick={() => window.print()}>
-          <Printer size={15} aria-hidden="true" /> {t('ui.export')}
-        </button>
-      </section>
+        <div className="ovx-heading-actions">
+          <span className="ovx-updated">{copy.lastUpdated} <b>{dataAsAt}</b></span>
+          <button type="button" className="ovx-export" onClick={() => window.print()}>
+            <Printer size={15} aria-hidden="true" /> {t('ui.export')}
+          </button>
+        </div>
+      </header>
 
-      <section className="ovx-filterbar rp-noprint" aria-label={t('overview.title')}>
+      <section className="ovx-filterbar rp-noprint" aria-label={copy.filters}>
+        <span className="ovx-filterbar-title">{copy.filters}</span>
         <FilterSelect label={t('overview.filterFy')} value={filters.fy}
           onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
         <FilterSelect label={t('overview.filterStatus')} value={filters.status}
@@ -335,140 +453,193 @@ export default function Overview() {
         <button type="button" className="ovx-reset" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
       </section>
 
-      <section className="ovx-kpis" aria-label={t('overview.title')}>
-        <KpiCard
-          className="ovx-kpi ovx-kpi-progress"
-          label={t('overview.overallProgress')}
-          value={overallProgress == null ? '—' : `${overallProgress}%`}
-          sub={`${fmtNum(indicatorStatus.on_track)} / ${fmtNum(indicators.length)} · ${t('overview.indicatorsOnTrack')}`}
-          progress={overallProgress}
-          progressColor={C.violet}
-          linkLabel={t('overview.viewPerformance')}
-          onClick={() => nav('/analytics/results')}
-        />
-        <KpiCard
-          className="ovx-kpi ovx-kpi-projects"
-          label={t('overview.kpiProjects')}
-          value={fmtNum(total)}
-          sub={t('overview.activeCompleted', { active: activeProjects, completed })}
-          linkLabel={t('overview.viewProjects')}
-          onClick={() => nav('/analytics/portfolio')}
-        />
-        <KpiCard
-          className="ovx-kpi ovx-kpi-budget"
-          label={t('overview.budgetUtilisation')}
-          value={`${budgetUtilisation}%`}
-          sub={`${fmtVUV(totalExpenditure)} / ${fmtVUV(totalBudget)}`}
-          progress={budgetUtilisation}
-          progressColor={C.amber}
-          linkLabel={t('overview.viewFinancials')}
-          onClick={() => nav('/analytics/financial')}
-        />
-        <KpiCard
-          className="ovx-kpi ovx-kpi-beneficiaries"
-          label={t('overview.kpiBeneficiaries')}
-          value={fmtNum(totalBeneficiaries)}
-          sub={genderSummary || undefined}
-          linkLabel={t('overview.viewBeneficiaries')}
-          onClick={() => nav('/analytics/geographic')}
-        />
+      <section className="ovx-section" aria-labelledby="ovx-portfolio-status">
+        <SectionIntro id="ovx-portfolio-status" title={copy.portfolioStatus} />
+        <div className="ovx-metric-strip">
+          <Metric
+            primary
+            label={t('overview.overallProgress')}
+            value={overallProgress == null ? '—' : `${overallProgress}%`}
+            sub={`${fmtNum(indicatorStatus.on_track)} / ${fmtNum(indicators.length)} · ${t('overview.indicatorsOnTrack')}`}
+            progress={overallProgress}
+            trend={progressTrend}
+            trendLabel={copy.sincePrevious}
+            onClick={() => nav('/analytics/results')}
+          />
+          <Metric
+            label={t('overview.kpiProjects')}
+            value={fmtNum(total)}
+            sub={t('overview.activeCompleted', { active: activeProjects, completed })}
+            onClick={() => nav('/analytics/portfolio')}
+          />
+          <Metric
+            label={t('overview.budgetUtilisation')}
+            value={`${budgetUtilisation}%`}
+            sub={`${fmtVUV(totalExpenditure)} / ${fmtVUV(totalBudget)}`}
+            progress={budgetUtilisation}
+            trend={budgetTrend}
+            trendLabel={copy.sincePrevious}
+            onClick={() => nav('/analytics/financial')}
+          />
+          <Metric
+            label={t('overview.kpiBeneficiaries')}
+            value={fmtNum(totalBeneficiaries)}
+            sub={genderSummary || undefined}
+            onClick={() => nav('/analytics/geographic')}
+          />
+        </div>
       </section>
 
-      <section className="ovx-priority-grid">
-        <article className="ovx-card ovx-attention-card">
-          <CardHeading icon={<AlertTriangle size={17} aria-hidden="true" />} title={t('overview.needsAttention')} />
-          <div className="ovx-attention-grid">
-            {attention.map((item) => (
-              <button key={item.key} type="button" className={`ovx-attention-item tone-${item.tone}`} onClick={() => nav(item.to)}>
-                <span className="ovx-attention-number">{fmtNum(item.value)}</span>
-                <span className="ovx-attention-label">{item.label}</span>
-                <span className="ovx-attention-action">{t('overview.viewAll')} <ArrowRight size={12} /></span>
-              </button>
-            ))}
-          </div>
-        </article>
-
-        <article className="ovx-card">
-          <CardHeading title={t('overview.implementation')} />
-          <div className="ovx-implementation">
-            <Donut data={statusData} total={total} onSlice={(slice) => setFilter('status', slice.key)} />
-            <div className="ovx-status-list">
-              {statusData.map((item) => (
-                <button key={item.key} type="button" className="ovx-status-row" onClick={() => setFilter('status', item.key)}>
-                  <span className="ovx-status-dot" style={{ background: item.color }} />
-                  <span className="ovx-status-name">{item.name}</span>
-                  <b>{fmtNum(item.value)}</b>
-                  <span>{pct(item.value, total)}%</span>
+      <section className="ovx-section" aria-labelledby="ovx-management-attention">
+        <SectionIntro id="ovx-management-attention" title={copy.managementAttention} />
+        <div className="ovx-priority-grid">
+          <article className="ovx-panel ovx-attention-panel">
+            <div className="ovx-panel-heading">
+              <div>
+                <h2><AlertTriangle size={16} aria-hidden="true" />{t('overview.needsAttention')}</h2>
+                <p>{copy.projectsAffected(attentionProjectIds.size)}</p>
+              </div>
+            </div>
+            <div className="ovx-attention-list">
+              {attention.map((item) => (
+                <button key={item.key} type="button" className={`ovx-attention-row tone-${item.tone}`} onClick={() => nav(item.to)}>
+                  <span className="ovx-attention-dot" aria-hidden="true" />
+                  <span className="ovx-attention-copy">
+                    <b>{item.label}</b>
+                    <small>{item.context}</small>
+                  </span>
+                  <strong>{fmtNum(item.value)}</strong>
+                  <span className="ovx-row-action">{copy.review}</span>
                 </button>
               ))}
             </div>
-          </div>
-          <CardLink onClick={() => nav('/analytics/portfolio')}>{t('overview.viewPerformance')}</CardLink>
-        </article>
-      </section>
+          </article>
 
-      <section className="ovx-secondary-grid">
-        <article className="ovx-card">
-          <CardHeading title={t('overview.portfolio')} />
-          <div className="ovx-performance-list">
-            {performanceRows.map((row) => (
-              <div key={row.key} className="ovx-performance-row">
-                <div className="ovx-performance-meta">
-                  <span>{row.label}</span>
-                  <b>{row.value}%</b>
-                </div>
-                <div className="ovx-performance-track">
-                  <div style={{ width: `${Math.min(100, Math.max(0, row.value))}%` }} />
-                </div>
-                <span className="ovx-performance-detail">{row.detail}</span>
+          <article className="ovx-panel ovx-status-panel">
+            <div className="ovx-panel-heading">
+              <div>
+                <h2>{t('overview.implementation')}</h2>
+                <p>{copy.statusHint}</p>
               </div>
-            ))}
-          </div>
-          <CardLink onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')}</CardLink>
-        </article>
-
-        <ProjectLocations
-          counts={provinceCounts}
-          beneficiaries={provinceBeneficiaries}
-          nationalCount={nationalCount}
-          selected={filters.province}
-          onSelect={(province) => setFilter('province', province)}
-          onView={() => nav('/analytics/geographic')}
-        />
-      </section>
-
-      <section className="ovx-card ovx-reporting-card">
-        <CardHeading title={t('overview.recentUpcoming')} />
-        {reportRows.length === 0 ? (
-          <div className="ovx-empty">{t('overview.nothingDueSoon')}</div>
-        ) : (
-          <div className="ovx-table-wrap">
-            <table className="ovx-table">
-              <thead>
-                <tr>
-                  <th>{t('overview.colItem')}</th>
-                  <th>{t('overview.colProject')}</th>
-                  <th>{t('overview.colDueDate')}</th>
-                  <th>{t('overview.colStatus')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportRows.map((row) => (
-                  <tr key={row.id} onClick={() => nav('/analytics/reporting')}>
-                    <td className="ovx-table-strong">{row.item}</td>
-                    <td>{row.project}</td>
-                    <td>{fmtDate(row.due)}</td>
-                    <td><span className={`ovx-badge tone-${row.status.tone}`}>{row.status.label}</span></td>
-                  </tr>
+              <button type="button" className="ovx-text-link" onClick={() => nav('/analytics/portfolio')}>
+                {t('overview.viewPerformance')}
+              </button>
+            </div>
+            <div className="ovx-status-summary">
+              <div className="ovx-segmented-track" role="img" aria-label={copy.statusDistribution}>
+                {statusData.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    aria-label={`${item.name}: ${item.value} (${item.percent}%)`}
+                    title={`${item.name}: ${item.value} (${item.percent}%)`}
+                    style={{ width: `${item.percent}%`, background: item.color }}
+                    onClick={() => setFilter('status', item.key)}
+                  />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <CardLink onClick={() => nav('/analytics/reporting')}>{t('overview.viewAllReports')}</CardLink>
+              </div>
+              <div className="ovx-status-grid">
+                {statusData.map((item) => (
+                  <button key={item.key} type="button" className="ovx-status-item" onClick={() => setFilter('status', item.key)}>
+                    <span className="ovx-status-dot" style={{ background: item.color }} aria-hidden="true" />
+                    <span>{item.name}</span>
+                    <b>{fmtNum(item.value)}</b>
+                    <small>{item.percent}%</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </article>
+        </div>
       </section>
 
-      <div className="ovx-updated">{t('overview.subtitle')} <b>{dataAsAt}</b></div>
+      <section className="ovx-section" aria-labelledby="ovx-performance-coverage">
+        <SectionIntro id="ovx-performance-coverage" title={copy.performanceCoverage} />
+        <div className="ovx-secondary-grid">
+          <article className="ovx-panel">
+            <div className="ovx-panel-heading">
+              <div>
+                <h2>{copy.resultsPerformance}</h2>
+                <p>{t('overview.portfolio')}</p>
+              </div>
+              <button type="button" className="ovx-text-link" onClick={() => nav('/analytics/results')}>
+                {t('overview.viewPerformance')}
+              </button>
+            </div>
+            <div className="ovx-performance-list">
+              {performanceRows.map((row) => (
+                <div key={row.key} className="ovx-performance-row">
+                  <div className="ovx-performance-meta">
+                    <span>{row.label}</span>
+                    <span><b>{row.value}%</b> <small>{row.detail}</small></span>
+                  </div>
+                  <div className="ovx-performance-track" aria-hidden="true">
+                    <div style={{ width: `${Math.min(100, Math.max(0, row.value))}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <ProjectLocations
+            counts={provinceCounts}
+            beneficiaries={provinceBeneficiaries}
+            nationalCount={nationalCount}
+            selected={filters.province}
+            onSelect={(province) => setFilter('province', province)}
+            onView={() => nav('/analytics/geographic')}
+            copy={copy}
+          />
+        </div>
+      </section>
+
+      <section className="ovx-section" aria-labelledby="ovx-reporting-obligations">
+        <SectionIntro id="ovx-reporting-obligations" title={copy.reportingObligations} />
+        <article className="ovx-panel ovx-reporting-panel">
+          <div className="ovx-panel-heading">
+            <div>
+              <h2>{t('overview.recentUpcoming')}</h2>
+            </div>
+            <button type="button" className="ovx-text-link" onClick={() => nav('/analytics/reporting')}>
+              {t('overview.viewAllReports')}
+            </button>
+          </div>
+          {reportRows.length === 0 ? (
+            <div className="ovx-empty">{t('overview.nothingDueSoon')}</div>
+          ) : (
+            <div className="ovx-table-wrap">
+              <table className="ovx-table">
+                <thead>
+                  <tr>
+                    <th>{t('overview.colItem')}</th>
+                    <th>{t('overview.colProject')}</th>
+                    <th>{t('overview.colDueDate')}</th>
+                    <th>{t('overview.colStatus')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportRows.map((row) => (
+                    <tr key={row.id} onClick={() => nav('/analytics/reporting')}>
+                      <td className="ovx-table-strong">{row.item}</td>
+                      <td>{row.project}</td>
+                      <td>{fmtDate(row.due)}</td>
+                      <td><span className={`ovx-badge tone-${row.status.tone}`}>{row.status.label}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
+      </section>
+    </div>
+  );
+}
+
+function SectionIntro({ id, title }) {
+  return (
+    <div className="ovx-section-intro">
+      <h2 id={id}>{title}</h2>
     </div>
   );
 }
@@ -488,61 +659,44 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
-function CardHeading({ title, icon }) {
+function Metric({ primary = false, label, value, sub, progress, trend, trendLabel, onClick }) {
   return (
-    <div className="ovx-card-heading">
-      <div className="ovx-card-title">{icon}{title}</div>
-    </div>
-  );
-}
-
-function CardLink({ onClick, children }) {
-  return (
-    <button type="button" className="ovx-card-link" onClick={onClick}>
-      {children} <ArrowRight size={13} aria-hidden="true" />
+    <button type="button" className={`ovx-metric${primary ? ' is-primary' : ''}`} onClick={onClick}>
+      <span className="ovx-metric-label">{label}</span>
+      <strong>{value}</strong>
+      {sub && <span className="ovx-metric-sub">{sub}</span>}
+      {progress != null && (
+        <span className="ovx-metric-progress" aria-hidden="true">
+          <span style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+        </span>
+      )}
+      {trend != null && (
+        <span className="ovx-metric-trend">
+          {trend > 0 ? '+' : ''}{trend} pp · {trendLabel}
+        </span>
+      )}
     </button>
   );
 }
 
-function Donut({ data, total, onSlice }) {
-  return (
-    <div className="ovx-donut-wrap">
-      {total === 0 ? (
-        <div className="ovx-empty">—</div>
-      ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={47}
-              outerRadius={68}
-              paddingAngle={2}
-              onClick={(entry) => onSlice?.(entry?.payload ?? entry)}
-              cursor="pointer"
-            >
-              {data.map((item) => <Cell key={item.key} fill={item.color} />)}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
-      )}
-      <div className="ovx-donut-center">
-        <b>{fmtNum(total)}</b>
-        <span>Total</span>
-      </div>
-    </div>
-  );
-}
-
-function ProjectLocations({ counts, beneficiaries, nationalCount, selected, onSelect, onView }) {
+function ProjectLocations({ counts, beneficiaries, nationalCount, selected, onSelect, onView, copy }) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(null);
+  const ranked = [...PROVINCE_LIST].sort((a, b) => (
+    (counts[b] || 0) - (counts[a] || 0)
+    || (beneficiaries[b] || 0) - (beneficiaries[a] || 0)
+    || a.localeCompare(b)
+  ));
 
   return (
-    <article className="ovx-card ovx-location-card">
-      <CardHeading title={t('overview.locations')} />
+    <article className="ovx-panel ovx-location-panel">
+      <div className="ovx-panel-heading">
+        <div>
+          <h2>{t('overview.locations')}</h2>
+          <p>{copy.coverageConcentration}</p>
+        </div>
+        <button type="button" className="ovx-text-link" onClick={onView}>{t('overview.viewCoverage')}</button>
+      </div>
       <div className="ovx-location-layout">
         <div className="ovx-map-panel">
           <VanuatuMapMini
@@ -553,41 +707,36 @@ function ProjectLocations({ counts, beneficiaries, nationalCount, selected, onSe
             onSelect={onSelect}
           />
         </div>
-        <div className="ovx-location-table-wrap">
-          <table className="ovx-location-table">
-            <thead>
-              <tr>
-                <th>{t('overview.colProvince')}</th>
-                <th>{t('overview.colProjects')}</th>
-                <th>{t('overview.colBeneficiaries')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PROVINCE_LIST.map((province) => (
-                <tr
-                  key={province}
-                  className={`${selected === province ? 'selected ' : ''}${hovered === province ? 'hovered' : ''}`}
-                  onClick={() => onSelect(province)}
-                  onMouseEnter={() => setHovered(province)}
-                  onMouseLeave={() => setHovered(null)}
-                >
-                  <td><span className="ovx-province-dot" style={{ opacity: counts[province] ? 1 : 0.28 }} />{province}</td>
-                  <td>{fmtNum(counts[province] || 0)}</td>
-                  <td>{fmtNum(beneficiaries[province] || 0)}</td>
-                </tr>
-              ))}
-              {nationalCount > 0 && (
-                <tr>
-                  <td><span className="ovx-province-dot is-muted" />{t('overview.nationalMulti')}</td>
-                  <td>{fmtNum(nationalCount)}</td>
-                  <td>—</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="ovx-province-list">
+          {ranked.map((province, index) => (
+            <button
+              type="button"
+              key={province}
+              className={`ovx-province-row${selected === province ? ' selected' : ''}${hovered === province ? ' hovered' : ''}`}
+              onClick={() => onSelect(province)}
+              onMouseEnter={() => setHovered(province)}
+              onMouseLeave={() => setHovered(null)}
+            >
+              <span className="ovx-province-rank">{index + 1}</span>
+              <span className="ovx-province-name">{province}</span>
+              <span className="ovx-province-stat">
+                <b>{fmtNum(counts[province] || 0)}</b><small>{copy.projectsLabel}</small>
+              </span>
+              <span className="ovx-province-stat">
+                <b>{fmtNum(beneficiaries[province] || 0)}</b><small>{copy.beneficiariesLabel}</small>
+              </span>
+            </button>
+          ))}
+          {nationalCount > 0 && (
+            <div className="ovx-province-row is-static">
+              <span className="ovx-province-rank">—</span>
+              <span className="ovx-province-name">{copy.national}</span>
+              <span className="ovx-province-stat"><b>{fmtNum(nationalCount)}</b><small>{copy.projectsLabel}</small></span>
+              <span className="ovx-province-stat"><b>—</b><small>{copy.beneficiariesLabel}</small></span>
+            </div>
+          )}
         </div>
       </div>
-      <CardLink onClick={onView}>{t('overview.viewCoverage')}</CardLink>
     </article>
   );
 }
@@ -629,10 +778,8 @@ function OverviewSkeleton() {
     <div className="ovx">
       <OverviewStyles />
       <div className="ovx-skeleton ovx-skeleton-heading" />
-      <div className="ovx-skeleton ovx-skeleton-filters" />
-      <div className="ovx-kpis">
-        {Array.from({ length: 4 }).map((_, i) => <div className="ovx-skeleton ovx-skeleton-kpi" key={i} />)}
-      </div>
+      <div className="ovx-skeleton ovx-skeleton-filter" />
+      <div className="ovx-skeleton ovx-skeleton-strip" />
       <div className="ovx-priority-grid">
         <div className="ovx-skeleton ovx-skeleton-panel" />
         <div className="ovx-skeleton ovx-skeleton-panel" />
@@ -644,91 +791,150 @@ function OverviewSkeleton() {
 function OverviewStyles() {
   return (
     <style>{`
-      .ovx{max-width:1440px;margin:0 auto;padding:1.05rem 1.05rem 1.5rem;color:var(--text-1)}
-      .ovx-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin:.1rem 0 .9rem}
-      .ovx-heading h1{margin:0;color:#2a2148;font-size:clamp(1.55rem,2.3vw,2rem);font-weight:780;letter-spacing:-.035em}
-      .ovx-heading p{margin:.3rem 0 0;color:#91899f;font-size:.82rem}
-      .ovx-heading p b{color:#736a84;font-weight:700}
-      .ovx-export{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#5b4692;color:#fff;font:inherit;font-size:.79rem;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(74,55,125,.14)}
-      .ovx-export:hover{background:#4b377d}
+      .ovx{max-width:1360px;margin:0 auto;padding:1.5rem 1.5rem 2.5rem;color:var(--text-1)}
+      .ovx-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1.5rem;margin:0 0 1rem}
+      .ovx-heading h1{margin:0;color:var(--text-1);font-size:clamp(1.65rem,2.4vw,2rem);font-weight:760;letter-spacing:-.035em}
+      .ovx-heading p{margin:.28rem 0 0;color:var(--text-3);font-size:.82rem}
+      .ovx-heading-actions{display:flex;align-items:center;gap:.85rem}
+      .ovx-updated{color:var(--text-3);font-size:.7rem;white-space:nowrap}
+      .ovx-updated b{color:var(--text-2);font-weight:650}
+      .ovx-export{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:36px;padding:.48rem .72rem;border:1px solid var(--border-strong);border-radius:6px;background:#fff;color:var(--green-700);font:inherit;font-size:.74rem;font-weight:650;cursor:pointer;box-shadow:none}
+      .ovx-export:hover{border-color:#a99cbc;background:#faf9fc}
 
-      .ovx-filterbar{display:grid;grid-template-columns:.8fr .8fr 1.25fr .9fr 1.2fr auto;gap:.65rem;align-items:end;margin-bottom:1rem;padding:.85rem .9rem;border:1px solid #ebe7f2;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}
-      .ovx-filter{display:block;min-width:0}
-      .ovx-filter>span{display:block;margin:0 0 .32rem;color:#898194;font-size:.62rem;font-weight:760;letter-spacing:.065em;text-transform:uppercase}
-      .ovx-filter select{width:100%;min-height:40px;padding:.5rem .7rem;border:1px solid #e4dfed;border-radius:9px;background:#fff;color:#41374f;font:inherit;font-size:.8rem;outline:none}
-      .ovx-filter select:focus{border-color:#7a66aa;box-shadow:0 0 0 3px rgba(91,70,146,.1)}
-      .ovx-reset{min-height:40px;padding:.5rem .85rem;border:1px solid #e6e1ef;border-radius:9px;background:#f9f8fc;color:#7f778c;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer}
-      .ovx-reset:disabled{opacity:.45;cursor:not-allowed}
+      .ovx-filterbar{display:flex;align-items:flex-end;gap:.6rem;flex-wrap:wrap;margin-bottom:1.5rem;padding:.7rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+      .ovx-filterbar-title{align-self:center;margin-right:.15rem;color:var(--text-2);font-size:.72rem;font-weight:700}
+      .ovx-filter{display:block;min-width:116px;flex:1 1 126px;max-width:190px}
+      .ovx-filter:nth-of-type(3),.ovx-filter:nth-of-type(5){max-width:220px}
+      .ovx-filter>span{display:block;margin:0 0 .22rem;color:var(--text-3);font-size:.66rem;font-weight:620;letter-spacing:0;text-transform:none}
+      .ovx-filter select{width:100%;min-height:36px;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text-1);font:inherit;font-size:.76rem;outline:none}
+      .ovx-filter select:focus{border-color:#77669a;box-shadow:0 0 0 3px var(--ring)}
+      .ovx-reset{align-self:flex-end;min-height:36px;padding:.4rem .45rem;border:0;background:none;color:var(--green-700);font:inherit;font-size:.72rem;font-weight:650;cursor:pointer}
+      .ovx-reset:hover{text-decoration:underline}.ovx-reset:disabled{opacity:.35;cursor:not-allowed;text-decoration:none}
 
-      .ovx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;margin-bottom:.9rem}
-      .ovx-kpi{min-height:174px!important;border-radius:14px!important;border-color:#ebe7f2!important;padding:1rem!important;box-shadow:var(--shadow-sm)!important}
-      .ovx-kpi::before{content:'';position:absolute;left:-1px;top:14px;bottom:14px;width:4px;border-radius:0 5px 5px 0;background:#6b55a7}
-      .ovx-kpi-projects::before{background:#4ea76b}.ovx-kpi-budget::before{background:#f0b323}.ovx-kpi-beneficiaries::before{background:#338bdc}
-      .ovx-kpi [class*='uppercase']{text-transform:none!important;letter-spacing:.01em!important;font-size:.7rem!important;color:#7e758e!important}
-      .ovx-kpi [class*='font-extrabold']{font-size:clamp(1.55rem,2.1vw,2rem)!important;color:#281f48!important}
-      .ovx-kpi [class*='text-xs']{color:#786f87!important}
+      .ovx-section{margin-top:1.5rem}
+      .ovx-section:first-of-type{margin-top:0}
+      .ovx-section-intro{display:flex;align-items:center;justify-content:space-between;margin:0 0 .65rem}
+      .ovx-section-intro h2{margin:0;color:#6e6876;font-size:.7rem;font-weight:720;letter-spacing:.055em;text-transform:uppercase}
 
-      .ovx-priority-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr);gap:.9rem;margin-bottom:.9rem}
-      .ovx-secondary-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.45fr);gap:.9rem;margin-bottom:.9rem}
-      .ovx-card{display:flex;min-width:0;flex-direction:column;border:1px solid #ebe7f2;border-radius:14px;background:#fff;padding:1rem;box-shadow:var(--shadow-sm)}
-      .ovx-card-heading{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin-bottom:.8rem}
-      .ovx-card-title{display:flex;align-items:center;gap:.48rem;color:#33284f;font-size:.91rem;font-weight:760;letter-spacing:-.015em}
-      .ovx-card-title svg{color:#b16a43}
-      .ovx-card-link{display:inline-flex;align-items:center;gap:.35rem;align-self:flex-start;margin-top:auto;padding:.75rem 0 0;border:0;background:none;color:#5b4692;font:inherit;font-size:.72rem;font-weight:730;cursor:pointer}
-      .ovx-card-link:hover{text-decoration:underline}
+      .ovx-metric-strip{display:grid;grid-template-columns:1.35fr repeat(3,1fr);overflow:hidden;border:1px solid var(--border);border-radius:8px;background:#fff}
+      .ovx-metric{position:relative;display:flex;min-width:0;min-height:142px;flex-direction:column;align-items:flex-start;padding:1.1rem 1.2rem;border:0;border-right:1px solid var(--border);background:#fff;text-align:left;font:inherit;cursor:pointer}
+      .ovx-metric:last-child{border-right:0}
+      .ovx-metric:hover{background:#fafafb}
+      .ovx-metric.is-primary{background:#f6f3fa}
+      .ovx-metric.is-primary:hover{background:#f2eef7}
+      .ovx-metric-label{color:var(--text-2);font-size:.73rem;font-weight:650}
+      .ovx-metric>strong{margin-top:.38rem;color:#2f2742;font-family:var(--font-display);font-size:clamp(1.72rem,2.4vw,2.18rem);font-weight:780;letter-spacing:-.035em;line-height:1}
+      .ovx-metric-sub{margin-top:.55rem;color:var(--text-3);font-size:.72rem;line-height:1.35}
+      .ovx-metric-progress{display:block;width:100%;height:4px;margin-top:auto;background:#ebe9ef;border-radius:2px;overflow:hidden}
+      .ovx-metric-progress>span{display:block;height:100%;background:var(--green-600);border-radius:2px}
+      .ovx-metric-trend{margin-top:.5rem;color:#695b84;font-size:.65rem;font-weight:620}
 
-      .ovx-attention-card{background:linear-gradient(180deg,#fffdfa 0%,#fff 30%)}
-      .ovx-attention-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
-      .ovx-attention-item{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'num label' 'num action';column-gap:.7rem;row-gap:.18rem;min-width:0;padding:.72rem;border:1px solid #eee9f3;border-radius:11px;background:#fff;text-align:left;cursor:pointer;font:inherit}
-      .ovx-attention-item:hover{border-color:#ddd4e9;background:#fcfbfe}
-      .ovx-attention-number{grid-area:num;align-self:center;min-width:1.7ch;color:#4b377d;font-size:1.35rem;font-weight:820;font-family:var(--font-display);line-height:1}
-      .ovx-attention-label{grid-area:label;min-width:0;color:#50475d;font-size:.74rem;font-weight:650;line-height:1.25}
-      .ovx-attention-action{grid-area:action;display:flex;align-items:center;gap:.2rem;color:#91899f;font-size:.64rem;font-weight:650}
-      .ovx-attention-item.tone-critical .ovx-attention-number{color:#c23b32}.ovx-attention-item.tone-warning .ovx-attention-number{color:#c78417}.ovx-attention-item.tone-clear .ovx-attention-number{color:#4b9a67}
+      .ovx-priority-grid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.25fr);gap:1rem}
+      .ovx-secondary-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.45fr);gap:1rem}
+      .ovx-panel{min-width:0;border:1px solid var(--border);border-radius:8px;background:#fff;padding:1rem 1.1rem}
+      .ovx-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.85rem}
+      .ovx-panel-heading h2{display:flex;align-items:center;gap:.45rem;margin:0;color:var(--text-1);font-size:.92rem;font-weight:720;letter-spacing:-.015em}
+      .ovx-panel-heading h2 svg{color:#9a633c}
+      .ovx-panel-heading p{margin:.22rem 0 0;color:var(--text-3);font-size:.68rem;line-height:1.35}
+      .ovx-text-link{flex-shrink:0;padding:.1rem 0;border:0;background:none;color:var(--green-700);font:inherit;font-size:.69rem;font-weight:650;cursor:pointer}
+      .ovx-text-link:hover{text-decoration:underline}
 
-      .ovx-implementation{display:grid;grid-template-columns:170px minmax(0,1fr);gap:1rem;align-items:center;min-height:178px}
-      .ovx-donut-wrap{position:relative;width:170px;height:170px}
-      .ovx-donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-      .ovx-donut-center b{color:#2d234d;font-size:1.35rem;font-family:var(--font-display)}
-      .ovx-donut-center span{color:#91899f;font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
-      .ovx-status-list{display:flex;flex-direction:column;gap:.3rem}
-      .ovx-status-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto 44px;gap:.55rem;align-items:center;width:100%;padding:.48rem .35rem;border:0;border-bottom:1px solid #f0edf4;background:none;color:#5b5268;text-align:left;cursor:pointer;font:inherit;font-size:.73rem}
-      .ovx-status-row:last-child{border-bottom:0}.ovx-status-row:hover{background:#faf8fd}
-      .ovx-status-dot{width:9px;height:9px;border-radius:3px}.ovx-status-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ovx-status-row b{color:#31274d;font-size:.78rem}.ovx-status-row>span:last-child{text-align:right;color:#91899f}
+      .ovx-attention-list{border-top:1px solid var(--border)}
+      .ovx-attention-row{display:grid;grid-template-columns:8px minmax(0,1fr) auto auto;gap:.65rem;align-items:center;width:100%;padding:.72rem .1rem;border:0;border-bottom:1px solid var(--border);background:none;text-align:left;font:inherit;cursor:pointer}
+      .ovx-attention-row:last-child{border-bottom:0}
+      .ovx-attention-row:hover{background:#fafafb}
+      .ovx-attention-dot{width:7px;height:7px;border-radius:50%;background:#8c8891}
+      .ovx-attention-row.tone-critical .ovx-attention-dot{background:var(--red-600)}
+      .ovx-attention-row.tone-warning .ovx-attention-dot{background:#c88918}
+      .ovx-attention-row.tone-clear .ovx-attention-dot{background:#2f8b54}
+      .ovx-attention-copy{display:flex;min-width:0;flex-direction:column;gap:.15rem}
+      .ovx-attention-copy b{color:var(--text-1);font-size:.74rem;font-weight:660}
+      .ovx-attention-copy small{overflow:hidden;color:var(--text-3);font-size:.64rem;text-overflow:ellipsis;white-space:nowrap}
+      .ovx-attention-row>strong{min-width:2ch;color:#342b43;font-family:var(--font-display);font-size:1rem;font-weight:760;text-align:right}
+      .ovx-row-action{color:var(--green-700);font-size:.66rem;font-weight:650}
 
-      .ovx-performance-list{display:flex;flex-direction:column;gap:.9rem;padding:.25rem 0 .35rem}
-      .ovx-performance-row{display:grid;grid-template-columns:1fr auto;grid-template-areas:'meta meta' 'track detail';gap:.35rem .7rem}
-      .ovx-performance-meta{grid-area:meta;display:flex;align-items:center;justify-content:space-between;gap:.8rem;color:#62596f;font-size:.74rem;font-weight:650}
-      .ovx-performance-meta b{color:#34284f;font-size:.82rem}
-      .ovx-performance-track{grid-area:track;height:7px;overflow:hidden;border-radius:999px;background:#efecf5}
-      .ovx-performance-track>div{height:100%;border-radius:inherit;background:linear-gradient(90deg,#6b55a7,#806bb4)}
-      .ovx-performance-detail{grid-area:detail;min-width:62px;color:#9991a5;font-size:.64rem;text-align:right}
+      .ovx-status-summary{padding:.15rem 0 .1rem}
+      .ovx-segmented-track{display:flex;width:100%;height:16px;overflow:hidden;border-radius:3px;background:var(--surface-2)}
+      .ovx-segmented-track button{min-width:0;height:100%;padding:0;border:0;border-right:2px solid #fff;cursor:pointer}
+      .ovx-segmented-track button:last-child{border-right:0}
+      .ovx-segmented-track button:hover{filter:brightness(.94)}
+      .ovx-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 1rem;margin-top:.85rem}
+      .ovx-status-item{display:grid;grid-template-columns:8px minmax(0,1fr) auto auto;gap:.48rem;align-items:center;padding:.58rem 0;border:0;border-bottom:1px solid var(--border);background:none;color:var(--text-2);text-align:left;font:inherit;font-size:.71rem;cursor:pointer}
+      .ovx-status-item:hover{color:var(--text-1)}
+      .ovx-status-dot{width:7px;height:7px;border-radius:2px}
+      .ovx-status-item b{color:var(--text-1);font-size:.74rem}.ovx-status-item small{min-width:30px;color:var(--text-3);text-align:right}
 
-      .ovx-location-layout{display:grid;grid-template-columns:minmax(230px,.92fr) minmax(300px,1.08fr);gap:.8rem;align-items:stretch}
-      .ovx-map-panel{min-height:270px;overflow:hidden;border:1px solid #ebe7f2;border-radius:11px;background:#f4f3fa}
-      .ovx-location-table-wrap{overflow:auto}
-      .ovx-location-table{width:100%;border-collapse:collapse;font-size:.72rem}
-      .ovx-location-table th{padding:.55rem .48rem;border-bottom:1px solid #eae6f0;color:#8f879c;background:#faf9fc;font-size:.61rem;font-weight:760;letter-spacing:.05em;text-align:right;text-transform:uppercase}
-      .ovx-location-table th:first-child{text-align:left}.ovx-location-table td{padding:.55rem .48rem;border-bottom:1px solid #f0edf4;color:#554c62;text-align:right}.ovx-location-table td:first-child{display:flex;align-items:center;gap:.45rem;color:#3d334f;font-weight:680;text-align:left}.ovx-location-table tr{cursor:pointer}.ovx-location-table tbody tr:hover,.ovx-location-table tr.hovered{background:#faf8fd}.ovx-location-table tr.selected{background:#f4effb}
-      .ovx-province-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b55a7;flex-shrink:0}.ovx-province-dot.is-muted{background:#a9a2b3}
+      .ovx-performance-list{display:flex;flex-direction:column;gap:1rem;padding:.2rem 0 .15rem}
+      .ovx-performance-row{display:flex;flex-direction:column;gap:.38rem}
+      .ovx-performance-meta{display:flex;align-items:center;justify-content:space-between;gap:.8rem;color:var(--text-2);font-size:.73rem;font-weight:620}
+      .ovx-performance-meta>span:last-child{display:flex;align-items:baseline;gap:.4rem}
+      .ovx-performance-meta b{color:var(--text-1);font-size:.8rem}.ovx-performance-meta small{color:var(--text-3);font-size:.62rem}
+      .ovx-performance-track{height:6px;overflow:hidden;border-radius:2px;background:#ecebef}
+      .ovx-performance-track>div{height:100%;border-radius:2px;background:var(--green-600)}
 
-      .ovx-reporting-card{margin-bottom:.7rem}
-      .ovx-table-wrap{overflow:auto;border:1px solid #ece8f2;border-radius:11px}
-      .ovx-table{width:100%;border-collapse:collapse;font-size:.74rem}
-      .ovx-table th{padding:.65rem .75rem;background:#faf9fc;color:#8c8499;font-size:.62rem;font-weight:760;letter-spacing:.055em;text-align:left;text-transform:uppercase}
-      .ovx-table td{padding:.7rem .75rem;border-top:1px solid #efecf4;color:#61586d}.ovx-table tbody tr{cursor:pointer}.ovx-table tbody tr:hover{background:#faf9fd}.ovx-table-strong{color:#372c50!important;font-weight:680}
-      .ovx-badge{display:inline-flex;padding:.18rem .5rem;border-radius:999px;font-size:.62rem;font-weight:730;white-space:nowrap}.ovx-badge.tone-ok{background:#e8f6ec;color:#2f7d49}.ovx-badge.tone-info{background:#eef3ff;color:#4169a9}.ovx-badge.tone-warn{background:#fff6df;color:#996713}.ovx-badge.tone-crit{background:#feebea;color:#b53b34}
-      .ovx-empty{display:flex;min-height:110px;align-items:center;justify-content:center;color:#9a92a5;font-size:.78rem}.ovx-updated{padding:.2rem .15rem;color:#9a92a5;font-size:.66rem;text-align:right}
+      .ovx-location-layout{display:grid;grid-template-columns:minmax(230px,.9fr) minmax(320px,1.1fr);gap:1rem;align-items:stretch}
+      .ovx-map-panel{min-height:280px;overflow:hidden;border:1px solid var(--border);border-radius:6px;background:#f5f4f8}
+      .ovx-province-list{display:flex;min-width:0;flex-direction:column;border-top:1px solid var(--border)}
+      .ovx-province-row{display:grid;grid-template-columns:24px minmax(0,1fr) 72px 88px;gap:.55rem;align-items:center;min-width:0;padding:.62rem .2rem;border:0;border-bottom:1px solid var(--border);background:#fff;text-align:left;font:inherit;cursor:pointer}
+      .ovx-province-row:hover,.ovx-province-row.hovered{background:#fafafb}.ovx-province-row.selected{background:#f4f1f8}.ovx-province-row.is-static{cursor:default}
+      .ovx-province-rank{color:#aaa5b0;font-size:.66rem;text-align:center}
+      .ovx-province-name{overflow:hidden;color:var(--text-1);font-size:.72rem;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
+      .ovx-province-stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+      .ovx-province-stat b{color:#3c3449;font-size:.73rem}.ovx-province-stat small{margin-top:.15rem;color:var(--text-3);font-size:.57rem}
 
-      .ovx-error-state{display:flex;min-height:60vh;align-items:center;justify-content:center}.ovx-error-card,.ovx-empty-card{display:flex;max-width:620px;align-items:flex-start;gap:.9rem;padding:1.1rem;border:1px solid #ebe7f2;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}.ovx-empty-card{display:block;text-align:center}.ovx-error-card svg{color:#c78417;flex-shrink:0}.ovx-error-card h2,.ovx-empty-card h2{margin:0 0 .25rem;color:#33284f;font-size:1rem}.ovx-error-card p,.ovx-empty-card p{margin:0;color:#776e84;font-size:.78rem;line-height:1.5}.ovx-error-card .ovx-export{margin-left:auto;flex-shrink:0}.ovx-empty-card .ovx-export{margin-top:.8rem}
+      .ovx-reporting-panel{padding-bottom:.9rem}
+      .ovx-table-wrap{overflow:auto;border-top:1px solid var(--border)}
+      .ovx-table{width:100%;border-collapse:collapse;font-size:.73rem}
+      .ovx-table th{padding:.56rem .68rem;border-bottom:1px solid var(--border);background:#fafafb;color:var(--text-3);font-size:.64rem;font-weight:650;letter-spacing:0;text-align:left;text-transform:none}
+      .ovx-table td{padding:.68rem;border-bottom:1px solid var(--border);color:var(--text-2)}
+      .ovx-table tbody tr{cursor:pointer}.ovx-table tbody tr:hover{background:#fafafb}.ovx-table-strong{color:var(--text-1)!important;font-weight:650}
+      .ovx-badge{display:inline-flex;padding:.16rem .42rem;border-radius:4px;font-size:.61rem;font-weight:680;white-space:nowrap}
+      .ovx-badge.tone-ok{background:#edf6f0;color:#2f7546}.ovx-badge.tone-info{background:#f0f3f8;color:#4f6178}.ovx-badge.tone-warn{background:#fbf5e8;color:#8b6519}.ovx-badge.tone-crit{background:#faecea;color:#a9423a}
+      .ovx-empty{display:flex;min-height:110px;align-items:center;justify-content:center;color:var(--text-3);font-size:.76rem}
 
-      .ovx-skeleton{position:relative;overflow:hidden;border-radius:14px;background:#ece9f2}.ovx-skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:ovx-shimmer 1.4s infinite}.ovx-skeleton-heading{height:58px;margin-bottom:.9rem}.ovx-skeleton-filters{height:82px;margin-bottom:1rem}.ovx-skeleton-kpi{height:174px}.ovx-skeleton-panel{height:270px}@keyframes ovx-shimmer{to{transform:translateX(100%)}}
+      .ovx-error-state{display:flex;min-height:60vh;align-items:center;justify-content:center}
+      .ovx-error-card,.ovx-empty-card{display:flex;max-width:620px;align-items:flex-start;gap:.9rem;padding:1.1rem;border:1px solid var(--border);border-radius:8px;background:#fff}
+      .ovx-empty-card{display:block;text-align:center}.ovx-error-card svg{color:#9a633c;flex-shrink:0}
+      .ovx-error-card h2,.ovx-empty-card h2{margin:0 0 .25rem;color:var(--text-1);font-size:1rem}
+      .ovx-error-card p,.ovx-empty-card p{margin:0;color:var(--text-2);font-size:.78rem;line-height:1.5}
+      .ovx-error-card .ovx-export{margin-left:auto;flex-shrink:0}.ovx-empty-card .ovx-export{margin-top:.8rem}
 
-      @media(max-width:1180px){.ovx-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.ovx-reset{align-self:end}.ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}}
-      @media(max-width:980px){.ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}.ovx-location-layout{grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr)}}
-      @media(max-width:760px){.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
-      @media(max-width:560px){.ovx-heading{flex-direction:column}.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
-      @media print{.ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export{display:none!important}.ovx-card,.ovx-kpi{box-shadow:none!important}}
+      .ovx-skeleton{position:relative;overflow:hidden;border-radius:6px;background:#ececef}
+      .ovx-skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);animation:ovx-shimmer 1.4s infinite}
+      .ovx-skeleton-heading{height:56px;margin-bottom:1rem}.ovx-skeleton-filter{height:62px;margin-bottom:1.5rem}.ovx-skeleton-strip{height:144px;margin-bottom:1.5rem}.ovx-skeleton-panel{height:260px}
+      @keyframes ovx-shimmer{to{transform:translateX(100%)}}
+
+      @media(max-width:1180px){
+        .ovx{padding:1.25rem 1rem 2rem}
+        .ovx-metric-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .ovx-metric{border-bottom:1px solid var(--border)}
+        .ovx-metric:nth-child(2){border-right:0}
+        .ovx-metric:nth-child(3),.ovx-metric:nth-child(4){border-bottom:0}
+        .ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}
+        .ovx-location-layout{grid-template-columns:minmax(220px,.8fr) minmax(320px,1.2fr)}
+      }
+      @media(max-width:820px){
+        .ovx{padding:1rem .85rem 1.6rem}
+        .ovx-heading{align-items:flex-start}
+        .ovx-heading-actions{align-items:flex-end;flex-direction:column;gap:.4rem}
+        .ovx-filterbar{gap:.5rem}
+        .ovx-filter{flex:1 1 132px;max-width:none}
+        .ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}
+      }
+      @media(max-width:560px){
+        .ovx-heading{flex-direction:column;gap:.75rem}.ovx-heading-actions{width:100%;align-items:center;flex-direction:row;justify-content:space-between}
+        .ovx-metric-strip{grid-template-columns:1fr}
+        .ovx-metric{min-height:116px;border-right:0!important;border-bottom:1px solid var(--border)!important}
+        .ovx-metric:last-child{border-bottom:0!important}
+        .ovx-status-grid{grid-template-columns:1fr}.ovx-attention-row{grid-template-columns:8px minmax(0,1fr) auto}.ovx-row-action{display:none}
+        .ovx-province-row{grid-template-columns:20px minmax(0,1fr) 62px 76px}
+        .ovx-filterbar-title{width:100%}.ovx-filter{flex:1 1 calc(50% - .5rem)}
+        .ovx-export{min-height:34px}
+      }
+      @media print{
+        .ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export,.ovx-text-link{display:none!important}
+        .ovx-panel,.ovx-metric-strip{break-inside:avoid}
+      }
     `}</style>
   );
 }
