@@ -9,11 +9,24 @@ const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
   ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kbnR2bmNib2VhamFuaXBhZmVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyODA3ODEsImV4cCI6MjA5ODg1Njc4MX0.EPLQbtDvTPIVY57NCZEjsUJzxrbMhP-gngVyP1Vfpm4';
 
+export type SupabaseReadFailure = { status: number; method: string };
+let lastSupabaseReadFailure: SupabaseReadFailure | null = null;
+
+export function getLastSupabaseReadFailure(): SupabaseReadFailure | null {
+  return lastSupabaseReadFailure;
+}
+
+function publishReadFailure(failure: SupabaseReadFailure) {
+  lastSupabaseReadFailure = failure;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('merl:supabase-read-error', { detail: failure }));
+  }
+}
+
 /**
  * Supabase normally returns PostgREST read failures as `{ data: null, error }`.
  * A dashboard can accidentally coalesce that null to [] and display believable
- * zeroes. Emit one global event for failed REST reads so the UI can block those
- * values until the request succeeds again.
+ * zeroes. Record and emit failed REST reads so the UI blocks those values.
  */
 const monitoredFetch: typeof fetch = async (input, init) => {
   try {
@@ -24,18 +37,12 @@ const monitoredFetch: typeof fetch = async (input, init) => {
 
     // 406 is commonly used by PostgREST for an intentionally empty .single()
     // result, so it must not put the whole portal into data-unavailable mode.
-    if (isDataRead && !response.ok && response.status !== 406 && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('merl:supabase-read-error', {
-        detail: { status: response.status, method },
-      }));
+    if (isDataRead && !response.ok && response.status !== 406) {
+      publishReadFailure({ status: response.status, method });
     }
     return response;
   } catch (error) {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('merl:supabase-read-error', {
-        detail: { status: 0, method: String(init?.method ?? 'GET').toUpperCase() },
-      }));
-    }
+    publishReadFailure({ status: 0, method: String(init?.method ?? 'GET').toUpperCase() });
     throw error;
   }
 };
