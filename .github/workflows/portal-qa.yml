@@ -1,0 +1,77 @@
+name: Portal browser QA
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  browser-qa:
+    name: Browser interaction, roles, auth and data UX
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright for QA harness
+        working-directory: frontend
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          sudo mkdir -p /opt/pw-browsers
+          PW_EXECUTABLE="$(node --input-type=module -e "import { chromium } from 'playwright'; console.log(chromium.executablePath())")"
+          sudo ln -sf "$PW_EXECUTABLE" /opt/pw-browsers/chromium
+
+      - name: Build portal
+        working-directory: frontend
+        run: npm run build
+
+      - name: Start built portal
+        working-directory: frontend
+        run: |
+          nohup npx vite preview --port 5199 --strictPort > /tmp/merl-preview.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:5199 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/merl-preview.log
+          exit 1
+
+      - name: Sweep visible controls
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/sweep-controls.mjs
+
+      - name: Validate role permission matrix
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/permission-matrix.mjs
+
+      - name: Validate auth lifecycle
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/auth-lifecycle.mjs
+
+      - name: Validate KPI, filters, map, export, responsive and a11y
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/data-and-ux.mjs
+
+      - name: Show preview log on failure
+        if: failure()
+        run: cat /tmp/merl-preview.log || true

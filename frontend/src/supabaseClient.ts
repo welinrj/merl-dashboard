@@ -9,7 +9,47 @@ const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
   ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kbnR2bmNib2VhamFuaXBhZmVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyODA3ODEsImV4cCI6MjA5ODg1Njc4MX0.EPLQbtDvTPIVY57NCZEjsUJzxrbMhP-gngVyP1Vfpm4';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+export type SupabaseReadFailure = { status: number; method: string };
+let lastSupabaseReadFailure: SupabaseReadFailure | null = null;
+
+export function getLastSupabaseReadFailure(): SupabaseReadFailure | null {
+  return lastSupabaseReadFailure;
+}
+
+function publishReadFailure(failure: SupabaseReadFailure) {
+  lastSupabaseReadFailure = failure;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('merl:supabase-read-error', { detail: failure }));
+  }
+}
+
+/**
+ * Supabase normally returns PostgREST read failures as `{ data: null, error }`.
+ * A dashboard can accidentally coalesce that null to [] and display believable
+ * zeroes. Record and emit failed REST reads so the UI blocks those values.
+ */
+const monitoredFetch: typeof fetch = async (input, init) => {
+  try {
+    const response = await fetch(input, init);
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const method = String(init?.method ?? (typeof input === 'string' || input instanceof URL ? 'GET' : input.method) ?? 'GET').toUpperCase();
+    const isDataRead = url.includes('/rest/v1/') && (method === 'GET' || method === 'HEAD');
+
+    // 406 is commonly used by PostgREST for an intentionally empty .single()
+    // result, so it must not put the whole portal into data-unavailable mode.
+    if (isDataRead && !response.ok && response.status !== 406) {
+      publishReadFailure({ status: response.status, method });
+    }
+    return response;
+  } catch (error) {
+    publishReadFailure({ status: 0, method: String(init?.method ?? 'GET').toUpperCase() });
+    throw error;
+  }
+};
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  global: { fetch: monitoredFetch },
+});
 
 // ── Role mapping ──────────────────────────────────────────────────────────────
 // The database enum merl.user_role (supabase/migrations/0002_role_alignment.sql)
