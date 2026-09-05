@@ -71,9 +71,58 @@
 .coverage-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n),
 .geo-map .leaflet-overlay-pane path.leaflet-interactive[fill-opacity]:not([fill-opacity="1"]):not([fill-opacity="0.95"]):not([fill-opacity=".95"]):nth-of-type(16n) { fill: #6f9d58 !important; }
 
-/* The old legend described the removed count gradient, so hide it rather than
-   implying that the new qualitative colours encode project totals. */
+/*
+ * Qualitative map legend. The original legend encoded project-count classes,
+ * which is no longer correct now that Area Council colours are categorical.
+ * Keep the existing legend container from both map components, replace its
+ * obsolete count rows with a compact colour key, and explain where the project
+ * totals are read.
+ */
 .coverage-map__legend,
 .geo-map__legend {
+  display: block !important;
+  min-width: 198px !important;
+  max-width: 224px !important;
+  padding: 9px 10px 10px !important;
+}
+
+.coverage-map__legend-row,
+.geo-map__legend-row {
   display: none !important;
+}
+
+.coverage-map__legend strong,
+.geo-map__legend strong {
+  display: block !important;
+  margin-bottom: 7px !important;
+}
+
+.coverage-map__legend strong::after,
+.geo-map__legend strong::after {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: 8px 0 9px;
+  border: 1px solid rgba(50, 42, 61, .18);
+  border-radius: 2px;
+  background: #4f86c6;
+  box-shadow:
+    18px 0 0 #d97757,
+    36px 0 0 #5aa879,
+    54px 0 0 #9b6fc4,
+    72px 0 0 #d6a53f,
+    90px 0 0 #3d9fa3,
+    108px 0 0 #c8648a,
+    126px 0 0 #7b8f45;
+}
+
+.coverage-map__legend::after,
+.geo-map__legend::after {
+  content: 'Area Council colours distinguish boundaries. Project totals are shown when you hover or tap an area.';
+  display: block;
+  margin-top: 2px;
+  color: #746c7d;
+  font-size: .59rem;
+  line-height: 1.45;
 }
