@@ -1,21 +1,22 @@
 // =============================================================================
-// Overview.jsx — MERL Project Portfolio Dashboard (Executive Overview).
-// Rebuilt to the approved sample layout: global filter bar, six KPI cards, two
-// four-panel analytics rows (Projects by Status / Theme / Province / Budget, and
-// Results / Trend / Beneficiaries / Risks), a Recent Project Updates table and
-// an Upcoming Milestones panel. Every widget is derived from the standardised
-// DoCC dataset (public.v_* views) and responds to the shared global filters;
-// several charts also cross-filter on click. Empty and loading states included.
+// Overview.jsx — MERL Project Portfolio Dashboard (Executive Overview)
+//
+// Executive reading order:
+//   1. Overall progress · Projects · Budget utilisation · Beneficiaries
+//   2. Needs attention · Implementation performance
+//   3. Portfolio/results performance · Geographic coverage
+//   4. Reporting and upcoming deadlines
+//
+// All figures are read live from the existing Supabase public.v_* views. There
+// are no mock KPI values in this page. If one of the required backend reads
+// fails, the dashboard now shows a retryable connection error instead of
+// silently treating the failure as an empty portfolio.
 // =============================================================================
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, LineChart, Line, Tooltip, ResponsiveContainer, CartesianGrid, LabelList,
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
 } from 'recharts';
-// Three icons on this page, each doing a job no label can do as well:
-// AlertTriangle marks the section that needs action, Printer labels the export
-// control, ArrowRight shows direction on "view more" links. The KPIs, section
-// headings, performance rows and attention rows carry no symbols.
 import { AlertTriangle, Printer, ArrowRight } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -25,557 +26,720 @@ import {
   useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
 } from '../lib/dashboardFilters';
 import KpiCard from '../components/ui/KpiCard';
-import Gedsi from '../components/ui/Gedsi';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
 
-// ── Semantic colours (matched to the approved sample) ─────────────────────────
-const BLUE = '#2f6df0';
 const C = {
-  onTrack: '#22a565', atRisk: '#e0a12a', notStarted: '#dc2626', completed: '#7c3aed',
-  high: '#dc2626', medium: '#e0a12a', low: '#22a565', closed: '#94a3b8',
-  offTrack: '#dc2626', attention: '#e0a12a', noData: '#94a3b8',
-};
-const STATUS_COLOR = { on_track: C.onTrack, at_risk: C.atRisk, not_started: C.notStarted, completed: C.completed };
-const KPI_ACCENT = { total: BLUE, on_track: C.onTrack, at_risk: C.atRisk, not_started: C.notStarted, completed: C.completed, budget: BLUE };
-
-// Funding-partner → category grouping for the Budget Overview (Section 7).
-const FUND_CATS = ['DoCC / Govt', 'Multilateral', 'Bilateral', 'Other / Private'];
-const FUND_COLOR = { 'DoCC / Govt': BLUE, 'Multilateral': '#22a565', 'Bilateral': '#e0a12a', 'Other / Private': '#7c3aed' };
-function fundingCategory(donor) {
-  const s = (donor || '').toLowerCase();
-  if (!donor) return 'Other / Private';
-  if (s.includes('vanuatu') || s.includes('govern') || s.includes('docc')) return 'DoCC / Govt';
-  if (['gcf', 'gef', 'undp', 'world bank', 'adb', 'spc', 'eu', 'unicef', 'fao'].some((k) => s.includes(k))) return 'Multilateral';
-  if (['mfat', 'australia', 'japan', 'new zealand', 'dfat', 'usaid', 'bilateral'].some((k) => s.includes(k))) return 'Bilateral';
-  return 'Other / Private';
-}
-const BADGE = {
-  on_track: ['#dcfce7', '#166534'], at_risk: ['#fef3c7', '#92400e'], delayed: ['#fee2e2', '#991b1b'],
-  completed: ['#ede9fe', '#5b21b6'], closed: ['#ede9fe', '#5b21b6'], not_started: ['#f1f5f9', '#475569'],
-  pipeline: ['#f1f5f9', '#475569'], approved: ['#e0f2fe', '#075985'], suspended: ['#fee2e2', '#991b1b'],
+  violet: '#6b55a7',
+  violetDark: '#4b377d',
+  blue: '#3287d9',
+  green: '#22a565',
+  amber: '#e0a12a',
+  red: '#dc2626',
+  muted: '#94a3b8',
 };
 
-const today = () => new Date();
-const iso = (d) => d.toISOString().slice(0, 10);
-const sum = (rows, f) => rows.reduce((a, r) => a + (Number(f(r)) || 0), 0);
+const STATUS_COLOR = {
+  on_track: C.green,
+  at_risk: C.amber,
+  not_started: C.red,
+  completed: '#7c3aed',
+};
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const sum = (rows, getter) => rows.reduce((a, r) => a + (Number(getter(r)) || 0), 0);
+const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+
 function fmtVUV(v) {
   const n = Number(v) || 0;
-  if (n >= 1e9) return `VUV ${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `VUV ${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `VUV ${(n / 1e3).toFixed(1)}K`;
-  return `VUV ${fmtNum(n)}`;
+  if (n >= 1e9) return `VT ${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `VT ${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `VT ${(n / 1e3).toFixed(1)}K`;
+  return `VT ${fmtNum(n)}`;
 }
-const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
-const pct1 = (n, d) => (d ? `${((n / d) * 100).toFixed(1)}%` : '0%');
-function fmtCompact(v) {
-  const n = Number(v) || 0;
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return fmtNum(n);
-}
-const countBy = (rows, keyFn) => {
-  const m = new Map();
-  for (const r of rows) for (const k of [].concat(keyFn(r)).filter(Boolean)) m.set(k, (m.get(k) || 0) + 1);
-  return [...m.entries()].sort((a, b) => b[1] - a[1]);
-};
 
-export default function Overview({ user }) {
+function statusLabel(key, t) {
+  return {
+    on_track: t('overview.bucketOnTrack'),
+    at_risk: t('overview.bucketAtRisk'),
+    not_started: t('overview.bucketNotStarted'),
+    completed: t('overview.bucketCompleted'),
+  }[key] || key;
+}
+
+export default function Overview() {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const nav = useNavigate();
   const { filters, setFilter, reset, active } = useDashboardFilters();
-  const [d, setD] = useState(null);
+
+  const [data, setData] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let mounted = true;
+    setData(null);
+    setLoadError(null);
+
     (async () => {
-      // Rows arrive already in the reader's language; see lib/contentLocale.js.
-      const q = (v, c) => localised(() => supabase.from(v).select(i18nCols(c)));
-      const [proj, fin, risk, ben, act, ind, prog, rep, loc] = await Promise.all([
-        q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, updated_at'),
-        q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at'),
-        q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
-        q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
-        q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
-        q('v_project_indicators', 'project_id, id'),
-        q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
-        q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
-        q('v_project_locations', 'project_id, province'),
-      ]);
-      setD({
-        projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [], beneficiaries: ben.data ?? [],
-        activities: act.data ?? [], indicators: ind.data ?? [], progress: prog.data ?? [], reporting: rep.data ?? [], locations: loc.data ?? [],
-      });
+      try {
+        const q = (view, columns) => localised(() => (
+          supabase.from(view).select(i18nCols(columns))
+        ));
+
+        const responses = await Promise.all([
+          q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, updated_at'),
+          q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at'),
+          q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
+          q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
+          q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
+          q('v_project_indicators', 'project_id, id'),
+          q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
+          q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
+          q('v_project_locations', 'project_id, province'),
+        ]);
+
+        const failed = responses.find((r) => r?.error);
+        if (failed?.error) throw failed.error;
+        if (!mounted) return;
+
+        const [proj, fin, risk, ben, act, ind, prog, rep, loc] = responses;
+        setData({
+          projects: proj.data ?? [],
+          financial: fin.data ?? [],
+          risks: risk.data ?? [],
+          beneficiaries: ben.data ?? [],
+          activities: act.data ?? [],
+          indicators: ind.data ?? [],
+          progress: prog.data ?? [],
+          reporting: rep.data ?? [],
+          locations: loc.data ?? [],
+        });
+      } catch (err) {
+        if (mounted) setLoadError(err);
+      }
     })();
-  }, [lang]);
 
-  if (!d) return <OverviewSkeleton />;
+    return () => { mounted = false; };
+  }, [lang, reloadKey]);
 
-  // ── Filter options + filtered data ─────────────────────────────────────────
-  const years = [...new Set(d.projects.flatMap((p) => [p.start_date, p.end_date].filter(Boolean).map((x) => new Date(x).getFullYear())))].sort((a, b) => b - a);
-  const donors = [...new Set(d.projects.map((p) => p.donor).filter(Boolean))].sort();
-  const themes = [...new Set(d.projects.map((p) => p.category).filter(Boolean))].sort();
+  if (loadError) {
+    return <BackendError onRetry={() => setReloadKey((n) => n + 1)} />;
+  }
+  if (!data) return <OverviewSkeleton />;
+  if (data.projects.length === 0) return <EmptyPortfolio />;
 
-  const projects = d.projects.filter((p) => projectMatches(p, filters));
-  const ids = new Set(projects.map((p) => p.id));
+  const years = [...new Set(
+    data.projects.flatMap((p) => [p.start_date, p.end_date]
+      .filter(Boolean)
+      .map((x) => new Date(x).getFullYear())),
+  )].sort((a, b) => b - a);
+  const donors = [...new Set(data.projects.map((p) => p.donor).filter(Boolean))].sort();
+  const themes = [...new Set(data.projects.map((p) => p.category).filter(Boolean))].sort();
+
+  const projects = useMemo(
+    () => data.projects.filter((p) => projectMatches(p, filters)),
+    [data.projects, filters],
+  );
+  const ids = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
   const inScope = (rows) => rows.filter((r) => ids.has(r.project_id));
-  const risks = inScope(d.risks), bens = inScope(d.beneficiaries), acts = inScope(d.activities),
-        prog = inScope(d.progress), reps = inScope(d.reporting), fin = inScope(d.financial);
 
-  // Data-as-at: latest approved reporting date from the DB (never hard-coded).
-  const approvedDates = d.reporting.filter((r) => r.submission_status === 'approved').map((r) => r.approved_at || r.period_end).filter(Boolean);
-  const dataAsAt = approvedDates.length ? approvedDates.sort().slice(-1)[0].slice(0, 10) : '—';
+  const financial = inScope(data.financial);
+  const risks = inScope(data.risks);
+  const beneficiaries = inScope(data.beneficiaries);
+  const activities = inScope(data.activities);
+  const indicators = inScope(data.indicators);
+  const progress = inScope(data.progress);
+  const reporting = inScope(data.reporting);
 
-  if (d.projects.length === 0) return <EmptyPortfolio />;
-
-  // ── KPI metrics ─────────────────────────────────────────────────────────────
   const total = projects.length;
   const byBucket = { on_track: 0, at_risk: 0, not_started: 0, completed: 0 };
-  for (const p of projects) byBucket[bucketOf(p.status)] += 1;
-  const latestFin = (() => { const m = new Map(); for (const f of fin) { const prev = m.get(f.project_id); if (!prev || (f.created_at ?? '') > (prev.created_at ?? '')) m.set(f.project_id, f); } return m; })();
-  const totalBudget = sum(projects, (p) => p.budget_vuv);
+  for (const p of projects) {
+    const key = bucketOf(p.status);
+    if (key in byBucket) byBucket[key] += 1;
+  }
 
-  // ── Chart datasets ──────────────────────────────────────────────────────────
-  const statusData = Object.keys(byBucket).map((k) => ({ key: k, name: STATUS_BUCKETS_LABEL(k, t), value: byBucket[k], color: STATUS_COLOR[k] }));
-  const themeData = countBy(projects, (p) => p.category).map(([name, value]) => ({ name, value }));
-  const provinceCounts = {}; for (const p of projects) for (const pv of (p.provinces || [])) provinceCounts[pv] = (provinceCounts[pv] || 0) + 1;
-  const nationalCount = projects.filter((p) => !(p.provinces || []).length).length;
-  const budgetByCategory = (() => {
-    const m = new Map(FUND_CATS.map((c) => [c, 0]));
-    for (const p of projects) m.set(fundingCategory(p.donor), (m.get(fundingCategory(p.donor)) || 0) + (Number(p.budget_vuv) || 0));
-    return FUND_CATS.map((name) => ({ name, value: m.get(name) || 0, color: FUND_COLOR[name] })).filter((x) => x.value > 0);
-  })();
-  const projInds = inScope(d.indicators);
-  const totalIndicators = projInds.length;
-  const perfData = (() => {
-    const order = [['on_track', C.onTrack], ['attention_required', C.attention], ['off_track', C.offTrack], ['no_data', C.noData]];
-    // Latest progress status per indicator (indicators with no progress = No Data).
-    const latest = new Map();
-    for (const r of prog) { const prev = latest.get(r.indicator_id); if (!prev || (r.created_at ?? '') > (prev.created_at ?? '')) latest.set(r.indicator_id, r); }
-    const counts = { on_track: 0, attention_required: 0, off_track: 0, no_data: 0 };
-    for (const ind of projInds) { const s = latest.get(ind.id)?.performance_status || 'no_data'; counts[s in counts ? s : 'no_data'] += 1; }
-    return order.map(([k, color]) => ({ name: OPT.labelOf(OPT.PERFORMANCE_STATUS, k), value: counts[k] || 0, color }));
-  })();
-  const trendData = (() => {
-    const m = new Map(); for (const r of prog) { if (!r.reporting_period || r.achievement_pct == null) continue; const e = m.get(r.reporting_period) || { s: 0, n: 0 }; e.s += Number(r.achievement_pct); e.n += 1; m.set(r.reporting_period, e); }
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([period, e]) => ({ period, pct: Math.round(e.s / e.n) }));
-  })();
-  const risksData = (() => {
-    const buckets = { High: 0, Medium: 0, Low: 0, Closed: 0 };
-    for (const r of risks) {
-      if (['resolved', 'closed'].includes(r.status)) buckets.Closed += 1;
-      else if (r.risk_rating === 'Critical' || r.risk_rating === 'High') buckets.High += 1;
-      else if (r.risk_rating === 'Medium') buckets.Medium += 1;
-      else buckets.Low += 1;
-    }
-    return [
-      { name: 'High', value: buckets.High, color: C.high }, { name: 'Medium', value: buckets.Medium, color: C.medium },
-      { name: 'Low', value: buckets.Low, color: C.low }, { name: 'Closed', value: buckets.Closed, color: C.closed },
-    ];
-  })();
-  const totalRisks = risks.length;
-  const totalBen = sum(bens, (b) => b.total_direct);
-  // Beneficiary disaggregation (§38): 0 is a real value — only null means "no data".
-  const bAny = (f) => bens.some((b) => b[f] != null);
-  const bSum = (f) => (bAny(f) ? bens.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
-  const gedsi = [
-    { key: 'female', label: 'Female', value: bSum('female'), color: '#7c3aed' },
-    { key: 'male', label: 'Male', value: bSum('male'), color: BLUE },
-    { key: 'youth', label: 'Youth', value: bSum('youth'), color: '#e0a12a' },
-    { key: 'persons_with_disability', label: 'Persons w/ disability', value: bSum('persons_with_disability'), color: '#22a565' },
-    { key: 'other_gender', label: 'Other / N.R.', value: bSum('other_gender'), color: '#0e8f8a' },
-  ];
-  const hasGedsi = gedsi.some((g) => g.value != null);
-
-  // Recent updates (latest 6) + milestones (next 30 days)
-  const updatedByOf = (pid) => {
-    const rows = reps.filter((r) => r.project_id === pid && r.reporting_officer_name)
-      .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''));
-    return rows[0]?.reporting_officer_name || '—';
-  };
-  const recent = [...projects].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? '')).slice(0, 6).map((p) => {
-    const progAvg = (() => { const withPct = prog.filter((x) => x.project_id === p.id && x.achievement_pct != null); return withPct.length ? Math.round(sum(withPct, (x) => x.achievement_pct) / withPct.length) : null; })();
-    return { ...p, progress: progAvg, updatedBy: updatedByOf(p.id) };
-  });
-  const projName = (id) => d.projects.find((p) => p.id === id)?.name || '';
-  const milestones = (() => {
-    const out = [];
-    const now = today(); const in30 = new Date(now.getTime() + 30 * 864e5);
-    const push = (date, title, subtitle) => { if (!date) return; const dt = new Date(date); if (dt >= new Date(iso(now)) && dt <= in30) out.push({ date: dt, title, subtitle }); };
-    for (const r of reps) if (r.submission_status !== 'approved') push(r.period_end, `Report due — ${r.period_label}`, projName(r.project_id));
-    for (const a of acts) { if (a.status !== 'completed') push(a.planned_end_date, a.name, projName(a.project_id)); push(a.next_action_due, a.next_action || 'Next action', projName(a.project_id)); }
-    for (const r of risks) if (!['resolved', 'closed'].includes(r.status)) push(r.due_date, 'Risk action due', projName(r.project_id));
-    return out.sort((a, b) => a.date - b.date).slice(0, 6);
-  })();
-
-  const exportPrint = () => window.print();
-
-  // ── Derived headline + performance metrics (all from existing calcs) ────────
   const completed = byBucket.completed;
   const activeProjects = total - completed;
-  const totalExp = [...latestFin.values()].reduce((a, f) => a + (Number(f.cumulative_expenditure) || 0), 0);
-  const util = totalBudget ? Math.round((totalExp / totalBudget) * 100) : 0;
-  const provincesReached = Object.keys(provinceCounts).length;
-  const provincesTotal = PROVINCE_LIST.length;
 
-  const onTrackInd = perfData[0].value, offTrackInd = perfData[2].value;
-  const actsDone = acts.filter((a) => a.status === 'completed').length;
-  const now2 = iso(today());
-  const overdueActs = acts.filter((a) => a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < now2).length;
-  const repsApproved = reps.filter((r) => r.submission_status === 'approved').length;
-  const repsOverdue = reps.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < now2).length;
-  const repsAwaiting = reps.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
-  const pctOf = (n, dv) => (dv ? Math.round((n / dv) * 100) : 0);
+  const latestFinance = new Map();
+  for (const row of financial) {
+    const prev = latestFinance.get(row.project_id);
+    if (!prev || (row.created_at ?? '') > (prev.created_at ?? '')) {
+      latestFinance.set(row.project_id, row);
+    }
+  }
+  const totalBudget = sum(projects, (p) => p.budget_vuv);
+  const totalExpenditure = [...latestFinance.values()]
+    .reduce((a, f) => a + (Number(f.cumulative_expenditure) || 0), 0);
+  const budgetUtilisation = totalBudget ? Math.round((totalExpenditure / totalBudget) * 100) : 0;
 
-  const perf = [
-    { key: 'ind', label: t('overview.perfIndicators'), frac: `${onTrackInd}/${totalIndicators}`, pct: pctOf(onTrackInd, totalIndicators), color: '#22a565' },
-    { key: 'act', label: t('overview.perfActivities'), frac: `${actsDone}/${acts.length}`, pct: pctOf(actsDone, acts.length), color: BLUE },
-    { key: 'bud', label: t('overview.perfBudget'), frac: fmtVUV(totalExp).replace('VUV ', ''), pct: util, color: '#7c3aed' },
-    { key: 'rep', label: t('overview.perfReporting'), frac: `${repsApproved}/${reps.length}`, pct: pctOf(repsApproved, reps.length), color: '#0e8f8a' },
+  // Latest recorded result per indicator. This keeps the headline result from
+  // overweighting indicators that have more historical reporting periods.
+  const latestProgress = new Map();
+  for (const row of progress) {
+    const prev = latestProgress.get(row.indicator_id);
+    const rank = row.created_at ?? row.reporting_period ?? '';
+    const prevRank = prev?.created_at ?? prev?.reporting_period ?? '';
+    if (!prev || rank > prevRank) latestProgress.set(row.indicator_id, row);
+  }
+
+  const latestAchievement = indicators
+    .map((ind) => latestProgress.get(ind.id)?.achievement_pct)
+    .filter((v) => v != null)
+    .map(Number);
+  const overallProgress = latestAchievement.length
+    ? Math.round(latestAchievement.reduce((a, b) => a + b, 0) / latestAchievement.length)
+    : null;
+
+  const indicatorStatus = { on_track: 0, attention_required: 0, off_track: 0, no_data: 0 };
+  for (const ind of indicators) {
+    const key = latestProgress.get(ind.id)?.performance_status || 'no_data';
+    indicatorStatus[key in indicatorStatus ? key : 'no_data'] += 1;
+  }
+
+  const totalBeneficiaries = sum(beneficiaries, (b) => b.total_direct);
+  const hasField = (field) => beneficiaries.some((b) => b[field] != null);
+  const fieldSum = (field) => hasField(field)
+    ? beneficiaries.reduce((a, b) => a + (b[field] != null ? Number(b[field]) : 0), 0)
+    : null;
+  const female = fieldSum('female');
+  const male = fieldSum('male');
+  const genderSummary = female != null || male != null
+    ? `${female != null ? fmtNum(female) : '—'} ${t('overview.beneFemale')} · ${male != null ? fmtNum(male) : '—'} ${t('overview.beneMale')}`
+    : null;
+
+  const approvedDates = data.reporting
+    .filter((r) => r.submission_status === 'approved')
+    .map((r) => r.approved_at || r.period_end)
+    .filter(Boolean)
+    .sort();
+  const dataAsAt = approvedDates.length
+    ? approvedDates[approvedDates.length - 1].slice(0, 10)
+    : '—';
+
+  const provinceCounts = {};
+  for (const p of projects) {
+    for (const province of (p.provinces || [])) {
+      provinceCounts[province] = (provinceCounts[province] || 0) + 1;
+    }
+  }
+  const nationalCount = projects.filter((p) => !(p.provinces || []).length).length;
+
+  const provincesByProject = new Map(data.projects.map((p) => [p.id, p.provinces || []]));
+  const provinceBeneficiaries = {};
+  for (const row of beneficiaries) {
+    const value = Number(row.total_direct) || 0;
+    for (const province of (provincesByProject.get(row.project_id) || [])) {
+      provinceBeneficiaries[province] = (provinceBeneficiaries[province] || 0) + value;
+    }
+  }
+
+  const now = todayIso();
+  const overdueActivities = activities.filter((a) => (
+    a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < now
+  )).length;
+  const overdueReports = reporting.filter((r) => (
+    r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < now
+  )).length;
+  const awaitingReview = reporting.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
+  const offTrackIndicators = indicatorStatus.off_track;
+
+  const attention = [
+    { key: 'reports', label: t('overview.attnOverdue'), value: overdueReports, to: '/merl-reporting', tone: overdueReports ? 'critical' : 'clear' },
+    { key: 'indicators', label: t('overview.attnOffTrack'), value: offTrackIndicators, to: '/analytics/results', tone: offTrackIndicators ? 'warning' : 'clear' },
+    { key: 'activities', label: t('overview.attnDelayed'), value: overdueActivities, to: '/merl-reporting', tone: overdueActivities ? 'warning' : 'clear' },
+    { key: 'review', label: t('overview.attnAwaiting'), value: awaitingReview, to: '/review', tone: awaitingReview ? 'warning' : 'clear' },
   ];
-  const toneColor = { crit: '#b3402f', warn: '#d97706', ok: '#22a565' };
-  const attn = [
-    { key: 'ovr', label: t('overview.attnOverdue'), value: repsOverdue, to: '/merl-reporting', tone: repsOverdue ? 'crit' : 'ok' },
-    { key: 'off', label: t('overview.attnOffTrack'), value: offTrackInd, to: '/analytics/results', tone: offTrackInd ? 'warn' : 'ok' },
-    { key: 'del', label: t('overview.attnDelayed'), value: overdueActs, to: '/merl-reporting', tone: overdueActs ? 'warn' : 'ok' },
-    { key: 'rev', label: t('overview.attnAwaiting'), value: repsAwaiting, to: '/review', tone: repsAwaiting ? 'warn' : 'ok' },
+
+  const statusData = Object.keys(byBucket).map((key) => ({
+    key,
+    name: statusLabel(key, t),
+    value: byBucket[key],
+    color: STATUS_COLOR[key],
+  }));
+
+  const activitiesDone = activities.filter((a) => a.status === 'completed').length;
+  const reportsApproved = reporting.filter((r) => r.submission_status === 'approved').length;
+  const performanceRows = [
+    {
+      key: 'indicators',
+      label: t('overview.perfIndicators'),
+      value: pct(indicatorStatus.on_track, indicators.length),
+      detail: `${fmtNum(indicatorStatus.on_track)} / ${fmtNum(indicators.length)}`,
+    },
+    {
+      key: 'activities',
+      label: t('overview.perfActivities'),
+      value: pct(activitiesDone, activities.length),
+      detail: `${fmtNum(activitiesDone)} / ${fmtNum(activities.length)}`,
+    },
+    {
+      key: 'budget',
+      label: t('overview.perfBudget'),
+      value: budgetUtilisation,
+      detail: fmtVUV(totalExpenditure),
+    },
+    {
+      key: 'reporting',
+      label: t('overview.perfReporting'),
+      value: pct(reportsApproved, reporting.length),
+      detail: `${fmtNum(reportsApproved)} / ${fmtNum(reporting.length)}`,
+    },
   ];
-  const genderSplit = (() => {
-    const f = gedsi[0].value, m = gedsi[1].value;
-    if (f == null && m == null) return null;
-    const fv = f || 0, mv = m || 0, s = fv + mv;
-    return { f: fv, m: mv, fp: s ? Math.round((fv / s) * 100) : 0, mp: s ? Math.round((mv / s) * 100) : 0 };
-  })();
 
-  // Overall implementation progress = mean of the latest indicator achievement %.
-  const achVals = prog.filter((r) => r.achievement_pct != null).map((r) => Number(r.achievement_pct));
-  const overallProgress = achVals.length ? Math.round(achVals.reduce((a, b) => a + b, 0) / achVals.length) : null;
-  // Compact beneficiary breakdown (only categories that actually have data).
-  // One institutional colour across the set — these categories are being
-  // compared, not colour-coded, so four different hues would only add noise.
-  const beneMini = [
-    { key: 'female', sym: 'female', label: t('overview.beneFemale'), value: gedsi[0].value },
-    { key: 'male', sym: 'male', label: t('overview.beneMale'), value: gedsi[1].value },
-    { key: 'youth', sym: 'youth', label: t('overview.beneYouth'), value: gedsi[2].value },
-    { key: 'pwd', sym: 'disability', label: t('overview.beneDisability'), value: gedsi[3].value },
-  ].filter((x) => x.value != null);
-
-  // Beneficiaries reached per province (project → provinces → direct beneficiaries).
-  const provById = new Map(d.projects.map((p) => [p.id, p.provinces || []]));
-  const provBen = {};
-  for (const b of bens) { const v = Number(b.total_direct) || 0; for (const pv of (provById.get(b.project_id) || [])) provBen[pv] = (provBen[pv] || 0) + v; }
-
-  // Recent & upcoming reporting periods → status-badged table rows (all real data).
-  const daysUntil = (s) => Math.round((new Date(s.slice(0, 10)) - new Date(now2)) / 864e5);
-  const reportStatus = (r) => {
-    if (r.submission_status === 'approved') return { label: t('overview.statusApproved'), tone: 'ok' };
-    if (['submitted', 'reviewed'].includes(r.submission_status)) return { label: t('overview.statusSubmitted'), tone: 'info' };
-    if (!r.period_end) return { label: t('overview.statusPending'), tone: 'warn' };
-    const dleft = daysUntil(r.period_end);
-    if (dleft < 0) return { label: t('overview.statusOverdue'), tone: 'crit' };
-    return { label: t('overview.dueInDays', { count: dleft }), tone: dleft <= 7 ? 'crit' : 'warn' };
+  const projectName = (id) => data.projects.find((p) => p.id === id)?.name || '—';
+  const daysUntil = (date) => Math.round((new Date(date.slice(0, 10)) - new Date(now)) / 864e5);
+  const reportStatus = (row) => {
+    if (row.submission_status === 'approved') return { label: t('overview.statusApproved'), tone: 'ok' };
+    if (['submitted', 'reviewed'].includes(row.submission_status)) return { label: t('overview.statusSubmitted'), tone: 'info' };
+    if (!row.period_end) return { label: t('overview.statusPending'), tone: 'warn' };
+    const left = daysUntil(row.period_end);
+    if (left < 0) return { label: t('overview.statusOverdue'), tone: 'crit' };
+    return { label: t('overview.dueInDays', { count: left }), tone: left <= 7 ? 'crit' : 'warn' };
   };
-  const reportRows = [...reps]
+
+  const reportRows = [...reporting]
     .filter((r) => r.period_end && daysUntil(r.period_end) >= -60)
     .sort((a, b) => (a.period_end || '').localeCompare(b.period_end || ''))
-    .slice(0, 5)
-    .map((r) => ({ id: `${r.project_id}-${r.period_label}`, item: r.period_label || t('overview.reportingPeriod'), project: projName(r.project_id), due: r.period_end, status: reportStatus(r) }));
+    .slice(0, 6)
+    .map((r) => ({
+      id: `${r.project_id}-${r.period_label}`,
+      item: r.period_label || t('overview.reportingPeriod'),
+      project: projectName(r.project_id),
+      due: r.period_end,
+      status: reportStatus(r),
+    }));
 
   return (
     <div className="ovx">
-      {/* Header — title + filters */}
-      <div className="ovx-head rp-noprint">
-        <div className="ovx-title">
+      <OverviewStyles />
+
+      <section className="ovx-heading rp-noprint">
+        <div>
           <h1>{t('overview.title')}</h1>
           <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
         </div>
-        <div className="ovx-filters">
-          <FilterSelect label={t('overview.filterFy')} value={filters.fy} onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
-          <FilterSelect label={t('overview.filterStatus')} value={filters.status} onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((k) => ({ value: k, label: STATUS_BUCKETS_LABEL(k, t) }))} />
-          <FilterSelect label={t('overview.filterTheme')} value={filters.theme} onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
-          <FilterSelect label={t('overview.filterProvince')} value={filters.province} onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((p) => ({ value: p, label: p }))} />
-          <FilterSelect label={t('overview.filterPartner')} value={filters.partner} onChange={(v) => setFilter('partner', v)} options={donors.map((x) => ({ value: x, label: x }))} />
-          <button className="ov-btn-ghost" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
-          <button className="ov-btn" onClick={exportPrint}><Printer size={14} /> {t('ui.export')}</button>
-        </div>
-      </div>
+        <button type="button" className="ovx-export" onClick={() => window.print()}>
+          <Printer size={15} aria-hidden="true" /> {t('ui.export')}
+        </button>
+      </section>
 
-      {/* Level 1 — primary executive KPIs: Projects · Total Funding · Disbursed · Beneficiaries */}
-      <div className="ovx-kpis">
-        <KpiCard label={t('overview.kpiProjects')} value={total}
-          sub={t('overview.activeCompleted', { active: activeProjects, completed })} linkLabel={t('overview.viewProjects')} onClick={() => nav('/analytics/portfolio')} />
-        <KpiCard label={t('overview.kpiFunding')} value={fmtVUV(totalBudget).replace('VUV', 'VT')}
-          sub={donors.length ? t('overview.fundingPartners', { count: donors.length }) : t('overview.kpiFunding')} linkLabel={t('overview.viewFinancials')} onClick={() => nav('/analytics/financial')} />
-        <KpiCard label={t('overview.kpiDisbursed')} value={fmtVUV(totalExp).replace('VUV', 'VT')}
-          sub={t('overview.pctOfFunding', { pct: util })} progress={util} linkLabel={t('overview.viewFinancials')} onClick={() => nav('/analytics/financial')} />
-        {/* The one KPI carrying symbols: the GEDSI split is read by comparing
-            categories, which the shared pictogram family makes faster. */}
-        <KpiCard label={t('overview.kpiBeneficiaries')} value={totalBen ? fmtNum(totalBen) : '0'}
-          linkLabel={t('overview.viewBeneficiaries')} onClick={() => nav('/analytics/geographic')}>
-          {beneMini.length > 0 && (
-            <div className="flex items-start justify-between gap-2">
-              {beneMini.map((b) => (
-                <span key={b.key} className="flex min-w-0 flex-col items-start gap-0.5">
-                  <span className="flex items-center gap-1 text-[var(--green-700)]">
-                    <Gedsi name={b.sym} size={14} />
-                    <b className="text-[1rem] font-extrabold leading-none text-[var(--navy-900)]" style={{ fontFamily: 'var(--font-display)' }}>{fmtNum(b.value)}</b>
-                  </span>
-                  <i className="whitespace-nowrap text-[0.64rem] not-italic text-[var(--text-3)]">{b.label}</i>
-                </span>
-              ))}
-            </div>
-          )}
-        </KpiCard>
-      </div>
+      <section className="ovx-filterbar rp-noprint" aria-label={t('overview.title')}>
+        <FilterSelect label={t('overview.filterFy')} value={filters.fy}
+          onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
+        <FilterSelect label={t('overview.filterStatus')} value={filters.status}
+          onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((key) => ({ value: key, label: statusLabel(key, t) }))} />
+        <FilterSelect label={t('overview.filterTheme')} value={filters.theme}
+          onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
+        <FilterSelect label={t('overview.filterProvince')} value={filters.province}
+          onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((province) => ({ value: province, label: province }))} />
+        <FilterSelect label={t('overview.filterPartner')} value={filters.partner}
+          onChange={(v) => setFilter('partner', v)} options={donors.map((donor) => ({ value: donor, label: donor }))} />
+        <button type="button" className="ovx-reset" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
+      </section>
 
-      {/* Level 2 — geographic footprint + implementation performance */}
-      <div className="ovx-mapperf">
-        <ProjectLocations counts={provinceCounts} provBen={provBen} nationalCount={nationalCount}
-          selected={filters.province} onSelect={(pv) => setFilter('province', pv)} onView={() => nav('/analytics/geographic')} />
-        <div className="ovx-card">
-          <div className="ovx-card-h">{t('overview.implementation')}</div>
-          <div className="ovx-impl">
-            <Donut size={128} data={statusData} center={[total, 'Total']} onSlice={(s) => setFilter('status', s.key)} />
-            <div className="ovx-status-legend">
-              {statusData.map((s) => (
-                <button key={s.key} className="ovx-leg-row" onClick={() => setFilter('status', s.key)}>
-                  <span className="ovx-leg-dot" style={{ background: s.color }} />
-                  <span className="ovx-leg-name">{s.name}</span>
-                  <b className="ovx-leg-val">{s.value}</b>
-                  <span className="ovx-leg-pct">{pct(s.value, total)}%</span>
+      {/* Level 1 — headline results. These are deliberately the only four cards
+          competing for the first visual read. */}
+      <section className="ovx-kpis" aria-label={t('overview.title')}>
+        <KpiCard
+          className="ovx-kpi ovx-kpi-progress"
+          label={t('overview.overallProgress')}
+          value={overallProgress == null ? '—' : `${overallProgress}%`}
+          sub={`${fmtNum(indicatorStatus.on_track)} / ${fmtNum(indicators.length)} · ${t('overview.indicatorsOnTrack')}`}
+          progress={overallProgress}
+          progressColor={C.violet}
+          linkLabel={t('overview.viewPerformance')}
+          onClick={() => nav('/analytics/results')}
+        />
+        <KpiCard
+          className="ovx-kpi ovx-kpi-projects"
+          label={t('overview.kpiProjects')}
+          value={fmtNum(total)}
+          sub={t('overview.activeCompleted', { active: activeProjects, completed })}
+          linkLabel={t('overview.viewProjects')}
+          onClick={() => nav('/analytics/portfolio')}
+        />
+        <KpiCard
+          className="ovx-kpi ovx-kpi-budget"
+          label={t('overview.budgetUtilisation')}
+          value={`${budgetUtilisation}%`}
+          sub={`${fmtVUV(totalExpenditure)} / ${fmtVUV(totalBudget)}`}
+          progress={budgetUtilisation}
+          progressColor={C.amber}
+          linkLabel={t('overview.viewFinancials')}
+          onClick={() => nav('/analytics/financial')}
+        />
+        <KpiCard
+          className="ovx-kpi ovx-kpi-beneficiaries"
+          label={t('overview.kpiBeneficiaries')}
+          value={fmtNum(totalBeneficiaries)}
+          sub={genderSummary || undefined}
+          linkLabel={t('overview.viewBeneficiaries')}
+          onClick={() => nav('/analytics/geographic')}
+        />
+      </section>
+
+      {/* Level 2 — what requires intervention, then the implementation picture. */}
+      <section className="ovx-priority-grid">
+        <article className="ovx-card ovx-attention-card">
+          <CardHeading icon={<AlertTriangle size={17} aria-hidden="true" />} title={t('overview.needsAttention')} />
+          <div className="ovx-attention-grid">
+            {attention.map((item) => (
+              <button key={item.key} type="button" className={`ovx-attention-item tone-${item.tone}`} onClick={() => nav(item.to)}>
+                <span className="ovx-attention-number">{fmtNum(item.value)}</span>
+                <span className="ovx-attention-label">{item.label}</span>
+                <span className="ovx-attention-action">{t('overview.viewAll')} <ArrowRight size={12} /></span>
+              </button>
+            ))}
+          </div>
+        </article>
+
+        <article className="ovx-card">
+          <CardHeading title={t('overview.implementation')} />
+          <div className="ovx-implementation">
+            <Donut data={statusData} total={total} onSlice={(slice) => setFilter('status', slice.key)} />
+            <div className="ovx-status-list">
+              {statusData.map((item) => (
+                <button key={item.key} type="button" className="ovx-status-row" onClick={() => setFilter('status', item.key)}>
+                  <span className="ovx-status-dot" style={{ background: item.color }} />
+                  <span className="ovx-status-name">{item.name}</span>
+                  <b>{fmtNum(item.value)}</b>
+                  <span>{pct(item.value, total)}%</span>
                 </button>
               ))}
             </div>
           </div>
-          {overallProgress != null && (
-            <div className="ovx-impl-prog">
-              <div className="ovx-impl-prog-h"><span>{t('overview.overallProgress')}</span><b>{overallProgress}%</b></div>
-              <div className="ovx-perf-bar"><div style={{ width: `${Math.min(100, overallProgress)}%`, background: '#22a565' }} /></div>
-            </div>
-          )}
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')} <ArrowRight size={13} /></button>
-        </div>
-      </div>
+          <CardLink onClick={() => nav('/analytics/portfolio')}>{t('overview.viewPerformance')}</CardLink>
+        </article>
+      </section>
 
-      {/* Level 3 — supporting analytics */}
-      <div className="ovx-2">
-        <div className="ovx-card">
-          <div className="ovx-card-h">{t('overview.portfolio')}</div>
-          <div className="ovx-perf">
-            {perf.map((p) => (
-              <div key={p.key} className="ovx-perf-row">
-                <span className="ovx-perf-lbl">{p.label}</span>
-                <div className="ovx-perf-bar"><div style={{ width: `${Math.min(100, p.pct)}%`, background: 'var(--green-600)' }} /></div>
-                <span className="ovx-perf-val">{p.pct}%</span>
+      {/* Level 3 — performance explanation first, geographic context second. */}
+      <section className="ovx-secondary-grid">
+        <article className="ovx-card">
+          <CardHeading title={t('overview.portfolio')} />
+          <div className="ovx-performance-list">
+            {performanceRows.map((row) => (
+              <div key={row.key} className="ovx-performance-row">
+                <div className="ovx-performance-meta">
+                  <span>{row.label}</span>
+                  <b>{row.value}%</b>
+                </div>
+                <div className="ovx-performance-track">
+                  <div style={{ width: `${Math.min(100, Math.max(0, row.value))}%` }} />
+                </div>
+                <span className="ovx-performance-detail">{row.detail}</span>
               </div>
             ))}
           </div>
-          <button className="ovx-cardlink" onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')} <ArrowRight size={13} /></button>
-        </div>
-        <div className="ovx-card">
-          <div className="ovx-card-h"><AlertTriangle size={16} style={{ color: '#d97706', flexShrink: 0 }} aria-hidden="true" /> {t('overview.needsAttention')}</div>
-          {/* No per-row icon chip: the section heading above carries the one
-              warning triangle, and each count carries its own tone. */}
-          <div className="ovx-attn">
-            {attn.map((a) => (
-              <button key={a.key} className="ovx-attn-row" onClick={() => nav(a.to)}>
-                <span className="ovx-attn-val" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>{a.value}</span>
-                <span className="ovx-attn-lbl">{a.label}</span>
-                <span className="ovx-attn-link" style={{ color: a.value ? toneColor[a.tone] : 'var(--text-3)' }}>{t('overview.viewAll')} <ArrowRight size={12} /></span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+          <CardLink onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')}</CardLink>
+        </article>
 
-      <div className="ovx-card">
-        <div className="ovx-card-h">{t('overview.recentUpcoming')}</div>
-        {reportRows.length === 0 ? <NoData label={t('overview.nothingDueSoon')} height={120} /> : (
-          <div className="ovx-rtbl-wrap">
-            <table className="ovx-rtbl">
-              <thead><tr><th>{t('overview.colItem')}</th><th>{t('overview.colProject')}</th><th>{t('overview.colDueDate')}</th><th>{t('overview.colStatus')}</th></tr></thead>
+        <ProjectLocations
+          counts={provinceCounts}
+          beneficiaries={provinceBeneficiaries}
+          nationalCount={nationalCount}
+          selected={filters.province}
+          onSelect={(province) => setFilter('province', province)}
+          onView={() => nav('/analytics/geographic')}
+        />
+      </section>
+
+      {/* Level 4 — operational follow-up after the management picture is clear. */}
+      <section className="ovx-card ovx-reporting-card">
+        <CardHeading title={t('overview.recentUpcoming')} />
+        {reportRows.length === 0 ? (
+          <div className="ovx-empty">{t('overview.nothingDueSoon')}</div>
+        ) : (
+          <div className="ovx-table-wrap">
+            <table className="ovx-table">
+              <thead>
+                <tr>
+                  <th>{t('overview.colItem')}</th>
+                  <th>{t('overview.colProject')}</th>
+                  <th>{t('overview.colDueDate')}</th>
+                  <th>{t('overview.colStatus')}</th>
+                </tr>
+              </thead>
               <tbody>
-                {reportRows.map((r) => (
-                  <tr key={r.id} onClick={() => nav('/analytics/reporting')}>
-                    <td className="ovx-rt-item"><span>{r.item}</span></td>
-                    <td className="ovx-rt-proj">{r.project || '—'}</td>
-                    <td className="ovx-rt-due">{fmtDate(r.due)}</td>
-                    <td><span className={`ovx-badge tone-${r.status.tone}`}>{r.status.label}</span></td>
+                {reportRows.map((row) => (
+                  <tr key={row.id} onClick={() => nav('/analytics/reporting')}>
+                    <td className="ovx-table-strong">{row.item}</td>
+                    <td>{row.project}</td>
+                    <td>{fmtDate(row.due)}</td>
+                    <td><span className={`ovx-badge tone-${row.status.tone}`}>{row.status.label}</span></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        <button className="ovx-cardlink" onClick={() => nav('/analytics/reporting')}>{t('overview.viewAllReports')} <ArrowRight size={13} /></button>
-      </div>
+        <CardLink onClick={() => nav('/analytics/reporting')}>{t('overview.viewAllReports')}</CardLink>
+      </section>
 
-      <div className="ovx-updated">Last updated: {dataAsAt}</div>
+      <div className="ovx-updated">{t('overview.subtitle')} <b>{dataAsAt}</b></div>
     </div>
   );
 }
 
-// Project Locations card: large Vanuatu map (≈40%) beside a compact province
-// table (≈60%). Hover is linked both ways; clicking drives the shared province
-// filter. Local hover state keeps map/list highlighting off the page re-render.
-function ProjectLocations({ counts, provBen, nationalCount, selected, onSelect, onView }) {
-  const { t } = useTranslation();
-  const [hover, setHover] = useState(null);
-  return (
-    <div className="ovx-card ovx-loc">
-      <div className="ovx-card-h">{t('overview.locations')}</div>
-      <div className="ovx-locwrap">
-        <div className="ovx-locmap">
-          <VanuatuMapMini counts={counts} selected={selected} hovered={hover} onHover={setHover}
-            onSelect={onSelect} />
-        </div>
-        <table className="ovx-provtbl">
-          <thead><tr><th>{t('overview.colProvince')}</th><th>{t('overview.colProjects')}</th><th>{t('overview.colBeneficiaries')}</th></tr></thead>
-          <tbody>
-            {PROVINCE_LIST.map((pv) => (
-              <tr key={pv} className={`${selected === pv ? 'sel' : ''}${hover === pv ? ' hov' : ''}`}
-                onClick={() => onSelect(pv)} onMouseEnter={() => setHover(pv)} onMouseLeave={() => setHover(null)}>
-                <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: fillDot(counts[pv] || 0, counts) }} /><span className="ovx-provtbl-nm">{pv}</span></td>
-                <td className="ovx-provtbl-num">{counts[pv] || 0}</td>
-                <td className="ovx-provtbl-num">{fmtNum(provBen[pv] || 0)}</td>
-              </tr>
-            ))}
-            {nationalCount > 0 && (
-              <tr className="nat">
-                <td className="ovx-provtbl-name"><span className="ovx-prov-dot" style={{ background: 'var(--text-3)' }} /><span className="ovx-provtbl-nm">{t('overview.nationalMulti')}</span></td>
-                <td className="ovx-provtbl-num">{nationalCount}</td>
-                <td className="ovx-provtbl-num">—</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <button className="ovx-cardlink" onClick={onView}>{t('overview.viewCoverage')} <ArrowRight size={13} /></button>
-    </div>
-  );
-}
-
-function STATUS_BUCKETS_LABEL(k, t) {
-  return {
-    on_track: t('overview.bucketOnTrack'), at_risk: t('overview.bucketAtRisk'),
-    not_started: t('overview.bucketNotStarted'), completed: t('overview.bucketCompleted'),
-  }[k] || k;
-}
-
-// Province dot colour — matches the map choropleth shading (green by project count).
-function fillDot(c, counts) {
-  if (!c) return 'color-mix(in srgb, var(--green-700) 22%, #ffffff)';
-  const max = Math.max(1, ...Object.values(counts));
-  const ramp = 0.55 + 0.45 * (c / max);
-  return `color-mix(in srgb, var(--green-600) ${Math.round(ramp * 100)}%, #ffffff)`;
-}
-
-// ── Presentational pieces ─────────────────────────────────────────────────────
-function Panel({ title, subtitle, children, footer }) {
-  return (
-    <div className="ov-panel">
-      <div className="ov-panel-h">
-        <div><div className="ov-panel-title">{title}</div>{subtitle && <div className="ov-panel-sub">{subtitle}</div>}</div>
-      </div>
-      <div className="ov-panel-body">{children}</div>
-      {footer && <div className="ov-panel-f">{footer}</div>}
-    </div>
-  );
-}
 function FilterSelect({ label, value, onChange, options }) {
   const { t } = useTranslation();
   return (
-    <label className="ov-fsel">
+    <label className="ovx-filter">
       <span>{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
         <option value="">{t('ui.all')}</option>
-        {options.map((o) => <option key={o.value} value={o.value}>{OPT.optionLabel(o)}</option>)}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>{OPT.optionLabel(option)}</option>
+        ))}
       </select>
     </label>
   );
 }
-function Donut({ data, center, onSlice, valueFmt, size = 180 }) {
-  const totalVal = data.reduce((a, s) => a + s.value, 0);
-  const outer = Math.round(size * 0.43), inner = Math.round(size * 0.3);
+
+function CardHeading({ title, icon }) {
   return (
-    <div style={{ position: 'relative', height: size }}>
-      {totalVal === 0 ? <NoData height={size} /> : (
+    <div className="ovx-card-heading">
+      <div className="ovx-card-title">{icon}{title}</div>
+    </div>
+  );
+}
+
+function CardLink({ onClick, children }) {
+  return (
+    <button type="button" className="ovx-card-link" onClick={onClick}>
+      {children} <ArrowRight size={13} aria-hidden="true" />
+    </button>
+  );
+}
+
+function Donut({ data, total, onSlice }) {
+  return (
+    <div className="ovx-donut-wrap">
+      {total === 0 ? (
+        <div className="ovx-empty">—</div>
+      ) : (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius={inner} outerRadius={outer} paddingAngle={2}
-              onClick={(e) => { if (onSlice && e) onSlice(e.payload ?? e); }} cursor={onSlice ? 'pointer' : 'default'}>
-              {data.map((s, i) => <Cell key={i} fill={s.color || '#0e6e6e'} />)}
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={47}
+              outerRadius={68}
+              paddingAngle={2}
+              onClick={(entry) => onSlice?.(entry?.payload ?? entry)}
+              cursor="pointer"
+            >
+              {data.map((item) => <Cell key={item.key} fill={item.color} />)}
             </Pie>
-            <Tooltip formatter={(v, n) => [valueFmt ? valueFmt(v) : v, n]} />
+            <Tooltip />
           </PieChart>
         </ResponsiveContainer>
       )}
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-        <div style={{ fontSize: size < 150 ? '1.15rem' : '1.35rem', fontWeight: 800, fontFamily: 'var(--font-display)', lineHeight: 1 }}>{center[0]}</div>
-        <div style={{ fontSize: '0.66rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{center[1]}</div>
+      <div className="ovx-donut-center">
+        <b>{fmtNum(total)}</b>
+        <span>Total</span>
       </div>
     </div>
   );
 }
-function Legend({ items, total, valueFmt }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.5rem' }}>
-      {items.map((s, i) => (
-        <button key={i} onClick={s.onClick} disabled={!s.onClick}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: '0.1rem 0', cursor: s.onClick ? 'pointer' : 'default', textAlign: 'left' }}>
-          <span style={{ width: 9, height: 9, borderRadius: 2, background: s.color || '#0e6e6e', flexShrink: 0 }} />
-          <span style={{ fontSize: '0.76rem', color: 'var(--text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-          <span style={{ fontSize: '0.76rem', fontWeight: 700 }}>{valueFmt ? valueFmt(s.value) : s.value}</span>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', width: 46, textAlign: 'right' }}>({pct1(s.value, total)})</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-function StatusBadge({ status }) {
-  const [bg, fg] = BADGE[status] || BADGE.not_started;
-  return <span style={{ display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: 9999, fontSize: '0.68rem', fontWeight: 700, background: bg, color: fg, whiteSpace: 'nowrap' }}>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, status)}</span>;
-}
-function Progress({ value }) {
-  if (value == null) return <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 120 }}>
-      <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--surface-2)', overflow: 'hidden' }}>
-        <div style={{ width: `${Math.min(100, value)}%`, height: '100%', background: value >= 90 ? C.onTrack : value >= 60 ? C.atRisk : C.offTrack }} />
-      </div>
-      <span style={{ fontSize: '0.75rem', fontWeight: 700, width: 34 }}>{value}%</span>
-    </div>
-  );
-}
-function NoData({ label, height = 180 }) {
+
+function ProjectLocations({ counts, beneficiaries, nationalCount, selected, onSelect, onView }) {
   const { t } = useTranslation();
-  const text = label ?? t('overview.noData');
-  return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}><span style={{ fontSize: '0.8rem' }}>{text}</span></div>;
+  const [hovered, setHovered] = useState(null);
+
+  return (
+    <article className="ovx-card ovx-location-card">
+      <CardHeading title={t('overview.locations')} />
+      <div className="ovx-location-layout">
+        <div className="ovx-map-panel">
+          <VanuatuMapMini
+            counts={counts}
+            selected={selected}
+            hovered={hovered}
+            onHover={setHovered}
+            onSelect={onSelect}
+          />
+        </div>
+        <div className="ovx-location-table-wrap">
+          <table className="ovx-location-table">
+            <thead>
+              <tr>
+                <th>{t('overview.colProvince')}</th>
+                <th>{t('overview.colProjects')}</th>
+                <th>{t('overview.colBeneficiaries')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PROVINCE_LIST.map((province) => (
+                <tr
+                  key={province}
+                  className={`${selected === province ? 'selected ' : ''}${hovered === province ? 'hovered' : ''}`}
+                  onClick={() => onSelect(province)}
+                  onMouseEnter={() => setHovered(province)}
+                  onMouseLeave={() => setHovered(null)}
+                >
+                  <td><span className="ovx-province-dot" style={{ opacity: counts[province] ? 1 : 0.28 }} />{province}</td>
+                  <td>{fmtNum(counts[province] || 0)}</td>
+                  <td>{fmtNum(beneficiaries[province] || 0)}</td>
+                </tr>
+              ))}
+              {nationalCount > 0 && (
+                <tr>
+                  <td><span className="ovx-province-dot is-muted" />{t('overview.nationalMulti')}</td>
+                  <td>{fmtNum(nationalCount)}</td>
+                  <td>—</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <CardLink onClick={onView}>{t('overview.viewCoverage')}</CardLink>
+    </article>
+  );
+}
+
+function BackendError({ onRetry }) {
+  const { t } = useTranslation();
+  return (
+    <div className="ovx ovx-error-state">
+      <OverviewStyles />
+      <div className="ovx-error-card">
+        <AlertTriangle size={22} aria-hidden="true" />
+        <div>
+          <h2>{t('ppa.sectionFailed')}</h2>
+          <p>The dashboard could not read the live MERL data service. No figures have been substituted.</p>
+        </div>
+        <button type="button" className="ovx-export" onClick={onRetry}>{t('ppa.retry')}</button>
+      </div>
+    </div>
+  );
 }
 
 function EmptyPortfolio() {
   const { t } = useTranslation();
   const nav = useNavigate();
   return (
-    <div className="ov" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-      <div style={{ textAlign: 'center', maxWidth: 440 }}>
-        <h2 style={{ margin: '0 0 0.4rem' }}>{t('overview.emptyTitle')}</h2>
-        <p style={{ color: 'var(--text-2)', margin: '0 0 1.2rem' }}>{t('overview.emptyBody')}</p>
-        <button className="ov-btn" onClick={() => nav('/project-setup')}>{t('overview.emptyCta')}</button>
+    <div className="ovx ovx-error-state">
+      <OverviewStyles />
+      <div className="ovx-empty-card">
+        <h2>{t('overview.emptyTitle')}</h2>
+        <p>{t('overview.emptyBody')}</p>
+        <button type="button" className="ovx-export" onClick={() => nav('/project-setup')}>{t('overview.emptyCta')}</button>
       </div>
     </div>
   );
 }
+
 function OverviewSkeleton() {
-  const sk = (h) => <div className="ov-skel" style={{ height: h }} />;
   return (
-    <div className="ov">
-      <div className="ov-filters rp-noprint">{sk(34)}</div>
-      <div className="ov-kpis">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="ov-kpi">{sk(48)}</div>)}</div>
-      <div className="ov-grid4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="ov-panel">{sk(240)}</div>)}</div>
-      <div className="ov-grid4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="ov-panel">{sk(240)}</div>)}</div>
+    <div className="ovx">
+      <OverviewStyles />
+      <div className="ovx-skeleton ovx-skeleton-heading" />
+      <div className="ovx-skeleton ovx-skeleton-filters" />
+      <div className="ovx-kpis">
+        {Array.from({ length: 4 }).map((_, i) => <div className="ovx-skeleton ovx-skeleton-kpi" key={i} />)}
+      </div>
+      <div className="ovx-priority-grid">
+        <div className="ovx-skeleton ovx-skeleton-panel" />
+        <div className="ovx-skeleton ovx-skeleton-panel" />
+      </div>
     </div>
+  );
+}
+
+function OverviewStyles() {
+  return (
+    <style>{`
+      .ovx{max-width:1440px;margin:0 auto;padding:1.05rem 1.05rem 1.5rem;color:var(--text-1)}
+      .ovx-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin:.1rem 0 .9rem}
+      .ovx-heading h1{margin:0;color:#2a2148;font-size:clamp(1.55rem,2.3vw,2rem);font-weight:780;letter-spacing:-.035em}
+      .ovx-heading p{margin:.3rem 0 0;color:#91899f;font-size:.82rem}
+      .ovx-heading p b{color:#736a84;font-weight:700}
+      .ovx-export{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#5b4692;color:#fff;font:inherit;font-size:.79rem;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(74,55,125,.14)}
+      .ovx-export:hover{background:#4b377d}
+
+      .ovx-filterbar{display:grid;grid-template-columns:.8fr .8fr 1.25fr .9fr 1.2fr auto;gap:.65rem;align-items:end;margin-bottom:1rem;padding:.85rem .9rem;border:1px solid #ebe7f2;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}
+      .ovx-filter{display:block;min-width:0}
+      .ovx-filter>span{display:block;margin:0 0 .32rem;color:#898194;font-size:.62rem;font-weight:760;letter-spacing:.065em;text-transform:uppercase}
+      .ovx-filter select{width:100%;min-height:40px;padding:.5rem .7rem;border:1px solid #e4dfed;border-radius:9px;background:#fff;color:#41374f;font:inherit;font-size:.8rem;outline:none}
+      .ovx-filter select:focus{border-color:#7a66aa;box-shadow:0 0 0 3px rgba(91,70,146,.1)}
+      .ovx-reset{min-height:40px;padding:.5rem .85rem;border:1px solid #e6e1ef;border-radius:9px;background:#f9f8fc;color:#7f778c;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer}
+      .ovx-reset:disabled{opacity:.45;cursor:not-allowed}
+
+      .ovx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;margin-bottom:.9rem}
+      .ovx-kpi{min-height:174px!important;border-radius:14px!important;border-color:#ebe7f2!important;padding:1rem!important;box-shadow:var(--shadow-sm)!important}
+      .ovx-kpi::before{content:'';position:absolute;left:-1px;top:14px;bottom:14px;width:4px;border-radius:0 5px 5px 0;background:#6b55a7}
+      .ovx-kpi-projects::before{background:#4ea76b}.ovx-kpi-budget::before{background:#f0b323}.ovx-kpi-beneficiaries::before{background:#338bdc}
+      .ovx-kpi [class*='uppercase']{text-transform:none!important;letter-spacing:.01em!important;font-size:.7rem!important;color:#7e758e!important}
+      .ovx-kpi [class*='font-extrabold']{font-size:clamp(1.55rem,2.1vw,2rem)!important;color:#281f48!important}
+      .ovx-kpi [class*='text-xs']{color:#786f87!important}
+
+      .ovx-priority-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr);gap:.9rem;margin-bottom:.9rem}
+      .ovx-secondary-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.45fr);gap:.9rem;margin-bottom:.9rem}
+      .ovx-card{display:flex;min-width:0;flex-direction:column;border:1px solid #ebe7f2;border-radius:14px;background:#fff;padding:1rem;box-shadow:var(--shadow-sm)}
+      .ovx-card-heading{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin-bottom:.8rem}
+      .ovx-card-title{display:flex;align-items:center;gap:.48rem;color:#33284f;font-size:.91rem;font-weight:760;letter-spacing:-.015em}
+      .ovx-card-title svg{color:#b16a43}
+      .ovx-card-link{display:inline-flex;align-items:center;gap:.35rem;align-self:flex-start;margin-top:auto;padding:.75rem 0 0;border:0;background:none;color:#5b4692;font:inherit;font-size:.72rem;font-weight:730;cursor:pointer}
+      .ovx-card-link:hover{text-decoration:underline}
+
+      .ovx-attention-card{background:linear-gradient(180deg,#fffdfa 0%,#fff 30%)}
+      .ovx-attention-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+      .ovx-attention-item{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'num label' 'num action';column-gap:.7rem;row-gap:.18rem;min-width:0;padding:.72rem;border:1px solid #eee9f3;border-radius:11px;background:#fff;text-align:left;cursor:pointer;font:inherit}
+      .ovx-attention-item:hover{border-color:#ddd4e9;background:#fcfbfe}
+      .ovx-attention-number{grid-area:num;align-self:center;min-width:1.7ch;color:#4b377d;font-size:1.35rem;font-weight:820;font-family:var(--font-display);line-height:1}
+      .ovx-attention-label{grid-area:label;min-width:0;color:#50475d;font-size:.74rem;font-weight:650;line-height:1.25}
+      .ovx-attention-action{grid-area:action;display:flex;align-items:center;gap:.2rem;color:#91899f;font-size:.64rem;font-weight:650}
+      .ovx-attention-item.tone-critical .ovx-attention-number{color:#c23b32}.ovx-attention-item.tone-warning .ovx-attention-number{color:#c78417}.ovx-attention-item.tone-clear .ovx-attention-number{color:#4b9a67}
+
+      .ovx-implementation{display:grid;grid-template-columns:170px minmax(0,1fr);gap:1rem;align-items:center;min-height:178px}
+      .ovx-donut-wrap{position:relative;width:170px;height:170px}
+      .ovx-donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+      .ovx-donut-center b{color:#2d234d;font-size:1.35rem;font-family:var(--font-display)}
+      .ovx-donut-center span{color:#91899f;font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+      .ovx-status-list{display:flex;flex-direction:column;gap:.3rem}
+      .ovx-status-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto 44px;gap:.55rem;align-items:center;width:100%;padding:.48rem .35rem;border:0;border-bottom:1px solid #f0edf4;background:none;color:#5b5268;text-align:left;cursor:pointer;font:inherit;font-size:.73rem}
+      .ovx-status-row:last-child{border-bottom:0}.ovx-status-row:hover{background:#faf8fd}
+      .ovx-status-dot{width:9px;height:9px;border-radius:3px}.ovx-status-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ovx-status-row b{color:#31274d;font-size:.78rem}.ovx-status-row>span:last-child{text-align:right;color:#91899f}
+
+      .ovx-performance-list{display:flex;flex-direction:column;gap:.9rem;padding:.25rem 0 .35rem}
+      .ovx-performance-row{display:grid;grid-template-columns:1fr auto;grid-template-areas:'meta meta' 'track detail';gap:.35rem .7rem}
+      .ovx-performance-meta{grid-area:meta;display:flex;align-items:center;justify-content:space-between;gap:.8rem;color:#62596f;font-size:.74rem;font-weight:650}
+      .ovx-performance-meta b{color:#34284f;font-size:.82rem}
+      .ovx-performance-track{grid-area:track;height:7px;overflow:hidden;border-radius:999px;background:#efecf5}
+      .ovx-performance-track>div{height:100%;border-radius:inherit;background:linear-gradient(90deg,#6b55a7,#806bb4)}
+      .ovx-performance-detail{grid-area:detail;min-width:62px;color:#9991a5;font-size:.64rem;text-align:right}
+
+      .ovx-location-layout{display:grid;grid-template-columns:minmax(230px,.92fr) minmax(300px,1.08fr);gap:.8rem;align-items:stretch}
+      .ovx-map-panel{min-height:270px;overflow:hidden;border:1px solid #ebe7f2;border-radius:11px;background:#f4f3fa}
+      .ovx-location-table-wrap{overflow:auto}
+      .ovx-location-table{width:100%;border-collapse:collapse;font-size:.72rem}
+      .ovx-location-table th{padding:.55rem .48rem;border-bottom:1px solid #eae6f0;color:#8f879c;background:#faf9fc;font-size:.61rem;font-weight:760;letter-spacing:.05em;text-align:right;text-transform:uppercase}
+      .ovx-location-table th:first-child{text-align:left}.ovx-location-table td{padding:.55rem .48rem;border-bottom:1px solid #f0edf4;color:#554c62;text-align:right}.ovx-location-table td:first-child{display:flex;align-items:center;gap:.45rem;color:#3d334f;font-weight:680;text-align:left}.ovx-location-table tr{cursor:pointer}.ovx-location-table tbody tr:hover,.ovx-location-table tr.hovered{background:#faf8fd}.ovx-location-table tr.selected{background:#f4effb}
+      .ovx-province-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b55a7;flex-shrink:0}.ovx-province-dot.is-muted{background:#a9a2b3}
+
+      .ovx-reporting-card{margin-bottom:.7rem}
+      .ovx-table-wrap{overflow:auto;border:1px solid #ece8f2;border-radius:11px}
+      .ovx-table{width:100%;border-collapse:collapse;font-size:.74rem}
+      .ovx-table th{padding:.65rem .75rem;background:#faf9fc;color:#8c8499;font-size:.62rem;font-weight:760;letter-spacing:.055em;text-align:left;text-transform:uppercase}
+      .ovx-table td{padding:.7rem .75rem;border-top:1px solid #efecf4;color:#61586d}.ovx-table tbody tr{cursor:pointer}.ovx-table tbody tr:hover{background:#faf9fd}.ovx-table-strong{color:#372c50!important;font-weight:680}
+      .ovx-badge{display:inline-flex;padding:.18rem .5rem;border-radius:999px;font-size:.62rem;font-weight:730;white-space:nowrap}.ovx-badge.tone-ok{background:#e8f6ec;color:#2f7d49}.ovx-badge.tone-info{background:#eef3ff;color:#4169a9}.ovx-badge.tone-warn{background:#fff6df;color:#996713}.ovx-badge.tone-crit{background:#feebea;color:#b53b34}
+      .ovx-empty{display:flex;min-height:110px;align-items:center;justify-content:center;color:#9a92a5;font-size:.78rem}.ovx-updated{padding:.2rem .15rem;color:#9a92a5;font-size:.66rem;text-align:right}
+
+      .ovx-error-state{display:flex;min-height:60vh;align-items:center;justify-content:center}.ovx-error-card,.ovx-empty-card{display:flex;max-width:620px;align-items:flex-start;gap:.9rem;padding:1.1rem;border:1px solid #ebe7f2;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}.ovx-empty-card{display:block;text-align:center}.ovx-error-card svg{color:#c78417;flex-shrink:0}.ovx-error-card h2,.ovx-empty-card h2{margin:0 0 .25rem;color:#33284f;font-size:1rem}.ovx-error-card p,.ovx-empty-card p{margin:0;color:#776e84;font-size:.78rem;line-height:1.5}.ovx-error-card .ovx-export{margin-left:auto;flex-shrink:0}.ovx-empty-card .ovx-export{margin-top:.8rem}
+
+      .ovx-skeleton{position:relative;overflow:hidden;border-radius:14px;background:#ece9f2}.ovx-skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:ovx-shimmer 1.4s infinite}.ovx-skeleton-heading{height:58px;margin-bottom:.9rem}.ovx-skeleton-filters{height:82px;margin-bottom:1rem}.ovx-skeleton-kpi{height:174px}.ovx-skeleton-panel{height:270px}@keyframes ovx-shimmer{to{transform:translateX(100%)}}
+
+      @media(max-width:1180px){.ovx-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.ovx-reset{align-self:end}.ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}}
+      @media(max-width:980px){.ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}.ovx-location-layout{grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr)}}
+      @media(max-width:760px){.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
+      @media(max-width:560px){.ovx-heading{flex-direction:column}.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
+      @media print{.ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export{display:none!important}.ovx-card,.ovx-kpi{box-shadow:none!important}}
+    `}</style>
   );
 }
