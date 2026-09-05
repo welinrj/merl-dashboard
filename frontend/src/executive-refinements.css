@@ -1,8 +1,13 @@
 /* Executive refinements loaded after shell-theme.css.
-   Purpose: give the portal more usable analytics width on tablet/desktop and
-   keep navigation hierarchy quiet and institutional. */
+   Purpose: keep the navigation hierarchy quiet and institutional while
+   preserving the original full-size sidebar across desktop and tablet views. */
 
-:root { --side-w: 208px; }
+:root { --side-w: 224px; }
+
+.dsh-side {
+  width: var(--side-w);
+  min-width: var(--side-w);
+}
 
 .dsh-nav a {
   border-radius: 2px;
@@ -16,48 +21,4 @@
 .dsh-nav a.active {
   background: rgba(255,255,255,.055);
   border-left-color: #d8cfee;
-}
-
-/* Tablet / small-laptop mode: automatically compact the sidebar to an icon
-   rail. The full text remains in the DOM for assistive technology; only the
-   visual label size collapses. Mobile continues to use the existing drawer. */
-@media (min-width: 761px) and (max-width: 1180px) {
-  :root { --side-w: 72px; }
-
-  .dsh-side {
-    width: 72px;
-    min-width: 72px;
-  }
-
-  .dsh-brand {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    padding: 1rem .5rem .9rem;
-  }
-
-  .dsh-brand img {
-    grid-column: 1;
-    grid-row: 1;
-    width: 34px;
-    height: 34px;
-  }
-
-  .dsh-brand-title,
-  .dsh-brand-dept { display: none; }
-
-  .dsh-nav { padding: .7rem .45rem 1rem; }
-
-  .dsh-nav a {
-    justify-content: center;
-    gap: 0;
-    min-height: 42px;
-    padding: .6rem .4rem;
-    border-left-width: 2px;
-    font-size: 0;
-  }
-
-  .dsh-nav a svg {
-    width: 18px;
-    height: 18px;
-  }
 }
