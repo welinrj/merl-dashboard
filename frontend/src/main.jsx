@@ -11,6 +11,8 @@ import App from './App';
 import './index.css';
 // Shell theme — loaded after index.css so it overrides the shell rules there.
 import './shell-theme.css';
+// Map-specific presentation overrides.
+import './map-overrides.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
