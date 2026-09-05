@@ -12,7 +12,7 @@
 // fails, the dashboard now shows a retryable connection error instead of
 // silently treating the failure as an empty portfolio.
 // =============================================================================
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -32,12 +32,9 @@ import { localised, i18nCols } from '../lib/contentLocale';
 
 const C = {
   violet: '#6b55a7',
-  violetDark: '#4b377d',
-  blue: '#3287d9',
   green: '#22a565',
   amber: '#e0a12a',
   red: '#dc2626',
-  muted: '#94a3b8',
 };
 
 const STATUS_COLOR = {
@@ -90,7 +87,7 @@ export default function Overview() {
         ));
 
         const responses = await Promise.all([
-          q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, updated_at'),
+          q('v_projects', 'id, code, name, status, budget_vuv, spent_vuw, provinces, donor, category, start_date, end_date, updated_at'),
           q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at'),
           q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
           q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
@@ -139,11 +136,8 @@ export default function Overview() {
   const donors = [...new Set(data.projects.map((p) => p.donor).filter(Boolean))].sort();
   const themes = [...new Set(data.projects.map((p) => p.category).filter(Boolean))].sort();
 
-  const projects = useMemo(
-    () => data.projects.filter((p) => projectMatches(p, filters)),
-    [data.projects, filters],
-  );
-  const ids = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
+  const projects = data.projects.filter((p) => projectMatches(p, filters));
+  const ids = new Set(projects.map((p) => p.id));
   const inScope = (rows) => rows.filter((r) => ids.has(r.project_id));
 
   const financial = inScope(data.financial);
@@ -341,8 +335,6 @@ export default function Overview() {
         <button type="button" className="ovx-reset" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
       </section>
 
-      {/* Level 1 — headline results. These are deliberately the only four cards
-          competing for the first visual read. */}
       <section className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
           className="ovx-kpi ovx-kpi-progress"
@@ -382,7 +374,6 @@ export default function Overview() {
         />
       </section>
 
-      {/* Level 2 — what requires intervention, then the implementation picture. */}
       <section className="ovx-priority-grid">
         <article className="ovx-card ovx-attention-card">
           <CardHeading icon={<AlertTriangle size={17} aria-hidden="true" />} title={t('overview.needsAttention')} />
@@ -416,7 +407,6 @@ export default function Overview() {
         </article>
       </section>
 
-      {/* Level 3 — performance explanation first, geographic context second. */}
       <section className="ovx-secondary-grid">
         <article className="ovx-card">
           <CardHeading title={t('overview.portfolio')} />
@@ -447,7 +437,6 @@ export default function Overview() {
         />
       </section>
 
-      {/* Level 4 — operational follow-up after the management picture is clear. */}
       <section className="ovx-card ovx-reporting-card">
         <CardHeading title={t('overview.recentUpcoming')} />
         {reportRows.length === 0 ? (
@@ -612,7 +601,7 @@ function BackendError({ onRetry }) {
         <AlertTriangle size={22} aria-hidden="true" />
         <div>
           <h2>{t('ppa.sectionFailed')}</h2>
-          <p>The dashboard could not read the live MERL data service. No figures have been substituted.</p>
+          <p>{t('ppa.sectionFailed')}</p>
         </div>
         <button type="button" className="ovx-export" onClick={onRetry}>{t('ppa.retry')}</button>
       </div>
