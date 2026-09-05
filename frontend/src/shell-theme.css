@@ -1,201 +1,303 @@
-/* ── Shell theme ─────────────────────────────────────────────────────────────
-   Applies the approved dashboard UI concept to the existing portal.
+/* ─────────────────────────────────────────────────────────────────────────────
+   MERL Dashboard — violet institutional theme
+   Inspired by the approved clean reference: deep violet navigation, pale lilac
+   canvas, white floating surfaces, compact controls and restrained accents.
 
-   Loaded AFTER index.css (see main.jsx) so it overrides the shell rules there
-   without editing them — revert by removing the one import. It changes surface
-   and colour only: no layout class is renamed, no page markup is restructured,
-   so every page keeps working exactly as before.
-   ──────────────────────────────────────────────────────────────────────────── */
+   This stylesheet is loaded after index.css and intentionally leaves component
+   structure and data behaviour untouched. It re-skins the shell and the shared
+   portal primitives, then adds higher-specificity Project Setup refinements so
+   its runtime <style> block cannot pull the page back to the old visual system.
+   ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* The shell used its own blue scale, unrelated to the teal/gold/brick tokens
-     the rest of the portal is built on. Same variable names, portal colours —
-     everything referencing them re-themes at once. */
-  --navy-900: #08302f;
-  --navy-800: #0b4443;
-  --navy-700: #0c5b59;
-  --navy-active: #0e6e6e;
+  /* Rebind the portal's historical primary-token names to the new violet scale.
+     Existing buttons, links, focus rings and charts therefore inherit the theme
+     without changing their component logic. */
+  --green-900: #302354;
+  --green-800: #3b2b67;
+  --green-700: #4b377d;
+  --green-600: #5b4692;
+  --green-500: #6c57a6;
+  --green-200: #d9d1ef;
+  --green-100: #ebe7f7;
+  --green-50:  #f5f2fb;
 
-  --shell-gap: 16px;
-  --shell-radius: 14px;
-  --shell-bg: #f4f6f3;
-  --shell-page: linear-gradient(128deg, #e2ebe7 0%, #eaf1ed 46%, #f4f8f4 100%);
+  --ink: #201a35;
+  --cream: #f5f4fa;
+  --white: #ffffff;
+  --border: #ebe8f2;
+  --border-strong: #dcd6e8;
+  --text-1: #211b35;
+  --text-2: #5f5872;
+  --text-3: #938ca4;
+  --surface-1: #f7f6fb;
+  --surface-2: #efedf6;
+  --ring: rgba(91, 70, 146, 0.16);
+  --shadow-sm: 0 1px 2px rgba(43, 32, 74, 0.025), 0 6px 18px rgba(43, 32, 74, 0.035);
+  --shadow-md: 0 2px 4px rgba(43, 32, 74, 0.035), 0 10px 30px rgba(43, 32, 74, 0.055);
+  --shadow-lg: 0 18px 60px rgba(43, 32, 74, 0.18);
+  --app-frame: #e9e6f2;
+  --radius-card: 14px;
+  --radius-control: 10px;
 
-  /* KPI accents, in reading order across the row */
-  --kpi-1: #0e6e6e;
-  --kpi-2: #2f7fa6;
-  --kpi-3: #e0a12a;
-  --kpi-4: #b3402f;
+  --navy-900: #2f2350;
+  --navy-800: #39295f;
+  --navy-700: #493574;
+  --navy-active: #5b4692;
 
-  --side-w: 216px;
+  --shell-gap: 18px;
+  --shell-radius: 18px;
+  --shell-bg: #f4f3f8;
+  --shell-page: linear-gradient(135deg, #e8e5f2 0%, #f0eef6 44%, #f7f6fb 100%);
+  --side-w: 224px;
+
+  /* Accent edges are informational locators, not performance judgements. */
+  --kpi-1: #6b55a7;
+  --kpi-2: #4b9a67;
+  --kpi-3: #f0b323;
+  --kpi-4: #4a90d9;
 }
 
+html,
+body,
+#root { min-height: 100%; }
+
+body {
+  background: var(--app-frame);
+  color: var(--text-1);
+}
+
+/* ── Framed application shell ─────────────────────────────────────────────── */
 .dsh {
+  min-height: 100dvh;
   background: var(--shell-page);
   padding: var(--shell-gap);
   gap: 0;
 }
 
-.app-shell {
-  border-radius: calc(var(--shell-radius) + var(--shell-gap));
-  box-shadow: none;
-}
+.app-shell { border-radius: calc(var(--shell-radius) + var(--shell-gap)); }
 
 .dsh-side {
   width: var(--side-w);
-  background: linear-gradient(180deg, #12514c 0%, #08302f 100%);
-  color: #d6e5e2;
-  border-radius: var(--shell-radius) 0 0 var(--shell-radius);
   top: var(--shell-gap);
   height: calc(100dvh - (var(--shell-gap) * 2));
-  overflow: hidden;
   position: sticky;
+  overflow: hidden;
   isolation: isolate;
+  color: rgba(255,255,255,.82);
+  background:
+    radial-gradient(circle at 15% 80%, rgba(106, 82, 167, .28), transparent 27%),
+    linear-gradient(180deg, #3b2d67 0%, #2e234f 100%);
+  border-radius: var(--shell-radius) 0 0 var(--shell-radius);
+  box-shadow: inset -1px 0 rgba(255,255,255,.05);
 }
 
-/* Crest beside a two-line lockup instead of above a centred one. A grid, not a
-   flex row: the two text lines are siblings of the image, so a row would put
-   all three side by side in a 216px rail. The product name leads and the
-   department sits under it — at rail width the long official name can't be the
-   line an officer scans for. */
 .dsh-brand {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  column-gap: 0.6rem;
-  row-gap: 1px;
+  grid-template-columns: 40px minmax(0,1fr);
+  column-gap: .7rem;
+  row-gap: 2px;
   align-items: center;
   text-align: left;
-  padding: 1.05rem 0.85rem 1rem 1rem;
-  border-bottom: none;
+  padding: 1.15rem 1rem 1.1rem;
+  border: 0;
   position: relative;
   z-index: 2;
 }
+
 .dsh-brand img {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   grid-column: 1;
   grid-row: 1 / span 2;
+  filter: brightness(0) invert(1);
+  opacity: .96;
 }
+
 .dsh-brand-title {
   grid-column: 2;
   grid-row: 1;
-  font-family: var(--font-display);
-  font-size: 0.84rem;
-  font-weight: 700;
   color: #fff;
+  font-family: var(--font-display);
+  font-size: .9rem;
+  font-weight: 760;
   line-height: 1.15;
 }
+
 .dsh-brand-dept {
   grid-column: 2;
   grid-row: 2;
-  font-size: 0.57rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  color: rgba(255,255,255,.58);
+  font-size: .56rem;
+  font-weight: 650;
+  letter-spacing: .055em;
+  line-height: 1.25;
   text-transform: uppercase;
-  line-height: 1.3;
-  color: rgba(255, 255, 255, 0.55);
 }
 
 .dsh-nav {
-  padding: 0.25rem 0 0.5rem 0.75rem;
-  gap: 3px;
   position: relative;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: .35rem .72rem .6rem;
 }
-/* The active item is a pill in the content colour that runs to the sidebar's
-   right edge, so the selected module reads as continuous with the page it
-   opens — the single strongest cue in the whole shell. */
-.dsh-nav a {
-  gap: 0.62rem;
-  padding: 0.52rem 0.6rem 0.52rem 0.75rem;
-  margin-right: -6px;
-  border-radius: 20px 0 0 20px;
-  font-size: 0.79rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-.dsh-nav a:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
-.dsh-nav a.active {
-  background: var(--shell-bg);
-  color: var(--green-900);
-  font-weight: 600;
-  border-radius: 20px 0 0 20px;
-}
-.dsh-nav a svg { color: rgba(255, 255, 255, 0.62); }
-.dsh-nav a.active svg { color: var(--green-600); }
 
-/* Decorative, sits under the navigation and never intercepts a click. */
+.dsh-nav a {
+  display: flex;
+  align-items: center;
+  gap: .72rem;
+  min-height: 40px;
+  margin: 0;
+  padding: .55rem .75rem;
+  border-radius: 10px;
+  color: rgba(255,255,255,.76);
+  font-size: .78rem;
+  font-weight: 530;
+  letter-spacing: -.005em;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+.dsh-nav a svg {
+  width: 16px;
+  height: 16px;
+  color: rgba(255,255,255,.6);
+  stroke-width: 1.8;
+}
+
+.dsh-nav a:hover {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+
+.dsh-nav a.active {
+  background: rgba(255,255,255,.97);
+  color: #4a3878;
+  font-weight: 680;
+  box-shadow: 0 7px 18px rgba(20, 13, 40, .12);
+}
+
+.dsh-nav a.active svg { color: #5b4692; }
+
+/* Recolour the existing botanical SVG rather than adding a new decorative
+   asset. It stays decorative and does not intercept clicks. */
 .dsh-foliage {
   position: absolute;
-  left: -26px;
-  bottom: -14px;
-  width: 232px;
+  left: -24px;
+  bottom: -18px;
+  width: 245px;
   z-index: 0;
-  opacity: 0.5;
+  opacity: .72;
   pointer-events: none;
 }
+.dsh-foliage path:nth-child(1) { fill: #8269b5 !important; }
+.dsh-foliage path:nth-child(2) { stroke: #6e58a0 !important; }
+.dsh-foliage path:nth-child(3) { fill: #4f82b9 !important; }
+.dsh-foliage path:nth-child(4) { stroke: #4074a9 !important; }
+.dsh-foliage path:nth-child(5) { fill: #d06f91 !important; }
+.dsh-foliage path:nth-child(6) { fill: #7696c9 !important; }
+.dsh-foliage path:nth-child(7) { fill: #65529c !important; }
 
 .dsh-main {
+  min-width: 0;
   background: var(--shell-bg);
   border-radius: 0 var(--shell-radius) var(--shell-radius) 0;
   overflow: hidden;
 }
+
 .dsh-scroll { padding: 0 0 var(--shell-gap); }
 
+/* ── Floating top bar ─────────────────────────────────────────────────────── */
 .dsh-head {
+  min-height: 66px;
   margin: 14px 14px 0;
-  padding: 0.62rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  padding: .65rem 1rem .65rem 1.15rem;
+  border: 1px solid rgba(232,228,241,.9);
+  border-radius: 14px;
+  background: rgba(255,255,255,.96);
   box-shadow: var(--shadow-sm);
   position: static;
+  backdrop-filter: blur(12px);
 }
-.dsh-head-title { font-size: 0.98rem; font-weight: 700; color: var(--green-900); }
-.dsh-head-sub { font-size: 0.7rem; }
-.dsh-head-actions { gap: 0.6rem; }
 
-/* Language toggle — a segmented pill rather than a bordered box. */
+.dsh-head-title {
+  color: #2c2445;
+  font-size: .96rem;
+  font-weight: 760;
+  letter-spacing: -.015em;
+}
+
+.dsh-head-sub {
+  margin-top: 1px;
+  color: var(--text-3);
+  font-size: .67rem;
+}
+
+.dsh-head-actions {
+  gap: .5rem;
+  margin-left: auto;
+}
+
+.gs-trigger {
+  min-width: clamp(220px, 28vw, 410px);
+  height: 38px;
+  border: 1px solid #eeeaf5;
+  border-radius: 999px;
+  background: #f7f5fb;
+  color: #7d748e;
+  box-shadow: inset 0 1px rgba(255,255,255,.85);
+}
+.gs-trigger:hover { border-color: #ddd5ec; background: #f3f0f9; }
+.gs-trigger svg { color: #5b4692; }
+.gs-kbd { border-color: #e2dced; background: #fff; color: #8a8298; }
+
 .dsh-lang {
   display: flex;
-  background: var(--surface-1);
-  border-radius: 999px;
   padding: 2px;
+  border: 1px solid #eeeaf5;
+  border-radius: 999px;
+  background: #f7f5fb;
 }
 .dsh-lang button {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--text-3);
-  padding: 0.28rem 0.6rem;
+  min-width: 34px;
+  border: 0;
   border-radius: 999px;
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  padding: .26rem .5rem;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: .64rem;
+  font-weight: 750;
+  cursor: pointer;
 }
-.dsh-lang button:hover { color: var(--text-2); }
 .dsh-lang button[aria-pressed='true'] {
-  background: var(--white);
-  color: var(--green-700);
-  box-shadow: var(--shadow-sm);
+  background: #fff;
+  color: #4b377d;
+  box-shadow: 0 2px 8px rgba(57, 41, 95, .08);
 }
 
+.dsh-user {
+  border-radius: 10px;
+  padding: .22rem .3rem .22rem .22rem;
+}
+.dsh-user:hover { background: #f7f5fb; }
 .dsh-avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--green-800);
-  font-size: 0.72rem;
+  background: linear-gradient(145deg, #6d57a8, #443171);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 750;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.18);
 }
-.dsh-user-name { font-size: 0.76rem; font-weight: 600; }
-.dsh-user-role { font-size: 0.65rem; }
+.dsh-user-name { color: #302747; font-size: .74rem; font-weight: 700; }
+.dsh-user-role { color: var(--text-3); font-size: .62rem; }
 
-.gs-trigger { border-radius: 999px; }
+/* ── Shared page surfaces ─────────────────────────────────────────────────── */
+.page-pad { padding: 1rem 1.05rem 0; }
 
-/* One radius and one shadow across every card class the pages already use, so
-   the softer surface arrives everywhere without touching a page file. */
 .card,
 .db-card,
 .ov-panel,
@@ -204,53 +306,343 @@
 .ov-filters,
 .ov-strip,
 .ov-action {
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(20, 45, 40, 0.05), 0 2px 8px rgba(20, 45, 40, 0.04);
+  border: 1px solid #ebe8f2;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
 }
 
-/* KPI row — a coloured edge per metric, reading left to right. The colour is a
-   locator, not a status: it tells an officer which tile they are looking at
-   when they come back to it, and nothing about performance. */
-.ovx-kpis > * { border-left: 4px solid var(--border); }
+.card:hover,
+.db-card:hover,
+.ov-panel:hover,
+.ovx-card:hover { border-color: #e3ddec; }
+
+/* Inputs and controls use the same soft geometry as the reference. */
+.field-label {
+  color: #625a72;
+  font-size: .66rem;
+  font-weight: 720;
+  letter-spacing: .055em;
+}
+.field-input {
+  min-height: 42px;
+  border-color: #e6e1ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #2c2445;
+}
+.field-input:hover { border-color: #d6cee5; }
+.field-input:focus {
+  border-color: #7c68ad;
+  box-shadow: 0 0 0 3px rgba(91,70,146,.11);
+}
+
+.btn,
+.ov-btn,
+.ov-btn-ghost {
+  border-radius: 10px;
+}
+.btn-primary,
+.ov-btn { background: #5b4692; }
+.btn-primary:hover:not(:disabled),
+.ov-btn:hover { background: #4b377d; }
+.ov-btn-ghost { color: #5b4692; border-color: #cfc5e5; background: #fff; }
+
+/* KPI cards keep the clean white tile but get the reference's coloured leading
+   rule. This selector covers the Overview KPI row without altering its values. */
+.ovx-kpis > * {
+  position: relative;
+  overflow: hidden;
+  border-left: 4px solid var(--border);
+}
 .ovx-kpis > *:nth-child(1) { border-left-color: var(--kpi-1); }
 .ovx-kpis > *:nth-child(2) { border-left-color: var(--kpi-2); }
 .ovx-kpis > *:nth-child(3) { border-left-color: var(--kpi-3); }
 .ovx-kpis > *:nth-child(4) { border-left-color: var(--kpi-4); }
 
-.ov-btn,
-.ov-btn-ghost {
-  border-radius: 999px;
-  padding: 0.48rem 1rem;
+/* Tables are flatter and easier to scan. */
+table { border-color: var(--border); }
+th {
+  color: #827a91;
+  background: #faf9fc;
 }
-.ov-btn { background: var(--green-600); }
-.ov-btn:hover { background: var(--green-700); }
-.ov-btn-ghost { border-color: var(--green-600); color: var(--green-700); }
+td { color: #4f475f; }
+tbody tr:hover { background: #faf9fd; }
 
-/* The frame is a large-screen idea. On a phone the shell goes back to full
-   bleed — a rounded card inset inside a 380px viewport wastes the width an
-   officer needs for a data table. */
+/* Dialogs / command palette */
+.gs-panel {
+  border-color: #e8e2f0;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+}
+.gs-item.active { background: #f3effa; }
+
+/* ── Project Setup — clean workspace treatment ───────────────────────────── */
+.dsh .ps-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-top: .9rem;
+}
+
+/* The Project Setup page injects its own style block after this file; the .dsh
+   prefix intentionally wins on specificity so the redesign stays authoritative. */
+.dsh .ps-page .page-header,
+.dsh .ps-page > div:first-of-type {
+  border-radius: 14px;
+}
+
+.dsh .ps-page .ps-layout {
+  grid-template-columns: 276px minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+
+.dsh .ps-page .ps-rail {
+  top: 1rem;
+  gap: .75rem;
+}
+
+.dsh .ps-page .ps-idcard,
+.dsh .ps-page .ps-seclist,
+.dsh .ps-page .ps-section,
+.dsh .ps-page .ps-submitbar {
+  border: 1px solid #e9e5f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.dsh .ps-page .ps-idcard {
+  padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(248,246,252,.9), rgba(255,255,255,1) 42%);
+}
+.dsh .ps-page .ps-idcard h2 {
+  color: #2f2746;
+  font-size: .95rem;
+  font-weight: 760;
+  letter-spacing: -.015em;
+}
+.dsh .ps-page .ps-idmeta {
+  margin-top: .25rem;
+  color: #9a92aa;
+  font-size: .65rem;
+}
+.dsh .ps-page .ps-ring-row { gap: .8rem; margin: .9rem 0 .25rem; }
+.dsh .ps-page .ps-ring-cap { color: #8a8298; }
+.dsh .ps-page .ps-facts { border-top-color: #efecf4; }
+.dsh .ps-page .ps-facts dt { color: #978fa5; }
+.dsh .ps-page .ps-facts dd { color: #403752; font-weight: 680; }
+
+.dsh .ps-page .ps-seclist { overflow: hidden; padding: .3rem; }
+.dsh .ps-page .ps-seclist button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 9px;
+  padding: .55rem .62rem;
+  color: #5d536c;
+  background: transparent;
+  font-size: .75rem;
+  font-weight: 620;
+}
+.dsh .ps-page .ps-seclist button + button { margin-top: 2px; }
+.dsh .ps-page .ps-seclist button:hover { background: #f7f4fb; color: #44376b; }
+
+.dsh .ps-page .ps-chip {
+  border-color: #e8e3ef;
+  background: #faf9fc;
+  color: #827a91;
+  font-size: .61rem;
+  font-weight: 730;
+  padding: .13rem .42rem;
+}
+.dsh .ps-page .ps-chip.is-done {
+  border-color: #bfe2ca;
+  background: #edf8f0;
+  color: #2d7c48;
+}
+.dsh .ps-page .ps-chip.is-partial {
+  border-color: #f0d79a;
+  background: #fff8e7;
+  color: #9a6c12;
+}
+
+.dsh .ps-page .ps-banner {
+  border: 1px solid #f0d7a0;
+  border-radius: 13px;
+  background: #fff9ec;
+  padding: .8rem .9rem;
+  box-shadow: none;
+}
+.dsh .ps-page .ps-banner-head { color: #8d661a; }
+.dsh .ps-page .ps-linkbtn { color: #5b4692; font-weight: 650; }
+
+.dsh .ps-page .ps-ok {
+  border: 1px solid #c8e7d1;
+  border-radius: 13px;
+  background: #eff9f2;
+  color: #2b7343;
+  box-shadow: none;
+}
+
+.dsh .ps-page .ps-section {
+  margin-bottom: .75rem;
+  overflow: hidden;
+}
+.dsh .ps-page .ps-sechead {
+  min-height: 54px;
+  padding: .72rem .9rem;
+  background: #fff;
+}
+.dsh .ps-page .ps-sechead:hover { background: #faf8fd; }
+.dsh .ps-page .ps-sechead .ps-title {
+  color: #352b50;
+  font-size: .86rem;
+  font-weight: 730;
+}
+.dsh .ps-page .ps-sechead .ps-form { color: #a099ad; }
+.dsh .ps-page .ps-secbody {
+  border-top-color: #efecf4;
+  padding: .95rem 1rem 1.05rem;
+  background: #fff;
+}
+
+.dsh .ps-page .ps-grid { gap: .8rem .9rem; }
+.dsh .ps-page .ps-sec {
+  border-bottom-color: #eeebf3;
+  color: #7f768f;
+  font-size: .67rem;
+  letter-spacing: .09em;
+}
+
+.dsh .ps-page .ps-table {
+  border: 1px solid #ece8f2;
+  border-radius: 12px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+.dsh .ps-page .ps-table th,
+.dsh .ps-page .ps-table td { border-bottom-color: #efecf4; }
+.dsh .ps-page .ps-table th {
+  background: #faf9fc;
+  color: #8b8399;
+  font-size: .65rem;
+}
+
+.dsh .ps-page .ps-card {
+  border-color: #e9e5f0;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.dsh .ps-page .ps-submitbar {
+  bottom: .75rem;
+  padding: .75rem .85rem;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(50,38,78,.08);
+}
+.dsh .ps-page .ps-submitcount { color: #3b3155; }
+.dsh .ps-page .ps-submitwhy { color: #938ba2; }
+
+/* Project selector: make the first action row read as a compact toolbar. */
+.dsh .ps-page > div[style*='align-items: flex-end'] {
+  padding: .85rem .9rem;
+  border: 1px solid #e9e5f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.dsh .ps-page > div[style*='align-items: flex-end'] button {
+  min-height: 42px;
+  border-radius: 10px !important;
+  background: #5b4692 !important;
+  box-shadow: none;
+}
+.dsh .ps-page > div[style*='align-items: flex-end'] button:hover { background: #4b377d !important; }
+
+/* Inline green action buttons in Project Setup are functional, not semantic
+   success indicators, so make them primary-violet without touching actual
+   success chips and validation states. */
+.dsh .ps-page button[style*='var(--green-700)'] {
+  background: #5b4692 !important;
+  border-radius: 10px !important;
+}
+.dsh .ps-page button[style*='var(--green-700)']:hover { background: #4b377d !important; }
+
+/* Keep destructive / warning semantics intact. */
+.dsh .ps-page button[style*='var(--red-600)'] { border-radius: 10px !important; }
+
+/* Modal surfaces generated by Project Setup use inline styles; target their
+   common form grid container so the surrounding card still adopts the theme. */
+.dsh .ps-page .ps-grid .field-input { background: #fff; }
+
+/* ── Responsive behaviour ─────────────────────────────────────────────────── */
+@media (max-width: 1180px) {
+  .gs-trigger { min-width: 210px; }
+  .dsh-user-meta { display: none; }
+}
+
 @media (max-width: 1024px) {
   .dsh { padding: 0; }
   .dsh-side {
-    border-radius: 0;
     top: 0;
     height: 100dvh;
+    border-radius: 0;
   }
   .dsh-main { border-radius: 0; }
-  .dsh-head { margin: 0; border-radius: 0; border: none; border-bottom: 1px solid var(--border); }
-  .dsh-nav a, .dsh-nav a.active { border-radius: 20px; margin-right: 0; }
-  .dsh-nav { padding: 0.25rem 0.6rem 0.5rem; }
+  .dsh-head {
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid #ebe7f2;
+    border-radius: 0;
+  }
+  .dsh-nav a,
+  .dsh-nav a.active { border-radius: 10px; }
   .app-shell { border-radius: 0; }
+
+  .dsh .ps-page .ps-layout { grid-template-columns: 1fr; }
+  .dsh .ps-page .ps-rail { position: static; }
+  .dsh .ps-page .ps-seclist {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .dsh .ps-page .ps-seclist button + button { margin-top: 0; }
+}
+
+@media (max-width: 820px) {
+  .gs-trigger { min-width: 42px; width: 42px; padding: 0; justify-content: center; }
+  .gs-trigger-lbl,
+  .gs-trigger .gs-kbd { display: none; }
+  .dsh-lang { display: none; }
+  .dsh .ps-page .ps-seclist { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+@media (max-width: 760px) {
+  .dsh-side { position: fixed; }
+  .page-pad { padding: .8rem .72rem 0; }
+  .dsh-head { min-height: 58px; padding: .5rem .65rem; }
+  .dsh-head-actions { gap: .35rem; }
+  .dsh .ps-page .ps-layout { margin-top: .75rem; }
+  .dsh .ps-page .ps-idcard,
+  .dsh .ps-page .ps-seclist,
+  .dsh .ps-page .ps-section,
+  .dsh .ps-page .ps-submitbar { border-radius: 12px; }
+}
+
+@media (max-width: 640px) {
+  .dsh .ps-page .ps-grid { grid-template-columns: 1fr; }
+  .dsh .ps-page .ps-desktop { display: none; }
+  .dsh .ps-page .ps-cards { display: block; }
+  .dsh .ps-page .ps-submitbar { position: static; box-shadow: var(--shadow-sm); }
+  .dsh .ps-page .ps-seclist { grid-template-columns: 1fr; }
 }
 
 @media print {
   .dsh { padding: 0; background: none; }
   .dsh-main { border-radius: 0; background: none; }
-}
-
-/* index.css takes the rail off-canvas as a drawer at 760px; the rule above put
-   it back in flow, so the drawer kept its 216px column on a phone — translated
-   out of sight but still holding the width, leaving the page ~175px to use. */
-@media (max-width: 760px) {
-  .dsh-side { position: fixed; }
+  .dsh-head { box-shadow: none; }
 }
