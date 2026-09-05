@@ -1,13 +1,15 @@
 // =============================================================================
 // VanuatuMap.jsx — compatibility entry point for MERL mapping components.
 //
-// VanuatuMapMini now points to the production interactive Area Council
-// choropleth. The default export remains the compact province map used by older
-// screens, so the rest of the portal does not need route/component changes.
+// VanuatuMapMini points to the executive Overview map. The default export keeps
+// the compact province map for project-level analysis, but when the portfolio
+// Geographic dashboard passes nationalCount it renders the dedicated geographic
+// coverage experience instead.
 // =============================================================================
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import InteractiveCoverageMap from './InteractiveCoverageMap';
+import GeographicCoverageExperience from './GeographicCoverageExperience';
 
 export const VanuatuMapMini = InteractiveCoverageMap;
 
@@ -28,7 +30,22 @@ function ringToPath(ring, bbox) {
   }).join(' ') + 'Z';
 }
 
+function canonicalCount(counts, name) {
+  const target = name.toLowerCase();
+  return Object.entries(counts || {}).reduce((total, [key, value]) =>
+    key.toLowerCase() === target ? total + (Number(value) || 0) : total, 0);
+}
+
 export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, onSelect }) {
+  // Dashboards.jsx passes nationalCount only on the portfolio Geographic tab.
+  // This lets that page use the purpose-built interactive experience without
+  // changing the compact map still used inside one-project analysis.
+  if (nationalCount > 0) return <GeographicCoverageExperience />;
+
+  return <CompactProvinceMap counts={counts} selected={selected} onSelect={onSelect} />;
+}
+
+function CompactProvinceMap({ counts = {}, selected, onSelect }) {
   const { t } = useTranslation();
   const [features, setFeatures] = useState(null);
   const [hover, setHover] = useState(null);
@@ -72,9 +89,10 @@ export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, o
     };
   }, [features]);
 
-  const max = Math.max(1, ...Object.values(counts));
+  const normalisedCounts = Object.fromEntries(PROVINCE_ORDER.map((name) => [name, canonicalCount(counts, name)]));
+  const max = Math.max(1, ...Object.values(normalisedCounts));
   const fill = (name) => {
-    const count = counts[name] || 0;
+    const count = normalisedCounts[name] || 0;
     if (!count) return 'var(--surface-2)';
     const intensity = 0.25 + 0.6 * (count / max);
     return `color-mix(in srgb, var(--green-600) ${Math.round(intensity * 100)}%, #ffffff)`;
@@ -99,7 +117,7 @@ export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, o
                   onMouseLeave={() => setHover(null)}
                   onClick={() => onSelect?.(path.name)}
                 >
-                  <title>{t('map.tooltip', { name: path.name, count: counts[path.name] || 0 })}</title>
+                  <title>{t('map.tooltip', { name: path.name, count: normalisedCounts[path.name] || 0 })}</title>
                 </path>
               );
             })}
@@ -113,7 +131,7 @@ export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, o
 
       <div style={{ flex: '1 1 140px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem', alignContent: 'start' }}>
         {PROVINCE_ORDER.map((name) => {
-          const count = counts[name] || 0;
+          const count = normalisedCounts[name] || 0;
           const isSelected = selected === name;
           return (
             <button
@@ -135,12 +153,6 @@ export default function VanuatuMap({ counts = {}, nationalCount = 0, selected, o
             </button>
           );
         })}
-        {nationalCount > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.55rem', borderRadius: 8, border: '1px dashed var(--border)', background: 'var(--surface-1)' }}>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-2)', fontWeight: 600 }}>{t('map.national')}</span>
-            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-1)' }}>{nationalCount}</span>
-          </div>
-        )}
       </div>
     </div>
   );
