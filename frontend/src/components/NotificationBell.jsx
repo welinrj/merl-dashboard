@@ -1,14 +1,12 @@
 // =============================================================================
-// NotificationBell.jsx — header notifications (spec §58).
-// A lightweight, role-aware notification centre driven by the reporting
-// workflow: reports awaiting review (DoCC M&E Officer / Admin), periods returned
-// for correction and overdue reporting (Project Manager). Reads the
-// RLS-scoped public.v_reporting_periods view, so each user sees only their remit.
+// NotificationBell.jsx — role-aware reporting notifications.
+// Reads the RLS-scoped reporting views and presents only actionable workflow
+// events. Status colour is semantic; the panel itself uses the same restrained
+// geometry as the rest of the application.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-// One icon: the bell that opens the panel.
 import { Bell } from './ui/icons';
 import { supabase } from '../supabaseClient';
 import { localised, i18nCols } from '../lib/contentLocale';
@@ -46,13 +44,13 @@ export default function NotificationBell({ user }) {
     const code = (id) => projById[id] || t('notif.project');
     if (isReviewer) {
       rows.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).forEach((r) => out.push({
-        id: `rev-${r.id}`, accent: '#2563eb',
+        id: `rev-${r.id}`, accent: '#4d73a5',
         title: `${code(r.project_id)} · ${r.period_label}`, note: t('notif.awaiting'), to: '/review',
       }));
     }
     if (isEditor) {
       rows.filter((r) => r.submission_status === 'returned').forEach((r) => out.push({
-        id: `ret-${r.id}`, accent: '#d97706',
+        id: `ret-${r.id}`, accent: '#c28a20',
         title: `${code(r.project_id)} · ${r.period_label}`, note: r.review_comments ? t('notif.returnedWhy', { reason: r.review_comments }) : t('notif.returned'), to: '/merl-reporting',
       }));
       const today = todayIso();
@@ -76,7 +74,7 @@ export default function NotificationBell({ user }) {
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
           <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 320, maxWidth: '90vw',
-            background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
+            background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
             <div style={{ padding: '0.7rem 0.9rem', borderBottom: '1px solid var(--border)', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>
               {t('notif.title')}{count > 0 && <span style={{ color: 'var(--text-3)', fontWeight: 500 }}> · {count}</span>}
             </div>
@@ -88,7 +86,7 @@ export default function NotificationBell({ user }) {
               ) : items.map((it) => (
                 <button key={it.id} onClick={() => { setOpen(false); nav(it.to); }}
                   style={{ width: '100%', display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.6rem 0.9rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}>
-                  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, marginTop: '0.32rem', background: it.accent }} />
+                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, marginTop: '0.34rem', background: it.accent }} />
                   <span style={{ minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title}</span>
                     <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.note}</span>
