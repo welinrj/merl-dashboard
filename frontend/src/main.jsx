@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { ConfirmHost } from './lib/confirm';
 import DataAvailabilityGuard from './components/DataAvailabilityGuard';
+import AreaPerformanceBridge from './components/AreaPerformanceBridge';
 
 // i18n must be imported before App so translations are ready
 import './i18n';
@@ -43,6 +44,7 @@ root.render(
     <QueryClientProvider client={queryClient}>
       <HashRouter>
         <App />
+        <AreaPerformanceBridge />
         <ConfirmHost />
         <DataAvailabilityGuard />
         <Toaster
