@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getLastSupabaseReadFailure } from '../supabaseClient';
 
 /**
  * Blocks portal values after a failed Supabase read so a transport/permission
  * failure can never be mistaken for a legitimate zero. The Supabase client
- * emits `merl:supabase-read-error` for failed REST GET/HEAD requests.
+ * records the most recent failure and emits `merl:supabase-read-error` for
+ * failed REST GET/HEAD requests.
  */
 export default function DataAvailabilityGuard() {
   const { t } = useTranslation();
-  const [failure, setFailure] = useState(null);
+  const [failure, setFailure] = useState(() => getLastSupabaseReadFailure());
 
   useEffect(() => {
     const onFailure = (event) => setFailure(event.detail || { status: 0 });
     window.addEventListener('merl:supabase-read-error', onFailure);
+    const earlyFailure = getLastSupabaseReadFailure();
+    if (earlyFailure) setFailure(earlyFailure);
     return () => window.removeEventListener('merl:supabase-read-error', onFailure);
   }, []);
 
