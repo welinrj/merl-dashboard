@@ -1,11 +1,5 @@
-// DraftStatus.jsx — the one line that tells an officer their unfinished form is
-// safe: what was kept, when, and how to throw it away.
-//
-// Pair it with `useFormDraft` (lib/formDraft.js):
-//   const draft = useFormDraft(key, v, { baseline: seed, onRestore: setV });
-//   <DraftStatus draft={draft} />
-//
-// It renders nothing while a form is untouched, so a clean form stays clean.
+// Draft status is deliberately quiet: it confirms that unfinished work is safe
+// without turning draft state into a decorative badge system.
 import { useTranslation } from 'react-i18next';
 import { RotateCcw, CheckCircle2 } from './icons';
 import { fmtTime } from '../../lib/locale';
@@ -42,8 +36,8 @@ export default function DraftStatus({ draft, style, className }) {
     >
       <span aria-live="polite" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
         {status === 'saving'
-          ? <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--gold-500)', flexShrink: 0 }} />
-          : <CheckCircle2 size={13} aria-hidden="true" style={{ color: restored ? 'var(--green-700)' : 'var(--text-3)', flexShrink: 0 }} />}
+          ? <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--gold-500)', flexShrink: 0 }} />
+          : <CheckCircle2 size={13} aria-hidden="true" style={{ color: restored ? '#317347' : 'var(--text-3)', flexShrink: 0 }} />}
         {label}
       </span>
       {savedAt != null && status !== 'saving' && (
@@ -63,17 +57,17 @@ export default function DraftStatus({ draft, style, className }) {
   );
 }
 
-/** Small "Draft" marker for a tab or step that has unfinished work waiting. */
+/** Small marker for a section that has unfinished work waiting. */
 export function DraftChip({ style }) {
   const { t } = useTranslation();
   return (
     <span
       title={t('draft.chipTitle')}
       style={{
-        display: 'inline-flex', alignItems: 'center', fontSize: '0.62rem', fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.6,
-        color: '#8a6416', background: '#fdf3dc', border: '1px solid #d9a62933',
-        borderRadius: 9999, padding: '0 0.35rem', ...style,
+        display: 'inline-flex', alignItems: 'center', fontSize: '0.68rem', fontWeight: 650,
+        textTransform: 'none', letterSpacing: 0, lineHeight: 1.5,
+        color: '#806019', background: '#fbf6e8', border: '1px solid #e8d8a8',
+        borderRadius: 4, padding: '0.05rem 0.35rem', ...style,
       }}
     >
       {t('draft.chip')}
