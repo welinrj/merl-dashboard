@@ -7,9 +7,9 @@ import { ConfirmHost } from './lib/confirm';
 import DataAvailabilityGuard from './components/DataAvailabilityGuard';
 import AreaPerformanceBridge from './components/AreaPerformanceBridge';
 
-// i18n must be imported before App so translations are ready
+// i18n must be imported before the application entry so translations are ready
 import './i18n';
-import App from './App';
+import PublicEntry from './PublicEntry';
 import './index.css';
 // Shell theme — loaded after index.css so it overrides the shell rules there.
 import './shell-theme.css';
@@ -20,11 +20,11 @@ import './map-overrides.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,      // 5 minutes
-      gcTime: 1000 * 60 * 30,         // 30 minutes (formerly cacheTime)
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
       retry: (failureCount, error) => {
         if (error?.response?.status >= 400 && error?.response?.status < 500) {
-          return false; // don't retry client errors
+          return false;
         }
         return failureCount < 3;
       },
@@ -43,7 +43,7 @@ root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <HashRouter>
-        <App />
+        <PublicEntry />
         <AreaPerformanceBridge />
         <ConfirmHost />
         <DataAvailabilityGuard />
