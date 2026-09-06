@@ -15,6 +15,9 @@ import './index.css';
 import './shell-theme.css';
 // Map-specific presentation overrides.
 import './map-overrides.css';
+// Authorised-user login presentation. Loaded last so it can simplify the
+// existing LoginScreen without touching authentication behaviour.
+import './login-simple.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
