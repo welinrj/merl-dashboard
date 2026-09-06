@@ -7,40 +7,43 @@ import './public-portal.css';
 
 const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
 const HERO = `${import.meta.env.BASE_URL}login-tanna.webp`;
-const MFAT = `${import.meta.env.BASE_URL}mfat-logo-white.png`;
 
 const copy = {
   en: {
-    home:'Home', projects:'Projects', results:'Results', map:'Map', about:'About', login:'Login',
-    heroKicker:'OUR PEOPLE · OUR ISLANDS · OUR FUTURE',
+    home:'Home', projects:'Projects', results:'Results', map:'Map', about:'Transparency', login:'Authorised Login',
+    heroKicker:'PUBLIC CLIMATE RESULTS PORTAL',
     heroTitle:'Climate Action for a Stronger Vanuatu',
-    heroText:'Public results from climate and resilience projects coordinated through the Department of Climate Change.',
-    explore:'Explore our progress', projectsLabel:'Projects', progress:'Results progress', people:'People benefiting', investment:'Total investment',
-    impact:'Our Impact', impactText:'Progress published here comes only from approved project reporting.',
+    heroText:'Approved results from climate and resilience projects coordinated through the Department of Climate Change.',
+    explore:'Explore public results', projectsLabel:'Projects', progress:'Results progress', people:'People benefiting', investment:'Total investment',
+    impact:'Public Results at a Glance', impactText:'A clear public view of the areas where approved project results are contributing to national climate resilience.',
     resilient:'Resilient communities', ecosystems:'Healthy ecosystems', risks:'Reduced climate risks', livelihoods:'Sustainable livelihoods',
+    assuranceTitle:'Approved information only',
+    assuranceText:'This public portal publishes approved project results. Draft monitoring information, internal tracking, risks, reviews and management records remain restricted to authorised MERL users.',
     projectProgress:'Project Progress', projectProgressText:'Approved portfolio projects and their latest published results.',
     noPublished:'No approved progress published yet', viewProjects:'View all projects',
     locations:'Project Locations', locationsText:'Explore where approved projects are working across Vanuatu.',
     latest:'Published Results', latestText:'Latest approved project progress available for public viewing.',
     publicNote:'This public platform shows approved results and project progress only. Internal monitoring, tracking, risks, review workflows and management information are available only to authorised users.',
     authorised:'Authorised MERL users', secure:'Access full MERL portal', footer:'Department of Climate Change · Government of the Republic of Vanuatu',
-    updated:'Public data last refreshed'
+    updated:'Public data last refreshed', areaCouncils:'Area Councils', projectsWorking:'projects'
   },
   fr: {
-    home:'Accueil', projects:'Projets', results:'Résultats', map:'Carte', about:'À propos', login:'Connexion',
-    heroKicker:'NOTRE PEUPLE · NOS ÎLES · NOTRE AVENIR',
+    home:'Accueil', projects:'Projets', results:'Résultats', map:'Carte', about:'Transparence', login:'Connexion autorisée',
+    heroKicker:'PORTAIL PUBLIC DES RÉSULTATS CLIMATIQUES',
     heroTitle:'Action climatique pour un Vanuatu plus fort',
-    heroText:'Résultats publics des projets climatiques et de résilience coordonnés par le Département du changement climatique.',
-    explore:'Voir nos progrès', projectsLabel:'Projets', progress:'Progrès des résultats', people:'Bénéficiaires', investment:'Investissement total',
-    impact:'Notre impact', impactText:'Les progrès publiés ici proviennent uniquement de rapports de projet approuvés.',
+    heroText:'Résultats approuvés des projets climatiques et de résilience coordonnés par le Département du changement climatique.',
+    explore:'Voir les résultats publics', projectsLabel:'Projets', progress:'Progrès des résultats', people:'Bénéficiaires', investment:'Investissement total',
+    impact:'Aperçu des résultats publics', impactText:'Une vue publique claire des domaines dans lesquels les résultats approuvés contribuent à la résilience climatique nationale.',
     resilient:'Communautés résilientes', ecosystems:'Écosystèmes sains', risks:'Risques climatiques réduits', livelihoods:'Moyens de subsistance durables',
+    assuranceTitle:'Informations approuvées uniquement',
+    assuranceText:'Ce portail public publie les résultats de projet approuvés. Les informations de suivi provisoires, le suivi interne, les risques, les examens et les dossiers de gestion restent réservés aux utilisateurs MERL autorisés.',
     projectProgress:'Progrès des projets', projectProgressText:'Projets approuvés et derniers résultats publiés.',
     noPublished:'Aucun progrès approuvé publié pour le moment', viewProjects:'Voir tous les projets',
     locations:'Localisation des projets', locationsText:'Découvrez où les projets approuvés interviennent au Vanuatu.',
     latest:'Résultats publiés', latestText:'Derniers progrès approuvés disponibles au public.',
     publicNote:'Cette plateforme publique présente uniquement les résultats approuvés et les progrès des projets. Les informations internes de suivi, de gestion des risques et de validation sont réservées aux utilisateurs autorisés.',
     authorised:'Utilisateurs MERL autorisés', secure:'Accéder au portail MERL complet', footer:'Département du changement climatique · Gouvernement de la République du Vanuatu',
-    updated:'Dernière actualisation des données publiques'
+    updated:'Dernière actualisation des données publiques', areaCouncils:'Conseils de zone', projectsWorking:'projets'
   }
 };
 
@@ -51,6 +54,7 @@ const fmtVuv = (value) => {
   return `VT ${new Intl.NumberFormat('en-US').format(n)}`;
 };
 const fmtNum = (value) => new Intl.NumberFormat('en-US').format(Number(value) || 0);
+const titleCase = (value) => String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
 
 function scrollToId(id) { document.getElementById(id)?.scrollIntoView({ behavior:'smooth', block:'start' }); }
 
@@ -114,15 +118,16 @@ export default function PublicPortal() {
       </header>
 
       <main>
-        <section id="home" className="pub-hero" style={{ backgroundImage:`linear-gradient(90deg,rgba(3,39,48,.92),rgba(3,55,66,.66) 48%,rgba(4,39,48,.25)),url(${HERO})` }}>
-          <div className="pub-hero-copy">
-            <div className="pub-kicker">{c.heroKicker}</div>
-            <h1>{c.heroTitle}</h1>
-            <p>{c.heroText}</p>
-            <button className="pub-cta" onClick={() => scrollToId('results')}>{c.explore} <span>→</span></button>
+        <section id="home" className="pub-hero" style={{ backgroundImage:`linear-gradient(90deg,rgba(4,37,48,.94) 0%,rgba(4,47,58,.77) 44%,rgba(4,39,48,.28) 72%,rgba(4,39,48,.16) 100%),url(${HERO})` }}>
+          <div className="pub-hero-inner">
+            <div className="pub-hero-copy">
+              <div className="pub-kicker">{c.heroKicker}</div>
+              <h1>{c.heroTitle}</h1>
+              <p>{c.heroText}</p>
+              <button className="pub-cta" onClick={() => scrollToId('results')}>{c.explore} <span aria-hidden="true">→</span></button>
+            </div>
           </div>
-          <div className="pub-hero-tag">People · Nature · Climate · Resilience</div>
-          <div className="pub-stat-band">
+          <div className="pub-stat-band" aria-label="Public portfolio summary">
             {heroStats.map(([value,label]) => <div key={label}><strong>{value}</strong><span>{label}</span></div>)}
           </div>
         </section>
@@ -130,20 +135,36 @@ export default function PublicPortal() {
         {error && <div className="pub-error" role="alert">{error}</div>}
 
         <section id="results" className="pub-section pub-impact">
-          <div className="pub-section-head"><div><span className="pub-eyebrow">PUBLIC RESULTS</span><h2>{c.impact}</h2><p>{c.impactText}</p></div></div>
-          <div className="pub-impact-grid">
-            {[['◉',c.resilient],['◆',c.ecosystems],['◇',c.risks],['✦',c.livelihoods]].map(([icon,label]) => <article key={label}><span>{icon}</span><strong>{label}</strong></article>)}
+          <div className="pub-section-head">
+            <div><span className="pub-eyebrow">PUBLIC RESULTS</span><h2>{c.impact}</h2><p>{c.impactText}</p></div>
           </div>
-          <div className="pub-quote"><blockquote>“Stronger islands today for a safer, more resilient tomorrow.”</blockquote><span>Vanuatu climate resilience portfolio</span></div>
+          <div className="pub-impact-grid">
+            {[[1,c.resilient],[2,c.ecosystems],[3,c.risks],[4,c.livelihoods]].map(([index,label]) => (
+              <article key={label}>
+                <span className="pub-impact-index">0{index}</span>
+                <strong>{label}</strong>
+              </article>
+            ))}
+          </div>
+          <div className="pub-assurance">
+            <div><span className="pub-assurance-mark" aria-hidden="true">✓</span><strong>{c.assuranceTitle}</strong></div>
+            <p>{c.assuranceText}</p>
+          </div>
         </section>
 
-        <section id="projects" className="pub-section">
-          <div className="pub-section-head"><div><span className="pub-eyebrow">PORTFOLIO</span><h2>{c.projectProgress}</h2><p>{c.projectProgressText}</p></div><span className="pub-count">{projects.length} {c.projectsLabel}</span></div>
+        <section id="projects" className="pub-section pub-projects-section">
+          <div className="pub-section-head">
+            <div><span className="pub-eyebrow">PORTFOLIO</span><h2>{c.projectProgress}</h2><p>{c.projectProgressText}</p></div>
+            <span className="pub-count">{projects.length} {c.projectsLabel}</span>
+          </div>
           <div className="pub-project-grid">
             {featured.map((p) => {
               const pct = p.progress_pct == null ? null : Math.max(0, Math.min(100, Number(p.progress_pct)));
               return <article className="pub-project" key={p.id}>
-                <div className="pub-project-top"><span className={`pub-status ${p.lifecycle_status}`}>{p.lifecycle_status}</span><span>{p.code || p.acronym || ''}</span></div>
+                <div className="pub-project-top">
+                  <span className={`pub-status ${p.lifecycle_status}`}>{titleCase(p.lifecycle_status)}</span>
+                  <span className="pub-code">{p.code || p.acronym || ''}</span>
+                </div>
                 <h3>{p.name}</h3>
                 <p>{p.expected_primary_outcome || p.description || p.primary_climate_theme || ''}</p>
                 <div className="pub-project-meta"><span>{p.provinces?.length ? p.provinces.join(', ') : 'Vanuatu'}</span><span>{fmtVuv(p.budget_vuv)}</span></div>
@@ -157,11 +178,14 @@ export default function PublicPortal() {
           <div className="pub-section-head"><div><span className="pub-eyebrow">WHERE WE WORK</span><h2>{c.locations}</h2><p>{c.locationsText}</p></div></div>
           <div className="pub-map-layout">
             <div className="pub-map-card"><PublicCoverageMap areas={areas} /></div>
-            <aside className="pub-area-list"><h3>Area Councils</h3>{areas.slice(0,8).map((a) => <div key={`${a.province}-${a.area_council}`}><span><strong>{a.area_council}</strong><small>{a.province}</small></span><b>{a.project_count}</b></div>)}</aside>
+            <aside className="pub-area-list">
+              <div className="pub-area-heading"><h3>{c.areaCouncils}</h3><span>{areas.length}</span></div>
+              {areas.slice(0,8).map((a) => <div key={`${a.province}-${a.area_council}`}><span><strong>{a.area_council}</strong><small>{a.province}</small></span><b>{a.project_count}<small>{c.projectsWorking}</small></b></div>)}
+            </aside>
           </div>
         </section>
 
-        <section className="pub-section" id="about">
+        <section className="pub-section pub-transparency" id="about">
           <div className="pub-section-head"><div><span className="pub-eyebrow">ACCOUNTABILITY</span><h2>{c.latest}</h2><p>{c.latestText}</p></div></div>
           <div className="pub-published-grid">
             {published.length ? published.slice(0,3).map((p) => <article key={p.id}><strong>{p.name}</strong><span>{Math.round(p.progress_pct)}% {c.progress.toLowerCase()}</span><small>{p.last_published_period}</small></article>) : <article><strong>Approved public reporting</strong><span>{c.noPublished}</span></article>}
@@ -170,7 +194,10 @@ export default function PublicPortal() {
         </section>
       </main>
 
-      <footer className="pub-footer"><div><img src={CREST} alt=""/><span><strong>VANUATU</strong><small>{c.footer}</small></span></div><div className="pub-footer-right">{summary?.updated_at && <span>{c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang==='fr'?'fr-FR':'en-GB')}</span>}{MFAT && <img src={MFAT} alt="" />}</div></footer>
+      <footer className="pub-footer">
+        <div><img src={CREST} alt=""/><span><strong>VANUATU</strong><small>{c.footer}</small></span></div>
+        <div className="pub-footer-right">{summary?.updated_at && <span>{c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang==='fr'?'fr-FR':'en-GB')}</span>}</div>
+      </footer>
     </div>
   );
 }
