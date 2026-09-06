@@ -1,51 +1,67 @@
-/* Make the Government of Vanuatu coat of arms unmistakably visible on the authorised login card. */
+/* Official Government of Vanuatu coat of arms in the login-card crest placeholder. */
+
+/* The approved simple login already reserves a circular placeholder at the top
+   centre of the card. Reuse the existing brand image there and remove the
+   generic user icon so the coat of arms appears in one place only. */
+.lg2-root .lg2-inner::before{
+  content:none!important;
+  display:none!important;
+}
 
 .lg2-root .lg2-brand{
   position:absolute!important;
-  left:20px!important;
-  top:18px!important;
-  transform:none!important;
-  width:auto!important;
+  left:50%!important;
+  top:-51px!important;
+  transform:translateX(-50%)!important;
+  width:98px!important;
+  height:98px!important;
+  margin:0!important;
   display:flex!important;
   align-items:center!important;
-  justify-content:flex-start!important;
-  margin:0!important;
-  z-index:4!important;
+  justify-content:center!important;
+  border:5px solid rgba(255,255,255,.94)!important;
+  border-radius:50%!important;
+  background:rgba(247,250,253,.98)!important;
+  box-shadow:0 8px 22px rgba(20,45,78,.22)!important;
+  z-index:6!important;
 }
 
 .lg2-root .lg2-crest{
   display:block!important;
-  width:54px!important;
-  height:54px!important;
+  width:72px!important;
+  height:72px!important;
   object-fit:contain!important;
-  filter:drop-shadow(0 3px 9px rgba(15,37,67,.18))!important;
+  filter:drop-shadow(0 2px 4px rgba(15,37,67,.12))!important;
 }
 
-/* Keep the card simple: the crest itself is the official identity mark. */
+/* Do not show the old brand text beside/below the crest. */
 .lg2-root .lg2-brand > div{
   display:none!important;
 }
 
 @media (max-width:820px){
   .lg2-root .lg2-brand{
-    left:16px!important;
-    top:15px!important;
+    top:-47px!important;
+    width:90px!important;
+    height:90px!important;
   }
 
   .lg2-root .lg2-crest{
-    width:48px!important;
-    height:48px!important;
+    width:66px!important;
+    height:66px!important;
   }
 }
 
 @media (max-width:480px){
   .lg2-root .lg2-brand{
-    left:13px!important;
-    top:13px!important;
+    top:-43px!important;
+    width:82px!important;
+    height:82px!important;
+    border-width:4px!important;
   }
 
   .lg2-root .lg2-crest{
-    width:44px!important;
-    height:44px!important;
+    width:60px!important;
+    height:60px!important;
   }
 }
