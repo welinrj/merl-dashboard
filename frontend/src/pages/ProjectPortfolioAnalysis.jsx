@@ -538,6 +538,9 @@ export default function ProjectPortfolioAnalysis() {
   // session copy is the fallback when the page is opened without a project.
   const projectId = params.get('project') ?? '';
   const period = params.get('period') ?? '';
+  const focus = params.get('focus') ?? '';
+  const focusRecord = params.get('record') ?? '';
+  const handledFocus = useRef('');
 
   const [d, setD] = useState(EMPTY);
   const [errors, setErrors] = useState({});
@@ -654,6 +657,23 @@ export default function ProjectPortfolioAnalysis() {
   // ── The analysis ───────────────────────────────────────────────────────────
   const a = useMemo(() => analyseProject(d, period), [d, period]);
   const geo = useMemo(() => geographicSummary(d.locations, d.activities), [d]);
+
+  // Global search opens the owning project and the relevant record/section.
+  // Keep the URL context so Back and refresh remain meaningful.
+  useEffect(() => {
+    if (!projectId || loading || !d.project || !focus) return;
+    const key = [projectId, focus, focusRecord, period].join(':');
+    if (handledFocus.current === key) return;
+    handledFocus.current = key;
+    if (focus === 'indicator') {
+      const entry = a.results.rows.find(r => r.indicator.id === focusRecord);
+      if (entry) setIndicator(entry);
+      else jump('ppa-results');
+    } else {
+      const section = ['objective', 'outcome', 'output'].includes(focus) ? 'ppa-results' : focus === 'activity' ? 'ppa-implementation' : null;
+      if (section) requestAnimationFrame(() => document.getElementById(section)?.scrollIntoView({ block: 'start' }));
+    }
+  }, [projectId, focus, focusRecord, period, loading, d.project, a.results.rows]);
 
   const periodOptions = useMemo(() => {
     const labels = [...new Set(d.periods.map((p) => p.period_label).filter(Boolean))];
