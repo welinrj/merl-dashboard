@@ -1,0 +1,7 @@
+/* Return navigation for the unauthenticated login route only. */
+.lg2-home-link{position:fixed;top:24px;left:24px;z-index:20;display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:10px 14px;border:1px solid rgba(255,255,255,.65);border-radius:7px;background:rgba(255,255,255,.94);color:#17365a;text-decoration:none;font-family:var(--font-ui,Arial,sans-serif);font-size:13px;font-weight:700;box-shadow:0 2px 12px rgba(15,31,57,.1);backdrop-filter:blur(8px)}
+.lg2-home-link:hover{background:#fff;color:#0b5580}
+.lg2-home-link:focus-visible{outline:3px solid #2d68b5;outline-offset:3px}
+.lg2-home-link svg{width:16px;height:16px;flex:none}
+@media(max-width:820px){.lg2-home-link{top:12px;left:12px;padding:9px 12px}}
+@media(max-width:480px){.lg2-home-link{font-size:12px}}
