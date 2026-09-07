@@ -1,6 +1,6 @@
 /* Approved MERL identity for the authenticated application header.
-   Reuse the existing accessible page title and subtitle nodes. The visible
-   wordmark is intentionally separate from the page heading below. */
+   The original page title stays in the DOM; the visible identity is shared
+   across all workspaces. Page headings, routes and controls are unchanged. */
 .dsh-head {
   min-height: 82px;
   padding: 10px 1.25rem 18px;
@@ -52,34 +52,29 @@
   line-height: 1;
   letter-spacing: -.025em;
 }
-.dsh-head .dsh-head-sub {
-  display: block !important;
-  margin: -13px 0 0 59px;
-  color: transparent;
-  font-size: 0 !important;
-  line-height: 0 !important;
-  white-space: nowrap;
-}
-.dsh-head .dsh-head-sub::after {
+.dsh-head .dsh-head-sub { display: none !important; }
+.dsh-head > div:has(> .dsh-head-title)::after {
   content: 'MONITORING · EVALUATION · REPORTING · LEARNING';
   display: block;
+  margin: -13px 0 0 59px;
   color: #697584;
   font-family: var(--font-ui, 'DM Sans', sans-serif);
   font-size: .53rem;
   font-weight: 650;
   letter-spacing: .055em;
   line-height: 1.35;
+  white-space: nowrap;
 }
 .dsh-head-actions { position: relative; z-index: 1; }
 @media (max-width: 1180px) {
-  .dsh-head .dsh-head-sub { white-space: normal; max-width: 225px; }
+  .dsh-head > div:has(> .dsh-head-title)::after { white-space: normal; max-width: 225px; }
 }
 @media (max-width: 980px) {
   .dsh-head { min-height: 70px; padding: 9px .8rem 17px; }
   .dsh-head .dsh-head-title { grid-template-columns: 40px minmax(0, 1fr); min-height: 40px; }
   .dsh-head .dsh-head-title::before { width: 40px; height: 40px; }
   .dsh-head .dsh-head-title::after { font-size: 1.25rem; }
-  .dsh-head .dsh-head-sub { display: none !important; }
+  .dsh-head > div:has(> .dsh-head-title)::after { display: none; }
 }
 @media (max-width: 560px) {
   .dsh-head { gap: .5rem; padding: 8px .65rem 15px; }
