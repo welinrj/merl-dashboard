@@ -1,0 +1,99 @@
+/* Responsive parity: retain the same routes, data and actions at every width.
+   Only presentation changes; the established desktop theme and sidebar width
+   remain untouched. Tables keep local scrolling rather than clipping columns. */
+.dsh,.dsh-main,.dsh-scroll,.page-pad,.ri-workspace,.ri-layout,.ri-list,.ri-detail,.geo-experience,.geo-main,.geo-panel,.coverage-map { min-width:0; }
+.dsh-side { flex-shrink:0; }
+.dsh-head > div:not(.dsh-head-actions) { min-width:0; }
+.dsh-head-actions { min-width:0; }
+.dsh-head-actions > * { flex-shrink:0; }
+.dsh .field-input,.dsh input,.dsh select,.dsh textarea { max-width:100%; }
+.dsh .card,.dsh .db-card,.dsh .ovx-card,.dsh .ri-list,.dsh .ri-detail { min-width:0; }
+.dsh .data-table,.dsh .ps-table,.dsh .mr-table { max-width:none; }
+.dsh .scrollbar-thin,.dsh .ri-table-wrap,.dsh .geo-table-wrap,.dsh .ovx-table-wrap,.dsh .ovx-location-table-wrap { max-width:100%; }
+.dsh .ri-detail dd,.dsh .ri-detail-head,.dsh .ri-indicator,.dsh .ri-history>div>span { overflow-wrap:anywhere; }
+.dsh .ri-actions button,.dsh .ri-history button { white-space:normal;min-height:36px; }
+.dsh .ri-workspace .ps-grid,.dsh .ri-workspace .mr-form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.dsh .ps-page .ps-grid,.dsh .mr-form-grid { min-width:0; }
+.dsh .ps-page .ps-grid > *,.dsh .mr-form-grid > * { min-width:0; }
+.dsh .mr-card-row > * { min-width:0;overflow-wrap:anywhere; }
+.dsh .filter-bar label { flex:1 1 150px;max-width:100%; }
+.dsh .filter-bar select { width:100%!important;min-width:0!important; }
+.dsh .filter-bar > div > div:last-child { min-width:0; }
+.dsh .gs-panel { max-width:calc(100vw - 24px); }
+.dsh .gs-item-txt,.dsh .gs-item-name,.dsh .gs-item-type { min-width:0;overflow-wrap:anywhere; }
+.dsh .gs-results { overscroll-behavior:contain; }
+@media(max-width:1180px){
+  /* A narrow desktop/iPad must not reserve 224px for a sidebar and leave the
+     reporting workspace unusable. Keep the original sidebar size as a drawer. */
+  .dsh-side{position:fixed!important;top:0!important;left:0;height:100dvh!important;max-height:100dvh;z-index:60!important;transform:translateX(-100%);transition:transform var(--dur-base) var(--ease-drawer);box-shadow:none;}
+  .dsh-side.open{transform:translateX(0);box-shadow:var(--shadow-lg);}
+  .dsh-overlay{display:block!important;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55;opacity:0;pointer-events:none;transition:opacity var(--dur-base) var(--ease-drawer);}
+  .dsh-overlay.open{opacity:1;pointer-events:auto;}
+  .dsh-hamburger{display:flex!important;}
+  .dsh-main{width:100%;flex:1 1 auto;}
+  .dsh .ps-page .ps-layout{grid-template-columns:1fr;}
+  .dsh .ps-page .ps-rail{position:static;}
+  .dsh .ps-page .ps-seclist{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr!important;}
+  .ovx-location-layout{grid-template-columns:1fr!important;}
+}
+@media(max-width:820px){
+  /* Language selection is a function, not desktop decoration. */
+  .dsh .dsh-lang{display:flex!important;}
+  .dsh-head{gap:.55rem;}
+  .dsh-head-actions{gap:.3rem;}
+  .dsh-head-title,.dsh-head-sub{display:none;}
+  .dsh .gs-trigger{min-width:42px;width:42px;}
+  .dsh .ri-layout{grid-template-columns:1fr;}
+  .dsh .ri-toolbar{grid-template-columns:1fr;}
+  .dsh .geo-main,.dsh .geo-lower{grid-template-columns:1fr;}
+}
+@media(max-width:640px){
+  .dsh .page-pad{padding:.85rem .75rem 1rem;}
+  .dsh .ps-page .ps-grid,.dsh .mr-form-grid,.dsh .ri-workspace .ps-grid,.dsh .ri-workspace .mr-form-grid{grid-template-columns:1fr!important;}
+  .dsh .ps-page .ps-full,.dsh .ri-workspace .ps-full{grid-column:1/-1;}
+  .dsh .ps-page .ps-seclist{grid-template-columns:1fr;}
+  .dsh .ri-list,.dsh .ri-detail{padding:.8rem;}
+  .dsh .ri-list table{min-width:540px;}
+  .dsh .ri-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .dsh .ri-detail dl>div{align-items:flex-start;}
+  .dsh .ri-detail dd{max-width:60%;}
+  .dsh .ri-history>div{flex-wrap:wrap;}
+  .dsh .ri-history button{margin-left:auto;}
+  .dsh .grid-kpi-6{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .dsh .ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  .dsh .ovx-filterbar{grid-template-columns:1fr!important;}
+  .dsh .ovx-heading{flex-wrap:wrap;}
+  .dsh .ovx-export{max-width:100%;}
+  .dsh .ovx-attention-grid{grid-template-columns:1fr!important;}
+  .dsh .ovx-implementation{grid-template-columns:1fr!important;}
+  .dsh .geo-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .dsh .geo-toolbar{flex-wrap:wrap;}
+  .dsh .geo-filter{flex:1 1 100%;}
+  .dsh .geo-prov-row{grid-template-columns:minmax(0,1fr) minmax(40px,1fr);}
+  .dsh .geo-prov-value{grid-column:1/-1;text-align:left;}
+  .dsh .area-performance-scope{flex-wrap:wrap;}
+  .dsh .area-performance-area{white-space:normal;overflow-wrap:anywhere;}
+  .dsh .area-performance-clear{min-height:40px;}
+  .dsh .gs-overlay{padding:12px!important;align-items:flex-start!important;}
+  .dsh .gs-panel{width:100%;max-width:100%;max-height:calc(100dvh - 24px);display:flex;flex-direction:column;}
+  .dsh .gs-results{min-height:0;overflow-y:auto;}
+}
+@media(max-width:380px){
+  .dsh .grid-kpi-6{grid-template-columns:1fr;}
+  .dsh .dsh-head{padding:.45rem .5rem;gap:.3rem;}
+  .dsh .dsh-head-actions{gap:.15rem;}
+  .dsh .dsh-lang button{min-width:28px;padding:.3rem .25rem;}
+  .dsh .dsh-user-meta{display:none;}
+}
+@media(max-height:600px) and (max-width:1180px){
+  .dsh-side{overflow-y:auto;}
+  .dsh .gs-panel{max-height:calc(100dvh - 24px);}
+  .lg2-root{height:auto!important;min-height:100dvh!important;overflow-y:auto!important;padding:5.5rem 1rem 1.5rem!important;place-items:center!important;}
+  .lg2-root .lg2-left{align-self:center;}
+  .lg2-root .lg2-inner{padding-top:4.2rem!important;}
+}
+@media print{
+  .dsh-side,.dsh-overlay,.dsh-head{display:none!important;}
+  .dsh-main,.dsh-scroll,.page-pad{width:100%!important;overflow:visible!important;}
+}
