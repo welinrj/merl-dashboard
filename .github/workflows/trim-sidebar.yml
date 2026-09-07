@@ -1,0 +1,31 @@
+name: Trim sidebar
+on:
+  push:
+    branches: [feature/indicator-workspace]
+    paths: [.github/workflows/trim-sidebar.yml]
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node frontend/scripts/trim-sidebar.mjs
+      - run: npm ci
+        working-directory: frontend
+      - run: npx tsc --noEmit
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/App.tsx
+          git diff --cached --quiet || git commit -m "Remove redundant sidebar navigation"
+          git push
