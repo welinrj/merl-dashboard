@@ -98,6 +98,7 @@ const NAV_ITEMS: SideItem[] = [
   // portfolio — the data behind them is entered in Project Setup and MERL
   // Reporting — so they are named for the analysis, not the record they show.
   { key: 'results', path: '/analytics/results', Icon: Target },
+  { key: 'projectAnalysis', path: '/analytics/project-portfolio', Icon: ProjectAnalysis },
   { key: 'finances', path: '/analytics/financial', Icon: Wallet },
   // Financial Analysis reads the whole portfolio; this reads one project across
   // every module. Neither replaces the other.
@@ -121,7 +122,7 @@ const TAB_ACCESS: Record<UserRole, NavKey[]> = {
   // Project Manager — assigned projects only (route data is project-scoped by RLS)
   ROLE_PROJ_MANAGER: ['overview', 'projects', 'results', 'activities', 'finances', 'projectAnalysis', 'locations', 'risks', 'reports', 'documents'],
   // Viewer / Executive — read-only overview, projects, results and reports
-  ROLE_VIEWER:       ['overview', 'projects', 'results', 'reports'],
+  ROLE_VIEWER:       ['overview', 'projects', 'projectAnalysis', 'results', 'reports'],
 };
 
 // Which access key gates each real route.
@@ -456,7 +457,7 @@ export default function App() {
   const activeItem = (location.pathname === '/merl-reporting' ? NAV_ITEMS.find(n => n.key === 'activities') : undefined)
     ?? NAV_ITEMS.find(n => n.path === location.pathname && (n.search ?? '') === location.search)
     ?? NAV_ITEMS.find(n => n.path === location.pathname && !n.search)
-    ?? (location.pathname === '/analytics/project-portfolio' ? NAV_ITEMS.find(n => n.key === 'overview') : undefined)
+    ?? (location.pathname === '/analytics/project-portfolio' ? NAV_ITEMS.find(n => n.key === 'projectAnalysis') : undefined)
     ?? (location.pathname.startsWith('/analytics') ? NAV_ITEMS.find(n => n.key === 'results') : undefined)
     ?? NAV_ITEMS.find(n => n.key === 'overview')!;
   const gate = (path: string) => allowed.includes(ROUTE_GATE[path]);
