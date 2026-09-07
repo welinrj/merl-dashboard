@@ -1,0 +1,101 @@
+/* Public-facing typography hierarchy. Loaded after the existing presentation styles.
+   Keep the operational MERL workspace and its data presentation unchanged. */
+.pub-root {
+  --font-public-display: Georgia, 'Times New Roman', serif;
+  --font-public-body: var(--font-ui, 'DM Sans', Arial, sans-serif);
+  font-family: var(--font-public-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.pub-root button, .pub-root input, .pub-root select { font-family: var(--font-public-body); }
+.pub-root .pub-brand strong { font-size: 15px; font-weight: 750; letter-spacing: .025em; }
+.pub-root .pub-brand small { font-size: 12px; font-weight: 500; line-height: 1.35; }
+.pub-root .pub-nav button, .pub-root .pub-login { font-size: 14px; font-weight: 650; }
+.pub-root .pub-lang button { font-size: 12px; }
+.pub-root .pub-kicker, .pub-root .pub-eyebrow {
+  font-family: var(--font-public-body); font-size: 11px; font-weight: 700;
+  letter-spacing: .11em; line-height: 1.4;
+}
+.pub-root .pub-hero h1 {
+  font-family: var(--font-public-display); font-size: clamp(42px, 4.6vw, 66px);
+  font-weight: 700; line-height: 1.08; letter-spacing: -.035em;
+  max-width: 680px; text-wrap: balance;
+}
+.pub-root .pub-hero p { font-size: clamp(16px, 1.35vw, 18px); line-height: 1.65; max-width: 570px; }
+.pub-root .pub-cta { font-size: 14px; font-weight: 700; }
+.pub-root .pub-stat-band strong {
+  font-family: var(--font-public-body); font-size: clamp(27px, 2.5vw, 36px);
+  font-weight: 750; line-height: 1.12; letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+.pub-root .pub-stat-band span { font-size: 13px; font-weight: 500; letter-spacing: 0; line-height: 1.4; }
+.pub-root .pub-section h2 {
+  font-family: var(--font-public-display); font-size: clamp(30px, 3vw, 40px);
+  font-weight: 700; line-height: 1.16; letter-spacing: -.025em; text-wrap: balance;
+}
+.pub-root .pub-section-head p { font-size: 16px; line-height: 1.65; max-width: 660px; }
+.pub-root .pub-count { font-size: 13px; }
+.pub-root .pub-impact-index { font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.pub-root .pub-impact-grid article strong {
+  font-family: var(--font-public-body); font-size: 17px; font-weight: 650;
+  line-height: 1.4; max-width: 210px;
+}
+.pub-root .pub-assurance strong { font-size: 15px; font-weight: 700; }
+.pub-root .pub-assurance p { font-size: 14px; line-height: 1.65; }
+.pub-root .pub-project-top, .pub-root .pub-code, .pub-root .pub-status { font-size: 12px; }
+.pub-root .pub-project h3 {
+  font-family: var(--font-public-body); font-size: 20px; font-weight: 700;
+  line-height: 1.35; letter-spacing: -.02em;
+}
+.pub-root .pub-project p { font-size: 14px; line-height: 1.65; }
+.pub-root .pub-project-meta { font-size: 12px; line-height: 1.5; }
+.pub-root .pub-progress > div:first-child { font-size: 13px; }
+.pub-root .pub-progress strong { font-size: 16px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.pub-root .pub-progress small, .pub-root .pub-no-result { font-size: 12px; line-height: 1.5; }
+.pub-root .pub-area-heading h3 { font-size: 17px; font-weight: 700; }
+.pub-root .pub-area-heading > span { font-size: 12px; }
+.pub-root .pub-area-list strong { font-size: 14px; line-height: 1.45; }
+.pub-root .pub-area-list small { font-size: 12px; line-height: 1.4; }
+.pub-root .pub-area-list b { font-size: 20px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.pub-root .pub-area-list b small { font-size: 11px; }
+.pub-root .pub-map-key strong { font-size: 12px; }
+.pub-root .pub-map-key span { font-size: 11px; }
+.pub-root .pub-published-grid strong { font-size: 15px; line-height: 1.5; }
+.pub-root .pub-published-grid span {
+  font-family: var(--font-public-body); font-size: 28px; font-weight: 750;
+  letter-spacing: -.03em; font-variant-numeric: tabular-nums;
+}
+.pub-root .pub-published-grid small { font-size: 12px; line-height: 1.5; }
+.pub-root .pub-disclosure p { font-size: 14px; line-height: 1.65; }
+.pub-root .pub-disclosure strong, .pub-root .pub-disclosure a { font-size: 13px; }
+.pub-root .pub-footer strong { font-size: 13px; }
+.pub-root .pub-footer small, .pub-root .pub-footer-right span { font-size: 12px; line-height: 1.5; }
+.pub-root .pub-error { font-size: 14px; }
+
+/* The login remains a compact, utilitarian form rather than an editorial page. */
+.lg2-root .lg2-title {
+  font-family: var(--font-ui, 'DM Sans', Arial, sans-serif)!important;
+  font-size: clamp(30px, 3vw, 38px)!important;
+  font-weight: 700!important; line-height: 1.15!important;
+  letter-spacing: -.025em!important;
+}
+.lg2-root .lg2-signin { font-size: 16px!important; font-weight: 500!important; line-height: 1.5!important; }
+.lg2-root .lg2-input { font-size: 16px!important; }
+.lg2-root .lg2-keep, .lg2-root .lg2-secure { font-size: 14px!important; line-height: 1.5!important; }
+.lg2-root .lg2-submit { font-size: 16px!important; font-weight: 700!important; }
+.lg2-root .lg2-foot { font-size: 12px!important; line-height: 1.5!important; }
+.lg2-root .lg2-home-link { font-size: 14px!important; }
+
+@media (max-width: 620px) {
+  .pub-root .pub-hero h1 { font-size: clamp(38px, 10vw, 48px); }
+  .pub-root .pub-section h2 { font-size: 30px; }
+  .pub-root .pub-section-head p { font-size: 15px; }
+  .pub-root .pub-stat-band strong { font-size: clamp(25px, 6vw, 30px); }
+  .pub-root .pub-stat-band span { font-size: 12px; }
+  .pub-root .pub-project h3 { font-size: 19px; }
+  .pub-root .pub-project p { font-size: 14px; }
+  .pub-root .pub-disclosure p { font-size: 13px; }
+  .lg2-root .lg2-title { font-size: 30px!important; }
+}

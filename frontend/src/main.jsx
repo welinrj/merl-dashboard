@@ -20,6 +20,8 @@ import './map-overrides.css';
 import './login-simple.css';
 // Official Government of Vanuatu identity placement for the simple login card.
 import './login-crest.css';
+// Public homepage and login typography hierarchy; does not restyle the MERL workspace.
+import './public-typography.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
@@ -73,5 +75,5 @@ root.render(
         />
       </HashRouter>
     </QueryClientProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
