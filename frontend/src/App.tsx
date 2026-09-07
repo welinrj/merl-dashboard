@@ -101,14 +101,12 @@ const NAV_ITEMS: SideItem[] = [
   { key: 'finances', path: '/analytics/financial', Icon: Wallet },
   // Financial Analysis reads the whole portfolio; this reads one project across
   // every module. Neither replaces the other.
-  { key: 'projectAnalysis', path: '/analytics/project-portfolio', Icon: ProjectAnalysis },
   { key: 'locations', path: '/analytics/geographic', Icon: MapPin },
   { key: 'risks', path: '/analytics/risks', Icon: AlertTriangle },
   // The periodic reporting workspace: Forms 4, 6, 8, 9, 10 and 12 against a
   // reporting period. Documents & Evidence is the same workspace opened on its
   // Evidence module rather than a second, identical destination.
   { key: 'activities', path: '/merl-reporting', Icon: ListChecks },
-  { key: 'documents', path: '/merl-reporting', search: '?module=evidence', Icon: FolderOpen },
   { key: 'reports', path: '/reports', Icon: FileBarChart },
   { key: 'review', path: '/review', Icon: ClipboardCheck },
   { key: 'admin', path: '/admin', Icon: Settings },
@@ -455,8 +453,10 @@ export default function App() {
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
   // Match the query string too: Documents & Evidence and MERL Reporting share a
   // pathname and are distinguished only by ?module=.
-  const activeItem = NAV_ITEMS.find(n => n.path === location.pathname && (n.search ?? '') === location.search)
+  const activeItem = (location.pathname === '/merl-reporting' ? NAV_ITEMS.find(n => n.key === 'activities') : undefined)
+    ?? NAV_ITEMS.find(n => n.path === location.pathname && (n.search ?? '') === location.search)
     ?? NAV_ITEMS.find(n => n.path === location.pathname && !n.search)
+    ?? (location.pathname === '/analytics/project-portfolio' ? NAV_ITEMS.find(n => n.key === 'overview') : undefined)
     ?? (location.pathname.startsWith('/analytics') ? NAV_ITEMS.find(n => n.key === 'results') : undefined)
     ?? NAV_ITEMS.find(n => n.key === 'overview')!;
   const gate = (path: string) => allowed.includes(ROUTE_GATE[path]);
