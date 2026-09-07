@@ -10,6 +10,7 @@ import { LANGUAGES } from './i18n';
 
 import Overview from './pages/Overview';
 import Dashboards from './pages/Dashboards';
+import ResultsWorkspace from './pages/ResultsWorkspace';
 import ProjectPortfolioAnalysis from './pages/ProjectPortfolioAnalysis';
 import ProjectSetup from './pages/ProjectSetup';
 import MerlReporting from './pages/MerlReporting';
@@ -556,7 +557,7 @@ export default function App() {
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboards" element={gate('/dashboards') ? <Overview user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analytics/project-portfolio" element={allowed.includes('projectAnalysis') ? <ProjectPortfolioAnalysis /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/analytics/:lens" element={<AnalyticsRoute allowed={allowed} fallback={defaultPath} />} />
+              <Route path="/analytics/:lens" element={<AnalyticsRoute allowed={allowed} fallback={defaultPath} user={user} />} />
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/reports" element={gate('/reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
@@ -577,9 +578,10 @@ export default function App() {
 // /analytics/:lens → the tabbed analytics dashboard with the tab preselected,
 // but only where the role may see that lens. An unknown lens falls back to the
 // portfolio tab, which every role can see.
-function AnalyticsRoute({ allowed, fallback }: { allowed: NavKey[]; fallback: string }) {
+function AnalyticsRoute({ allowed, fallback, user }: { allowed: NavKey[]; fallback: string; user: AppUser }) {
   const { lens } = useParams();
   const key = LENS_TO_ACCESS[lens ?? ''] ?? 'overview';
   if (!allowed.includes(key)) return <Navigate to={fallback} replace />;
+  if (lens === 'results' || lens === 'indicators') return <ResultsWorkspace user={user} />;
   return <Dashboards initialTab={LENS_TO_TAB[lens ?? ''] ?? 'portfolio'} />;
 }
