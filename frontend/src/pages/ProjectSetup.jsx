@@ -1108,7 +1108,7 @@ function IndicatorsStep({ projectId, userId, indicators, objectives, outcomes, o
   );
 }
 
-function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outputs, onClose, onSaved }) {
+export function IndicatorForm({ projectId, userId, initial, objectives, outcomes, outputs, onClose, onSaved }) {
   const { t } = useTranslation();
   const seed = useMemo(() => ({
     name: '', indicator_level: '', definition: '', unit: '', baseline_value: '', baseline_year: '',

@@ -16,6 +16,7 @@ import {
   Plus, Pencil, Trash2, Send, CheckCircle2, RotateCcw, X, AlertTriangle, Info, Lock, Unlock,
 } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
+import { saveModuleRecord } from '../lib/merlRecordSave';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
@@ -50,7 +51,7 @@ const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(
 // new, and evidence is supporting material. Work in progress is kept as a local
 // draft (lib/formDraft.js) and is deliberately *not* counted here — only a saved
 // record, which has passed the required-field checks, completes a section.
-const MODULES = [
+export const MODULES = [
   {
     key: 'indicator_progress', label: 'merl.modIndicatorProgress', form: '4',
     view: 'v_indicator_progress', rpc: 'upsert_indicator_progress', del: 'delete_indicator_progress',
@@ -376,23 +377,9 @@ export default function MerlReporting({ user }) {
     // officer is told which figures disagree rather than seeing a constraint.
     const problem = m.validate?.(values);
     if (problem) { toast.error(problem); return; }
-    const params = { p_id: editing?.id ?? null, p_project_id: projectId };
-    if (m.periodScoped) params.p_reporting_period = activePeriod || null;
-    for (const f of m.fields) {
-      const raw = values[f.name];
-      const v = f.type === 'number' ? toNum(raw)
-        : f.type === 'checkbox' ? !!raw
-        : toNull(raw);
-      params[`p_${f.name}`] = v;
-    }
-    // Client-side derived values (mirrored server-side for Form 4).
-    if (m.key === 'indicator_progress') {
-      const ind = indicators.find((i) => i.id === values.indicator_id);
-      params.p_achievement_pct = achievementPct(values.cumulative_actual, ind?.target_value);
-      params.p_variance = calcVariance(values.actual_this_period, values.period_target);
-    }
-    const { error } = await supabase.rpc(m.rpc, params);
-    if (error) { toast.error(dbErrorMessage(error)); return; }
+    try {
+      await saveModuleRecord({ module: m, values, id: editing?.id ?? null, projectId, reportingPeriod: activePeriod, indicators });
+    } catch (error) { toast.error(dbErrorMessage(error)); return; }
     // The record is saved, so its draft has served its purpose.
     clearDraft(draftKeyFor(m, editing?.id));
     toast.success(editing?.id ? t('merl.updatedToast') : t('merl.addedToast'));
@@ -786,7 +773,7 @@ function PeriodForm({ onCancel, onSave }) {
 }
 
 // ── Generic module record form ───────────────────────────────────────────────
-function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators, onCancel, onSave, onTranslated }) {
+export function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators, onCancel, onSave, onTranslated, enableFileUpload = false, busy = false }) {
   const { t } = useTranslation();
   const seed = useMemo(() => {
     const base = {};
@@ -794,7 +781,8 @@ function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators
     return base;
   }, [module, initial]);
   const [v, setV] = useState(seed);
-  useEffect(() => setV(seed), [seed]);
+  const [file, setFile] = useState(null);
+  useEffect(() => { setV(seed); setFile(null); }, [seed]);
   const set = (name, type) => (e) =>
     setV((s) => ({ ...s, [name]: type === 'checkbox' ? e.target.checked : e.target.value }));
 
@@ -860,7 +848,7 @@ function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators
           <button onClick={closeKeepingDraft} aria-label={t('ui.close')} title={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0 }}><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="mr-form-grid">
-          {module.fields.map((f) => (
+          {module.fields.filter((f) => !(enableFileUpload && f.name === 'file_url')).map((f) => (
             <div key={f.name} style={{ gridColumn: f.type === 'textarea' ? '1 / -1' : 'auto' }}>
               <label className="field-label">{t(f.label)}{f.required && ' *'}</label>
               {f.type === 'textarea' ? (
@@ -882,6 +870,13 @@ function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators
             </div>
           ))}
         </div>
+        {enableFileUpload && module.key === 'evidence' && (
+          <div style={{ marginTop: '0.8rem' }}>
+            <label className="field-label" htmlFor="ri-evidence-file">Supporting file (optional if a file is already attached)</label>
+            <input id="ri-evidence-file" type="file" className="field-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.csv,.geojson,.zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Private evidence. Maximum 25 MB. The file is not published to the public portal.</p>
+          </div>
+        )}
         {preview.length > 0 && (
           <div style={{ marginTop: '0.8rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-2)' }}>
             {preview.map(([k, val]) => (
@@ -900,7 +895,7 @@ function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators
           </p>
         )}
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>
+          <button style={btn('var(--green-700)')} onClick={() => onSave(v, file)} disabled={busy}>
             {t(initial?.id ? 'merl.saveChanges' : 'merl.addRecord')}
           </button>
           <button style={btnSecondary()} onClick={closeKeepingDraft}>{t('draft.saveAndClose')}</button>

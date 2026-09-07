@@ -10,6 +10,7 @@ import { IndicatorForm } from './ProjectSetup';
 import { MODULES, RecordForm } from './MerlReporting';
 import * as OPT from '../constants/formOptions';
 import { fmtPct } from '../lib/docc/reporting';
+import { uploadIndicatorEvidence, openIndicatorEvidence, removeIndicatorEvidence } from '../lib/indicatorEvidenceFiles';
 import './results-workspace.css';
 
 const EDITORS = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
@@ -77,7 +78,7 @@ export default function ResultsWorkspace({ user }) {
   const currentProgress = selected ? latest(progressFor(selected.id)) : null;
   const currentEvidence = selected ? evidenceFor(selected.id) : [];
   const module = editing?.kind === 'progress' ? MODULES.find((m) => m.key === 'indicator_progress') : MODULES.find((m) => m.key === 'evidence');
-  const formModule = editing?.kind === 'evidence' ? { ...module, fields: module.fields.filter((f) => f.name !== 'verification_status') } : module;
+  const formModule = editing?.kind === 'evidence' ? { ...module, fields: module.fields.filter((f) => !['verification_status', 'activity_id'].includes(f.name)) } : module;
   const formKey = editing && draftKey('merl', user?.id, projectId, periodLabel, module.key, editing.initial?.id ?? 'new');
 
   const open = (kind, indicator, record = null) => {
@@ -87,19 +88,27 @@ export default function ResultsWorkspace({ user }) {
     setEditing({ kind, initial: record ? sourceRow(record) : kind === 'indicator' ? sourceRow(indicator) : { indicator_id: indicator.id } });
   };
 
-  const saveRecord = async (values) => {
-    if (!editing || !selected || !editablePeriod(period) || saving) return;
+  const saveRecord = async (values, file) => {
+    if (!canEdit || !editing || !selected || !editablePeriod(period) || saving) return;
     setSaving(true);
+    let uploaded = null;
     try {
-      const payload = { ...values, indicator_id: selected.id };
+      const payload = { ...editing.initial, ...values, indicator_id: selected.id };
+      if (file && editing.kind === 'evidence') {
+        uploaded = await uploadIndicatorEvidence(projectId, selected.id, file);
+        payload.file_url = uploaded;
+      }
+      if (editing.kind === 'evidence' && !payload.file_url) throw new Error('Attach a supporting file before saving evidence.');
       if (editing.kind === 'evidence') payload.verification_status = editing.initial?.verification_status ?? 'pending';
       await saveModuleRecord({ module, values: payload, id: editing.initial?.id ?? null, projectId, reportingPeriod: periodLabel, indicators: data.indicators });
       clearDraft(formKey);
       toast.success(t(editing.initial?.id ? 'merl.updatedToast' : 'merl.addedToast'));
       setEditing(null);
       reload();
-    } catch (err) { toast.error(dbErrorMessage(err)); }
-    finally { setSaving(false); }
+    } catch (err) {
+      if (uploaded) await removeIndicatorEvidence(uploaded).catch(() => {});
+      toast.error(dbErrorMessage(err));
+    } finally { setSaving(false); }
   };
 
   return (
@@ -121,11 +130,11 @@ export default function ResultsWorkspace({ user }) {
             <div className="ri-table-wrap"><table><thead><tr><th>Indicator</th><th>Latest progress</th><th>Actions</th></tr></thead><tbody>{rows.map((i) => { const p = latest(progressFor(i.id)); return <tr key={i.id} className={selectedId === i.id ? 'ri-selected' : ''}><td><button className="ri-indicator" onClick={() => setSelectedId(i.id)}><strong>{i.code}</strong><span>{i.name}</span></button></td><td>{p ? <><strong>{fmtPct(p.achievement_pct)}</strong><small>{p.reporting_period}</small></> : 'No progress'}</td><td><div className="ri-actions">{canEdit && <><button onClick={() => open('indicator', i)}>Edit</button><button onClick={() => open('progress', i)} disabled={!editablePeriod(period)}>Update progress</button><button onClick={() => open('evidence', i)} disabled={!editablePeriod(period)}>Add evidence</button></>}</div></td></tr>; })}</tbody></table></div>
             {!rows.length && <p>No indicators match your search.</p>}
           </section>
-          {selected && <aside className="ri-detail"><div className="ri-detail-head"><span>Selected indicator</span><h2>{selected.code}</h2><p>{selected.name}</p></div><dl><div><dt>Baseline</dt><dd>{selected.baseline_value ?? '—'}</dd></div><div><dt>Target</dt><dd>{selected.target_value ?? '—'} {selected.unit ?? ''}</dd></div><div><dt>Frequency</dt><dd>{selected.frequency ? OPT.labelOf(OPT.REPORTING_FREQUENCY, selected.frequency) : '—'}</dd></div><div><dt>Latest achievement</dt><dd>{currentProgress ? fmtPct(currentProgress.achievement_pct) : '—'}</dd></div></dl><h3>Progress history</h3>{!progressFor(selected.id).length ? <p>No progress recorded.</p> : <div className="ri-history">{[...progressFor(selected.id)].sort((a,b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''))).map((p) => <div key={p.id}><span>{p.reporting_period}</span><strong>{fmtPct(p.achievement_pct)}</strong>{canEdit && editablePeriod(data.periods.find((r) => r.period_label === p.reporting_period)) && <button onClick={() => { setPeriodLabel(p.reporting_period); setEditing({ kind:'progress', initial:sourceRow(p) }); }}>Edit</button>}</div>)}</div>}<h3>Evidence</h3>{!currentEvidence.length ? <p>No evidence linked to this indicator.</p> : <div className="ri-history">{currentEvidence.map((e) => <div key={e.id}><span>{e.title}<small>{e.reporting_period}</small></span>{canEdit && editablePeriod(data.periods.find((p) => p.period_label === e.reporting_period)) && <button onClick={() => { setPeriodLabel(e.reporting_period); setEditing({ kind:'evidence', initial:sourceRow(e) }); }}>Edit</button>}</div>)}</div>}</aside>}
+          {selected && <aside className="ri-detail"><div className="ri-detail-head"><span>Selected indicator</span><h2>{selected.code}</h2><p>{selected.name}</p></div><dl><div><dt>Baseline</dt><dd>{selected.baseline_value ?? '—'}</dd></div><div><dt>Target</dt><dd>{selected.target_value ?? '—'} {selected.unit ?? ''}</dd></div><div><dt>Frequency</dt><dd>{selected.frequency ? OPT.labelOf(OPT.REPORTING_FREQUENCY, selected.frequency) : '—'}</dd></div><div><dt>Latest achievement</dt><dd>{currentProgress ? fmtPct(currentProgress.achievement_pct) : '—'}</dd></div></dl><h3>Progress history</h3>{!progressFor(selected.id).length ? <p>No progress recorded.</p> : <div className="ri-history">{[...progressFor(selected.id)].sort((a,b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''))).map((p) => <div key={p.id}><span>{p.reporting_period}</span><strong>{fmtPct(p.achievement_pct)}</strong>{canEdit && editablePeriod(data.periods.find((r) => r.period_label === p.reporting_period)) && <button onClick={() => { setPeriodLabel(p.reporting_period); setEditing({ kind:'progress', initial:sourceRow(p) }); }}>Edit</button>}</div>)}</div>}<h3>Evidence</h3>{!currentEvidence.length ? <p>No evidence linked to this indicator.</p> : <div className="ri-history">{currentEvidence.map((e) => <div key={e.id}><span>{e.title}<small>{e.reporting_period}</small>{e.file_url && <button type="button" onClick={() => openIndicatorEvidence(e.file_url).catch((err) => toast.error(dbErrorMessage(err)))}>Open file</button>}</span>{canEdit && editablePeriod(data.periods.find((p) => p.period_label === e.reporting_period)) && <button onClick={() => { setPeriodLabel(e.reporting_period); setEditing({ kind:'evidence', initial:sourceRow(e) }); }}>Edit</button>}</div>)}</div>}</aside>}
         </div>
       </>}
       {editing?.kind === 'indicator' && <IndicatorForm key={editing.initial.id} projectId={projectId} userId={user?.id} initial={editing.initial} objectives={data.objectives} outcomes={data.outcomes} outputs={data.outputs} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />}
-      {editing && editing.kind !== 'indicator' && <RecordForm key={`${editing.kind}-${editing.initial?.id ?? selectedId}-${periodLabel}`} module={formModule} initial={editing.initial} draftKey={formKey} dynamicOptions={(key) => key === 'indicators' ? [{ value: selected.id, label: `${selected.code} · ${selected.name}` }] : []} indicators={data.indicators} onCancel={() => setEditing(null)} onSave={saveRecord} onTranslated={reload} />}
+      {editing && editing.kind !== 'indicator' && <RecordForm key={`${editing.kind}-${editing.initial?.id ?? selectedId}-${periodLabel}`} module={formModule} initial={editing.initial} draftKey={formKey} dynamicOptions={(key) => key === 'indicators' ? [{ value: selected.id, label: `${selected.code} · ${selected.name}` }] : []} indicators={data.indicators} onCancel={() => setEditing(null)} onSave={saveRecord} onTranslated={reload} enableFileUpload={editing.kind === 'evidence'} busy={saving} />}
     </div>
   );
 }
