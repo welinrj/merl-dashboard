@@ -1,0 +1,38 @@
+/* Use the existing MERL emblem in the application header. Keep the page title
+   in the DOM for assistive technology, but remove its duplicated visual copy. */
+.dsh-head .dsh-head-title {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  overflow: hidden;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: transparent;
+  white-space: nowrap;
+}
+.dsh-head .dsh-head-title::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  background: url('/merl-favicon.png') center / contain no-repeat;
+}
+.dsh-head .dsh-head-sub { display: none !important; }
+
+/* Keep the emblem visible beside the menu and preserve the existing controls. */
+@media (max-width: 760px) {
+  .dsh-head .dsh-head-title {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+  .dsh-head .dsh-head-title::before {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+}

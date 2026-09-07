@@ -22,6 +22,8 @@ import './login-simple.css';
 import './login-crest.css';
 // Public homepage and login typography hierarchy; does not restyle the MERL workspace.
 import './public-typography.css';
+// Replace the duplicate application-header title with the existing MERL emblem.
+import './header-logo.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
