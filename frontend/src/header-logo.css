@@ -19,7 +19,7 @@
   width: 40px;
   height: 40px;
   flex: 0 0 40px;
-  background: url('/merl-dashboard/merl-favicon.png') center / contain no-repeat;
+  background: url('/merl-favicon.png') center / contain no-repeat;
 }
 .dsh-head .dsh-head-sub { display: none !important; }
 
