@@ -19,6 +19,7 @@ import AdminPanel  from './pages/AdminPanel';
 import ReviewApproval from './pages/ReviewApproval';
 import ErrorBoundary from './components/ErrorBoundary';
 import GlobalSearch from './components/GlobalSearch';
+import HeaderPartnerLogos from './components/HeaderPartnerLogos';
 import NotificationBell from './components/NotificationBell';
 import ChangePasswordModal from './components/ui/ChangePasswordModal';
 import { DashboardFilterProvider } from './lib/dashboardFilters';
@@ -509,6 +510,7 @@ export default function App() {
             <div className="dsh-head-title">{t(`head.${activeItem.key}`)}</div>
             {activeItem.hasSub && <div className="dsh-head-sub">{t(`head.${activeItem.key}Sub`)}</div>}
           </div>
+          <HeaderPartnerLogos />
           <div className="dsh-head-actions">
             <GlobalSearch />
             <div className="dsh-lang">
