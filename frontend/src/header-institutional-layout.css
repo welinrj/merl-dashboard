@@ -1,5 +1,43 @@
-/* Final shell layout: the MERL product identity belongs in the sidebar.
-   The three institutional emblems share one centered, proportion-preserving band. */
+/* Final institutional layout, loaded after the existing shell styles. */
+.dsh:has(.dsh-head > .merl-partner-logos) {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+/* Keep the actual translated page title available to assistive technology,
+   but remove the old CSS-generated MERL wordmark and emblem from the header. */
+.dsh .dsh-head:has(> .merl-partner-logos) > div:has(> .dsh-head-title) {
+  position: absolute !important;
+  display: block !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  max-width: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+.dsh .dsh-head:has(> .merl-partner-logos) > div:has(> .dsh-head-title)::before,
+.dsh .dsh-head:has(> .merl-partner-logos) > div:has(> .dsh-head-title)::after,
+.dsh .dsh-head:has(> .merl-partner-logos) .dsh-head-title::before,
+.dsh .dsh-head:has(> .merl-partner-logos) .dsh-head-title::after {
+  content: none !important;
+  display: none !important;
+}
+.dsh .dsh-head:has(> .merl-partner-logos) .dsh-head-title {
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: inherit;
+}
+/* The product identity is retained in the existing sidebar, not duplicated. */
+.dsh .dsh-side .dsh-brand {
+  display: grid;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 84px;
+  padding: 14px 12px 12px;
+}
+/* The three institutional emblems share one centered, proportional band. */
 .dsh .dsh-head:has(> .merl-partner-logos) {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
