@@ -82,6 +82,10 @@ jobs:
         working-directory: frontend
         run: node qa/public-dashboard.mjs
 
+      - name: Validate single public sign-in
+        working-directory: frontend
+        run: node qa/public-single-signin.mjs
+
       - name: Show preview log on failure
         if: failure()
         run: cat /tmp/merl-preview.log || true
