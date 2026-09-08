@@ -1,4 +1,4 @@
-// Public regression: default routing, approved data, automatic refresh, filters and access.
+// Public regression: shared entry, approved data, automatic refresh, filters and access.
 import { chromium } from 'playwright';
 const HOST = 'https://ndntvncboeajanipafeq.supabase.co';
 const projects = [
@@ -40,16 +40,17 @@ const kpis = page.locator('.pbd-kpis');
 const has = async value => await kpis.getByText(value,{exact:true}).count()>=1;
 
 await go('');
-check('bare URL opens public dashboard',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
+check('bare URL resolves to the shared dashboard',new URL(page.url()).hash==='#/dashboards');
+check('anonymous visitor sees public dashboard',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
 check('approved project count is 2',await has('2'));
 check('approved beneficiaries are shown',await has('120'));
 check('approved progress is shown',await has('70%'));
 check('no internal editing or approval navigation',await page.getByRole('button',{name:/project setup|risk analysis|review & approval|administration/i}).count()===0);
-await go('?utm_source=chatgpt.com#/');
-check('tracked root URL remains public',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
+await go('?utm_source=chatgpt.com#/dashboards');
+check('requested tracked URL opens the same public dashboard',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
 await go('#/public');
-check('public alias opens the same dashboard',await has('2'));
-await go('#/');
+check('old public bookmark resolves to the shared entry',new URL(page.url()).hash==='#/dashboards');
+await go('#/dashboards');
 
 await page.locator('.pbd-filters select').nth(2).selectOption('Sanma');
 check('province filter reduces the portfolio',await has('1'));
@@ -71,7 +72,6 @@ await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:'Geographic Co
 check('coverage navigation works',await page.locator('.pub-leaflet-wrap').count()===1);
 await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:'Public Overview'}).click();
 
-// Simulate a newly approved publication while the same public page stays open.
 fixtures.public_portal_summary[0] = {...fixtures.public_portal_summary[0],overall_progress_pct:80,published_beneficiaries:150,updated_at:'2026-09-08T08:01:00Z'};
 fixtures.public_portal_projects[0] = {...fixtures.public_portal_projects[0],progress_pct:60,published_beneficiaries:80};
 const beforeRefresh = reads.filter(x=>x==='public_portal_summary').length;
@@ -83,19 +83,20 @@ await page.locator('.pbd-filters select').nth(2).selectOption('Sanma');
 check('refreshed filtered values reconcile',await has('60%') && await has('80'));
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 check('manual refresh remains available',await page.getByRole('button',{name:'Refresh',exact:true}).count()===1);
-check('public reads use only the three approved snapshot tables',reads.every(x=>x in fixtures));
+check('anonymous reads use only approved snapshot tables',reads.every(x=>x in fixtures));
 check('no browser exception',errors.length===0);
 
 await page.getByRole('link',{name:'Sign in to MERL'}).first().click();
 check('sign-in opens existing protected login',new URL(page.url()).hash.startsWith('#/login'));
 await page.getByRole('link',{name:'Back to public dashboard'}).click();
 await page.locator('.pbd-root .pbd-kpis').waitFor({timeout:15000});
-check('back to public returns to the public root',new URL(page.url()).hash==='#/');
-await page.goto('http://localhost:5199/#/dashboards',{waitUntil:'domcontentloaded'});
-check('anonymous internal URL requires login',await page.locator('.lg2-root').count()===1);
-check('anonymous internal URL does not render workspace',await page.locator('.dsh-main .ovx-kpis').count()===0);
+check('back to public uses the shared route',new URL(page.url()).hash==='#/dashboards');
+await page.goto('http://localhost:5199/#/project-setup',{waitUntil:'domcontentloaded'});
+await page.locator('.lg2-root').waitFor({timeout:15000});
+check('anonymous private route requires login',await page.locator('.lg2-root').count()===1);
+check('anonymous private route does not render workspace',await page.locator('.dsh-main .ovx-kpis').count()===0);
 await page.setViewportSize({width:390,height:844});
-await go('#/');
+await go('#/dashboards');
 check('mobile has no page-wide horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
 await page.getByRole('button',{name:'Open menu'}).click();
 check('mobile menu opens',await page.locator('.pbd-root .dsh-side.open').count()===1);
