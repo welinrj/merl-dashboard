@@ -1,0 +1,445 @@
+/* Approved MERL workspace design. Scoped to the authenticated application.
+   The existing routes, data, forms, permissions and map layers are unchanged.
+   This layer follows the legacy shell styles so it can replace their layout
+   without changing the authentication or reporting components. */
+.dsh {
+  --green-900: #153a78;
+  --green-800: #184690;
+  --green-700: #1951ad;
+  --green-600: #205fc8;
+  --green-500: #3475df;
+  --green-200: #c8daf8;
+  --green-100: #e2edff;
+  --green-50: #f0f6ff;
+  --navy-900: #172d57;
+  --navy-800: #1b3e82;
+  --navy-700: #2453a0;
+  --navy-active: #205fc8;
+  --ink: #1c2d4d;
+  --cream: #f5f8fd;
+  --border: #dfe7f2;
+  --border-strong: #c9d7e9;
+  --text-1: #1c2d4d;
+  --text-2: #53647d;
+  --text-3: #697a92;
+  --surface-1: #f3f7fd;
+  --surface-2: #e8eff9;
+  --ring: rgba(32,95,200,.15);
+  --shadow-sm: 0 2px 12px rgba(18,49,107,.045);
+  --shadow-md: 0 4px 18px rgba(18,49,107,.07);
+  --shadow-lg: 0 14px 36px rgba(18,49,107,.18);
+  --radius-card: 14px;
+  --radius-control: 9px;
+  --side-w: 264px;
+  --workspace-header-h: 88px;
+  --workspace-gap: 20px;
+  display: grid;
+  grid-template-columns: var(--side-w) minmax(0,1fr);
+  grid-template-rows: var(--workspace-header-h) minmax(0,1fr);
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  padding: 0;
+  background: #f5f8fd;
+}
+
+/* The existing main wrapper is made layout-transparent so its real header can
+   span both grid columns. This preserves the mounted pages and their state. */
+.dsh .dsh-main { display: contents; }
+.dsh .dsh-scroll {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  flex: none;
+  overflow: visible;
+  padding: var(--workspace-gap) var(--workspace-gap) 32px;
+  background: #f5f8fd;
+}
+
+/* A single full-width application header, above both navigation and content. */
+.dsh .dsh-head {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  height: var(--workspace-header-h);
+  min-height: 0;
+  margin: 0;
+  padding: 10px 24px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  isolation: isolate;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0 0 18px 18px;
+  box-shadow: 0 2px 12px rgba(18,49,107,.035);
+  overflow: visible;
+}
+.dsh .dsh-head::before {
+  height: 9px;
+  opacity: .72;
+  background-size: auto 9px;
+  pointer-events: none;
+}
+/* Reuse the existing accessible page-title node as a compact wordmark. The
+   actual translated page title remains in the DOM and in each page heading. */
+.dsh .dsh-head > div:has(> .dsh-head-title) {
+  position: static !important;
+  display: grid !important;
+  grid-template-columns: 48px minmax(0,1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 12px;
+  width: auto !important;
+  height: auto !important;
+  max-width: 320px;
+  min-width: 0;
+  flex: 0 1 auto;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip-path: none !important;
+  white-space: normal !important;
+}
+.dsh .dsh-head > div:has(> .dsh-head-title)::before {
+  content: '' !important;
+  display: block !important;
+  grid-column: 1;
+  grid-row: 1 / 3;
+  width: 48px;
+  height: 48px;
+  background: #fff url('/merl-favicon.png') center / contain no-repeat;
+  border-radius: 50%;
+}
+.dsh .dsh-head .dsh-head-title {
+  grid-column: 2;
+  grid-row: 1;
+  display: block !important;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: transparent;
+  white-space: nowrap;
+}
+.dsh .dsh-head .dsh-head-title::before { content: none !important; display: none !important; }
+.dsh .dsh-head .dsh-head-title::after {
+  content: 'MERL' !important;
+  display: block !important;
+  color: #172d57;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -.035em;
+}
+.dsh .dsh-head > div:has(> .dsh-head-title)::after {
+  content: 'DEPARTMENT OF CLIMATE CHANGE (DOCC)' !important;
+  display: block !important;
+  grid-column: 2;
+  grid-row: 2;
+  color: #667891;
+  font-family: var(--font-ui);
+  font-size: .64rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: .015em;
+  white-space: normal;
+}
+.dsh .dsh-head .dsh-head-sub { display: none !important; }
+.dsh .dsh-head .dsh-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+  margin-left: auto;
+  position: relative;
+  z-index: 1;
+}
+.dsh .dsh-head .gs-trigger {
+  width: clamp(220px,29vw,390px);
+  max-width: 100%;
+  height: 42px;
+  border-radius: 24px;
+  background: #f2f6fe;
+  border-color: #dce6f5;
+  color: #647690;
+}
+.dsh .dsh-head .gs-trigger:hover { background: #edf4ff; border-color: #b8cdee; }
+.dsh .dsh-head .dsh-avatar { background: #173f91; }
+.dsh .dsh-head .dsh-lang button[aria-pressed='true'] { color: #17499f; border-bottom-color: #205fc8; }
+.dsh .dsh-head .dsh-hamburger { display: none; }
+
+/* The blue navigation is a contained panel BELOW the header, not a full-height
+   strip glued to the top edge. Its menu scrolls independently on short screens. */
+.dsh .dsh-side {
+  grid-column: 1;
+  grid-row: 2;
+  width: calc(var(--side-w) - 16px);
+  min-width: 0;
+  height: calc(100dvh - var(--workspace-header-h) - 2 * var(--workspace-gap));
+  min-height: 0;
+  margin: var(--workspace-gap) 0 var(--workspace-gap) 16px;
+  top: calc(var(--workspace-header-h) + var(--workspace-gap));
+  position: sticky;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  isolation: isolate;
+  color: rgba(255,255,255,.88);
+  background: linear-gradient(180deg,#2357b8 0%,#19448f 100%);
+  border: 0;
+  border-radius: 28px;
+  box-shadow: 0 12px 30px rgba(24,65,139,.12);
+}
+/* Branding is in the full-width header. Do not repeat it in the sidebar. */
+.dsh .dsh-side .dsh-brand { display: none; }
+.dsh .dsh-side .dsh-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 12px 30px;
+  gap: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.3) transparent;
+}
+.dsh .dsh-side .dsh-nav a {
+  min-height: 46px;
+  padding: .7rem .75rem;
+  gap: .8rem;
+  border: 0;
+  border-radius: 12px;
+  color: rgba(255,255,255,.87);
+  font-size: .82rem;
+  font-weight: 550;
+  line-height: 1.3;
+  background: transparent;
+}
+.dsh .dsh-side .dsh-nav a svg { width: 18px; height: 18px; flex-shrink: 0; color: rgba(255,255,255,.8); }
+.dsh .dsh-side .dsh-nav a.active {
+  background: #2f70e5;
+  color: #fff;
+  font-weight: 700;
+  border: 0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.13);
+}
+.dsh .dsh-side .dsh-nav a.active svg { color: #fff; }
+.dsh .dsh-side .dsh-nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
+.dsh .dsh-side .dsh-nav a.active:hover { background: #2f70e5; }
+.dsh .dsh-side .dsh-nav a:focus-visible { outline: 2px solid #c5e9ff; outline-offset: -3px; }
+.dsh .dsh-side::before { opacity: .3; }
+.dsh .dsh-side .dsh-brand::after { display: none; }
+
+/* Calm, consistent surfaces across the authenticated workspaces. */
+.dsh .card,
+.dsh .db-card,
+.dsh .ov-panel,
+.dsh .stat-tile,
+.dsh .ov-filters,
+.dsh .ov-strip,
+.dsh .ov-action {
+  border-color: var(--border);
+  border-radius: var(--radius-card);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.dsh .page-pad { padding: 1.25rem 1.35rem 0; }
+.dsh .field-input { border-radius: var(--radius-control); }
+.dsh .field-input:focus { border-color: #205fc8; box-shadow: 0 0 0 3px var(--ring); }
+.dsh .btn-primary { background: #205fc8; }
+.dsh .btn-primary:hover:not(:disabled) { background: #184da8; }
+.dsh .btn-secondary { color: #17499f; }
+.dsh .btn-secondary:hover:not(:disabled) { background: #f0f6ff; }
+
+/* Overview: retain all live data and drill-downs, but use the approved blue
+   cards and clear hierarchy instead of the old purple executive strip. */
+.dsh .ovx { max-width: 1600px; padding: 0; margin: 0 auto; gap: 0; }
+.dsh .ovx-heading { align-items: center; margin: .1rem 0 1.25rem; }
+.dsh .ovx-heading h1 { color: #172d57; font-size: clamp(1.65rem,2.3vw,2rem); font-weight: 800; }
+.dsh .ovx-heading p { color: #64748b; font-size: .85rem; }
+.dsh .ovx-heading p b { color: #405778; }
+.dsh .ovx-export {
+  min-height: 42px;
+  padding: .7rem 1.2rem;
+  background: #205fc8;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(32,95,200,.12);
+}
+.dsh .ovx-export:hover { background: #184da8; }
+.dsh .ovx-filterbar {
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: .8rem 1rem;
+  margin-bottom: 1.1rem;
+  padding: 1rem;
+  border-color: var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.dsh .ovx-filter > span { color: #60718b; font-size: .68rem; letter-spacing: .035em; }
+.dsh .ovx-filter select { border-color: #d6e2f2; border-radius: 9px; color: #243957; }
+.dsh .ovx-filter select:focus { border-color: #205fc8; box-shadow: 0 0 0 3px var(--ring); }
+.dsh .ovx-reset { border-color: #d8e5f7; border-radius: 9px; background: #f1f6ff; color: #2056b4; }
+.dsh .ovx-reset:disabled { color: #71829a; background: #f5f7fb; }
+.dsh .ovx .ovx-kpis {
+  display: grid !important;
+  grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+  gap: 1rem !important;
+  margin-bottom: 1.1rem !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.dsh .ovx .ovx-kpis .ovx-kpi {
+  display: grid !important;
+  grid-template-columns: 44px minmax(0,1fr);
+  grid-template-areas: 'icon metric' 'sub sub' 'bar bar' 'link link';
+  align-items: start;
+  gap: .55rem .75rem !important;
+  min-height: 176px !important;
+  padding: 1rem !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.dsh .ovx .ovx-kpis .ovx-kpi + .ovx-kpi { border: 1px solid var(--border) !important; }
+.dsh .ovx .ovx-kpis .ovx-kpi-progress { background: #fff !important; }
+.dsh .ovx .ovx-kpis .ovx-kpi::before {
+  content: '' !important;
+  display: block !important;
+  grid-area: icon;
+  position: static;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background-color: #e6f0ff;
+  background-position: center;
+  background-size: 23px 23px;
+  background-repeat: no-repeat;
+}
+.dsh .ovx .ovx-kpis .ovx-kpi-progress::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23205fc8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='12' width='4' height='9' rx='1'/%3E%3Crect x='10' y='7' width='4' height='14' rx='1'/%3E%3Crect x='17' y='3' width='4' height='18' rx='1'/%3E%3C/svg%3E"); }
+.dsh .ovx .ovx-kpis .ovx-kpi-projects::before { background-color:#e0f8ee; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%231b9966' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 3 9 5-9 5-9-5 9-5Z'/%3E%3Cpath d='m3 12 9 5 9-5M3 16l9 5 9-5'/%3E%3C/svg%3E"); }
+.dsh .ovx .ovx-kpis .ovx-kpi-budget::before { background-color:#fff3dc; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c88712' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5' rx='8' ry='3'/%3E%3Cpath d='M4 5v5c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 10v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5M4 15v4c0 1.1 3.6 2 8 2s8-.9 8-2v-4'/%3E%3C/svg%3E"); }
+.dsh .ovx .ovx-kpis .ovx-kpi-beneficiaries::before { background-color:#f0e7ff; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23793bc1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='7' r='3'/%3E%3Cpath d='M3 21v-2a6 6 0 0 1 12 0v2H3ZM17 4a3 3 0 0 1 0 6M21 21v-2a6 6 0 0 0-4-5.65'/%3E%3C/svg%3E"); }
+.dsh .ovx .ovx-kpis .ovx-kpi > .min-w-0 { grid-area: metric; min-width: 0; }
+.dsh .ovx .ovx-kpis .kpi-card-label { color: #50617d !important; font-size: .73rem !important; }
+.dsh .ovx .ovx-kpis .kpi-card-value { color: #172d57 !important; font-size: clamp(1.7rem,2.2vw,2.1rem) !important; line-height:1.05 !important; }
+.dsh .ovx .ovx-kpis .ovx-kpi-progress .kpi-card-value { font-size: clamp(1.85rem,2.5vw,2.35rem) !important; }
+.dsh .ovx .ovx-kpis .kpi-card-sub { grid-area:sub; min-height:2.2em; color:#667891 !important; font-size:.72rem !important; }
+.dsh .ovx .ovx-kpis .kpi-card-progress { grid-area:bar; width:100% !important; height:5px !important; background:#e8eef8 !important; }
+.dsh .ovx .ovx-kpis .kpi-card-progress-fill { background:#3475df !important; }
+.dsh .ovx .ovx-kpis .ovx-kpi-budget .kpi-card-progress-fill { background:#e5a21d !important; }
+.dsh .ovx .ovx-kpis .kpi-card-link { grid-area:link; justify-self:end; margin-top:auto !important; color:#205fc8 !important; font-size:.72rem !important; font-weight:650 !important; opacity:1 !important; }
+.dsh .ovx .ovx-kpis .ovx-kpi:hover .kpi-card-link { color:#17499f !important; }
+
+.dsh .ovx-priority-grid { grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:1rem; margin-bottom:1rem; }
+.dsh .ovx-secondary-grid { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); gap:1rem; margin-bottom:1rem; }
+.dsh .ovx-card { border-color:var(--border); border-radius:16px; background:#fff; box-shadow:var(--shadow-sm); padding:1rem; }
+.dsh .ovx-card-title { color:#172d57; font-size:1rem; }
+.dsh .ovx-card-link { color:#205fc8; font-size:.75rem; }
+.dsh .ovx-attention-card { background:#fff; }
+.dsh .ovx-attention-grid { grid-template-columns:1fr; gap:.45rem; }
+.dsh .ovx-attention-item { grid-template-columns:48px minmax(0,1fr) auto; grid-template-areas:'num label action'; align-items:center; gap:.75rem; padding:.5rem .7rem; border-color:#e0e8f4; border-radius:10px; background:#fff; }
+.dsh .ovx-attention-item:hover { background:#f7faff; border-color:#c7d9f4; }
+.dsh .ovx-attention-number { display:flex; align-items:center; justify-content:center; width:48px; min-height:42px; border-radius:10px; background:#eef4ff; font-size:1.25rem; color:#205fc8; }
+.dsh .ovx-attention-item.tone-critical .ovx-attention-number { background:#fff0f0; color:#bd3b34; }
+.dsh .ovx-attention-item.tone-warning .ovx-attention-number { background:#fff5e5; color:#ad7419; }
+.dsh .ovx-attention-item.tone-clear .ovx-attention-number { background:#e8f7ee; color:#247749; }
+.dsh .ovx-attention-label { color:#263a58; font-size:.78rem; }
+.dsh .ovx-attention-action { color:#205fc8; font-size:.7rem; }
+.dsh .ovx-implementation { grid-template-columns:180px minmax(0,1fr); gap:1rem; }
+.dsh .ovx-donut-wrap { width:180px; height:180px; }
+.dsh .ovx-donut-center b { color:#172d57; }
+.dsh .ovx-status-row { border-bottom-color:#e8eef7; color:#53647d; font-size:.77rem; }
+.dsh .ovx-status-row b { color:#172d57; }
+.dsh .ovx-status-row:hover { background:#f3f7fd; }
+.dsh .ovx-performance-meta { color:#53647d; }
+.dsh .ovx-performance-meta b { color:#172d57; }
+.dsh .ovx-performance-track { background:#e7eef9; }
+.dsh .ovx-performance-track > div { background:#3475df; }
+.dsh .ovx-location-layout { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); }
+.dsh .ovx-map-panel { border-color:#dce6f3; border-radius:12px; }
+.dsh .ovx-location-table th { background:#f7faff; color:#60718b; }
+.dsh .ovx-location-table tr.selected { background:#e9f2ff; }
+.dsh .ovx-table-wrap { border-color:#e0e8f3; border-radius:11px; }
+.dsh .ovx-table th { background:#f7faff; color:#60718b; }
+.dsh .ovx-table td { border-top-color:#e8eef7; color:#53647d; }
+.dsh .ovx-table-strong { color:#172d57 !important; }
+.dsh .ovx-updated { color:#697a92; font-size:.72rem; }
+.dsh .ovx-error-card,.dsh .ovx-empty-card { border-color:var(--border); border-radius:14px; }
+
+/* Keep the same destinations and all controls on tablets and phones. */
+@media (max-width:1240px) {
+  .dsh { --side-w:248px; --workspace-gap:16px; }
+  .dsh .ovx .ovx-kpis { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  .dsh .ovx-priority-grid,.dsh .ovx-secondary-grid { grid-template-columns:1fr; }
+  .dsh .ovx-location-layout { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+}
+@media (max-width:980px) {
+  .dsh .dsh-head { gap:12px; padding-inline:16px; }
+  .dsh .dsh-head .gs-trigger { width:42px; min-width:42px !important; justify-content:center; padding:0; }
+  .dsh .dsh-head .gs-trigger-lbl,.dsh .dsh-head .gs-trigger .gs-kbd { display:none; }
+  .dsh .dsh-head .dsh-head-actions { gap:8px; }
+  .dsh .dsh-head > div:has(> .dsh-head-title) { max-width:270px; }
+  .dsh .ovx-implementation { grid-template-columns:170px minmax(0,1fr); }
+  .dsh .ovx-donut-wrap { width:170px; height:170px; }
+  .dsh .ovx-location-layout { grid-template-columns:1fr; }
+}
+@media (max-width:760px) {
+  .dsh { --side-w:264px; --workspace-header-h:80px; --workspace-gap:0px; grid-template-columns:minmax(0,1fr); grid-template-rows:var(--workspace-header-h) minmax(0,1fr); }
+  .dsh .dsh-head { display:grid; grid-template-columns:40px minmax(0,1fr) auto; gap:10px; height:var(--workspace-header-h); min-height:0; padding:8px 12px 14px; }
+  .dsh .dsh-head .dsh-hamburger { display:inline-flex; align-items:center; justify-content:center; grid-column:1; grid-row:1; width:40px; height:40px; }
+  .dsh .dsh-head > div:has(> .dsh-head-title) { grid-column:2; grid-row:1; max-width:230px; }
+  .dsh .dsh-head .dsh-head-actions { grid-column:3; grid-row:1; margin-left:0; }
+  .dsh .dsh-head > div:has(> .dsh-head-title)::before { width:40px; height:40px; }
+  .dsh .dsh-head > div:has(> .dsh-head-title) { grid-template-columns:40px minmax(0,1fr); gap:8px; }
+  .dsh .dsh-head .dsh-head-title::after { font-size:1.25rem; }
+  .dsh .dsh-head > div:has(> .dsh-head-title)::after { font-size:.54rem; }
+  .dsh .dsh-side { grid-column:1; grid-row:2; position:fixed; top:var(--workspace-header-h); bottom:0; left:0; width:min(280px,calc(100vw - 32px)); height:calc(100dvh - var(--workspace-header-h)); margin:0; border-radius:0 22px 22px 0; transform:translateX(-110%); z-index:60; box-shadow:var(--shadow-lg); }
+  .dsh .dsh-side.open { transform:translateX(0); }
+  .dsh .dsh-scroll { grid-column:1; grid-row:2; padding:16px 14px 28px; }
+  .dsh .dsh-overlay { position:fixed; top:var(--workspace-header-h); right:0; bottom:0; left:0; z-index:55; }
+  .dsh .ovx-priority-grid,.dsh .ovx-secondary-grid { grid-template-columns:1fr; }
+  .dsh .ovx-location-layout { grid-template-columns:1fr; }
+}
+@media (max-width:560px) {
+  .dsh { --workspace-header-h:124px; }
+  .dsh .dsh-head { grid-template-columns:40px minmax(0,1fr); grid-template-rows:40px 42px; gap:6px 10px; align-content:center; padding:8px 12px 14px; }
+  .dsh .dsh-head .dsh-hamburger { grid-column:1; grid-row:1; }
+  .dsh .dsh-head > div:has(> .dsh-head-title) { grid-column:2; grid-row:1; max-width:none; }
+  .dsh .dsh-head > div:has(> .dsh-head-title)::after { display:none !important; }
+  .dsh .dsh-head .dsh-head-actions { grid-column:1 / -1; grid-row:2; width:100%; gap:8px; justify-content:flex-end; }
+  .dsh .dsh-head .gs-trigger { flex:1 1 auto; width:auto; min-width:42px !important; }
+  .dsh .dsh-head .dsh-user-meta { display:none; }
+  .dsh .dsh-scroll { padding:14px 12px 24px; }
+  .dsh .ovx-heading { flex-direction:column; align-items:stretch; }
+  .dsh .ovx-export { align-self:flex-start; width:auto; }
+  .dsh .ovx-filterbar { grid-template-columns:1fr; }
+  .dsh .ovx .ovx-kpis { grid-template-columns:1fr !important; }
+  .dsh .ovx .ovx-kpis .ovx-kpi { min-height:154px !important; }
+  .dsh .ovx-implementation { grid-template-columns:1fr; justify-items:center; }
+  .dsh .ovx-status-list { width:100%; }
+  .dsh .ovx-attention-grid { grid-template-columns:1fr; }
+}
+@media print {
+  .dsh { display:block; }
+  .dsh .dsh-main { display:block; }
+  .dsh .dsh-scroll { display:block; padding:0; overflow:visible; }
+  .dsh .dsh-side,.dsh .dsh-head,.dsh .dsh-overlay { display:none !important; }
+  .dsh .ovx .ovx-kpis { grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
+}
