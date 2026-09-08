@@ -1,5 +1,5 @@
 /* Public header only: retain the existing MERL shell and branding. */
-.pbd-root .dsh-head .pbd-header-login{display:block;flex:0 1 490px;min-width:0;margin:0;color:var(--text-1)}
+.dsh.pbd-root .dsh-head .pbd-header-login{display:block;flex:0 1 490px;min-width:0;margin:0;color:var(--text-1)}
 .pbd-header-login-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:8px;min-width:0}
 .pbd-header-login label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:.7rem;font-weight:700;line-height:1.2;color:var(--text-2)}
 .pbd-header-login label span{white-space:nowrap}
@@ -12,15 +12,15 @@
 .pbd-header-login-error{margin-top:6px;padding:6px 9px;border:1px solid #f4b4b4;border-radius:var(--radius-control);background:#fff5f5;color:#991b1b;font-size:.72rem;line-height:1.4}
 .pbd-header-login :focus-visible{outline:3px solid var(--green-600);outline-offset:2px}
 @media(max-width:1050px){
-  .pbd-root{grid-template-rows:auto minmax(0,1fr)}
-  .pbd-root .dsh-head{flex-wrap:wrap;height:auto;min-height:88px;row-gap:10px;padding-top:12px;padding-bottom:12px;position:relative;top:auto}
-  .pbd-root .dsh-head .dsh-head-actions{flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin-left:0}
-  .pbd-root .dsh-head .pbd-header-login{flex:1 1 100%;width:100%;max-width:none;order:3}
+  .dsh.pbd-root{grid-template-rows:auto minmax(0,1fr)}
+  .dsh.pbd-root .dsh-head{flex-wrap:wrap;height:auto;min-height:88px;row-gap:10px;padding-top:12px;padding-bottom:12px;position:relative;top:auto}
+  .dsh.pbd-root .dsh-head .dsh-head-actions{flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin-left:0}
+  .dsh.pbd-root .dsh-head .pbd-header-login{flex:1 1 100%;width:100%;max-width:none;order:3}
   .pbd-header-login-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
-  .pbd-root .dsh-side{top:20px;height:calc(100dvh - 40px)}
+  .dsh.pbd-root .dsh-side{top:20px;height:calc(100dvh - 40px)}
 }
 @media(max-width:760px){
-  .pbd-root .dsh-side{top:0;height:100dvh}
+  .dsh.pbd-root .dsh-side{top:0;height:100dvh}
 }
 @media(max-width:520px){
   .pbd-header-login-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
