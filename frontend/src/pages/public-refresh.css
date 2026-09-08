@@ -1,0 +1,5 @@
+.pbd-refresh-status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-4px 0 14px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-1);color:var(--text-2);font-size:.75rem;line-height:1.5}
+.pbd-refresh-error{border-color:var(--border-strong)}
+.pbd-refresh-status button{border:0;background:transparent;color:var(--green-600);font:inherit;font-weight:700;cursor:pointer;padding:4px}
+.pbd-refresh-status button:hover{text-decoration:underline}
+@media(prefers-reduced-motion:reduce){.pbd-refresh-status{transition:none}}
