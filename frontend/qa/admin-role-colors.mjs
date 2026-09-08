@@ -61,6 +61,9 @@ try {
   const manager = table.locator('tbody[data-user-role="manager"]');
   await manager.locator('input[type="checkbox"]').check();
   assert.equal(await manager.locator('input[type="checkbox"]').isChecked(),true);
+  // The selected checkbox has focus, so the row correctly retains its focus tint.
+  // Move both focus and pointer outside the row before testing its resting colour.
+  await table.locator('.adt-search input').focus();
   await page.mouse.move(0,0);
   assert.equal(await manager.locator('td').first().evaluate(el=>getComputedStyle(el).backgroundColor),expected.manager);
   await manager.locator('summary').click();
