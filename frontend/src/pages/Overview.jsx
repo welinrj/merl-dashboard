@@ -14,7 +14,9 @@
 // =============================================================================
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ImplementationPerformanceChart from '../components/ImplementationPerformanceChart';
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { AlertTriangle, Printer, ArrowRight } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -253,13 +255,6 @@ export default function Overview() {
     color: STATUS_COLOR[key],
   }));
 
-  const indicatorStatusData = [
-    { key: 'on_track', name: t('overview.bucketOnTrack'), value: indicatorStatus.on_track },
-    { key: 'attention_required', name: t('overview.indicatorAttention', { defaultValue: 'Attention required' }), value: indicatorStatus.attention_required },
-    { key: 'off_track', name: t('overview.indicatorOffTrack', { defaultValue: 'Off track' }), value: indicatorStatus.off_track },
-    { key: 'no_data', name: t('overview.indicatorNoData', { defaultValue: 'No data' }), value: indicatorStatus.no_data },
-  ];
-
   const activitiesDone = activities.filter((a) => a.status === 'completed').length;
   const reportsApproved = reporting.filter((r) => r.submission_status === 'approved').length;
   const performanceRows = [
@@ -396,19 +391,17 @@ export default function Overview() {
         <article className="ovx-card">
           <CardHeading title={t('overview.implementation')} />
           <div className="ovx-implementation">
-            <ImplementationPerformanceChart
-              projects={statusData}
-              indicators={indicatorStatusData}
-              selectedProject={filters.status || null}
-              onProjectSelect={(key) => setFilter('status', key)}
-              projectLabel={t('overview.kpiProjects')}
-              indicatorLabel={t('overview.perfIndicators')}
-              outerLabel={t('overview.outerRing', { defaultValue: 'Outer ring' })}
-              innerLabel={t('overview.innerRing', { defaultValue: 'Inner ring · latest results' })}
-              noDataLabel={t('overview.indicatorNoRecords', { defaultValue: 'No indicator records' })}
-              clearLabel={t('overview.clearIndicatorFocus', { defaultValue: 'Show all indicator statuses' })}
-              selectHint={t('overview.chartSelectHint', { defaultValue: 'Select a segment or status to explore the results.' })}
-            />
+            <Donut data={statusData} total={total} onSlice={(slice) => setFilter('status', slice.key)} />
+            <div className="ovx-status-list">
+              {statusData.map((item) => (
+                <button key={item.key} type="button" className="ovx-status-row" onClick={() => setFilter('status', item.key)}>
+                  <span className="ovx-status-dot" style={{ background: item.color }} />
+                  <span className="ovx-status-name">{item.name}</span>
+                  <b>{fmtNum(item.value)}</b>
+                  <span>{pct(item.value, total)}%</span>
+                </button>
+              ))}
+            </div>
           </div>
           <CardLink onClick={() => nav('/analytics/portfolio')}>{t('overview.viewPerformance')}</CardLink>
         </article>
@@ -508,6 +501,38 @@ function CardLink({ onClick, children }) {
     <button type="button" className="ovx-card-link" onClick={onClick}>
       {children} <ArrowRight size={13} aria-hidden="true" />
     </button>
+  );
+}
+
+function Donut({ data, total, onSlice }) {
+  return (
+    <div className="ovx-donut-wrap">
+      {total === 0 ? (
+        <div className="ovx-empty">—</div>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={47}
+              outerRadius={68}
+              paddingAngle={2}
+              onClick={(entry) => onSlice?.(entry?.payload ?? entry)}
+              cursor="pointer"
+            >
+              {data.map((item) => <Cell key={item.key} fill={item.color} />)}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      )}
+      <div className="ovx-donut-center">
+        <b>{fmtNum(total)}</b>
+        <span>Total</span>
+      </div>
+    </div>
   );
 }
 

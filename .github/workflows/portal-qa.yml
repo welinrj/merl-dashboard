@@ -54,12 +54,6 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/kpi-alignment.mjs
 
-      - name: Validate implementation chart and cross-filters
-        working-directory: frontend
-        env:
-          STUB_FILE: qa/fixture.json
-        run: node qa/implementation-performance.mjs
-
       - name: Sweep visible controls
         working-directory: frontend
         env:
