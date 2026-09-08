@@ -6,6 +6,7 @@ import ChangePasswordModal from '../components/ui/ChangePasswordModal';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
+import AdminDataTable from '../components/ui/AdminDataTable';
 
 // The four official user types. `id` is the DB enum value (merl.user_role).
 // Data Entry / Project Officer was retired in migration 0041 — it is neither
@@ -223,74 +224,25 @@ function UsersTab() {
         </div>
       )}
 
-      {loading ? (
-        <div className="text-sm text-gray-400 py-6">{t('adm.loadingUsers')}</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
-                <th className="pb-2 pr-4">{t('adm.name')}</th>
-                <th className="pb-2 pr-4">{t('adm.email')}</th>
-                <th className="pb-2 pr-4">{t('adm.role')}</th>
-                <th className="pb-2 pr-4">{t('adm.organisation')}</th>
-                <th className="pb-2 pr-4">{t('adm.status')}</th>
-                <th className="pb-2 text-right">{t('adm.actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {users.map(u => {
-                const role = DB_ROLES.find(r => r.id === u.role);
-                return (
-                  <tr key={u.id} className="hover:bg-gray-50 align-middle">
-                    <td className="py-2.5 pr-4 font-medium text-gray-800">{u.full_name}</td>
-                    <td className="py-2.5 pr-4 text-gray-500">{u.email}</td>
-                    <td className="py-2.5 pr-4">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${role?.color || 'bg-gray-100 text-gray-600'}`}>
-                        {role ? t(role.label) : u.role}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-4 text-gray-500 text-xs">{u.organisation || '—'}</td>
-                    <td className="py-2.5 pr-4">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.active ? 'text-green-700' : 'text-gray-400'}`}>
-                        <span className={`w-2 h-2 rounded-full inline-block ${u.active ? 'bg-green-500' : 'bg-gray-300'}`} />
-                        {u.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-right whitespace-nowrap">
-                      <button onClick={() => setPasswordFor(u)} disabled={busy || !u.has_login}
-                        className="text-xs font-semibold text-green-700 hover:underline disabled:text-gray-300 disabled:no-underline mr-3">
-                        {t('pw.setPassword')}
-                      </button>
-                      <button onClick={() => resetPassword(u)} disabled={busy || !u.has_login}
-                        className="text-xs font-semibold text-gray-600 hover:underline disabled:text-gray-300 disabled:no-underline mr-3">
-                        {t('adm.resetPassword')}
-                      </button>
-                      <button onClick={() => toggleActive(u)} disabled={busy}
-                        className="text-xs font-semibold text-gray-600 hover:underline mr-3">
-                        {u.active ? 'Deactivate' : 'Activate'}
-                      </button>
-                      {u.role === 'project_manager' && (
-                        <button onClick={() => setAssignFor(u)} disabled={busy}
-                          className="text-xs font-semibold text-blue-600 hover:underline mr-3">
-                          {t('adm.assignProjects')}
-                        </button>
-                      )}
-                      <button onClick={() => removeUser(u)} disabled={busy}
-                        className="text-xs font-semibold text-red-600 hover:underline">
-                        {t('adm.deleteLbl')}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {users.length === 0 && (
-                <tr><td colSpan={6} className="py-6 text-sm text-gray-400">{t('adm.noUsers')}</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <AdminDataTable title={t('adm.users')} rows={users} loading={loading} selection
+        searchPlaceholder={t('adm.searchUsers') === 'adm.searchUsers' ? 'Search users…' : t('adm.searchUsers')}
+        empty={t('adm.noUsers')} onRefresh={load}
+        filters={[{key:'role',label:t('adm.role'),options:DB_ROLES.map(r=>({value:r.id,label:t(r.label)}))},{key:'active',label:t('adm.status'),value:u=>String(u.active),options:[{value:'true',label:'Active'},{value:'false',label:'Inactive'}]}]}
+        columns={[
+          {key:'full_name',label:t('adm.name'),required:true,render:u=><span className="font-semibold text-gray-800">{u.full_name}</span>},
+          {key:'email',label:t('adm.email'),render:u=><span className="text-gray-500">{u.email}</span>},
+          {key:'role',label:t('adm.role'),render:u=>{const role=DB_ROLES.find(r=>r.id===u.role);return <span className={`text-xs px-2 py-1 rounded font-semibold ${role?.color||'bg-gray-100 text-gray-600'}`}>{role?t(role.label):u.role}</span>;}},
+          {key:'organisation',label:t('adm.organisation')},
+          {key:'active',label:t('adm.status'),value:u=>u.active?1:0,render:u=><span className={`text-xs font-medium ${u.active?'text-green-700':'text-gray-500'}`}>● {u.active?'Active':'Inactive'}</span>},
+        ]}
+        rowActions={u=>[
+          {label:t('pw.setPassword'),disabled:busy||!u.has_login,onClick:()=>setPasswordFor(u)},
+          {label:t('adm.resetPassword'),disabled:busy||!u.has_login,onClick:()=>resetPassword(u)},
+          {label:u.active?'Deactivate':'Activate',disabled:busy,onClick:()=>toggleActive(u)},
+          ...(u.role==='project_manager'?[{label:t('adm.assignProjects'),disabled:busy,onClick:()=>setAssignFor(u)}]:[]),
+          {label:t('adm.deleteLbl'),danger:true,disabled:busy,onClick:()=>removeUser(u)},
+        ]}
+      />
 
       {cred && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCred(null)}>
@@ -605,69 +557,23 @@ function ProjectsTab() {
       )}
 
       {/* Projects table */}
-      <div className="overflow-x-auto">
-      <table className="w-full text-sm min-w-[640px]">
-        <thead>
-          <tr className="border-b border-gray-100 text-left text-xs text-gray-400 font-semibold uppercase">
-            <th className="pb-2 pr-4">{t('adm.projectName')}</th>
-            <th className="pb-2 pr-4">{t('adm.code')}</th>
-            <th className="pb-2 pr-4">{t('adm.category')}</th>
-            <th className="pb-2 pr-4">{t('adm.leadAgency')}</th>
-            <th className="pb-2 pr-4">{t('adm.budgetVuv')}</th>
-            <th className="pb-2 pr-4">{t('adm.provinces')}</th>
-            <th className="pb-2 pr-4">{t('adm.status')}</th>
-            <th className="pb-2 text-right">{t('adm.actions')}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {!loading && projects.length === 0 && (
-            <tr><td colSpan={8} className="py-6 text-center text-sm text-gray-400">{t('adm.noProjectsAdd')}</td></tr>
-          )}
-          {projects.map(p => (
-            <tr key={p.id} className="hover:bg-gray-50">
-              <td className="py-2.5 pr-4 font-medium text-gray-800">{p.name}</td>
-              <td className="py-2.5 pr-4 font-mono text-xs text-gray-500">{p.code}</td>
-              <td className="py-2.5 pr-4">
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full text-white font-semibold"
-                  style={{ background: catColor(p.category) }}
-                >
-                  {p.category}
-                </span>
-              </td>
-              <td className="py-2.5 pr-4 text-gray-500">{p.lead_agency || '—'}</td>
-              <td className="py-2.5 pr-4 text-gray-500">
-                {p.budget_vuv ? `${(p.budget_vuv / 1e6).toFixed(1)}M` : '—'}
-              </td>
-              <td className="py-2.5 pr-4 text-gray-400 text-xs">{p.provinces?.join(', ') || '—'}</td>
-              <td className="py-2.5 pr-4">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold capitalize ${
-                  p.status === 'active'    ? 'bg-green-100 text-green-700' :
-                  p.status === 'completed' ? 'bg-blue-100 text-blue-700'  :
-                                             'bg-red-100 text-red-700'
-                }`}>
-                  {p.status}
-                </span>
-              </td>
-              <td className="py-2.5 text-right whitespace-nowrap">
-                <button
-                  onClick={() => openEdit(p)}
-                  className="text-xs font-semibold text-green-700 hover:text-green-900 px-2 py-1 rounded hover:bg-green-50"
-                >
-                  {t('adm.edit')}
-                </button>
-                <button
-                  onClick={() => setConfirmDel(p)}
-                  className="text-xs font-semibold text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
-                >
-                  {t('adm.deleteLbl')}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      </div>
+      <AdminDataTable title={t('adm.projects')} rows={projects} loading={loading} selection
+        searchPlaceholder="Search projects…" empty={t('adm.noProjectsAdd')} onRefresh={load}
+        filters={[{key:'status',label:t('adm.status'),options:STATUS_OPTIONS.map(s=>({value:s,label:s.charAt(0).toUpperCase()+s.slice(1)}))},{key:'category',label:t('adm.category'),options:CATEGORIES.map(c=>({value:c.id,label:t(c.label)}))}]}
+        columns={[
+          {key:'name',label:t('adm.projectName'),required:true,render:p=><span className="font-semibold text-gray-800">{p.name}</span>},
+          {key:'code',label:t('adm.code'),render:p=><span className="font-mono text-xs">{p.code}</span>},
+          {key:'category',label:t('adm.category'),render:p=><span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">{p.category}</span>},
+          {key:'lead_agency',label:t('adm.leadAgency')},
+          {key:'budget_vuv',label:t('adm.budgetVuv'),value:p=>p.budget_vuv==null?null:Number(p.budget_vuv),align:'right',render:p=>p.budget_vuv==null?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(p.budget_vuv)},
+          {key:'provinces',label:t('adm.provinces')},
+          {key:'status',label:t('adm.status'),render:p=><span className={`text-xs px-2 py-1 rounded font-semibold ${p.status==='active'?'bg-green-100 text-green-700':p.status==='completed'?'bg-blue-100 text-blue-700':'bg-red-100 text-red-700'}`}>{p.status}</span>},
+        ]}
+        rowActions={p=>[
+          {label:t('adm.edit'),disabled:busy,onClick:()=>openEdit(p)},
+          {label:t('adm.deleteLbl'),danger:true,disabled:busy,onClick:()=>setConfirmDel(p)},
+        ]}
+      />
 
       {/* Delete confirmation */}
       {confirmDel && (
@@ -747,109 +653,25 @@ function AuditTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-base font-bold text-gray-800">{t('adm.auditLog')}</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={action}
-            onChange={e => { setPage(0); setAction(e.target.value); }}
-            className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white"
-          >
-            <option value="">{t('adm.allActions')}</option>
-            <option value="INSERT">{t('adm.insert')}</option>
-            <option value="UPDATE">{t('adm.update')}</option>
-            <option value="DELETE">{t('adm.deleteLbl')}</option>
-          </select>
-          <input
-            value={search}
-            onChange={e => { setPage(0); setSearch(e.target.value); }}
-            placeholder={t('adm.searchAudit')}
-            className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white min-w-[180px]"
-          />
-          <button onClick={load} className="text-sm text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100">
-            {t('adm.refresh')}
-          </button>
-        </div>
-      </div>
+      <h2 className="text-base font-bold text-gray-800">{t('adm.auditLog')}</h2>
 
       {err && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{err}</div>}
 
-      <div className="overflow-x-auto rounded-lg border border-gray-100">
-        <table className="w-full text-sm min-w-[720px]">
-          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-            <tr>
-              <th className="text-left font-semibold px-3 py-2">{t('adm.when')}</th>
-              <th className="text-left font-semibold px-3 py-2">{t('adm.user')}</th>
-              <th className="text-left font-semibold px-3 py-2">{t('adm.action')}</th>
-              <th className="text-left font-semibold px-3 py-2">{t('adm.table')}</th>
-              <th className="text-left font-semibold px-3 py-2">{t('adm.record')}</th>
-              <th className="px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">{t('adm.loading')}</td></tr>
-            )}
-            {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">{t('adm.noAuditEntries')}</td></tr>
-            )}
-            {!loading && rows.map(r => (
-              <Fragment key={r.id}>
-                <tr className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmt(r.changed_at)}</td>
-                  <td className="px-3 py-2 text-gray-800">{r.actor_name || <span className="text-gray-400">{t('adm.systemActor')}</span>}</td>
-                  <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ACTION_STYLE[r.action] || 'bg-gray-100 text-gray-600'}`}>{r.action}</span>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-600">{r.schema_name}.{r.table_name}</td>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-400">{r.record_id ? String(r.record_id).slice(0, 8) : '—'}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => setExpanded(expanded === r.id ? null : r.id)}
-                      className="text-xs text-green-700 font-semibold hover:underline"
-                    >
-                      {expanded === r.id ? 'Hide' : 'Details'}
-                    </button>
-                  </td>
-                </tr>
-                {expanded === r.id && (
-                  <tr className="bg-gray-50 border-t border-gray-100">
-                    <td colSpan={6} className="px-3 py-3">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <div className="text-xs font-semibold text-gray-400 uppercase mb-1">{t('adm.before')}</div>
-                          <pre className="text-xs bg-white border border-gray-100 rounded-lg p-2 overflow-x-auto max-h-56">{r.old_values ? JSON.stringify(r.old_values, null, 2) : '—'}</pre>
-                        </div>
-                        <div>
-                          <div className="text-xs font-semibold text-gray-400 uppercase mb-1">{t('adm.after')}</div>
-                          <pre className="text-xs bg-white border border-gray-100 rounded-lg p-2 overflow-x-auto max-h-56">{r.new_values ? JSON.stringify(r.new_values, null, 2) : '—'}</pre>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center justify-between text-sm text-gray-500">
-        <span>{total} event{total === 1 ? '' : 's'}</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40"
-          >{t('adm.previous')}</button>
-          <span>Page {page + 1} of {pages}</span>
-          <button
-            onClick={() => setPage(p => (p + 1 < pages ? p + 1 : p))}
-            disabled={page + 1 >= pages}
-            className="px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40"
-          >{t('adm.next')}</button>
-        </div>
-      </div>
+      <AdminDataTable title={t('adm.auditLog')} rows={rows} loading={loading}
+        searchPlaceholder={t('adm.searchAudit')} empty={t('adm.noAuditEntries')} onRefresh={load}
+        pagination={{page,pageSize:PAGE_SIZE,total,onPageChange:setPage,search,onSearchChange:value=>{setPage(0);setSearch(value);}}}
+        filters={[{key:'action',label:t('adm.action'),selected:action,onChange:value=>{setPage(0);setAction(value);},options:[{value:'INSERT',label:t('adm.insert')},{value:'UPDATE',label:t('adm.update')},{value:'DELETE',label:t('adm.deleteLbl')}]}]}
+        columns={[
+          {key:'changed_at',label:t('adm.when'),sortable:false,render:r=>fmt(r.changed_at)},
+          {key:'actor_name',label:t('adm.user'),sortable:false,render:r=>r.actor_name||t('adm.systemActor')},
+          {key:'action',label:t('adm.action'),sortable:false,render:r=><span className={`px-2 py-1 rounded text-xs font-semibold ${ACTION_STYLE[r.action]||'bg-gray-100 text-gray-600'}`}>{r.action}</span>},
+          {key:'table_name',label:t('adm.table'),sortable:false,value:r=>`${r.schema_name}.${r.table_name}`,render:r=><span className="font-mono text-xs">{r.schema_name}.{r.table_name}</span>},
+          {key:'record_id',label:t('adm.record'),sortable:false,render:r=><span className="font-mono text-xs">{r.record_id?String(r.record_id).slice(0,8):'—'}</span>},
+        ]}
+        rowActions={r=>[{label:expanded===r.id?'Hide':'Details',onClick:()=>setExpanded(expanded===r.id?null:r.id)}]}
+        isExpanded={r=>expanded===r.id}
+        expandedRow={r=><div className="grid gap-3 sm:grid-cols-2 p-2"><div><div className="text-xs font-semibold text-gray-500 mb-1">{t('adm.before')}</div><pre className="text-xs bg-gray-50 border rounded-lg p-2 overflow-x-auto max-h-56">{r.old_values?JSON.stringify(r.old_values,null,2):'—'}</pre></div><div><div className="text-xs font-semibold text-gray-500 mb-1">{t('adm.after')}</div><pre className="text-xs bg-gray-50 border rounded-lg p-2 overflow-x-auto max-h-56">{r.new_values?JSON.stringify(r.new_values,null,2):'—'}</pre></div></div>}
+      />
     </div>
   );
 }
