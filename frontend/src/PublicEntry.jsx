@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import App from './App';
 import PublicDashboard from './pages/PublicDashboard';
 import './login-home-link.css';
+import './pages/public-refresh.css';
 
 const PUBLIC_PATHS = new Set(['/', '/public']);
 const INTERNAL_PREFIXES = ['/login', '/dashboards', '/analytics', '/project-setup', '/merl-reporting', '/reports', '/review', '/admin'];
