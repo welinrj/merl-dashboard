@@ -24,6 +24,8 @@ import './login-crest.css';
 import './public-typography.css';
 // Replace the duplicate application-header title with the existing MERL emblem.
 import './header-logo.css';
+// Scoped coastal detailing for the authenticated sidebar only.
+import './sidebar-design.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
