@@ -1,12 +1,29 @@
-/* MERL workspace header — keep branding and controls in separate layout zones.
-   The page title remains in the DOM for assistive technology. The existing
-   search, language, notifications, account and navigation are unchanged. */
+/* MERL workspace branding. The sidebar is the sole in-app logo location.
+   Preserve the existing document title, navigation, controls and coastline. */
+
+/* Replace the old sidebar crest visually with the existing MERL emblem.
+   The visible product name supplies the accessible brand text. */
+.dsh-brand > img { display: none !important; }
+.dsh-brand::before {
+  content: '';
+  display: block;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255,255,255,.9);
+  border-radius: 50%;
+  background: #fff url('/merl-favicon.png') center / contain no-repeat;
+}
+
+/* Leave the main header free of duplicated branding. */
 .dsh-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  column-gap: 20px;
-  min-height: 82px;
+  justify-content: flex-end;
+  gap: 12px;
+  min-height: 72px;
   margin: 0;
   padding: 10px 20px 18px;
   position: sticky;
@@ -18,8 +35,6 @@
   box-shadow: none;
   overflow: visible;
 }
-/* The coastline is decorative only. Do not place an island or birds behind
-   the search or other controls; the bottom wave keeps its native proportions. */
 .dsh-head::before {
   content: '';
   position: absolute;
@@ -29,69 +44,38 @@
   z-index: -1;
   background: url('/header-waves.svg') left bottom / auto 16px repeat-x;
 }
+/* Keep the real page title available to assistive technology. */
 .dsh-head > div:has(> .dsh-head-title) {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-  max-width: 340px;
-  margin: 0;
-  padding: 0;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
 }
 .dsh-head .dsh-head-title {
-  display: flex !important;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
+  display: block !important;
   width: auto;
-  height: 42px;
-  min-height: 42px;
+  height: auto;
+  min-height: 0;
   margin: 0;
-  overflow: hidden;
-  font-size: 0 !important;
-  line-height: 0 !important;
-  color: transparent;
-  white-space: nowrap;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: inherit;
 }
-.dsh-head .dsh-head-title::before {
-  content: '';
-  display: block;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  background: url('/merl-favicon.png') center / contain no-repeat;
-}
-.dsh-head .dsh-head-title::after {
-  content: 'MERL';
-  display: block;
-  flex: 0 0 auto;
-  color: #30264b;
-  font-family: var(--font-display, 'DM Sans', sans-serif);
-  font-size: 1.6rem;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -.025em;
-}
+.dsh-head .dsh-head-title::before,
+.dsh-head .dsh-head-title::after,
+.dsh-head > div:has(> .dsh-head-title)::after { content: none !important; display: none !important; }
 .dsh-head .dsh-head-sub { display: none !important; }
-.dsh-head > div:has(> .dsh-head-title)::after {
-  content: 'MONITORING · EVALUATION · REPORTING · LEARNING';
-  display: block;
-  margin: 0 0 0 52px;
-  color: #697584;
-  font-family: var(--font-ui, 'DM Sans', sans-serif);
-  font-size: .625rem;
-  font-weight: 600;
-  letter-spacing: .02em;
-  line-height: 1.4;
-  white-space: nowrap;
-}
 .dsh-head .dsh-head-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
   min-width: 0;
-  margin-left: 0;
+  margin-left: auto;
   position: relative;
   z-index: 1;
 }
@@ -105,40 +89,33 @@
 .dsh-head .dsh-lang { flex-shrink: 0; }
 .dsh-head .dsh-hamburger { position: relative; }
 
-/* Shrink the optional copy before the actions run out of room. */
 @media (max-width: 1180px) {
-  .dsh-head { column-gap: 12px; padding-inline: 14px; }
-  .dsh-head > div:has(> .dsh-head-title)::after { display: none; }
-  .dsh-head > div:has(> .dsh-head-title) { max-width: 150px; }
+  .dsh-head { gap: 12px; padding-inline: 14px; }
   .dsh-head .gs-trigger { width: 200px; }
   .dsh-head .dsh-head-actions { gap: 8px; }
 }
 @media (max-width: 980px) {
   .dsh-head { min-height: 70px; padding: 9px 12px 17px; }
-  .dsh-head .dsh-head-title { height: 40px; min-height: 40px; gap: 8px; }
-  .dsh-head .dsh-head-title::before { width: 40px; height: 40px; flex-basis: 40px; }
-  .dsh-head .dsh-head-title::after { font-size: 1.3rem; }
   .dsh-head .gs-trigger { width: 42px; min-width: 42px !important; justify-content: center; padding: 0; }
   .dsh-head .gs-trigger-lbl, .dsh-head .gs-trigger .gs-kbd { display: none; }
 }
-/* The sidebar is a drawer below 760px. The menu gets its own grid column. */
 @media (max-width: 760px) {
-  .dsh-head { grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; }
-  .dsh-head .dsh-hamburger { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; grid-column: 1; }
-  .dsh-head > div:has(> .dsh-head-title) { grid-column: 2; }
-  .dsh-head .dsh-head-actions { grid-column: 3; }
+  .dsh-head { justify-content: space-between; gap: 10px; }
+  .dsh-head .dsh-hamburger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+  }
+  .dsh-head .dsh-head-actions { margin-left: auto; }
 }
-/* Give every control a real space rather than squeezing or hiding actions. */
 @media (max-width: 640px) {
-  .dsh-head { grid-template-columns: 40px minmax(0, 1fr); row-gap: 8px; padding: 8px 12px 16px; }
-  .dsh-head .dsh-hamburger { grid-column: 1; grid-row: 1; }
-  .dsh-head > div:has(> .dsh-head-title) { grid-column: 2; grid-row: 1; }
-  .dsh-head .dsh-head-actions { grid-column: 1 / -1; grid-row: 2; width: 100%; gap: 8px; justify-content: flex-end; }
+  .dsh-head { flex-wrap: wrap; row-gap: 8px; padding: 8px 12px 16px; }
+  .dsh-head .dsh-head-actions { flex: 1 0 100%; width: 100%; gap: 8px; justify-content: flex-end; }
   .dsh-head .gs-trigger { flex: 1 1 auto; width: auto; min-width: 42px !important; }
 }
 @media (max-width: 400px) {
-  .dsh-head .dsh-head-title { height: 34px; min-height: 34px; gap: 7px; }
-  .dsh-head .dsh-head-title::before { width: 34px; height: 34px; flex-basis: 34px; }
-  .dsh-head .dsh-head-title::after { font-size: 1.1rem; }
   .dsh-head .gs-trigger { flex: 0 0 42px; width: 42px; }
 }
