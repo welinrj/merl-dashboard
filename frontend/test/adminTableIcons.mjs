@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { AdminTableIcon, AdminSortIcon } from '../src/components/ui/AdminTableIcons.jsx';
 import { tableModel } from '../src/components/ui/adminTableModel.js';
 
