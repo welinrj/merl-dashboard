@@ -50,8 +50,8 @@ try {
     await cell.hover();
     const hovered = await cell.evaluate(el => getComputedStyle(el).backgroundColor);
     assert.notEqual(hovered,background,`${tone} hover remains visible`);
+    await page.mouse.move(0,0);
   }
-  await page.mouse.move(0,0);
   await table.locator('.adt-filter select').first().selectOption('project_manager');
   assert.equal(await table.locator('.adt-row-group').count(),1);
   assert.equal(await table.locator('tbody[data-user-role="manager"]').count(),1);
@@ -61,6 +61,7 @@ try {
   const manager = table.locator('tbody[data-user-role="manager"]');
   await manager.locator('input[type="checkbox"]').check();
   assert.equal(await manager.locator('input[type="checkbox"]').isChecked(),true);
+  await page.mouse.move(0,0);
   assert.equal(await manager.locator('td').first().evaluate(el=>getComputedStyle(el).backgroundColor),expected.manager);
   await manager.locator('summary').click();
   assert.ok(await manager.locator('.adt-row-menu-list button').count()>0,'row actions remain available');
