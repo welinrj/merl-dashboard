@@ -79,7 +79,7 @@ root.render(
               iconTheme: { primary: '#ef4444', secondary: '#f8fafc' },
               duration: 6000,
             },
-          },
+          }}
         />
       </HashRouter>
     </QueryClientProvider>
