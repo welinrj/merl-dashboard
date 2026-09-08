@@ -30,6 +30,8 @@ import './sidebar-design.css';
 import './workspace-blue.css';
 // Approved coastal footer, kept below the scrollable sidebar navigation.
 import './sidebar-coastal.css';
+// KPI, chart-card and progress treatments adapted only from 21st.dev patterns.
+import './twentyfirst-dashboard.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
