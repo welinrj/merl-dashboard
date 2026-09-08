@@ -1,19 +1,25 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import App from './App';
 import PublicDashboard from './pages/PublicDashboard';
 import './login-home-link.css';
 
-const INTERNAL_PREFIXES = ['/login','/dashboards','/analytics','/project-setup','/merl-reporting','/reports','/review','/admin'];
+const PUBLIC_PATHS = new Set(['/', '/public']);
+const INTERNAL_PREFIXES = ['/login', '/dashboards', '/analytics', '/project-setup', '/merl-reporting', '/reports', '/review', '/admin'];
 
 export default function PublicEntry() {
   const { pathname } = useLocation();
   const { i18n } = useTranslation();
-  const internal = INTERNAL_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
-  if (!internal) return <PublicDashboard />;
 
-  // All internal routes retain the existing Supabase session, profile and role gates.
-  // The public dashboard never receives an internal user or elevated data access.
+  // The bare site URL (with or without a query string) is always public,
+  // even if an officer already has an authenticated session on this device.
+  if (PUBLIC_PATHS.has(pathname)) return <PublicDashboard />;
+
+  const internal = INTERNAL_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  if (!internal) return <Navigate to="/" replace />;
+
+  // Internal routes retain the existing Supabase session, profile and role gates.
+  // Never render the authenticated workspace as a public-route fallback.
   return <>
     <App />
     {pathname === '/login' && <Link className="lg2-home-link" to="/">
