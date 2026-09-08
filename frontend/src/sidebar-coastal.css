@@ -1,0 +1,40 @@
+/* Approved coastal footer for the authenticated MERL workspace.
+   The illustration is decorative; no navigation, data or permissions change.
+   Loaded after workspace-blue.css so it replaces the old line-only watermark. */
+.dsh .dsh-side {
+  --sidebar-coast-height: min(170px, 24dvh);
+}
+
+.dsh .dsh-side::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  display: block;
+  width: 100%;
+  height: var(--sidebar-coast-height);
+  z-index: 0;
+  pointer-events: none;
+  opacity: .78;
+  background: url('./sidebar-coastal.svg') center bottom / contain no-repeat;
+}
+
+/* Reserve a real, non-interactive footer area. The existing navigation remains
+   independently scrollable above it, even on short landscape tablets. */
+.dsh .dsh-side::after {
+  content: '';
+  position: relative;
+  display: block;
+  flex: 0 0 var(--sidebar-coast-height);
+  min-height: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@media (max-height: 540px) {
+  .dsh .dsh-side { --sidebar-coast-height: min(88px, 20dvh); }
+}
+
+@media print {
+  .dsh .dsh-side::before,
+  .dsh .dsh-side::after { display: none !important; }
+}

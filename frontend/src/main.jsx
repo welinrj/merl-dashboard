@@ -28,6 +28,8 @@ import './header-logo.css';
 import './sidebar-design.css';
 // Approved blue workspace: full-width header, inset sidebar and responsive cards.
 import './workspace-blue.css';
+// Approved coastal footer, kept below the scrollable sidebar navigation.
+import './sidebar-coastal.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
