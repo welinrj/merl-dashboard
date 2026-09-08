@@ -1,16 +1,21 @@
 /* MERL workspace branding. The sidebar is the sole in-app logo location.
    Preserve the existing document title, navigation, controls and coastline. */
 
-/* Replace the old sidebar crest visually with the existing MERL emblem.
-   The visible product name supplies the accessible brand text. */
+/* Give the approved emblem a larger, proportion-preserving space while
+   retaining room for the existing product name in the 224px sidebar. */
+.dsh-brand {
+  grid-template-columns: 56px minmax(0, 1fr);
+  column-gap: 8px;
+  padding-inline: 12px;
+}
 .dsh-brand > img { display: none !important; }
 .dsh-brand::before {
   content: '';
   display: block;
   grid-column: 1;
   grid-row: 1 / span 2;
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   box-sizing: border-box;
   border: 2px solid rgba(255,255,255,.9);
   border-radius: 50%;
