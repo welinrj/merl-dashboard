@@ -1,10 +1,14 @@
 /* Shared institutional branding for public and authenticated headers. */
 .merl-partner-logos{display:flex;align-items:center;justify-content:flex-start;gap:16px;min-width:0;flex:0 1 auto}
 .merl-partner-logos img{display:block;max-width:100%;height:auto;max-height:44px;object-fit:contain;flex-shrink:1}
+.merl-partner-crest{width:44px;height:44px;flex:0 0 44px!important}
 .merl-partner-docc{width:180px}
 .merl-partner-mfat{width:145px}
 .dsh-head:has(> .merl-partner-logos){gap:16px}
 .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos{position:relative;z-index:1}
+/* The public header already has a decorative crest beside MERL. Keep the
+   product name but show only the shared institutional crest, not two copies. */
+.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-head-brand > img{display:none}
 @media(max-width:1180px){
   .merl-partner-logos{gap:10px}
   .merl-partner-docc{width:155px}
@@ -21,11 +25,13 @@
   .pbd-root .dsh-head:has(> .merl-partner-logos) > .pbd-head-brand{grid-column:2;grid-row:1;min-width:0}
   .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos{grid-column:1/-1;grid-row:2;justify-content:center;width:100%;margin:0}
   .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions{grid-column:1/-1;grid-row:3;width:100%;margin:0;min-width:0;justify-content:flex-end}
+  .merl-partner-crest{width:40px;height:40px;flex-basis:40px!important}
   .merl-partner-docc{width:160px}
   .merl-partner-mfat{width:128px}
 }
 @media(max-width:360px){
   .merl-partner-logos{gap:8px}
+  .merl-partner-crest{width:36px;height:36px;flex-basis:36px!important}
   .merl-partner-docc{width:145px}
   .merl-partner-mfat{width:115px}
 }
