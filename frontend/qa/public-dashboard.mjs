@@ -85,9 +85,13 @@ await page.getByRole('button',{name:'Reset',exact:true}).click();
 check('manual refresh remains available',await page.getByRole('button',{name:'Refresh',exact:true}).count()===1);
 check('anonymous reads use only approved snapshot tables',reads.every(x=>x in fixtures));
 check('no browser exception',errors.length===0);
+check('header contains one credentials form',await page.locator('.pbd-root .dsh-head form.pbd-header-login').count()===1);
+check('public page has no duplicate sign-in links',await page.locator('.pbd-root a[href="#/login"]').count()===0);
 
-await page.getByRole('link',{name:'Sign in to MERL'}).first().click();
-check('sign-in opens existing protected login',new URL(page.url()).hash.startsWith('#/login'));
+// The protected login route remains available for old bookmarks and deep links.
+await page.goto('http://localhost:5199/#/login',{waitUntil:'domcontentloaded'});
+await page.locator('.lg2-root').waitFor({timeout:15000});
+check('existing protected login remains available',new URL(page.url()).hash==='#/login');
 await page.getByRole('link',{name:'Back to public dashboard'}).click();
 await page.locator('.pbd-root .pbd-kpis').waitFor({timeout:15000});
 check('back to public uses the shared route',new URL(page.url()).hash==='#/dashboards');
