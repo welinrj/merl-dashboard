@@ -12,7 +12,7 @@ export default function HeaderPartnerLogos() {
   // the existing sticky sidebar below the actual header, not a guessed height.
   useLayoutEffect(() => {
     const header = groupRef.current?.closest('.dsh-head');
-    const shell = header?.closest('.dsh');
+    const shell = header?.closest<HTMLElement>('.dsh');
     if (!header || !shell) return;
 
     const update = () => {
