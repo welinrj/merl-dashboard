@@ -48,6 +48,12 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate executive KPI alignment and score gauges
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/kpi-alignment.mjs
+
       - name: Sweep visible controls
         working-directory: frontend
         env:
@@ -71,12 +77,6 @@ jobs:
         env:
           STUB_FILE: qa/fixture.json
         run: node qa/data-and-ux.mjs
-
-      - name: Validate executive KPI alignment and score gauges
-        working-directory: frontend
-        env:
-          STUB_FILE: qa/fixture.json
-        run: node qa/kpi-alignment.mjs
 
       - name: Show preview log on failure
         if: failure()

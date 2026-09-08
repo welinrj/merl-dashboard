@@ -26,8 +26,9 @@ function ScoreGauge({ value, displayValue }) {
 }
 
 const OVERVIEW_METRIC_STYLES = `
-  /* Match the supplied score-card hierarchy: title, large visual with its
-     number inside, supporting context and a bottom-aligned destination. */
+  /* The legacy blue workspace assigns a two-column named grid to every KPI.
+     Reset that grid completely: merely changing its columns/rows leaves the
+     old named areas in force and places the new score-card children wrongly. */
   .dsh .ovx .ovx-kpis{
     display:grid!important;
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
@@ -42,8 +43,11 @@ const OVERVIEW_METRIC_STYLES = `
   .dsh .ovx .ovx-kpis .ovx-kpi{
     display:grid!important;
     grid-template-columns:minmax(0,1fr)!important;
+    grid-template-areas:none!important;
     grid-template-rows:minmax(36px,auto) minmax(150px,1fr) auto auto!important;
+    grid-auto-flow:row!important;
     align-content:stretch!important;
+    align-items:stretch!important;
     gap:.65rem!important;
     min-height:310px!important;
     padding:1.15rem!important;
@@ -60,7 +64,15 @@ const OVERVIEW_METRIC_STYLES = `
     border-color:#bfd0ea!important;
     box-shadow:0 12px 32px rgba(28,67,133,.11)!important;
   }
-  .dsh .ovx .ovx-kpis .kpi-card-head{min-width:0;align-self:start;text-align:left;}
+  /* Explicit placement also overrides the old metric/sub/link grid-area rules. */
+  .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-head{
+    grid-area:auto!important;
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0;
+    align-self:start;
+    text-align:left;
+  }
   .dsh .ovx .ovx-kpis .kpi-card-label{
     color:#172d57!important;
     font-size:.85rem!important;
@@ -69,7 +81,10 @@ const OVERVIEW_METRIC_STYLES = `
     letter-spacing:0!important;
     text-transform:none!important;
   }
-  .dsh .ovx .ovx-kpis .kpi-card-visual{
+  .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-visual{
+    grid-area:auto!important;
+    grid-column:1!important;
+    grid-row:2!important;
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
@@ -91,7 +106,10 @@ const OVERVIEW_METRIC_STYLES = `
     white-space:nowrap;
     text-align:center!important;
   }
-  .dsh .ovx .ovx-kpis .kpi-card-sub{
+  .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-sub{
+    grid-area:auto!important;
+    grid-column:1!important;
+    grid-row:3!important;
     min-width:0;
     min-height:2.8em;
     color:#728096!important;
@@ -100,16 +118,19 @@ const OVERVIEW_METRIC_STYLES = `
     text-align:center;
   }
   .dsh .ovx .ovx-kpis .kpi-card-progress{display:none!important;}
-  .dsh .ovx .ovx-kpis .kpi-card-link{
+  .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-link{
+    grid-area:auto!important;
+    grid-column:1!important;
+    grid-row:4!important;
     margin:0!important;
     align-self:end!important;
+    justify-self:center!important;
     color:#205fc8!important;
     font-size:.72rem!important;
     font-weight:700!important;
     line-height:1.35!important;
     opacity:1!important;
     text-align:center;
-    justify-self:center;
   }
   .dsh .ovx .ovx-kpis button.ovx-kpi:hover .kpi-card-link{
     text-decoration:underline!important;
