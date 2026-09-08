@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
+import { normalizePublishedProjects, normalizeProvince } from './publicProvinces';
 
 export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 
@@ -14,7 +15,11 @@ export async function fetchPublicSnapshot({ signal } = {}) {
   ]);
   const failed = [summary, projects, areas].find(result => result.error);
   if (failed) throw failed.error;
-  return { summary: summary.data, projects: projects.data || [], areas: areas.data || [] };
+  return {
+    summary: summary.data,
+    projects: normalizePublishedProjects(projects.data || []),
+    areas: (areas.data || []).map(area => ({...area, province: normalizeProvince(area.province)})),
+  };
 }
 
 export function usePublicSnapshot() {
