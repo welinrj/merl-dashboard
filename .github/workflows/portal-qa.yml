@@ -78,6 +78,10 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/data-and-ux.mjs
 
+      - name: Validate anonymous public dashboard
+        working-directory: frontend
+        run: node qa/public-dashboard.mjs
+
       - name: Show preview log on failure
         if: failure()
         run: cat /tmp/merl-preview.log || true
