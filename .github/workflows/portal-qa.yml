@@ -48,6 +48,10 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate administration role row colours
+        working-directory: frontend
+        run: node qa/admin-role-colors.mjs
+
       - name: Validate executive KPI alignment and score gauges
         working-directory: frontend
         env:
