@@ -26,6 +26,8 @@ import './public-typography.css';
 import './header-logo.css';
 // Scoped coastal detailing for the authenticated sidebar only.
 import './sidebar-design.css';
+// Approved blue workspace: full-width header, inset sidebar and responsive cards.
+import './workspace-blue.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
