@@ -1,0 +1,11 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+const path = 'frontend/src/components/ui/AdminDataTable.jsx';
+let source = readFileSync(path, 'utf8');
+const start = source.indexOf('const display =');
+const end = source.indexOf('export default function AdminDataTable', start);
+if (start < 0 || end < 0) throw new Error('Administration table model markers not found');
+const model = source.slice(start,end).replace('const display =','export const display =').replace('const valueOf =','export const valueOf =');
+writeFileSync('frontend/src/components/ui/adminTableModel.js',model);
+source = source.slice(0,start) + "import { display, valueOf, tableModel } from './adminTableModel';\n\n" + source.slice(end);
+writeFileSync(path,source);
+console.log('Extracted pure table model for regression tests.');
