@@ -1,7 +1,5 @@
-// Executive KPI primitive adapted from the 21st.dev metric/score-card patterns.
-// Live MERL values are still supplied by Overview.jsx; this component only
-// changes presentation. Percentage KPIs use the supplied 21st.dev half-circle
-// score concept without introducing synthetic data.
+// Executive KPI primitive adapted from the user-supplied 21st.dev score-card concept.
+// The caller owns every metric, label and destination. This component never generates data.
 import { cn } from '@/lib/utils';
 
 function clampPct(value) {
@@ -20,35 +18,21 @@ function strengthFor(value) {
 
 function ScoreGauge({ value }) {
   const pct = clampPct(value);
-  const radius = 44;
-  const circumference = 2 * Math.PI * radius;
-  const half = circumference / 2;
-  const dashOffset = -(pct / 100) * half;
-  const tone = pct >= 80 ? 'strong' : pct >= 40 ? 'moderate' : 'weak';
-
+  const tone = value == null ? 'none' : pct >= 80 ? 'strong' : pct >= 40 ? 'moderate' : 'weak';
   return (
     <div className={`k21-gauge tone-${tone}`} aria-hidden="true">
-      <svg viewBox="0 0 100 54" role="presentation">
-        <g fill="none" strokeWidth="9" transform="translate(50 49)">
-          <circle className="k21-gauge-track" r={radius} strokeDasharray={`${half} ${half}`} />
-          <circle
-            className="k21-gauge-value"
-            r={radius}
-            strokeDasharray={`${half} ${half}`}
-            strokeDashoffset={dashOffset}
-          />
-        </g>
+      <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid meet" role="presentation">
+        <path className="k21-gauge-track" d="M 10 78 A 70 70 0 0 1 150 78" pathLength="100" />
+        <path className="k21-gauge-value" d="M 10 78 A 70 70 0 0 1 150 78" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - pct} />
       </svg>
-      <div className="k21-gauge-copy">
-        <b>{value == null ? '—' : `${Math.round(pct)}%`}</b>
-        <span>{strengthFor(value)}</span>
-      </div>
+      <span className="k21-gauge-label">{strengthFor(value)}</span>
     </div>
   );
 }
 
 const OVERVIEW_METRIC_STYLES = `
-  /* 21st.dev-inspired MERL KPI row ----------------------------------------- */
+  /* One shared reading rhythm: label, value, context, visual and destination.
+     The percentage value is no longer pushed below the other three metrics. */
   .dsh .ovx .ovx-kpis{
     display:grid!important;
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
@@ -61,10 +45,12 @@ const OVERVIEW_METRIC_STYLES = `
     box-shadow:none!important;
   }
   .dsh .ovx .ovx-kpis .ovx-kpi{
-    min-height:218px!important;
-    display:flex!important;
-    flex-direction:column!important;
-    gap:.65rem!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:40px 44px minmax(38px,auto) minmax(50px,1fr) auto!important;
+    align-content:stretch!important;
+    gap:.45rem!important;
+    min-height:250px!important;
     padding:1.05rem 1.1rem!important;
     border:1px solid #dfe7f2!important;
     border-radius:18px!important;
@@ -90,72 +76,74 @@ const OVERVIEW_METRIC_STYLES = `
     border-color:#bfd0ea!important;
     box-shadow:0 12px 32px rgba(28,67,133,.11)!important;
   }
+  .dsh .ovx .ovx-kpis .kpi-card-head{min-width:0;align-self:start;}
   .dsh .ovx .ovx-kpis .kpi-card-label{
     color:#66758a!important;
     font-size:.72rem!important;
     font-weight:700!important;
+    line-height:1.35!important;
     letter-spacing:.02em!important;
     text-transform:none!important;
   }
   .dsh .ovx .ovx-kpis .kpi-card-value{
-    margin-top:.28rem!important;
+    display:flex!important;
+    align-items:center!important;
+    min-width:0;
+    margin:0!important;
     color:#172d57!important;
-    font-size:clamp(2rem,2.6vw,2.5rem)!important;
+    font-size:clamp(1.85rem,2.5vw,2.5rem)!important;
     font-weight:780!important;
+    font-variant-numeric:tabular-nums!important;
     letter-spacing:-.04em!important;
-    line-height:1!important;
+    line-height:1.1!important;
+    white-space:nowrap;
   }
   .dsh .ovx .ovx-kpis .kpi-card-sub{
+    min-width:0;
     color:#728096!important;
     font-size:.76rem!important;
     line-height:1.45!important;
   }
+  .dsh .ovx .ovx-kpis .kpi-card-visual{
+    display:flex;
+    align-items:flex-end;
+    min-width:0;
+    min-height:50px;
+  }
   .dsh .ovx .ovx-kpis .kpi-card-progress{display:none!important;}
   .dsh .ovx .ovx-kpis .kpi-card-link{
-    margin-top:auto!important;
+    margin:0!important;
+    align-self:end!important;
     color:#205fc8!important;
     font-size:.72rem!important;
     font-weight:700!important;
+    line-height:1.35!important;
     opacity:1!important;
   }
   .dsh .ovx .ovx-kpis button.ovx-kpi:hover .kpi-card-link{
     text-decoration:underline!important;
     text-underline-offset:3px!important;
   }
-  .k21-gauge{
-    position:relative;
-    width:min(190px,92%);
-    height:94px;
-    margin:.1rem auto 0;
-  }
-  .k21-gauge svg{display:block;width:100%;height:100%;overflow:visible;}
-  .k21-gauge-track{stroke:#e8eef7;transform:rotate(180deg);transform-origin:center;}
-  .k21-gauge-value{
-    stroke:#205fc8;
-    transform:rotate(180deg);
-    transform-origin:center;
-    stroke-linecap:round;
-    transition:stroke-dashoffset .8s cubic-bezier(.33,1,.68,1);
-  }
+  .k21-gauge{width:min(160px,100%);height:64px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;}
+  .k21-gauge svg{display:block;width:100%;height:48px;overflow:visible;}
+  .k21-gauge-track,.k21-gauge-value{fill:none;stroke-width:9;stroke-linecap:round;}
+  .k21-gauge-track{stroke:#e8eef7;}
+  .k21-gauge-value{stroke:#205fc8;transition:stroke-dashoffset .8s cubic-bezier(.33,1,.68,1);}
   .k21-gauge.tone-strong .k21-gauge-value{stroke:#22a565;}
   .k21-gauge.tone-moderate .k21-gauge-value{stroke:#e0a12a;}
   .k21-gauge.tone-weak .k21-gauge-value{stroke:#dc5d52;}
-  .k21-gauge-copy{
-    position:absolute;
-    inset:auto 0 2px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    text-align:center;
-  }
-  .k21-gauge-copy b{color:#172d57;font:780 1.45rem/1 var(--font-display);letter-spacing:-.03em;}
-  .k21-gauge-copy span{margin-top:.22rem;color:#7b8799;font-size:.61rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+  .k21-gauge.tone-none .k21-gauge-value{stroke:#a8b4c5;}
+  .k21-gauge-label{color:#7b8799;font-size:.61rem;font-weight:700;line-height:1.2;text-transform:uppercase;letter-spacing:.06em;}
   @media(max-width:1100px){
     .dsh .ovx .ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
   }
   @media(max-width:560px){
     .dsh .ovx .ovx-kpis{grid-template-columns:1fr!important;}
-    .dsh .ovx .ovx-kpis .ovx-kpi{min-height:190px!important;}
+    .dsh .ovx .ovx-kpis .ovx-kpi{min-height:238px!important;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .k21-gauge-value{transition:none;}
+    .dsh .ovx .ovx-kpis button.ovx-kpi:hover{transform:none;}
   }
 `;
 
@@ -180,22 +168,22 @@ export default function KpiCard({
           className,
         )}
       >
-        <div className="min-w-0">
+        <div className="kpi-card-head min-w-0">
           <div className="kpi-card-label text-[0.72rem] font-semibold leading-tight text-[var(--text-2)]">{label}</div>
-          {!showGauge && (
-            <div
-              className="kpi-card-value mt-1.5 truncate text-[clamp(1.45rem,2vw,1.85rem)] font-extrabold leading-none tracking-tight text-[var(--navy-900)]"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {value}
-            </div>
-          )}
         </div>
-
-        {showGauge && <ScoreGauge value={progress} />}
-        {sub && <div className="kpi-card-sub text-xs leading-snug text-[var(--text-3)]">{sub}</div>}
-        {children}
-
+        <div
+          className="kpi-card-value text-[clamp(1.45rem,2vw,1.85rem)] font-extrabold leading-none tracking-tight text-[var(--navy-900)]"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {value}
+        </div>
+        <div className="kpi-card-sub text-xs leading-snug text-[var(--text-3)]">
+          {sub}
+          {children}
+        </div>
+        <div className="kpi-card-visual">
+          {showGauge && <ScoreGauge value={progress} />}
+        </div>
         {progress != null && (
           <div className="kpi-card-progress h-1.5 overflow-hidden rounded-[3px] bg-[var(--surface-2)]">
             <div
@@ -204,8 +192,7 @@ export default function KpiCard({
             />
           </div>
         )}
-
-        {linkLabel && <span className="kpi-card-link mt-auto self-start text-xs font-semibold text-[var(--green-700)]">{linkLabel}</span>}
+        {linkLabel && <span className="kpi-card-link text-xs font-semibold text-[var(--green-700)]">{linkLabel}</span>}
       </Tag>
     </>
   );
