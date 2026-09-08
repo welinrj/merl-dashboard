@@ -1,0 +1,24 @@
+/* Public header only: retain the existing MERL shell and branding. */
+.pbd-root .dsh-head .pbd-header-login{display:block;flex:0 1 490px;min-width:0;margin:0;color:var(--text-1)}
+.pbd-header-login-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:8px;min-width:0}
+.pbd-header-login label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:.7rem;font-weight:700;line-height:1.2;color:var(--text-2)}
+.pbd-header-login label span{white-space:nowrap}
+.pbd-header-login input{box-sizing:border-box;width:100%;min-width:0;height:38px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-control);background:#fff;color:var(--text-1);font:inherit;font-size:.8rem;font-weight:500;outline:none}
+.pbd-header-login input:focus{border-color:var(--green-600);box-shadow:0 0 0 3px rgba(34,100,190,.12)}
+.pbd-header-login input:disabled{opacity:.65}
+.pbd-header-login button{height:38px;min-width:76px;padding:0 12px;border:0;border-radius:var(--radius-control);background:var(--green-600);color:#fff;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.pbd-header-login button:hover:not(:disabled){background:var(--green-700)}
+.pbd-header-login button:disabled{opacity:.65;cursor:wait}
+.pbd-header-login-error{margin-top:6px;padding:6px 9px;border:1px solid #f4b4b4;border-radius:var(--radius-control);background:#fff5f5;color:#991b1b;font-size:.72rem;line-height:1.4}
+.pbd-header-login :focus-visible{outline:3px solid var(--green-600);outline-offset:2px}
+@media(max-width:1050px){
+  .pbd-root .dsh-head{flex-wrap:wrap;height:auto;min-height:var(--header-height,76px);row-gap:10px;padding-top:12px;padding-bottom:12px}
+  .pbd-root .dsh-head .pbd-header-login{flex:1 1 100%;width:100%;max-width:none;order:3}
+  .pbd-header-login-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
+}
+@media(max-width:520px){
+  .pbd-header-login-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .pbd-header-login-fields button{grid-column:1/-1;width:100%;min-height:40px}
+  .pbd-header-login input{font-size:16px}
+}
+@media(max-width:350px){.pbd-header-login-fields{grid-template-columns:1fr}.pbd-header-login-fields button{grid-column:1}}
