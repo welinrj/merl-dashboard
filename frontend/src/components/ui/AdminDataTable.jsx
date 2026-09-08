@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './admin-data-table.css';
 import { AdminTableIcon, AdminSortIcon } from './AdminTableIcons';
 import { display, valueOf, tableModel } from './adminTableModel';
+import { userRoleTone } from './adminUserRoleTone';
 
 export default function AdminDataTable({
   title, columns, rows = [], loading = false, empty = 'No records found.',
@@ -34,7 +35,10 @@ export default function AdminDataTable({
   const renderRow = row => {
     const id = getRowId(row);
     const options = rowActions?.(row) || [];
-    return <tbody key={id} className="adt-row-group">
+    // Only the four official user-role values receive a tone. Other tables,
+    // unknown roles and retired roles retain their existing neutral styling.
+    const roleTone = userRoleTone(row.role);
+    return <tbody key={id} className={`adt-row-group${roleTone ? ' adt-role-row' : ''}`} data-user-role={roleTone || undefined}>
       <tr>
         {selection && <td className="adt-check"><input type="checkbox" aria-label={`Select ${display(row.full_name || row.name || row.code || id)}`} checked={selected.has(id)} onChange={e => toggleSelection(id,e.target.checked)}/></td>}
         {visible.map(column => <td key={column.key} className={column.align === 'right' ? 'adt-right' : ''}>{column.render ? column.render(row) : display(valueOf(column,row)) || '—'}</td>)}
