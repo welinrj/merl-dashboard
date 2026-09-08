@@ -12,9 +12,15 @@
 .pbd-header-login-error{margin-top:6px;padding:6px 9px;border:1px solid #f4b4b4;border-radius:var(--radius-control);background:#fff5f5;color:#991b1b;font-size:.72rem;line-height:1.4}
 .pbd-header-login :focus-visible{outline:3px solid var(--green-600);outline-offset:2px}
 @media(max-width:1050px){
-  .pbd-root .dsh-head{flex-wrap:wrap;height:auto;min-height:var(--header-height,76px);row-gap:10px;padding-top:12px;padding-bottom:12px}
+  .pbd-root{grid-template-rows:auto minmax(0,1fr)}
+  .pbd-root .dsh-head{flex-wrap:wrap;height:auto;min-height:88px;row-gap:10px;padding-top:12px;padding-bottom:12px;position:relative;top:auto}
+  .pbd-root .dsh-head .dsh-head-actions{flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin-left:0}
   .pbd-root .dsh-head .pbd-header-login{flex:1 1 100%;width:100%;max-width:none;order:3}
   .pbd-header-login-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
+  .pbd-root .dsh-side{top:20px;height:calc(100dvh - 40px)}
+}
+@media(max-width:760px){
+  .pbd-root .dsh-side{top:0;height:100dvh}
 }
 @media(max-width:520px){
   .pbd-header-login-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
