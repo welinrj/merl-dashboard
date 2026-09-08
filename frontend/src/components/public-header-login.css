@@ -11,20 +11,28 @@
 .pbd-header-login button:disabled{opacity:.65;cursor:wait}
 .pbd-header-login-error{margin-top:6px;padding:6px 9px;border:1px solid #f4b4b4;border-radius:var(--radius-control);background:#fff5f5;color:#991b1b;font-size:.72rem;line-height:1.4}
 .pbd-header-login :focus-visible{outline:3px solid var(--green-600);outline-offset:2px}
+/* The public header grows with its contents instead of placing the login over the navigation. */
 @media(max-width:1050px){
   .dsh.pbd-root{grid-template-rows:auto minmax(0,1fr)}
-  .dsh.pbd-root .dsh-head{flex-wrap:wrap;height:auto;min-height:88px;row-gap:10px;padding-top:12px;padding-bottom:12px;position:relative;top:auto}
-  .dsh.pbd-root .dsh-head .dsh-head-actions{flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin-left:0}
+  .dsh.pbd-root .dsh-head{display:flex;flex-wrap:wrap;height:auto;min-height:88px;row-gap:10px;padding:12px 16px;position:relative;top:auto;overflow:visible}
+  .dsh.pbd-root .dsh-head .dsh-head-actions{display:flex;flex:1 1 100%;width:100%;min-width:0;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin-left:0;position:relative}
   .dsh.pbd-root .dsh-head .pbd-header-login{flex:1 1 100%;width:100%;max-width:none;order:3}
   .pbd-header-login-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
   .dsh.pbd-root .dsh-side{top:20px;height:calc(100dvh - 40px)}
 }
+/* Explicit grid placement prevents the email/password row from covering the menu. */
 @media(max-width:760px){
+  .dsh.pbd-root{grid-template-rows:auto minmax(0,1fr)}
+  .dsh.pbd-root .dsh-head{display:grid;grid-template-columns:40px minmax(0,1fr);grid-template-rows:auto auto;align-items:center;gap:10px;height:auto;min-height:0;padding:12px;position:relative;top:auto;z-index:70}
+  .dsh.pbd-root .dsh-head .dsh-hamburger{display:inline-flex;grid-column:1;grid-row:1;position:relative;z-index:2;width:40px;height:40px;min-width:40px;min-height:40px;margin:0}
+  .dsh.pbd-root .dsh-head .pbd-head-brand{grid-column:2;grid-row:1;min-width:0;margin:0}
+  .dsh.pbd-root .dsh-head .dsh-head-actions{grid-column:1/-1;grid-row:2;display:flex;align-items:center;justify-content:flex-end;width:100%;min-width:0;margin:0;gap:10px;position:relative;z-index:1}
+  .dsh.pbd-root .dsh-head .pbd-header-login{flex:1 1 100%;width:100%;min-width:0;margin:0;order:3}
   .dsh.pbd-root .dsh-side{top:0;height:100dvh}
 }
 @media(max-width:520px){
   .pbd-header-login-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-  .pbd-header-login-fields button{grid-column:1/-1;width:100%;min-height:40px}
-  .pbd-header-login input{font-size:16px}
+  .pbd-header-login-fields button{grid-column:1/-1;width:100%;min-height:44px}
+  .pbd-header-login input{font-size:16px;min-height:44px}
 }
 @media(max-width:350px){.pbd-header-login-fields{grid-template-columns:1fr}.pbd-header-login-fields button{grid-column:1}}
