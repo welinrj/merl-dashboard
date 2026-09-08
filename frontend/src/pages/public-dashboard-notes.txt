@@ -1,0 +1,7 @@
+Public dashboard workspace implementation
+
+The public React dashboard and responsive styling are implemented on this feature branch. It reads the existing public_portal_* snapshot tables only and does not expose internal MERL data or edit controls.
+
+The current public snapshot schema supports project counts, coverage, approved project progress, beneficiaries, investment and project details. Community and ecosystem totals and downloadable public reports require approved publication data before they can be displayed. Do not substitute sample figures from design mockups.
+
+Before release, run the frontend build and typecheck, verify all public navigation and filters, check desktop and mobile layouts, and confirm anonymous database access is restricted to approved public snapshots. The authenticated application must remain unchanged.
