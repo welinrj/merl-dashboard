@@ -1,0 +1,94 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { LayoutDashboard, FolderKanban, Target, MapPin, Menu, ArrowRight } from '../components/ui/icons';
+import KpiCard from '../components/ui/KpiCard';
+import PublicCoverageMap from '../components/PublicCoverageMap';
+import { supabase } from '../supabaseClient';
+import './public-dashboard.css';
+
+const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
+const PROVINCES = ['Torba', 'Sanma', 'Penama', 'Malampa', 'Shefa', 'Tafea'];
+const COPY = {
+  en: { title:'Public Dashboard', subtitle:'Published climate action results · Department of Climate Change', overview:'Public Overview', projects:'Projects', results:'Results', map:'Geographic Coverage', login:'Sign in to MERL', search:'Search published projects…', status:'Status', theme:'Theme', province:'Province', all:'All', reset:'Reset', refresh:'Refresh', progress:'Overall Progress', investment:'Published Investment', beneficiaries:'Beneficiaries', countSub:'Published projects', progressSub:'Latest approved portfolio result', investmentSub:'Approved project investment', beneficiariesSub:'Published direct beneficiaries', viewResults:'View published results', viewProjects:'View projects', viewBudgets:'View project budgets', byProvince:'Projects by Province', projectStatus:'Project Status', coverage:'Project Locations and Coverage', themes:'Thematic Areas', updates:'Recent Published Results', viewAll:'View all', latest:'Latest published period', noData:'Not yet published', noProjects:'No published projects match these filters.', noResults:'No approved results have been published yet.', error:'Public results are temporarily unavailable.', loading:'Loading published results…', retry:'Retry', back:'Back to projects', details:'Published project details', outcome:'Expected outcome', budget:'Published budget', noBreakdown:'A breakdown is not available for this selection.', publicOnly:'Approved public information only', disclosure:'Only approved public information is displayed. Drafts, internal risks, reviews, approvals and management records remain in the authorised MERL portal.', source:'Figures come from the approved public reporting snapshot. Projects may cover more than one province.', updated:'Public data last refreshed', unknown:'Not specified', ongoing:'Ongoing', completed:'Completed', upcoming:'Upcoming', other:'Other', total:'Total projects', provinces:'Provinces covered', language:'Language', menu:'Open menu', close:'Close menu', investmentNote:'Investment is not expenditure or budget utilisation.' },
+  fr: { title:'Tableau de bord public', subtitle:'Résultats climatiques publiés · Département du changement climatique', overview:'Vue publique', projects:'Projets', results:'Résultats', map:'Couverture géographique', login:'Connexion MERL', search:'Rechercher des projets publiés…', status:'État', theme:'Thème', province:'Province', all:'Tous', reset:'Réinitialiser', refresh:'Actualiser', progress:'Progrès global', investment:'Investissement publié', beneficiaries:'Bénéficiaires', countSub:'Projets publiés', progressSub:'Dernier résultat approuvé du portefeuille', investmentSub:'Investissement approuvé des projets', beneficiariesSub:'Bénéficiaires directs publiés', viewResults:'Voir les résultats publiés', viewProjects:'Voir les projets', viewBudgets:'Voir les budgets des projets', byProvince:'Projets par province', projectStatus:'État des projets', coverage:'Localisation et couverture des projets', themes:'Domaines thématiques', updates:'Résultats récemment publiés', viewAll:'Voir tout', latest:'Dernière période publiée', noData:'Pas encore publié', noProjects:'Aucun projet publié ne correspond à ces filtres.', noResults:'Aucun résultat approuvé publié pour le moment.', error:'Les résultats publics sont temporairement indisponibles.', loading:'Chargement des résultats publiés…', retry:'Réessayer', back:'Retour aux projets', details:'Détails du projet publié', outcome:'Résultat attendu', budget:'Budget publié', noBreakdown:'Aucune ventilation disponible pour cette sélection.', publicOnly:'Informations publiques approuvées uniquement', disclosure:'Seules les informations publiques approuvées sont affichées. Les brouillons, risques internes, examens, validations et dossiers de gestion restent dans le portail MERL autorisé.', source:'Les chiffres proviennent des données publiques approuvées. Un projet peut couvrir plusieurs provinces.', updated:'Dernière actualisation des données publiques', unknown:'Non précisé', ongoing:'En cours', completed:'Achevé', upcoming:'À venir', other:'Autre', total:'Nombre de projets', provinces:'Provinces couvertes', language:'Langue', menu:'Ouvrir le menu', close:'Fermer le menu', investmentNote:'L’investissement ne représente pas les dépenses ni le taux d’utilisation du budget.' }
+};
+const num = (v, lang = 'en') => v == null || !Number.isFinite(Number(v)) ? '—' : new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits:0 }).format(Number(v));
+const pct = v => v == null || !Number.isFinite(Number(v)) ? '—' : `${Math.round(Number(v))}%`;
+const vuv = (v, lang) => v == null ? '—' : `VT ${num(v, lang)}`;
+const list = v => Array.isArray(v) ? v : [];
+const themeOf = p => p.primary_climate_theme || '';
+const statusOf = p => ['ongoing','completed','upcoming'].includes(p.lifecycle_status) ? p.lifecycle_status : 'other';
+const initialFilters = { search:'', status:'', theme:'', province:'' };
+const matches = (p, f) => (!f.search || [p.name,p.code,p.acronym,p.description,p.expected_primary_outcome,themeOf(p),...list(p.provinces)].join(' ').toLowerCase().includes(f.search.trim().toLowerCase())) && (!f.status || statusOf(p) === f.status) && (!f.theme || themeOf(p) === f.theme) && (!f.province || list(p.provinces).includes(f.province));
+function Panel({ title, action, children }) { return <section className="pbd-panel"><div className="pbd-panel-head"><h2>{title}</h2>{action}</div>{children}</section>; }
+function Action({ children, onClick }) { return <button type="button" className="pbd-action" onClick={onClick}>{children}<ArrowRight size={14} aria-hidden="true"/></button>; }
+function Empty({ children }) { return <div className="pbd-empty">{children}</div>; }
+function Bar({ value, max }) { return <div className="pbd-bar" aria-hidden="true"><span style={{width:`${max ? Math.min(100,Math.max(0,value/max*100)) : 0}%`}}/></div>; }
+
+export default function PublicDashboard() {
+  const { i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage?.startsWith('fr') ? 'fr' : 'en';
+  const c = COPY[lang];
+  const [data,setData] = useState(null);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState(false);
+  const [reload,setReload] = useState(0);
+  const [filters,setFilters] = useState(initialFilters);
+  const [tab,setTab] = useState('overview');
+  const [selected,setSelected] = useState(null);
+  const [menuOpen,setMenuOpen] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setLoading(true); setError(false);
+    (async () => {
+      try {
+        // The existing publication boundary is the only data source. Never read internal v_* views here.
+        const [s,p,a] = await Promise.all([
+          supabase.from('public_portal_summary').select('*').single(),
+          supabase.from('public_portal_projects').select('*').order('name'),
+          supabase.from('public_portal_area_councils').select('*').order('project_count',{ascending:false}),
+        ]);
+        const failed = [s,p,a].find(r => r.error);
+        if (failed) throw failed.error;
+        if (alive) setData({summary:s.data,projects:p.data||[],areas:a.data||[]});
+      } catch (_) { if (alive) setError(true); }
+      finally { if (alive) setLoading(false); }
+    })();
+    return () => { alive = false; };
+  },[reload]);
+  const projects = data?.projects || [];
+  const summary = data?.summary;
+  const filtered = useMemo(() => projects.filter(p => matches(p,filters)),[projects,filters]);
+  const themes = useMemo(() => [...new Set(projects.map(themeOf).filter(Boolean))].sort(),[projects]);
+  const statuses = ['ongoing','completed','upcoming','other'];
+  const statusCounts = statuses.map(key => ({key,value:filtered.filter(p=>statusOf(p)===key).length}));
+  const provinceCounts = PROVINCES.map(name => ({name,value:filtered.filter(p=>list(p.provinces).includes(name)).length}));
+  const themeCounts = [...new Set(filtered.map(themeOf).filter(Boolean))].map(name=>({name,value:filtered.filter(p=>themeOf(p)===name).length})).sort((a,b)=>b.value-a.value);
+  const allScope = !filters.search && !filters.status && !filters.theme && !filters.province;
+  const selectedNames = new Set(filtered.map(p=>p.name));
+  const areas = (data?.areas||[]).map(a=>{const names=list(a.project_names).filter(name=>selectedNames.has(name));return {...a,project_names:names,project_count:allScope?a.project_count:names.length};});
+  const published = [...filtered].filter(p=>p.progress_pct!=null).sort((a,b)=>String(b.last_published_period||'').localeCompare(String(a.last_published_period||'')));
+  const fullProgress = allScope ? summary?.overall_progress_pct : null;
+  const investment = allScope ? summary?.total_investment_vuv : filtered.reduce((sum,p)=>sum+(Number(p.budget_vuv)||0),0);
+  const beneficiaries = allScope ? summary?.published_beneficiaries : null;
+  const go = next => {setTab(next);setSelected(null);setMenuOpen(false);};
+  const openProject = p => {go('projects');setSelected(p);};
+  const nav = [['overview',c.overview,LayoutDashboard],['projects',c.projects,FolderKanban],['results',c.results,Target],['map',c.map,MapPin]];
+  const projectRows = filtered.length ? filtered.map(p=><button type="button" key={p.id} className="pbd-project-row" onClick={()=>openProject(p)}><span><strong>{p.name}</strong><small>{p.code||p.acronym||list(p.provinces).join(', ')||c.unknown}</small></span><span className="pbd-row-progress"><Bar value={p.progress_pct||0} max={100}/><small>{pct(p.progress_pct)}</small></span><ArrowRight size={16} aria-hidden="true"/></button>) : <Empty>{c.noProjects}</Empty>;
+  const provinceRows = <div className="pbd-bars">{provinceCounts.map(row=><button type="button" key={row.name} className="pbd-bar-row" onClick={()=>{setFilters(f=>({...f,province:row.name}));go('projects');}}><span>{row.name}</span><Bar value={row.value} max={filtered.length}/><strong>{num(row.value,lang)}</strong></button>)}</div>;
+  const themeRows = <div className="pbd-bars">{themeCounts.length?themeCounts.map(row=><button type="button" key={row.name} className="pbd-bar-row" onClick={()=>{setFilters(f=>({...f,theme:row.name}));go('projects');}}><span>{row.name}</span><Bar value={row.value} max={filtered.length}/><strong>{num(row.value,lang)}</strong></button>):<Empty>{c.noProjects}</Empty>}</div>;
+  return <div className="dsh pbd-root">
+    {menuOpen&&<button type="button" className="pbd-overlay" aria-label={c.close} onClick={()=>setMenuOpen(false)}/>}
+    <aside className={`dsh-side${menuOpen?' open':''}`}><div className="dsh-brand"><img src={CREST} alt=""/><div className="dsh-brand-dept">Department of Climate Change</div><div className="dsh-brand-title">MERL</div></div><nav className="dsh-nav" aria-label={c.overview}>{nav.map(([key,label,Icon])=><button type="button" key={key} className={tab===key?'active':''} onClick={()=>go(key)}><Icon size={16} aria-hidden="true"/>{label}</button>)}</nav><div className="pbd-sidebar-access"><span>{c.publicOnly}</span><Link to="/login">{c.login}<ArrowRight size={15}/></Link></div></aside>
+    <div className="dsh-main"><header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={()=>setMenuOpen(v=>!v)}><Menu size={18}/></button><div className="pbd-head-brand"><img src={CREST} alt=""/><div><strong>MERL</strong><small>DEPARTMENT OF CLIMATE CHANGE (DOCC)</small></div></div><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang==='en'} onClick={()=>void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang==='fr'} onClick={()=>void i18n.changeLanguage('fr')}>FR</button></div><Link className="pbd-signin" to="/login">{c.login}</Link></div></header>
+    <main className="dsh-scroll scrollbar-thin"><div className="ovx pbd-view"><div className="pbd-title-row"><div><h1>{tab==='overview'?c.title:tab==='projects'?c.projects:tab==='results'?c.results:c.map}</h1><p>{c.subtitle}{summary?.updated_at&&<> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang==='fr'?'fr-FR':'en-GB')}</>}</p></div><Link className="pbd-access" to="/login">{c.login}<ArrowRight size={15}/></Link></div>
+    <div className="pbd-filters"><label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={e=>setFilters(f=>({...f,search:e.target.value}))} placeholder={c.search}/></label><label><span>{c.status}</span><select value={filters.status} onChange={e=>setFilters(f=>({...f,status:e.target.value}))}><option value="">{c.all}</option>{statuses.map(key=><option key={key} value={key}>{c[key]}</option>)}</select></label><label><span>{c.theme}</span><select value={filters.theme} onChange={e=>setFilters(f=>({...f,theme:e.target.value}))}><option value="">{c.all}</option>{themes.map(t=><option key={t} value={t}>{t}</option>)}</select></label><label><span>{c.province}</span><select value={filters.province} onChange={e=>setFilters(f=>({...f,province:e.target.value}))}><option value="">{c.all}</option>{PROVINCES.map(p=><option key={p}>{p}</option>)}</select></label><button type="button" className="pbd-reset" disabled={allScope} onClick={()=>setFilters(initialFilters)}>{c.reset}</button><button type="button" className="pbd-refresh" disabled={loading} onClick={()=>setReload(n=>n+1)}>{c.refresh}</button></div>
+    {error?<div className="pbd-state" role="alert">{c.error}<button type="button" onClick={()=>setReload(n=>n+1)}>{c.retry}</button></div>:loading?<div className="pbd-state" role="status">{c.loading}</div>:<>
+      {tab==='overview'&&<><div className="ovx-kpis pbd-kpis"><KpiCard className="ovx-kpi ovx-kpi-progress" label={c.progress} value={pct(fullProgress)} progress={fullProgress==null?0:fullProgress} sub={allScope?c.progressSub:c.noBreakdown} linkLabel={c.viewResults} onClick={()=>go('results')}/><KpiCard className="ovx-kpi" label={c.projects} value={num(filtered.length,lang)} sub={c.countSub} linkLabel={c.viewProjects} onClick={()=>go('projects')}/><KpiCard className="ovx-kpi" label={c.investment} value={vuv(investment,lang)} sub={c.investmentSub} linkLabel={c.viewBudgets} onClick={()=>go('projects')}/><KpiCard className="ovx-kpi" label={c.beneficiaries} value={num(beneficiaries,lang)} sub={allScope?c.beneficiariesSub:c.noBreakdown} linkLabel={c.viewResults} onClick={()=>go('results')}/></div><div className="pbd-grid"><div className="pbd-column"><Panel title={c.byProvince} action={<Action onClick={()=>go('projects')}>{c.viewAll}</Action>}>{provinceRows}<div className="pbd-summary"><span><strong>{num(filtered.length,lang)}</strong>{c.total}</span><span><strong>{provinceCounts.filter(p=>p.value>0).length} / 6</strong>{c.provinces}</span></div></Panel><Panel title={c.projectStatus}><div className="pbd-status-list">{statusCounts.map(row=><button type="button" key={row.key} onClick={()=>{setFilters(f=>({...f,status:row.key}));go('projects');}}><span>{c[row.key]}</span><strong>{num(row.value,lang)}</strong></button>)}</div></Panel></div><div className="pbd-column"><Panel title={c.coverage} action={<Action onClick={()=>go('map')}>{c.map}</Action>}><PublicCoverageMap areas={areas}/></Panel><Panel title={c.themes} action={<Action onClick={()=>go('results')}>{c.viewAll}</Action>}>{themeRows}</Panel></div><div className="pbd-column"><Panel title={c.updates} action={<Action onClick={()=>go('results')}>{c.viewAll}</Action>}>{published.length?published.slice(0,5).map(p=><button type="button" className="pbd-update" key={p.id} onClick={()=>openProject(p)}><strong>{p.name}</strong><span>{pct(p.progress_pct)} {c.progress.toLowerCase()}</span><small>{p.last_published_period||''}</small></button>):<Empty>{c.noResults}</Empty>}</Panel><Panel title={c.publicOnly}><p className="pbd-disclosure">{c.disclosure}</p><Link className="pbd-signin pbd-signin-panel" to="/login">{c.login}<ArrowRight size={15}/></Link></Panel></div></div></>}
+      {tab==='projects'&&<Panel title={selected?c.details:c.projects} action={selected?<Action onClick={()=>setSelected(null)}>{c.back}</Action>:<span>{num(filtered.length,lang)} {c.projects.toLowerCase()}</span>}>{selected?<div className="pbd-detail"><h2>{selected.name}</h2><p>{selected.description||selected.expected_primary_outcome||c.noData}</p><div className="pbd-detail-grid"><div><span>{c.status}</span><strong>{c[statusOf(selected)]}</strong></div><div><span>{c.progress}</span><strong>{pct(selected.progress_pct)}</strong></div><div><span>{c.budget}</span><strong>{vuv(selected.budget_vuv,lang)}</strong></div><div><span>{c.province}</span><strong>{list(selected.provinces).join(', ')||c.unknown}</strong></div><div><span>{c.theme}</span><strong>{themeOf(selected)||c.unknown}</strong></div><div><span>{c.latest}</span><strong>{selected.last_published_period||c.noData}</strong></div></div><h3>{c.outcome}</h3><p>{selected.expected_primary_outcome||c.noData}</p></div>:<div className="pbd-project-list">{projectRows}</div>}</Panel>}
+      {tab==='results'&&<div className="pbd-results"><Panel title={c.results}><div className="pbd-results-summary"><div><strong>{pct(fullProgress)}</strong><span>{c.progress}</span></div><div><strong>{num(beneficiaries,lang)}</strong><span>{c.beneficiaries}</span></div></div><p className="pbd-disclosure">{c.noBreakdown} {c.investmentNote}</p></Panel><Panel title={c.themes}>{themeRows}</Panel><Panel title={c.updates}>{published.length?published.map(p=><button type="button" className="pbd-update" key={p.id} onClick={()=>openProject(p)}><strong>{p.name}</strong><span>{pct(p.progress_pct)} {c.progress.toLowerCase()}</span><small>{p.last_published_period||''}</small></button>):<Empty>{c.noResults}</Empty>}</Panel></div>}
+      {tab==='map'&&<div className="pbd-map-page"><Panel title={c.coverage}><PublicCoverageMap areas={areas}/></Panel><Panel title={c.byProvince}>{provinceRows}</Panel></div>}
+      <footer className="pbd-footer"><span>{c.source}</span><span>{c.disclosure}</span></footer>
+    </>}</div></main></div></div>;
+}
