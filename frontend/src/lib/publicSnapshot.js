@@ -4,11 +4,13 @@ import { supabase } from '../supabaseClient';
 export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 
 // Never read internal v_* views or use an elevated credential from this module.
-export async function fetchPublicSnapshot() {
+// A cancelled request must not overwrite a newer approved snapshot. All three
+// reads must succeed before React Query replaces the previously displayed data.
+export async function fetchPublicSnapshot({ signal } = {}) {
   const [summary, projects, areas] = await Promise.all([
-    supabase.from('public_portal_summary').select('*').single(),
-    supabase.from('public_portal_projects').select('*').order('name'),
-    supabase.from('public_portal_area_councils').select('*').order('project_count', { ascending: false }),
+    supabase.from('public_portal_summary').select('*').abortSignal(signal).single(),
+    supabase.from('public_portal_projects').select('*').order('name').abortSignal(signal),
+    supabase.from('public_portal_area_councils').select('*').order('project_count', { ascending: false }).abortSignal(signal),
   ]);
   const failed = [summary, projects, areas].find(result => result.error);
   if (failed) throw failed.error;
@@ -18,7 +20,7 @@ export async function fetchPublicSnapshot() {
 export function usePublicSnapshot() {
   return useQuery({
     queryKey: PUBLIC_SNAPSHOT_KEY,
-    queryFn: fetchPublicSnapshot,
+    queryFn: ({ signal }) => fetchPublicSnapshot({ signal }),
     staleTime: 0,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,

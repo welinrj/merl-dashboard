@@ -38,7 +38,17 @@ await page.clock.install({time:new Date('2026-09-08T08:00:00Z')});
 const go = async path => {await page.goto(`http://localhost:5199/${path}`,{waitUntil:'domcontentloaded'});await page.locator('.pbd-root .pbd-kpis').waitFor({timeout:15000});};
 const kpis = page.locator('.pbd-kpis');
 const has = async value => await kpis.getByText(value,{exact:true}).count()>=1;
+const waitForKpis = async values => {
+  try {
+    await page.waitForFunction(expected => expected.every(value => [...document.querySelectorAll('.pbd-kpis .kpi-card-value')].some(node => node.textContent?.trim() === value)),values,{timeout:15000});
+    return true;
+  } catch {
+    console.log('KPI reconciliation diagnostic:', await kpis.locator('.kpi-card-value').allTextContents());
+    return false;
+  }
+};
 
+try {
 await go('');
 check('bare URL resolves to the shared dashboard',new URL(page.url()).hash==='#/dashboards');
 check('anonymous visitor sees public dashboard',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
@@ -51,7 +61,6 @@ check('requested tracked URL opens the same public dashboard',await page.getByRo
 await go('#/public');
 check('old public bookmark resolves to the shared entry',new URL(page.url()).hash==='#/dashboards');
 await go('#/dashboards');
-
 await page.locator('.pbd-filters select').nth(2).selectOption('Sanma');
 check('province filter reduces the portfolio',await has('1'));
 check('filtered progress uses published project results',await has('40%'));
@@ -76,19 +85,16 @@ fixtures.public_portal_summary[0] = {...fixtures.public_portal_summary[0],overal
 fixtures.public_portal_projects[0] = {...fixtures.public_portal_projects[0],progress_pct:60,published_beneficiaries:80};
 const beforeRefresh = reads.filter(x=>x==='public_portal_summary').length;
 await page.clock.fastForward(61_000);
-await page.waitForFunction(() => document.querySelector('.pbd-kpis')?.textContent?.includes('150'),null,{timeout:15000});
+check('approved results update together without page reload',await waitForKpis(['80%','150']));
 check('automatic refresh reads the approved snapshot again',reads.filter(x=>x==='public_portal_summary').length>beforeRefresh);
-check('approved results update without page reload',await has('80%') && await has('150'));
 await page.locator('.pbd-filters select').nth(2).selectOption('Sanma');
-check('refreshed filtered values reconcile',await has('60%') && await has('80'));
+check('refreshed filtered values reconcile',await waitForKpis(['60%','80']));
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 check('manual refresh remains available',await page.getByRole('button',{name:'Refresh',exact:true}).count()===1);
 check('anonymous reads use only approved snapshot tables',reads.every(x=>x in fixtures));
 check('no browser exception',errors.length===0);
 check('header contains one credentials form',await page.locator('.pbd-root .dsh-head form.pbd-header-login').count()===1);
 check('public page has no duplicate sign-in links',await page.locator('.pbd-root a[href="#/login"]').count()===0);
-
-// The protected login route remains available for old bookmarks and deep links.
 await page.goto('http://localhost:5199/#/login',{waitUntil:'domcontentloaded'});
 await page.locator('.lg2-root').waitFor({timeout:15000});
 check('existing protected login remains available',new URL(page.url()).hash==='#/login');
@@ -99,13 +105,19 @@ await page.goto('http://localhost:5199/#/project-setup',{waitUntil:'domcontentlo
 await page.locator('.lg2-root').waitFor({timeout:15000});
 check('anonymous private route requires login',await page.locator('.lg2-root').count()===1);
 check('anonymous private route does not render workspace',await page.locator('.dsh-main .ovx-kpis').count()===0);
-await page.setViewportSize({width:390,height:844});
-await go('#/dashboards');
-check('mobile has no page-wide horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
-await page.getByRole('button',{name:'Open menu'}).click();
-check('mobile menu opens',await page.locator('.pbd-root .dsh-side.open').count()===1);
-await page.getByRole('button',{name:'Close menu'}).click();
-check('mobile menu closes',await page.locator('.pbd-root .dsh-side.open').count()===0);
-await browser.close();
+for(const width of [1024,768,390,360,320]) {
+  await page.setViewportSize({width,height:844});
+  await go('#/dashboards');
+  check(`${width}px: no page-wide horizontal overflow`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
+  if(width<=760) {
+    const menu=page.getByRole('button',{name:'Open menu'});
+    check(`${width}px: menu is not covered by the login`,await menu.evaluate(el=>{const r=el.getBoundingClientRect();const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return hit===el||el.contains(hit);}));
+    await menu.click();
+    check(`${width}px: mobile menu opens`,await page.locator('.pbd-root .dsh-side.open').count()===1);
+    await page.getByRole('button',{name:'Close menu'}).click();
+    check(`${width}px: mobile menu closes`,await page.locator('.pbd-root .dsh-side.open').count()===0);
+  }
+}
+} finally { await browser.close(); }
 if(failures) process.exit(1);
 console.log('Public dashboard browser checks passed.');

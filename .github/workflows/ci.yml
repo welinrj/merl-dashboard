@@ -33,3 +33,17 @@ jobs:
 
       - run: npm run build
         working-directory: frontend
+
+      - name: Audit production dependencies
+        working-directory: frontend
+        run: |
+          npm audit --omit=dev --json > /tmp/merl-audit.json || true
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const report = JSON.parse(readFileSync("/tmp/merl-audit.json", "utf8"));
+            for (const [name, item] of Object.entries(report.vulnerabilities || {})) {
+              console.log(`${item.severity}: ${name}; affected=${item.range}; fix=${JSON.stringify(item.fixAvailable)}`);
+            }
+            console.log("Runtime vulnerability totals:", JSON.stringify(report.metadata?.vulnerabilities || {}));
+            if ((report.metadata?.vulnerabilities?.high || 0) + (report.metadata?.vulnerabilities?.critical || 0) > 0) process.exit(1);
+          '

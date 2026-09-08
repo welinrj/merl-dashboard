@@ -83,10 +83,12 @@ jobs:
         run: node qa/public-dashboard.mjs
 
       - name: Validate single public sign-in
+        if: ${{ success() || failure() }}
         working-directory: frontend
         run: node qa/public-single-signin.mjs
 
       - name: Validate inline header authentication
+        if: ${{ success() || failure() }}
         working-directory: frontend
         env:
           STUB_FILE: qa/fixture.json
