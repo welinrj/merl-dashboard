@@ -19,11 +19,16 @@ await context.route('https://services.arcgis.com/**', route => route.abort());
 await context.route('https://unpkg.com/**', route => route.abort());
 
 const page = await context.newPage();
-const assertSingleSignIn = async label => {
-  const links = page.locator('.pbd-root a[href="#/login"]');
-  const header = page.locator('.pbd-root .dsh-head a.pbd-signin[href="#/login"]');
-  if (await links.count() !== 1 || await header.count() !== 1) {
-    throw new Error(`${label}: expected exactly one sign-in link, in the header`);
+const assertHeaderLogin = async label => {
+  const form = page.locator('.pbd-root .dsh-head form.pbd-header-login');
+  if (await form.count() !== 1 || await page.locator('.pbd-root form.pbd-header-login').count() !== 1) {
+    throw new Error(`${label}: expected exactly one login form, in the header`);
+  }
+  if (await page.locator('.pbd-root a[href="#/login"]').count() !== 0) {
+    throw new Error(`${label}: duplicate login link remains`);
+  }
+  if (await form.locator('input[type="email"]').count() !== 1 || await form.locator('input[type="password"]').count() !== 1 || await form.getByRole('button', { name: 'Sign in', exact: true }).count() !== 1) {
+    throw new Error(`${label}: email, password or submit control is missing`);
   }
   console.log(`PASS ${label}`);
 };
@@ -31,19 +36,26 @@ const assertSingleSignIn = async label => {
 try {
   await page.goto('http://localhost:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
   await page.locator('.pbd-root .pbd-kpis').waitFor({ timeout: 15000 });
-  await assertSingleSignIn('Public overview');
+  await assertHeaderLogin('Public overview');
   for (const name of ['Projects', 'Results', 'Geographic Coverage', 'Public Overview']) {
     await page.locator('.pbd-root .dsh-nav').getByRole('button', { name, exact: true }).click();
-    await assertSingleSignIn(name);
+    await assertHeaderLogin(name);
   }
+  const form = page.locator('.pbd-header-login');
+  await form.getByLabel('Email').fill('invalid@example.test');
+  await form.getByLabel('Password').fill('invalid-password');
+  await form.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await form.getByRole('alert').waitFor({ timeout: 15000 });
+  if (new URL(page.url()).hash !== '#/dashboards') throw new Error('Failed login changed the dashboard route');
+  if (await form.locator('input[type="password"]').inputValue() !== '') throw new Error('Failed password was not cleared');
+  console.log('PASS Invalid credentials remain on the public dashboard');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Open menu' }).click();
-  await assertSingleSignIn('Mobile menu open');
+  await assertHeaderLogin('Mobile menu open');
   await page.getByRole('button', { name: 'Close menu' }).click();
-  await assertSingleSignIn('Mobile menu closed');
-  await page.locator('.pbd-root .dsh-head a.pbd-signin').click();
-  if (!new URL(page.url()).hash.startsWith('#/login')) throw new Error('Header sign-in did not open login');
-  console.log('PASS Header sign-in opens the existing login');
+  await assertHeaderLogin('Mobile menu closed');
+  if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2)) throw new Error('Mobile page has horizontal overflow');
+  console.log('PASS Mobile layout has no horizontal overflow');
 } finally {
   await browser.close();
 }

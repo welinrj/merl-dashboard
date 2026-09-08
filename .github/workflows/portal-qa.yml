@@ -86,6 +86,12 @@ jobs:
         working-directory: frontend
         run: node qa/public-single-signin.mjs
 
+      - name: Validate inline header authentication
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/header-inline-auth.mjs
+
       - name: Show preview log on failure
         if: failure()
         run: cat /tmp/merl-preview.log || true
