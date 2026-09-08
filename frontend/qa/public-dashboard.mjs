@@ -1,14 +1,14 @@
-// Public-only regression: approved snapshots, filtering, navigation, and sign-in boundary.
+// Public regression: default routing, approved data, automatic refresh, filters and access.
 import { chromium } from 'playwright';
 const HOST = 'https://ndntvncboeajanipafeq.supabase.co';
 const projects = [
-  {id:'pa',code:'PUB-1',name:'Coastal Resilience',provinces:['Sanma'],primary_climate_theme:'Coastal Resilience',lifecycle_status:'ongoing',budget_vuv:1000000,progress_pct:40,last_published_period:'Q1 2026',expected_primary_outcome:'Coastal communities are resilient'},
-  {id:'pb',code:'PUB-2',name:'Water Security',provinces:['Torba'],primary_climate_theme:'Water Security',lifecycle_status:'completed',budget_vuv:2000000,progress_pct:100,last_published_period:'Q2 2026',expected_primary_outcome:'Reliable water supply'},
+  {id:'pa',code:'PUB-1',name:'Coastal Resilience',provinces:['Sanma'],primary_climate_theme:'Coastal Resilience',lifecycle_status:'ongoing',budget_vuv:1000000,progress_pct:40,published_beneficiaries:50,last_published_period:'Q1 2026',expected_primary_outcome:'Coastal communities are resilient'},
+  {id:'pb',code:'PUB-2',name:'Water Security',provinces:['Torba'],primary_climate_theme:'Water Security',lifecycle_status:'completed',budget_vuv:2000000,progress_pct:100,published_beneficiaries:70,last_published_period:'Q2 2026',expected_primary_outcome:'Reliable water supply'},
 ];
 const fixtures = {
   public_portal_summary:[{project_count:2,overall_progress_pct:70,published_beneficiaries:120,total_investment_vuv:3000000,updated_at:'2026-07-01T00:00:00Z'}],
   public_portal_projects:projects,
-  public_portal_area_councils:[{province:'Sanma',area_council:'Big Bay Coast',project_count:1,project_names:['Coastal Resilience']},{province:'Torba',area_council:'Torres',project_count:1,project_names:['Water Security']}],
+  public_portal_area_councils:[{province:'Sanma',area_council:'Big Bay Coast',project_count:1,project_ids:['pa'],project_names:['Coastal Resilience']},{province:'Torba',area_council:'Torres',project_count:1,project_ids:['pb'],project_names:['Water Security']}],
 };
 let failures = 0;
 const check = (name, ok) => {console.log(`${ok?'✓':'✗'} ${name}`);if(!ok)failures++;};
@@ -29,26 +29,37 @@ await context.route(`${HOST}/**`, async route => {
   if(url.pathname.startsWith('/auth/v1/')) return route.fulfill({status:401,contentType:'application/json',body:'{}'});
   return route.fulfill({status:403,body:'{}'});
 });
-// The coverage component has a documented error state when the external map service is offline.
 await context.route('https://services.arcgis.com/**',route=>route.abort());
 await context.route('https://unpkg.com/**',route=>route.abort());
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror',e=>errors.push(e.message));
-await page.goto('http://localhost:5199/#/',{waitUntil:'domcontentloaded'});
-await page.locator('.pbd-root .pbd-kpis').waitFor({timeout:15000});
-check('anonymous visitor opens public dashboard',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
-check('approved project count is 2',await page.locator('.pbd-kpis').getByText('2',{exact:true}).count()===1);
-check('approved beneficiaries are shown',await page.locator('.pbd-kpis').getByText('120',{exact:true}).count()===1);
-check('approved progress is shown',await page.locator('.pbd-kpis').getByText('70%',{exact:true}).count()===1);
+await page.clock.install({time:new Date('2026-09-08T08:00:00Z')});
+const go = async path => {await page.goto(`http://localhost:5199/${path}`,{waitUntil:'domcontentloaded'});await page.locator('.pbd-root .pbd-kpis').waitFor({timeout:15000});};
+const kpis = page.locator('.pbd-kpis');
+const has = async value => await kpis.getByText(value,{exact:true}).count()>=1;
+
+await go('');
+check('bare URL opens public dashboard',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
+check('approved project count is 2',await has('2'));
+check('approved beneficiaries are shown',await has('120'));
+check('approved progress is shown',await has('70%'));
 check('no internal editing or approval navigation',await page.getByRole('button',{name:/project setup|risk analysis|review & approval|administration/i}).count()===0);
+await go('?utm_source=chatgpt.com#/');
+check('tracked root URL remains public',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
+await go('#/public');
+check('public alias opens the same dashboard',await has('2'));
+await go('#/');
+
 await page.locator('.pbd-filters select').nth(2).selectOption('Sanma');
-check('province filter reduces the portfolio',await page.locator('.pbd-kpis').getByText('1',{exact:true}).count()===1);
-check('unsupported filtered beneficiaries are unavailable',await page.locator('.pbd-kpis').getByText('—',{exact:true}).count()>=1);
+check('province filter reduces the portfolio',await has('1'));
+check('filtered progress uses published project results',await has('40%'));
+check('filtered beneficiaries use published project results',await has('50'));
+check('filtered investment uses selected projects',await has('VT 1,000,000'));
 await page.getByRole('button',{name:'Reset',exact:true}).click();
-check('reset restores published total',await page.locator('.pbd-kpis').getByText('2',{exact:true}).count()===1);
+check('reset restores published total',await has('2') && await has('120'));
 await page.locator('.pbd-search input').fill('Water Security');
-check('search filters published projects',await page.locator('.pbd-kpis').getByText('1',{exact:true}).count()===1);
+check('search filters published projects',await has('1'));
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:'Projects'}).click();
 await page.getByRole('button',{name:/Coastal Resilience PUB-1/i}).click();
@@ -58,13 +69,33 @@ await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:'Results'}).cl
 check('public results navigation works',await page.getByRole('heading',{name:'Results',exact:true}).count()>0);
 await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:'Geographic Coverage'}).click();
 check('coverage navigation works',await page.locator('.pub-leaflet-wrap').count()===1);
+await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:'Public Overview'}).click();
+
+// Simulate a newly approved publication while the same public page stays open.
+fixtures.public_portal_summary[0] = {...fixtures.public_portal_summary[0],overall_progress_pct:80,published_beneficiaries:150,updated_at:'2026-09-08T08:01:00Z'};
+fixtures.public_portal_projects[0] = {...fixtures.public_portal_projects[0],progress_pct:60,published_beneficiaries:80};
+const beforeRefresh = reads.filter(x=>x==='public_portal_summary').length;
+await page.clock.fastForward(61_000);
+await page.waitForFunction(() => document.querySelector('.pbd-kpis')?.textContent?.includes('150'),null,{timeout:15000});
+check('automatic refresh reads the approved snapshot again',reads.filter(x=>x==='public_portal_summary').length>beforeRefresh);
+check('approved results update without page reload',await has('80%') && await has('150'));
+await page.locator('.pbd-filters select').nth(2).selectOption('Sanma');
+check('refreshed filtered values reconcile',await has('60%') && await has('80'));
+await page.getByRole('button',{name:'Reset',exact:true}).click();
+check('manual refresh remains available',await page.getByRole('button',{name:'Refresh',exact:true}).count()===1);
+check('public reads use only the three approved snapshot tables',reads.every(x=>x in fixtures));
 check('no browser exception',errors.length===0);
-check('public dashboard reads only approved snapshot tables',reads.filter(x=>x.startsWith('public_portal_')).every(x=>x in fixtures));
+
 await page.getByRole('link',{name:'Sign in to MERL'}).first().click();
 check('sign-in opens existing protected login',new URL(page.url()).hash.startsWith('#/login'));
-await page.setViewportSize({width:390,height:844});
-await page.goto('http://localhost:5199/#/');
+await page.getByRole('link',{name:'Back to public dashboard'}).click();
 await page.locator('.pbd-root .pbd-kpis').waitFor({timeout:15000});
+check('back to public returns to the public root',new URL(page.url()).hash==='#/');
+await page.goto('http://localhost:5199/#/dashboards',{waitUntil:'domcontentloaded'});
+check('anonymous internal URL requires login',await page.locator('.lg2-root').count()===1);
+check('anonymous internal URL does not render workspace',await page.locator('.dsh-main .ovx-kpis').count()===0);
+await page.setViewportSize({width:390,height:844});
+await go('#/');
 check('mobile has no page-wide horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
 await page.getByRole('button',{name:'Open menu'}).click();
 check('mobile menu opens',await page.locator('.pbd-root .dsh-side.open').count()===1);
