@@ -95,8 +95,11 @@ clicks do not error; no horizontal overflow at 1920/1440/1024/768/390/360 px; ze
 unlabelled buttons or inputs; all painted controls ≥ 24 px; notification bell hit
 area 41 px.
 
-The eight "findings" the sweep reported were all console noise from the blocked
-external GIS hosts (§7), not application faults.
+The 8–10 "findings" the sweep reports (the count varies run to run with which
+control happens to be clicked while an external fetch is timing out) are all
+console noise: `ERR_CONNECTION_RESET` from the blocked ArcGIS/UNOCHA hosts (§6,
+P1-2) and the Supabase realtime WebSocket, which the stub does not serve. **None
+is a page error and none originates in application code.**
 
 ---
 
@@ -312,6 +315,7 @@ user accounts, credentials.
 | `npm test` | **110 / 110** (was 106; +4 new) |
 | `npm run build` | pass |
 | Beneficiary reconciliation (browser) | pass — and fails on pre-fix code, as it should |
+| Full `portal-qa` suite re-run on the final build | **10 / 10 suites pass** |
 | i18n render check, EN + FR | pass, no raw keys on screen |
 | `anon` RPC probe | denied; public portal unaffected |
 
