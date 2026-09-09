@@ -1,63 +1,88 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import App from './App';
 import PublicDashboard from './pages/PublicDashboard';
+import DoCCProjectRegister from './pages/DoCCProjectRegister';
 import { supabase } from './supabaseClient';
 import './login-home-link.css';
 import './pages/public-refresh.css';
 
 const DEFAULT_PATH = '/dashboards';
-const INTERNAL_PREFIXES = ['/login', '/dashboards', '/analytics', '/project-setup', '/merl-reporting', '/reports', '/review', '/admin'];
+const SPECIAL_AUTHORISED_PATHS = ['/docc-project-register'];
+const INTERNAL_PREFIXES = ['/login', '/dashboards', '/analytics', '/project-setup', '/merl-reporting', '/reports', '/review', '/admin', ...SPECIAL_AUTHORISED_PATHS];
 
 export default function PublicEntry() {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const { i18n } = useTranslation();
-  // undefined means the initial session check has not finished. A session is
-  // not authorisation: App still verifies the profile and applies its role gates.
+  // undefined means the authentication/profile check is still running.
   const [session, setSession] = useState(undefined);
+  const [profileValid, setProfileValid] = useState(undefined);
 
   useEffect(() => {
     let alive = true;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+
+    const validate = async (nextSession) => {
       if (!alive) return;
-      setSession(nextSession);
-      if (event === 'SIGNED_OUT') navigate(DEFAULT_PATH, { replace: true });
+      setSession(nextSession || null);
+      if (!nextSession) {
+        setProfileValid(false);
+        return;
+      }
+      setProfileValid(undefined);
+      try {
+        const { data, error } = await supabase.rpc('current_profile');
+        const valid = !error && Array.isArray(data) && !!data[0]?.id && !!data[0]?.role;
+        if (!alive) return;
+        setProfileValid(valid);
+        // A Supabase session without a valid MERL profile is not a valid portal
+        // credential. Clear it so every protected link falls back to public.
+        if (!valid) await supabase.auth.signOut();
+      } catch {
+        if (!alive) return;
+        setProfileValid(false);
+        try { await supabase.auth.signOut(); } catch { /* non-fatal */ }
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      void validate(nextSession);
     });
-    void supabase.auth.getSession().then(({ data }) => {
-      if (alive) setSession(current => current === undefined ? data.session : current);
-    }).catch(() => {
-      if (alive) setSession(current => current === undefined ? null : current);
-    });
+
+    void supabase.auth.getSession()
+      .then(({ data }) => validate(data.session))
+      .catch(() => validate(null));
+
     return () => { alive = false; subscription.unsubscribe(); };
-  }, [navigate]);
+  }, []);
 
-  // Old public bookmarks and the bare site URL resolve to the one shared entry.
+  const checking = session === undefined || (!!session && profileValid === undefined);
+  if (checking) {
+    return <div role="status" className="pbd-state">
+      {i18n.resolvedLanguage?.startsWith('fr') ? 'Ouverture de MERL…' : 'Opening MERL…'}
+    </div>;
+  }
+
+  const authorised = !!session && profileValid === true;
+
+  // Security/default-entry rule: any visitor without valid MERL credentials,
+  // regardless of the URL/hash they were given, lands on the public dashboard.
+  if (!authorised) {
+    if (pathname !== DEFAULT_PATH) return <Navigate to={DEFAULT_PATH} replace />;
+    return <PublicDashboard />;
+  }
+
+  // Valid users entering the bare/public/unknown URL are taken to the internal
+  // dashboard rather than left on an obsolete or malformed route.
   if (pathname === '/' || pathname === '/public') return <Navigate to={DEFAULT_PATH} replace />;
-
   const internal = INTERNAL_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
   if (!internal) return <Navigate to={DEFAULT_PATH} replace />;
 
-  // Guests see only the approved-public snapshot. Signed-in users enter the
-  // existing workspace, whose profile and role checks remain unchanged.
-  if (pathname === DEFAULT_PATH) {
-    if (session === undefined) {
-      return <div role="status" className="pbd-state">
-        {i18n.resolvedLanguage?.startsWith('fr') ? 'Ouverture de MERL…' : 'Opening MERL…'}
-      </div>;
-    }
-    if (!session) return <PublicDashboard />;
-  }
+  // The legacy DoCC register remains reachable only to authenticated users.
+  if (pathname === '/docc-project-register') return <DoCCProjectRegister />;
 
-  // The existing login form establishes the session; return to the same entry.
-  if (pathname === '/login' && session) return <Navigate to={DEFAULT_PATH} replace />;
+  // A signed-in user no longer needs the standalone login route.
+  if (pathname === '/login') return <Navigate to={DEFAULT_PATH} replace />;
 
-  return <>
-    <App />
-    {pathname === '/login' && <Link className="lg2-home-link" to={DEFAULT_PATH}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-      {i18n.resolvedLanguage?.startsWith('fr') ? 'Retour au tableau de bord public' : 'Back to public dashboard'}
-    </Link>}
-  </>;
+  return <App />;
 }
