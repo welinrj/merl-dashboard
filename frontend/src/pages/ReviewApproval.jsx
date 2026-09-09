@@ -291,7 +291,7 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
           <span>{t('merl.submittedBy')} <strong style={{ color: 'var(--text-1)' }}>{row.reporting_officer_name ?? '—'}</strong></span>
           <span>{t('merl.submittedOn')} <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.submitted_at)}</strong></span>
           {row.period_start && <span>{t('merl.periodLbl')} <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.period_start)} – {fmtDate(row.period_end)}</strong></span>}
-          {row.reopened_at && <span style={{ color: '#8a6416' }}>Reopened: {fmtDate(row.reopened_at)}</span>}
+          {row.reopened_at && <span style={{ color: '#8a6416' }}>{t('merl.reopenedOn')} {fmtDate(row.reopened_at)}</span>}
         </div>
 
         {status === 'returned' && row.review_comments && (
@@ -312,7 +312,7 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
                   <strong style={{ fontSize: '0.82rem', color: 'var(--text-1)' }}>{t(s.label)}</strong>
                   <span style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{t('merl.form', { n: s.form })}</span>
                   <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 700, color: rows.length ? 'var(--green-700)' : 'var(--text-3)' }}>
-                    {rows.length} record{rows.length === 1 ? '' : 's'}
+                    {t('merl.recordCount', { count: rows.length })}
                   </span>
                 </div>
                 {rows.length === 0 ? (

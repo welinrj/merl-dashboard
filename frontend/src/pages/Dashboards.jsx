@@ -21,6 +21,7 @@ import FilterBar from '../components/ui/FilterBar';
 import VanuatuMap from '../components/VanuatuMap';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
+import { beneficiaryReach, portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
@@ -283,7 +284,7 @@ function Portfolio({ d, onNavigate }) {
     const bSum = (f) => (bAny(f) ? beneficiaries.reduce((a, b) => a + (b[f] != null ? Number(b[f]) : 0), 0) : null);
     const bRows = beneficiaries.length;
     const gedsi = {
-      total: bSum('total_direct'), female: bSum('female'), male: bSum('male'),
+      total: portfolioBeneficiaries(beneficiaries), female: bSum('female'), male: bSum('male'),
       other: bSum('other_gender'), youth: bSum('youth'), pwd: bSum('persons_with_disability'),
       indirect: bSum('indirect'),
       completeness: bRows ? Math.round(beneficiaries.filter((b) => b.female != null || b.male != null).length / bRows * 100) : null,
@@ -299,7 +300,7 @@ function Portfolio({ d, onNavigate }) {
       totalBudget, totalExp, util: utilisationPct(totalBudget, totalExp),
       actCompleted: activities.filter((a) => a.status === 'completed').length,
       openRisks: openRisks.length, overdue: overdue.length,
-      beneficiaries: sum(beneficiaries, (b) => b.total_direct),
+      beneficiaries: portfolioBeneficiaries(beneficiaries) ?? 0,
       avgAch,
       byProvince: countBy(projects, (p) => p.provinces || []),
       byDonor: countBy(projects, (p) => p.donor),
@@ -470,7 +471,7 @@ function ProjectView({ d, projectId }) {
   const exp = fin?.cumulative_expenditure ?? p.spent_vuv;
   const physAvg = acts.filter((a) => a.physical_progress_pct != null);
   const phys = physAvg.length ? Math.round(physAvg.reduce((a, x) => a + Number(x.physical_progress_pct), 0) / physAvg.length) : null;
-  const ben = sum(d.beneficiaries.filter((b) => b.project_id === projectId), (b) => b.total_direct);
+  const ben = beneficiaryReach(d.beneficiaries.filter((b) => b.project_id === projectId)).reached ?? 0;
 
   return (
     <>

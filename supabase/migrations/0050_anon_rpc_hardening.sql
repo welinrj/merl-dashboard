@@ -1,0 +1,41 @@
+-- =============================================================================
+-- MERL Dashboard – Migration 0050: close the anon EXECUTE grant on the results
+-- framework scope RPC
+-- =============================================================================
+-- Migration 0049 added public.list_results_framework_editable_projects() and
+-- correctly did:
+--
+--     REVOKE ALL ON FUNCTION ... FROM PUBLIC;
+--     GRANT EXECUTE ON FUNCTION ... TO authenticated;
+--
+-- That is not sufficient on Supabase. The platform ships default privileges
+-- that grant EXECUTE on every newly created function in `public` to `anon` and
+-- `authenticated`, and that grant lands on the role directly. Revoking from
+-- PUBLIC does not remove a privilege held by `anon` in its own right, so the
+-- function stayed callable without signing in and the database linter reported
+-- it (0028_anon_security_definer_function_executable).
+--
+-- Checked before writing this: calling it as `anon` returns an empty array
+-- rather than project data, because the function resolves the caller through
+-- merl.current_db_user(), which is NULL for an anonymous request. So this is
+-- defence in depth and closes a reachable SECURITY DEFINER entry point, not the
+-- repair of a live data leak.
+--
+-- It is also the only application function `anon` could execute — every other
+-- SECURITY DEFINER RPC in `public` is already restricted to `authenticated`
+-- (the remaining anon-executable functions in the schema are PostGIS's own).
+-- =============================================================================
+
+REVOKE ALL ON FUNCTION public.list_results_framework_editable_projects() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.list_results_framework_editable_projects() TO authenticated;
+
+-- Deliberately NOT done here: revoking the platform's default EXECUTE grant for
+-- `anon` across the whole schema. That would silently make any function a later
+-- migration adds unreachable for a genuinely public feature, and the failure
+-- would surface as an unexplained 403 long after the change. The rule to follow
+-- when adding a SECURITY DEFINER RPC is instead:
+--
+--     REVOKE ALL ON FUNCTION public.<fn>(<args>) FROM PUBLIC, anon;
+--     GRANT EXECUTE ON FUNCTION public.<fn>(<args>) TO authenticated;
+--
+-- i.e. name `anon` in the REVOKE. Revoking from PUBLIC alone does not remove it.

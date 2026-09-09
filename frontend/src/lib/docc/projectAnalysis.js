@@ -345,15 +345,62 @@ export function financialSummary(project, financial = [], asOf = new Date()) {
 // =============================================================================
 
 /**
+ * How many people one project's beneficiary records represent.
+ *
+ * Form 8 is period-scoped, so a project that reports every quarter holds one
+ * record per period, each counting the population it reached. Adding those up
+ * counts the same household once per period it was served. The form asks the
+ * officer to confirm each record has been checked for double counting, so:
+ * every record checked (or there is only one) means the records describe
+ * distinct people and can be added; otherwise the largest single report is the
+ * most that can be honestly claimed.
+ *
+ * Returns `{ reached, basis }`, basis being 'summed', 'largest' or 'none', so a
+ * caller can say which rule produced the figure.
+ */
+export function beneficiaryReach(rows = []) {
+  const totals = rows.map((r) => num(r.total_direct)).filter(isNum);
+  if (totals.length === 0) return { reached: null, basis: 'none' };
+  const addable = rows.every((r) => r.double_counting_check === true) || rows.length === 1;
+  return addable
+    ? { reached: totals.reduce((s, v) => s + v, 0), basis: 'summed' }
+    : { reached: Math.max(...totals), basis: 'largest' };
+}
+
+/**
+ * The same rule across a portfolio: each project reduced on its own, then the
+ * per-project figures added. Beneficiaries of different projects are different
+ * records, so those do add; records of one project across periods may not.
+ *
+ * This is what every portfolio-level beneficiary KPI must use, so the Overview,
+ * the dashboards, the printed reports and the per-project analysis cannot show
+ * different headcounts for the same underlying rows.
+ *
+ * Returns null when no record carries a figure, so "not reported" stays
+ * distinguishable from a genuine zero.
+ */
+export function portfolioBeneficiaries(rows = []) {
+  const byProject = new Map();
+  for (const row of rows) {
+    const key = row?.project_id ?? '';
+    if (!byProject.has(key)) byProject.set(key, []);
+    byProject.get(key).push(row);
+  }
+  let total = null;
+  for (const projectRows of byProject.values()) {
+    const { reached } = beneficiaryReach(projectRows);
+    if (reached != null) total = (total ?? 0) + reached;
+  }
+  return total;
+}
+
+/**
  * Beneficiaries reached against the profile's estimate.
  *
  * Two things this deliberately does not do. It does not add the disaggregated
  * categories together to produce a total: youth and persons with disability
  * overlap with female and male, so their sum is not a headcount. And it does
- * not sum every reporting record blindly — where a record is flagged as not
- * having been checked for double counting, the sum would double-count the same
- * population across periods, so the largest single record is used instead and
- * the basis is reported.
+ * not sum every reporting record blindly — see `beneficiaryReach` above.
  */
 export function beneficiarySummary(project, beneficiaries = [], period = '') {
   const rows = period
@@ -367,17 +414,8 @@ export function beneficiarySummary(project, beneficiaries = [], period = '') {
     };
   }
 
-  const totals = rows.map((r) => num(r.total_direct)).filter(isNum);
-  // Every record confirmed free of double counting can be added up. Otherwise
-  // the safest honest figure is the largest single report.
-  const allChecked = rows.every((r) => r.double_counting_check === true);
-  const summed = totals.reduce((s, v) => s + v, 0);
-  const largest = totals.length ? Math.max(...totals) : null;
-
-  const reached = totals.length === 0 ? null
-    : (allChecked || rows.length === 1) ? summed : largest;
-  const basis = totals.length === 0 ? 'none'
-    : (allChecked || rows.length === 1) ? 'summed' : 'largest';
+  // One rule, shared with every portfolio-level total (see beneficiaryReach).
+  const { reached, basis } = beneficiaryReach(rows);
 
   const sumOf = (key) => {
     const vals = rows.map((r) => num(r[key])).filter(isNum);
