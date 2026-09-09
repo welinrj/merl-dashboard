@@ -52,7 +52,14 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Open menu' }).click();
   await assertHeaderLogin('Mobile menu open');
-  await page.getByRole('button', { name: 'Close menu' }).click();
+  const overlay = page.getByRole('button', { name: 'Close menu' });
+  const box = await overlay.boundingBox();
+  const sidebar = await page.locator('.dsh-side.open').boundingBox();
+  if (!box || !sidebar || box.x + box.width - 12 <= sidebar.x + sidebar.width) {
+    throw new Error('Mobile menu has no exposed backdrop to close it');
+  }
+  await overlay.click({ position: { x: box.width - 12, y: box.height / 2 } });
+  if (await page.locator('.dsh-side').evaluate(el => el.classList.contains('open'))) throw new Error('Mobile menu did not close');
   await assertHeaderLogin('Mobile menu closed');
   if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2)) throw new Error('Mobile page has horizontal overflow');
   console.log('PASS Mobile layout has no horizontal overflow');
