@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { dbErrorMessage, isMissingRpcArgument } from '../lib/dbError';
@@ -23,101 +22,157 @@ const blankProfile = () => ({
 
 const field = { display: 'flex', flexDirection: 'column', gap: '.3rem' };
 
-const FORM_GUIDE = [
+const FORM_PREVIEWS = [
   {
-    title: 'Project Profile / Registration',
-    purpose: 'Basic information required to register and identify the project.',
-    href: '#project-profile',
-    fields: ['Project title and acronym', 'Status and project description', 'Theme / sector and project type', 'Expected primary outcome', 'Lead, executing and implementing agencies', 'Project Manager, DoCC M&E Officer and Finance Officer', 'Donor, funding window, approved budget and currency', 'Start, end and approval dates', 'Province / geographic coverage', 'Expected direct and indirect beneficiaries'],
+    form: '4', title: 'Indicator Progress', purpose: 'Tracks progress against approved indicators and targets.',
+    fields: [
+      { label: 'Indicator *', type: 'select', placeholder: 'Select indicator' },
+      { label: 'Target for Reporting Period', type: 'number' },
+      { label: 'Actual Achievement This Period', type: 'number' },
+      { label: 'Cumulative Achievement', type: 'number' },
+      { label: 'Previous Reported Value', type: 'number' },
+      { label: 'Performance Status', type: 'select', options: ['On track', 'At risk', 'Off track', 'Completed'] },
+      { label: 'Progress Narrative', type: 'textarea', wide: true },
+      { label: 'Reason for Variance', type: 'textarea', wide: true },
+      { label: 'Corrective Action', type: 'textarea', wide: true },
+      { label: 'Date Reported', type: 'date' },
+    ],
   },
   {
-    title: 'Results Framework',
-    purpose: 'Defines what the project intends to achieve and how success will be measured.',
-    href: '#/analytics/results',
-    fields: ['Project objectives', 'Expected outcomes', 'Expected outputs', 'Indicators', 'Baseline values', 'Targets', 'Units of measure', 'Responsible officers and reporting frequency'],
+    form: '6', title: 'Financial Progress', purpose: 'Tracks project budget, expenditure, commitments and utilisation.',
+    fields: [
+      { label: 'Approved Project Budget', type: 'number' },
+      { label: 'Annual Budget', type: 'number' },
+      { label: 'Budget for Reporting Period', type: 'number' },
+      { label: 'Expenditure This Period', type: 'number' },
+      { label: 'Cumulative Expenditure', type: 'number' },
+      { label: 'Funds Received', type: 'number' },
+      { label: 'Funds Committed', type: 'number' },
+      { label: 'Financial Narrative / Explanation', type: 'textarea', wide: true },
+    ],
   },
   {
-    title: 'Form 4 · Indicator Progress',
-    purpose: 'Tracks whether indicators are achieving their targets.',
-    href: '#/analytics/reporting',
-    fields: ['Indicator being reported', 'Target for the reporting period', 'Actual achievement this period', 'Cumulative achievement', 'Previous reported value', 'Performance status', 'Progress narrative', 'Reason for variance', 'Corrective action', 'Date reported'],
+    form: '8', title: 'Beneficiaries & GEDSI', purpose: 'Records direct and indirect beneficiaries with GEDSI disaggregation.',
+    fields: [
+      { label: 'Related Activity', type: 'select', placeholder: 'Select activity' },
+      { label: 'Location', type: 'text' },
+      { label: 'Total Direct Beneficiaries', type: 'number' },
+      { label: 'Female', type: 'number' },
+      { label: 'Male', type: 'number' },
+      { label: 'Other / Not Reported', type: 'number' },
+      { label: 'Youth', type: 'number' },
+      { label: 'Persons with Disabilities', type: 'number' },
+      { label: 'Indirect Beneficiaries', type: 'number' },
+      { label: 'Other Vulnerable Groups', type: 'text' },
+      { label: 'Data Source', type: 'text' },
+      { label: 'Double-counting Check Completed', type: 'checkbox' },
+      { label: 'Comments', type: 'textarea', wide: true },
+    ],
   },
   {
-    title: 'Form 6 · Financial Progress',
-    purpose: 'Tracks budget, expenditure and financial utilisation.',
-    href: '#/analytics/reporting',
-    fields: ['Approved project budget', 'Annual budget', 'Budget for the reporting period', 'Expenditure this period', 'Cumulative expenditure', 'Funds received', 'Funds committed', 'Financial narrative / explanation'],
+    form: '9', title: 'Risks & Issues', purpose: 'Records implementation risks, issues, mitigation and management action.',
+    fields: [
+      { label: 'Type *', type: 'select', options: ['Risk', 'Issue'] },
+      { label: 'Category', type: 'select', options: ['Technical', 'Financial', 'Operational', 'Safeguards', 'Governance', 'Other'] },
+      { label: 'Description *', type: 'textarea', wide: true },
+      { label: 'Date Identified', type: 'date' },
+      { label: 'Likelihood', type: 'select', options: ['Low', 'Medium', 'High'] },
+      { label: 'Impact', type: 'select', options: ['Low', 'Medium', 'High'] },
+      { label: 'Mitigation / Response', type: 'textarea', wide: true },
+      { label: 'Responsible Person', type: 'text' },
+      { label: 'Due Date', type: 'date' },
+      { label: 'Current Status', type: 'select', options: ['Open', 'Monitoring', 'Resolved', 'Closed'] },
+      { label: 'Latest Update', type: 'textarea', wide: true },
+      { label: 'Date Resolved', type: 'date' },
+    ],
   },
   {
-    title: 'Form 8 · Beneficiaries & GEDSI',
-    purpose: 'Records who is benefiting from project activities and supports GEDSI reporting.',
-    href: '#/analytics/reporting',
-    fields: ['Related activity', 'Location', 'Total direct beneficiaries', 'Female, male and other / not reported', 'Youth', 'Persons with disabilities', 'Indirect beneficiaries', 'Other vulnerable groups', 'Data source', 'Double-counting check', 'Comments'],
+    form: '10', title: 'Achievements & Learning', purpose: 'Captures achievements, challenges, lessons and management response.',
+    fields: [
+      { label: 'Key Achievements', type: 'textarea', wide: true },
+      { label: 'Major Results', type: 'textarea', wide: true },
+      { label: 'Challenges', type: 'textarea', wide: true },
+      { label: 'Lessons Learned', type: 'textarea', wide: true },
+      { label: 'Successful Approaches', type: 'textarea', wide: true },
+      { label: 'What Did Not Work', type: 'textarea', wide: true },
+      { label: 'Corrective Actions Taken', type: 'textarea', wide: true },
+      { label: 'Recommendations', type: 'textarea', wide: true },
+      { label: 'Emerging Opportunities', type: 'textarea', wide: true },
+      { label: 'Next-period Priorities', type: 'textarea', wide: true },
+      { label: 'Success Story', type: 'textarea', wide: true },
+    ],
   },
   {
-    title: 'Form 9 · Risks & Issues',
-    purpose: 'Tracks problems that may affect implementation and the actions required.',
-    href: '#/analytics/reporting',
-    fields: ['Risk or issue type', 'Description and category', 'Date identified', 'Likelihood and impact', 'Mitigation / response', 'Responsible person', 'Due date', 'Current status', 'Latest update', 'Resolution date'],
+    form: '11', title: 'Reporting Period & Submission', purpose: 'Defines the reporting period and manages submission, review and approval.',
+    fields: [
+      { label: 'Reporting Period Label *', type: 'text', placeholder: 'e.g. Q1 2026' },
+      { label: 'Reporting Period Type', type: 'select', options: ['Monthly', 'Quarterly', 'Semi-annual', 'Annual', 'Other'] },
+      { label: 'Period Start Date', type: 'date' },
+      { label: 'Period End Date', type: 'date' },
+      { label: 'Submission Status', type: 'select', options: ['Draft', 'Submitted', 'Returned', 'Reviewed', 'Approved'] },
+      { label: 'Reviewer Comments / Corrections', type: 'textarea', wide: true },
+      { label: 'Approval / Reopening Reason', type: 'textarea', wide: true },
+    ],
   },
   {
-    title: 'Form 10 · Achievements & Learning',
-    purpose: 'Captures achievements, challenges, lessons and management response.',
-    href: '#/analytics/reporting',
-    fields: ['Key achievements', 'Major results', 'Challenges', 'Lessons learned', 'Successful approaches', 'What did not work', 'Corrective actions taken', 'Recommendations', 'Emerging opportunities', 'Next-period priorities', 'Success story'],
-  },
-  {
-    title: 'Form 11 · Reporting Period & Submission',
-    purpose: 'Defines the reporting period and manages submission, review and approval.',
-    href: '#/analytics/reporting',
-    fields: ['Reporting period label', 'Reporting period type', 'Period start date', 'Period end date', 'Submission status', 'Reviewer comments / corrections', 'Approval or reopening reason where applicable'],
-  },
-  {
-    title: 'Form 12 · Evidence / Means of Verification',
-    purpose: 'Links supporting evidence to reported activities and results.',
-    href: '#/analytics/reporting',
-    fields: ['Evidence / document title', 'Document type', 'Related indicator', 'Related activity', 'Description', 'Document date', 'File or URL', 'Verification status'],
+    form: '12', title: 'Evidence / Means of Verification', purpose: 'Links supporting evidence to reported activities and results.',
+    fields: [
+      { label: 'Evidence / Document Title *', type: 'text' },
+      { label: 'Document Type', type: 'select', options: ['Report', 'Photo', 'Attendance Sheet', 'Dataset', 'Map', 'Invoice', 'Other'] },
+      { label: 'Related Indicator', type: 'select', placeholder: 'Select indicator' },
+      { label: 'Related Activity', type: 'select', placeholder: 'Select activity' },
+      { label: 'Description', type: 'textarea', wide: true },
+      { label: 'Document Date', type: 'date' },
+      { label: 'File or URL', type: 'text', wide: true },
+      { label: 'Verification Status', type: 'select', options: ['Pending', 'Verified', 'Rejected'] },
+    ],
   },
 ];
 
-function FormsGuide() {
+function PreviewField({ item }) {
+  const common = { className: 'field-input ps-preview-control', disabled: true, 'aria-label': item.label };
+  let control;
+  if (item.type === 'textarea') control = <textarea {...common} rows={3} placeholder="Enter information here" />;
+  else if (item.type === 'select') control = <select {...common} defaultValue=""><option value="">{item.placeholder || 'Select'}</option>{(item.options || []).map((o) => <option key={o} value={o}>{o}</option>)}</select>;
+  else if (item.type === 'checkbox') control = <div className="ps-preview-check"><input type="checkbox" disabled /><span>Yes / completed</span></div>;
+  else control = <input {...common} type={item.type || 'text'} placeholder={item.placeholder || (item.type === 'number' ? '0' : 'Enter information')} />;
+  return <label className={item.wide ? 'ps-preview-field ps-preview-wide' : 'ps-preview-field'}><span className="field-label">{item.label}</span>{control}</label>;
+}
+
+function ActualMerlForms() {
   return (
-    <section className="ps-guide" aria-labelledby="ps-guide-title">
-      <div className="ps-guide-head">
+    <section className="ps-actual" aria-labelledby="ps-actual-title">
+      <div className="ps-actual-head">
         <div>
-          <h2 id="ps-guide-title">MERL Forms & Information Required</h2>
-          <p>Use this checklist before entering data. Open any section below to see the information the project team should prepare.</p>
+          <h2 id="ps-actual-title">Actual MERL Reporting Forms</h2>
+          <p>These are the same fields users complete in the live MERL Reporting workspace. They are displayed here so project teams can see the full forms and prepare the required information before reporting.</p>
         </div>
-        <span>{FORM_GUIDE.length} sections</span>
+        <a className="ps-live-link" href="#/analytics/reporting">Open live MERL Reporting →</a>
       </div>
-      <div className="ps-guide-grid">
-        {FORM_GUIDE.map((form, index) => (
-          <details className="ps-guide-card" key={form.title} open={index === 0}>
-            <summary>
-              <div><strong>{form.title}</strong><small>{form.purpose}</small></div>
-              <span>View requirements</span>
-            </summary>
-            <div className="ps-guide-body">
-              <h3>Information needed</h3>
-              <ul>{form.fields.map((item) => <li key={item}>{item}</li>)}</ul>
-              <a className="ps-guide-link" href={form.href}>{index === 0 ? 'Go to project profile' : 'Open this MERL workspace'} →</a>
+      <div className="ps-form-stack">
+        {FORM_PREVIEWS.map((form) => (
+          <section className="ps-form-preview" key={form.form}>
+            <div className="ps-form-title">
+              <span className="ps-form-number">Form {form.form}</span>
+              <div><h3>{form.title}</h3><p>{form.purpose}</p></div>
             </div>
-          </details>
+            <div className="ps-preview-grid">{form.fields.map((item) => <PreviewField key={`${form.form}-${item.label}`} item={item} />)}</div>
+          </section>
         ))}
       </div>
+      <p className="ps-preview-note">Preview only on Project Setup. Register the project first, then use the live MERL Reporting workspace to enter, save, submit, review and approve these records.</p>
     </section>
   );
 }
 
 export default function ProjectSetup({ user }) {
-  const { t } = useTranslation();
   const canEdit = EDITOR_ROLES.includes(user?.role);
   const [v, setV] = useState(blankProfile);
   const [saving, setSaving] = useState(false);
   const [registered, setRegistered] = useState(null);
   const [resetKey, setResetKey] = useState(0);
   const title = 'Project Registration';
-  const subtitle = 'Register a new project and review the information required across all MERL forms before reporting.';
+  const subtitle = 'Register a new project and see the complete MERL reporting forms required after project setup.';
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setMulti = (k) => (e) => setV((s) => ({ ...s, [k]: Array.from(e.target.selectedOptions).map((o) => o.value) }));
   const dirty = useMemo(() => Object.entries(v).some(([k, value]) => {
@@ -126,7 +181,7 @@ export default function ProjectSetup({ user }) {
   }), [v]);
 
   if (!canEdit) {
-    return <div className="page-pad" style={{ maxWidth: 1100, margin: '0 auto' }}><h1>{title}</h1><FormsGuide /><p>You do not have permission to register projects, but you can use the form guide above to see what information is required.</p></div>;
+    return <div className="page-pad" style={{ maxWidth: 1100, margin: '0 auto' }}><h1>{title}</h1><p>You do not have permission to register projects. You can still review the actual MERL reporting forms below.</p><ActualMerlForms /></div>;
   }
 
   const save = async (e) => {
@@ -186,7 +241,6 @@ export default function ProjectSetup({ user }) {
   return (
     <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }} key={resetKey}>
       <PageHeader title={title} subtitle={subtitle} />
-      <FormsGuide />
       {registered && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was registered. The form has been cleared for the next project.</div>}
       <form onSubmit={save} id="project-profile">
         <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
@@ -232,12 +286,16 @@ export default function ProjectSetup({ user }) {
           <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Registering…' : 'Register project'}</button>
         </div>
       </form>
+
+      <ActualMerlForms />
+
       <style>{`
-        .ps-guide{margin:0 0 1rem;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}
-        .ps-guide-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.8rem}.ps-guide-head h2{margin:0;font-size:1.05rem}.ps-guide-head p{margin:.3rem 0 0;color:var(--text-3);font-size:.8rem;max-width:760px}.ps-guide-head>span{white-space:nowrap;background:var(--green-50);color:var(--green-700);border:1px solid var(--border);border-radius:999px;padding:.25rem .55rem;font-size:.7rem;font-weight:700}
-        .ps-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.ps-guide-card{border:1px solid var(--border);border-radius:10px;background:#fff;overflow:hidden}.ps-guide-card summary{list-style:none;display:flex;justify-content:space-between;gap:.8rem;align-items:center;padding:.75rem .8rem;cursor:pointer}.ps-guide-card summary::-webkit-details-marker{display:none}.ps-guide-card summary strong{display:block;font-size:.82rem}.ps-guide-card summary small{display:block;margin-top:.18rem;color:var(--text-3);font-size:.68rem;line-height:1.35}.ps-guide-card summary>span{font-size:.66rem;color:var(--green-700);font-weight:700;white-space:nowrap}.ps-guide-card[open] summary{background:var(--green-50)}.ps-guide-body{padding:.75rem .9rem;border-top:1px solid var(--border)}.ps-guide-body h3{margin:0 0 .45rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)}.ps-guide-body ul{margin:.2rem 0 .7rem;padding-left:1.1rem;columns:2;column-gap:1.4rem}.ps-guide-body li{font-size:.72rem;line-height:1.4;margin-bottom:.28rem;break-inside:avoid}.ps-guide-link{font-size:.72rem;font-weight:700;color:var(--green-700);text-decoration:none}
-        @media(max-width:850px){.ps-guide-grid{grid-template-columns:1fr}.ps-guide-body ul{columns:1}}
-        @media(max-width:700px){.ps-grid{grid-template-columns:1fr!important}.ps-grid>*{grid-column:1!important}.ps-guide-head{flex-direction:column}}
+        .ps-actual{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}
+        .ps-actual-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}.ps-actual-head h2{margin:0;font-size:1.08rem}.ps-actual-head p{margin:.3rem 0 0;color:var(--text-3);font-size:.8rem;max-width:790px;line-height:1.5}.ps-live-link{white-space:nowrap;text-decoration:none;font-size:.75rem;font-weight:700;color:var(--green-700);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;background:#fff}
+        .ps-form-stack{display:grid;gap:1rem}.ps-form-preview{border:1px solid var(--border);border-radius:12px;background:#fff;padding:1rem}.ps-form-title{display:flex;gap:.75rem;align-items:flex-start;padding-bottom:.8rem;margin-bottom:.8rem;border-bottom:1px solid var(--border)}.ps-form-number{flex:0 0 auto;background:var(--green-50);color:var(--green-700);border:1px solid var(--border);border-radius:999px;padding:.28rem .55rem;font-size:.68rem;font-weight:800}.ps-form-title h3{margin:0;font-size:.95rem}.ps-form-title p{margin:.2rem 0 0;color:var(--text-3);font-size:.72rem;line-height:1.4}
+        .ps-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.ps-preview-field{display:flex;flex-direction:column;gap:.3rem}.ps-preview-wide{grid-column:1/-1}.ps-preview-control:disabled{opacity:1;color:var(--text-2);background:#f8fafc;cursor:default}.ps-preview-control:disabled::placeholder{color:#94a3b8}.ps-preview-check{display:flex;align-items:center;gap:.5rem;min-height:42px;padding:.55rem .7rem;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:var(--text-3);font-size:.75rem}.ps-preview-note{margin:.9rem 0 0;padding:.7rem .8rem;border-radius:8px;background:#f8fafc;color:var(--text-3);font-size:.72rem;line-height:1.45}
+        @media(max-width:800px){.ps-preview-grid{grid-template-columns:1fr}.ps-preview-wide{grid-column:1}.ps-actual-head{flex-direction:column}.ps-live-link{white-space:normal}}
+        @media(max-width:700px){.ps-grid{grid-template-columns:1fr!important}.ps-grid>*{grid-column:1!important}}
       `}</style>
     </div>
   );
