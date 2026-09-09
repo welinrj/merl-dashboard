@@ -48,6 +48,12 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate institutional header alignment and mobile controls
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/header-brand-layout.mjs
+
       - name: Validate administration role row colours
         working-directory: frontend
         run: node qa/admin-role-colors.mjs

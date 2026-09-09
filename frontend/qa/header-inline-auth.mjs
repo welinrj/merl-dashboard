@@ -40,7 +40,7 @@ try {
   await form.waitFor({timeout:15000});
   await form.getByLabel('Email').fill('test@example.com');
   await form.getByLabel('Password').fill('correct-test-password');
-  await form.getByRole('button',{name:'Sign in',exact:true}).click();
+  await form.locator('button[type="submit"]').click();
   await page.locator('.dsh-user').first().waitFor({timeout:20000});
   if(new URL(page.url()).hash !== '#/dashboards') throw new Error('Login did not preserve the shared dashboard route');
   if(await page.locator('.pbd-root').count()) throw new Error('Authenticated user remained on the public view');

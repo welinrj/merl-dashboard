@@ -32,6 +32,8 @@ import './workspace-blue.css';
 import './sidebar-coastal.css';
 // KPI, chart-card and progress treatments adapted only from 21st.dev patterns.
 import './twentyfirst-dashboard.css';
+// Final institutional header arrangement, after the existing shell and login styles.
+import './header-institutional-layout.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({

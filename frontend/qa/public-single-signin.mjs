@@ -27,7 +27,7 @@ const assertHeaderLogin = async label => {
   if (await page.locator('.pbd-root a[href="#/login"]').count() !== 0) {
     throw new Error(`${label}: duplicate login link remains`);
   }
-  if (await form.locator('input[type="email"]').count() !== 1 || await form.locator('input[type="password"]').count() !== 1 || await form.getByRole('button', { name: 'Sign in', exact: true }).count() !== 1) {
+  if (await form.locator('input[type="email"]').count() !== 1 || await form.locator('input[type="password"]').count() !== 1 || await form.locator('button[type="submit"]').count() !== 1) {
     throw new Error(`${label}: email, password or submit control is missing`);
   }
   console.log(`PASS ${label}`);
@@ -44,7 +44,7 @@ try {
   const form = page.locator('.pbd-header-login');
   await form.getByLabel('Email').fill('invalid@example.test');
   await form.getByLabel('Password').fill('invalid-password');
-  await form.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await form.locator('button[type="submit"]').click();
   await form.getByRole('alert').waitFor({ timeout: 15000 });
   if (new URL(page.url()).hash !== '#/dashboards') throw new Error('Failed login changed the dashboard route');
   if (await form.locator('input[type="password"]').inputValue() !== '') throw new Error('Failed password was not cleared');
