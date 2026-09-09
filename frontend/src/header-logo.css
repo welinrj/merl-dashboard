@@ -14,7 +14,7 @@
   width: 56px;
   height: 56px;
   box-sizing: border-box;
-  border: 2px solid rgba(255,255,255,.9);
-  border-radius: 50%;
-  background: #fff url('/merl-favicon.png') center / contain no-repeat;
+  border: 0;
+  border-radius: 0;
+  background: transparent url('/merl-sidebar-symbol.png') center / contain no-repeat;
 }
