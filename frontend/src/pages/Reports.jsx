@@ -1,508 +1,82 @@
-// =============================================================================
-// Reports.jsx — DoCC MERL report generators, built directly from the
-// standardised dataset (the "REPORT" end of ENTER ONCE -> STORE -> DISPLAY ->
-// REPORT). No separate report datasets: every report reads the public.v_*
-// views and renders a printable document (Print -> Save as PDF).
-// Report types: Project Progress, Portfolio Performance, Indicator Performance,
-// Financial Performance, Geographic/Provincial, Funding Partner/Donor.
-// =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
-// One icon on this page: Printer, which labels the export control.
 import { Printer } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
-import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';
-import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
-import { useTranslation } from 'react-i18next';
 import { fmtDateTime, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
-
+import { readPortfolio, latestApprovedPeriod } from '../lib/portfolioRead';
 
 const REPORT_TYPES = [
-  { key: 'project',    label: 'rpt.projectProgressReport' },
-  { key: 'portfolio',  label: 'rpt.portfolioPerformanceReport' },
-  { key: 'indicator',  label: 'rpt.indicatorPerformanceReport' },
-  { key: 'financial',  label: 'rpt.financialPerformanceReport' },
-  { key: 'geographic', label: 'rpt.geographicReport' },
-  { key: 'donor',      label: 'rpt.donorReport' },
+  ['project','Project Progress Report'], ['portfolio','Portfolio Performance Report'],
+  ['indicator','Indicator Performance Report'], ['financial','Financial Performance Report'],
+  ['geographic','Geographic / Provincial Report'], ['donor','Funding Partner / Donor Report'],
 ];
+const sum = (rows, f) => rows.reduce((a,r)=>a+(Number(f(r))||0),0);
+const money = v => `VT ${(Number(v)||0).toLocaleString('en-US')}`;
+const pct = v => v == null ? '—' : `${Math.round(Number(v))}%`;
+function latestByProject(rows) { const m=new Map(); for(const r of rows){const p=m.get(r.project_id); if(!p || String(r.created_at||'')>String(p.created_at||''))m.set(r.project_id,r);} return m; }
+function csvCell(v){const s=String(v??''); return /[",\n]/.test(s)?`"${s.replaceAll('"','""')}"`:s;}
+function downloadCsv(name, rows){if(!rows.length)return; const keys=Object.keys(rows[0]); const csv=[keys.join(','),...rows.map(r=>keys.map(k=>csvCell(r[k])).join(','))].join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=name; a.click(); URL.revokeObjectURL(a.href);}
 
-const sum = (rows, f) => rows.reduce((a, r) => a + (Number(f(r)) || 0), 0);
-function latestByProject(rows) {
-  const m = new Map();
-  for (const r of rows) { const p = m.get(r.project_id); if (!p || (r.created_at ?? '') > (p.created_at ?? '')) m.set(r.project_id, r); }
-  return m;
-}
-
-export default function Reports() {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage;
-  const [d, setD] = useState(null);
-  const [type, setType] = useState('project');
-  const [projectId, setProjectId] = useState('');
-  const [province, setProvince] = useState('');
-  const [donor, setDonor] = useState('');
-  const [period, setPeriod] = useState('');
-  const [runs, setRuns] = useState([]);
-
-  // Report Library (§48-51): recent official report generations, portfolio-wide.
-  const loadRuns = useCallback(async () => {
-    const { data } = await supabase.from('v_report_runs').select('*')
-      .order('generated_at', { ascending: false }).limit(20);
-    setRuns(data ?? []);
-  }, []);
-  useEffect(() => { loadRuns(); }, [loadRuns]);
-
-  useEffect(() => {
-    (async () => {
-      // Rows arrive already in the reader's language; see lib/contentLocale.js.
-      const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
-      const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op, learn] = await Promise.all([
-        q('v_projects', '*'),
-        q('v_financial_progress', '*'),
-        q('v_risks_issues', '*'),
-        q('v_beneficiaries', '*'),
-        q('v_project_activities', '*'),
-        q('v_project_indicators', '*'),
-        q('v_indicator_progress', '*'),
-        q('v_reporting_periods', '*'),
-        q('v_project_locations', '*'),
-        q('v_objectives', '*'),
-        q('v_outcomes', '*'),
-        q('v_outputs', '*'),
-        q('v_learning_updates', '*'),
-      ]);
-      setD({
-        projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
-        beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
-        progress: prog.data ?? [], reporting: rep.data ?? [], locations: loc.data ?? [],
-        objectives: obj.data ?? [], outcomes: oc.data ?? [], outputs: op.data ?? [], learning: learn.data ?? [],
-      });
-      if ((proj.data ?? []).length) setProjectId(proj.data[0].id);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
-
-  if (!d) return <div className="page-pad"><p style={{ color: 'var(--text-3)' }}>{t('rpt.loading')}</p></div>;
-
-  const donors = [...new Set(d.projects.map((p) => p.donor).filter(Boolean))];
-  const provinces = ['TORBA', 'SANMA', 'PENAMA', 'MALAMPA', 'SHEFA', 'TAFEA'];
-
-  // "Data as at" (§76): latest timestamp across the datasets this report reads.
-  const times = [d.reporting, d.progress, d.financial, d.beneficiaries, d.risks, d.learning, d.activities]
-    .flat().flatMap((r) => [r?.updated_at, r?.created_at]).filter(Boolean).map((ts) => new Date(ts).getTime());
-  const dataAsAt = times.length ? new Date(Math.max(...times)) : null;
-  const generatedAt = new Date();
-
-  // Log the generation to the Report Library, then print. Logging is best-effort
-  // and never blocks the report from printing.
-  const generate = async () => {
-    const label = REPORT_TYPES.find((r) => r.key === type)?.label;
-    const { error } = await supabase.rpc('log_report_run', {
-      p_report_type: type,
-      p_report_label: label,
-      p_project_id: type === 'project' ? (projectId || null) : null,
-      p_reporting_period: period || null,
-      p_params: { province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
+export default function Reports(){
+  const [d,setD]=useState(null); const [error,setError]=useState(''); const [reload,setReload]=useState(0);
+  const [type,setType]=useState('project'); const [projectId,setProjectId]=useState(''); const [province,setProvince]=useState(''); const [donor,setDonor]=useState(''); const [approvedOnly,setApprovedOnly]=useState(true); const [runs,setRuns]=useState([]);
+  const loadRuns=useCallback(async()=>{const {data}=await supabase.from('v_report_runs').select('*').order('generated_at',{ascending:false}).limit(20); setRuns(data||[]);},[]);
+  useEffect(()=>{loadRuns();},[loadRuns]);
+  useEffect(()=>{let alive=true;(async()=>{setError(''); try{
+    const q=(v,cols='*')=>localised(()=>supabase.from(v).select(cols==='*'?'*':i18nCols(cols)));
+    const snap=await readPortfolio({
+      projects:()=>q('v_projects','id,code,name,status,budget_vuv,spent_vuv,provinces,donor,category,start_date,end_date,description,expected_primary_outcome'),
+      financial:()=>q('v_financial_progress','*'), risks:()=>q('v_risks_issues','*'), beneficiaries:()=>q('v_beneficiaries','*'), activities:()=>q('v_project_activities','*'), indicators:()=>q('v_project_indicators','*'), progress:()=>q('v_indicator_progress','*'), reporting:()=>q('v_reporting_periods','*'), locations:()=>q('v_project_locations','*'), learning:()=>q('v_learning_updates','*'), outputs:()=>q('v_outputs','*'),
     });
-    if (!error) loadRuns();
-    window.print();
+    if(!alive)return; setD({...snap.data,loadedAt:snap.loadedAt}); if(snap.data.projects.length && !projectId)setProjectId(snap.data.projects[0].id);
+  }catch(e){if(alive)setError(e.message||'Could not load report data.');}})(); return()=>{alive=false;};},[reload]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const approvedKeys=useMemo(()=>{const s=new Set(); (d?.reporting||[]).forEach(r=>{if(r.submission_status==='approved')s.add(`${r.project_id}::${r.period_label}`)}); return s;},[d]);
+  const scoped=useMemo(()=>{if(!d)return null; const isApproved=r=>!r.reporting_period || approvedKeys.has(`${r.project_id}::${r.reporting_period}`); const filt=rows=>approvedOnly?rows.filter(isApproved):rows; return {...d,financial:filt(d.financial),beneficiaries:filt(d.beneficiaries),progress:filt(d.progress),learning:filt(d.learning)};},[d,approvedOnly,approvedKeys]);
+  const donors=useMemo(()=>[...new Set((d?.projects||[]).map(p=>p.donor).filter(Boolean))].sort(),[d]);
+  const provinces=['TORBA','SANMA','PENAMA','MALAMPA','SHEFA','TAFEA'];
+  if(error)return <div className="page-pad" style={{maxWidth:960,margin:'0 auto'}}><PageHeader title="Reports" subtitle="Generate consistent reports from the standard MERL dataset."/><div className="rp-error">{error}<button className="btn btn-secondary" onClick={()=>setReload(n=>n+1)}>Retry</button></div></div>;
+  if(!scoped)return <div className="page-pad"><p>Loading reports…</p></div>;
+
+  const project=scoped.projects.find(p=>p.id===projectId); const latestFin=latestByProject(scoped.financial); const approvedAsAt=latestApprovedPeriod(scoped.reporting); const generatedAt=new Date();
+  const scopeProjects=type==='project'?scoped.projects.filter(p=>p.id===projectId):type==='donor'?scoped.projects.filter(p=>!donor||p.donor===donor):type==='geographic'?scoped.projects.filter(p=>!province||(p.provinces||[]).includes(province)):scoped.projects;
+  const ids=new Set(scopeProjects.map(p=>p.id)); const within=rows=>rows.filter(r=>ids.has(r.project_id));
+  const indicators=within(scoped.indicators), progress=within(scoped.progress), finance=within(scoped.financial), beneficiaries=within(scoped.beneficiaries), risks=within(scoped.risks), locations=within(scoped.locations), activities=within(scoped.activities), outputs=within(scoped.outputs), reporting=within(scoped.reporting);
+  const latestProg=new Map(); progress.forEach(r=>{const p=latestProg.get(r.indicator_id); if(!p||String(r.created_at||r.reporting_period||'')>String(p.created_at||p.reporting_period||''))latestProg.set(r.indicator_id,r);});
+  const approvedPeriods=reporting.filter(r=>r.submission_status==='approved').length; const highRisks=risks.filter(r=>['high','critical'].includes(String(r.risk_rating||'').toLowerCase())&&!['closed','resolved'].includes(r.status)).length; const totalBudget=sum(scopeProjects,p=>p.budget_vuv); const totalExp=[...latestFin.values()].filter(r=>ids.has(r.project_id)).reduce((a,r)=>a+(Number(r.cumulative_expenditure)||0),0); const bene=portfolioBeneficiaries(beneficiaries)||0;
+
+  const exportRows=()=>{
+    if(type==='indicator')return indicators.map(i=>{const r=latestProg.get(i.id)||{}; return {project:scopeProjects.find(p=>p.id===i.project_id)?.name||'',code:i.code,indicator:i.name,baseline:i.baseline_value??'',target:i.target_value??'',actual:r.cumulative_actual??'',achievement_pct:r.achievement_pct??'',status:r.performance_status??'',period:r.reporting_period??''};});
+    if(type==='financial')return scopeProjects.map(p=>{const f=latestFin.get(p.id)||{}; return {code:p.code,project:p.name,budget:p.budget_vuv||0,cumulative_expenditure:f.cumulative_expenditure||0,remaining_balance:f.remaining_balance??'',utilisation_pct:f.utilisation_pct??''};});
+    if(type==='geographic')return locations.map(r=>({project:scopeProjects.find(p=>p.id===r.project_id)?.name||'',province:r.province||'',island:r.island||'',area_council:r.area_council||'',community:r.community||'',latitude:r.latitude??'',longitude:r.longitude??''}));
+    return scopeProjects.map(p=>({code:p.code,project:p.name,status:p.status,donor:p.donor||'',provinces:(p.provinces||[]).join('; '),budget:p.budget_vuv||0,beneficiaries:portfolioBeneficiaries(scoped.beneficiaries.filter(b=>b.project_id===p.id))||0,approved_periods:scoped.reporting.filter(r=>r.project_id===p.id&&r.submission_status==='approved').length}));
   };
+  const generate=async()=>{await supabase.rpc('log_report_run',{p_report_type:type,p_report_label:REPORT_TYPES.find(r=>r[0]===type)?.[1]||type,p_project_id:type==='project'?(projectId||null):null,p_reporting_period:null,p_params:{province:type==='geographic'?(province||null):null,donor:type==='donor'?(donor||null):null,approved_only:approvedOnly}}); loadRuns(); window.print();};
 
-  return (
-    <div className="page-pad" style={{ maxWidth: 960, margin: '0 auto' }}>
-      <style>{`
-        .rp-doc{background:#fff;border:1px solid var(--border);border-radius:12px;padding:2rem;margin-top:1rem;color:#1a1a1a}
-        .rp-doc h2{font-family:var(--font-display);font-size:1.4rem;margin:0 0 .2rem}
-        .rp-doc h3{font-size:1rem;margin:1.3rem 0 .5rem;padding-bottom:.25rem;border-bottom:2px solid var(--green-600);color:var(--green-800)}
-        .rp-doc h4{font-size:.9rem;margin:.9rem 0 .3rem}
-        .rp-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:.3rem .9rem;font-size:.82rem;margin:.6rem 0 0}
-        .rp-meta b{color:#555}
-        .rp-t{width:100%;border-collapse:collapse;font-size:.8rem;margin:.4rem 0}
-        .rp-t th,.rp-t td{border:1px solid #ddd;padding:.35rem .5rem;text-align:left}
-        .rp-t th{background:#f4f6f5;font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;color:#555}
-        .rp-narr{font-size:.85rem;line-height:1.5;white-space:pre-wrap;margin:.2rem 0}
-        .rp-muted{color:#888;font-size:.82rem}
-        .rp-stamp{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.4rem;font-size:.72rem;color:#666;padding-bottom:.6rem;margin-bottom:.9rem;border-bottom:1px solid #eee}
-        .rp-stamp b{color:#333}
-        .rl-t{width:100%;border-collapse:collapse;font-size:.82rem}
-        .rl-t th,.rl-t td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
-        .rl-t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);background:var(--green-50)}
-        .rl-t tbody tr:last-child td{border-bottom:none}
-        @media (max-width:640px){.rp-meta{grid-template-columns:1fr}.rp-doc{padding:1.1rem}}
-        @media print{
-          body *{visibility:hidden !important}
-          .rp-print,.rp-print *{visibility:visible !important}
-          .rp-print{position:absolute;left:0;top:0;width:100%;border:none;border-radius:0;padding:0}
-          .rp-noprint{display:none !important}
-        }
-      `}</style>
-
-      <div className="rp-noprint">
-        <PageHeader
-          title={t('rpt.reports')}
-          subtitle={t('rpt.pageSubtitle')}
-        />
-      </div>
-
-      {/* Controls */}
-      <div className="rp-noprint" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ flex: '1 1 220px' }}>
-          <label className="field-label">{t('rpt.reportType')}</label>
-          <select className="field-input" value={type} onChange={(e) => setType(e.target.value)}>
-            {REPORT_TYPES.map((r) => <option key={r.key} value={r.key}>{t(r.label)}</option>)}
-          </select>
-        </div>
-        {type === 'project' && (
-          <div style={{ flex: '1 1 240px' }}>
-            <label className="field-label">{t('rpt.project')}</label>
-            <select className="field-input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-              {d.projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
-            </select>
-          </div>
-        )}
-        {type === 'geographic' && (
-          <div style={{ flex: '1 1 180px' }}>
-            <label className="field-label">{t('rpt.provinceOptional')}</label>
-            <select className="field-input" value={province} onChange={(e) => setProvince(e.target.value)}>
-              <option value="">{t('rpt.allProvinces')}</option>
-              {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-        )}
-        {type === 'donor' && (
-          <div style={{ flex: '1 1 200px' }}>
-            <label className="field-label">{t('rpt.donorOptional')}</label>
-            <select className="field-input" value={donor} onChange={(e) => setDonor(e.target.value)}>
-              <option value="">{t('rpt.allDonors')}</option>
-              {donors.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-        )}
-        <div style={{ flex: '0 1 160px' }}>
-          <label className="field-label">{t('rpt.reportingPeriod')}</label>
-          <input className="field-input" placeholder="e.g. 2026-Q1" value={period} onChange={(e) => setPeriod(e.target.value)} />
-        </div>
-        <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
-          <Printer size={16} /> {t('rpt.printPdf')}
-        </button>
-      </div>
-
-      <div className="rp-doc rp-print">
-        <div className="rp-stamp">
-          <span>{t('rpt.generated')} <b>{fmtDateTime(generatedAt)}</b></span>
-          <span>{t('rpt.dataAsAt')} <b>{dataAsAt ? fmtDateTime(dataAsAt) : '—'}</b></span>
-        </div>
-        {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} />}
-        {type === 'portfolio' && <Portfolio d={d} period={period} />}
-        {type === 'indicator' && <IndicatorReport d={d} period={period} />}
-        {type === 'financial' && <FinancialReport d={d} period={period} />}
-        {type === 'geographic' && <GeographicReport d={d} province={province} period={period} />}
-        {type === 'donor' && <DonorReport d={d} donor={donor} period={period} />}
-      </div>
-
-      {/* Report Library (§48-51): audit trail of official reports generated */}
-      <div className="rp-noprint" style={{ marginTop: '1.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{t('rpt.reportLibrary')}</h2>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginLeft: '0.25rem' }}>{t('rpt.recentlyGenerated')}</span>
-        </div>
-        {runs.length === 0 ? (
-          <div className="card" style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-3)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            No reports generated yet. Use Print / PDF above to produce one — it will be logged here.
-          </div>
-        ) : (
-          <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-            <table className="rl-t">
-              <thead>
-                <tr><th>{t('rpt.report')}</th><th>{t('rpt.scope')}</th><th>{t('rpt.period')}</th><th>{t('rpt.generatedBy')}</th><th>{t('rpt.when')}</th></tr>
-              </thead>
-              <tbody>
-                {runs.map((r) => (
-                  <tr key={r.id}>
-                    <td><b>{r.report_label || r.report_type}</b></td>
-                    <td>{r.project_code ? `${r.project_code}` : (r.params?.province || r.params?.donor || 'Portfolio')}</td>
-                    <td>{r.reporting_period || '—'}</td>
-                    <td>{r.generated_by_name || '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(r.generated_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <div className="page-pad rpt" style={{maxWidth:1100,margin:'0 auto'}}><style>{`
+    .rpt-controls{display:grid;grid-template-columns:1.2fr 1.4fr 1fr auto;gap:.65rem;align-items:end;background:#fff;border:1px solid var(--border);border-radius:12px;padding:.9rem;margin-bottom:1rem}.rpt-actions{display:flex;gap:.45rem;flex-wrap:wrap}.rpt-doc{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.4rem}.rpt-head{display:flex;justify-content:space-between;gap:1rem;border-bottom:2px solid var(--green-600);padding-bottom:.8rem;margin-bottom:.9rem}.rpt-meta{font-size:.75rem;color:var(--text-3);line-height:1.6}.rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin:.8rem 0}.rpt-kpi{padding:.8rem;border:1px solid var(--border);border-radius:9px}.rpt-kpi span{display:block;font-size:.65rem;text-transform:uppercase;color:var(--text-3);font-weight:700}.rpt-kpi b{display:block;margin-top:.25rem;font-size:1.2rem}.rpt-t{width:100%;border-collapse:collapse;font-size:.78rem}.rpt-t th,.rpt-t td{padding:.5rem .6rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.rpt-t th{font-size:.64rem;text-transform:uppercase;background:var(--green-50);color:var(--text-3)}.rpt-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:9px;margin-top:.7rem}.rpt-note{padding:.7rem;background:#f8fafc;border-radius:8px;color:var(--text-3);font-size:.72rem;margin:.7rem 0}.rp-error{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:1rem;border:1px solid #fecaca;background:#fff7f7;border-radius:10px}@media(max-width:820px){.rpt-controls{grid-template-columns:1fr 1fr}.rpt-kpis{grid-template-columns:1fr 1fr}}@media(max-width:520px){.rpt-controls,.rpt-kpis{grid-template-columns:1fr}}@media print{body *{visibility:hidden!important}.rpt-print,.rpt-print *{visibility:visible!important}.rpt-print{position:absolute;left:0;top:0;width:100%;border:0}.rpt-noprint{display:none!important}}
+  `}</style><div className="rpt-noprint"><PageHeader title="Reports" subtitle="Generate project and portfolio reports from one authoritative MERL dataset."/><div className="rpt-controls">
+    <label><span className="field-label">Report type</span><select className="field-input" value={type} onChange={e=>setType(e.target.value)}>{REPORT_TYPES.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></label>
+    {type==='project'?<label><span className="field-label">Project</span><select className="field-input" value={projectId} onChange={e=>setProjectId(e.target.value)}>{scoped.projects.map(p=><option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}</select></label>:type==='geographic'?<label><span className="field-label">Province</span><select className="field-input" value={province} onChange={e=>setProvince(e.target.value)}><option value="">All provinces</option>{provinces.map(p=><option key={p}>{p}</option>)}</select></label>:type==='donor'?<label><span className="field-label">Funding partner</span><select className="field-input" value={donor} onChange={e=>setDonor(e.target.value)}><option value="">All partners</option>{donors.map(x=><option key={x}>{x}</option>)}</select></label>:<div/>}
+    <label style={{display:'flex',alignItems:'center',gap:'.45rem',fontSize:'.78rem'}}><input type="checkbox" checked={approvedOnly} onChange={e=>setApprovedOnly(e.target.checked)}/> Approved reporting only</label>
+    <div className="rpt-actions"><button className="btn btn-secondary" onClick={()=>downloadCsv(`merl-${type}-${new Date().toISOString().slice(0,10)}.csv`,exportRows())}>Export CSV</button><button className="btn btn-primary" onClick={generate}><Printer size={15}/> Print / PDF</button></div>
+  </div></div>
+  <article className="rpt-doc rpt-print"><div className="rpt-head"><div><h1 style={{margin:0,fontSize:'1.45rem'}}>{REPORT_TYPES.find(r=>r[0]===type)?.[1]}</h1><div className="rpt-meta">Department of Climate Change · MERL Portal<br/>Generated {fmtDateTime(generatedAt)} · Data as at {approvedAsAt||'No approved reporting period'}<br/>Scope: {approvedOnly?'Approved reporting records only':'All accessible reporting records'}</div></div>{project&&type==='project'&&<div style={{textAlign:'right'}}><b>{project.code}</b><br/>{project.name}</div>}</div>
+  <div className="rpt-note">Methodology: project inventory comes from the MERL project register. Results, beneficiaries and financial progress are restricted to approved reporting periods when the approved-only control is enabled. Missing records are shown as missing, not converted into zero progress.</div>
+  <div className="rpt-kpis"><K label="Projects" value={fmtNum(scopeProjects.length)}/><K label="Approved periods" value={fmtNum(approvedPeriods)}/><K label="Beneficiaries" value={fmtNum(bene)}/><K label="High / critical open risks" value={fmtNum(highRisks)}/></div>
+  <div className="rpt-kpis"><K label="Approved budget" value={money(totalBudget)}/><K label="Cumulative expenditure" value={money(totalExp)}/><K label="Budget utilisation" value={totalBudget?pct(totalExp/totalBudget*100):'—'}/><K label="Outputs" value={fmtNum(outputs.length)}/></div>
+  <ReportBody type={type} projects={scopeProjects} indicators={indicators} latestProg={latestProg} latestFin={latestFin} activities={activities} risks={risks} locations={locations}/>
+  </article>
+  <div className="rpt-noprint" style={{marginTop:'1rem'}}><h2 style={{fontSize:'1rem'}}>Report library</h2>{runs.length?<div className="rpt-table-wrap"><table className="rpt-t"><thead><tr><th>Generated</th><th>Report</th><th>Project</th><th>Period / parameters</th></tr></thead><tbody>{runs.map(r=><tr key={r.id}><td>{fmtDateTime(r.generated_at)}</td><td>{r.report_label||r.report_type}</td><td>{r.project_code||'Portfolio'}</td><td>{r.reporting_period||JSON.stringify(r.params||{})}</td></tr>)}</tbody></table></div>:<p style={{color:'var(--text-3)'}}>No report generations logged yet.</p>}</div>
+  </div>;
 }
-
-const Section = ({ n, title, children }) => (
-  <div><h3>{n}. {title}</h3>{children}</div>
-);
-function Narr({ text }) {
-  const { t } = useTranslation();
-  return text ? <p className="rp-narr">{text}</p> : <p className="rp-muted">{t('rpt.notReported')}</p>;
+function K({label,value}){return <div className="rpt-kpi"><span>{label}</span><b>{value}</b></div>;}
+function ReportBody({type,projects,indicators,latestProg,latestFin,activities,risks,locations}){
+  if(type==='indicator')return <T cols={['Project','Indicator','Baseline','Target','Actual','Achievement','Status']} rows={indicators.map(i=>{const r=latestProg.get(i.id)||{}; const p=projects.find(x=>x.id===i.project_id); return [p?.name||'—',`${i.code} — ${i.name}`,i.baseline_value??'—',i.target_value??'—',r.cumulative_actual??'—',pct(r.achievement_pct),r.performance_status||'Not reported'];})}/>;
+  if(type==='financial')return <T cols={['Project','Budget','Expenditure','Balance','Utilisation']} rows={projects.map(p=>{const f=latestFin.get(p.id)||{};return [p.name,money(f.approved_budget??p.budget_vuv),money(f.cumulative_expenditure),money(f.remaining_balance),pct(f.utilisation_pct)];})}/>;
+  if(type==='geographic')return <T cols={['Project','Province','Island','Area Council','Community','Coordinates']} rows={locations.map(r=>[projects.find(p=>p.id===r.project_id)?.name||'—',r.province||'—',r.island||'—',r.area_council||'—',r.community||'—',r.latitude!=null&&r.longitude!=null?`${r.latitude}, ${r.longitude}`:'Missing'])}/>;
+  return <><h2 style={{fontSize:'1rem'}}>Project summary</h2><T cols={['Code','Project','Status','Donor','Coverage','Budget']} rows={projects.map(p=>[p.code,p.name,p.status,p.donor||'—',(p.provinces||[]).join(', ')||'National / unspecified',money(p.budget_vuv)])}/><h2 style={{fontSize:'1rem',marginTop:'1rem'}}>Implementation and risks</h2><T cols={['Project','Activities','Completed','Open risks']} rows={projects.map(p=>[p.name,activities.filter(a=>a.project_id===p.id).length,activities.filter(a=>a.project_id===p.id&&a.status==='completed').length,risks.filter(r=>r.project_id===p.id&&!['closed','resolved'].includes(r.status)).length])}/></>;
 }
-
-// ── 1. Project Progress Report (14-section standard structure) ────────────────
-function ProjectProgress({ d, projectId, period }) {
-  const { t } = useTranslation();
-  const p = d.projects.find((x) => x.id === projectId);
-  if (!p) return <p className="rp-muted">{t('rpt.selectProject')}</p>;
-  const fin = latestByProject(d.financial.filter((f) => f.project_id === projectId)).get(projectId);
-  const inds = d.indicators.filter((i) => i.project_id === projectId);
-  const prog = d.progress.filter((x) => x.project_id === projectId);
-  const acts = d.activities.filter((a) => a.project_id === projectId);
-  const risks = d.risks.filter((r) => r.project_id === projectId);
-  const locs = d.locations.filter((l) => l.project_id === projectId);
-  const bens = d.beneficiaries.filter((b) => b.project_id === projectId);
-  const learn = d.learning.filter((l) => l.project_id === projectId).sort((a, b) => (b.reporting_period ?? '').localeCompare(a.reporting_period ?? ''))[0] || {};
-  const budget = fin?.approved_budget ?? p.budget_vuv;
-  const exp = fin?.cumulative_expenditure ?? p.spent_vuv;
-  const physAvg = acts.filter((a) => a.physical_progress_pct != null);
-  const phys = physAvg.length ? Math.round(physAvg.reduce((a, x) => a + Number(x.physical_progress_pct), 0) / physAvg.length) : null;
-  const indLast = (i) => prog.filter((x) => x.indicator_id === i.id).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0];
-
-  return (
-    <div>
-      <h2>{t('rpt.projectProgressReport')}</h2>
-      <div className="rp-muted">{p.code} — {p.name}{period ? ` · ${period}` : ''}</div>
-
-      <Section n="1" title={t('rpt.projectInformation')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.projectId')}</b> {p.code}</div>
-          <div><b>{t('rpt.titleLbl')}</b> {p.name}</div>
-          <div><b>{t('rpt.donorLbl')}</b> {p.donor || '—'}</div>
-          <div><b>{t('rpt.implementingLbl')}</b> {p.executing_agency || p.lead_agency || '—'}</div>
-          <div><b>{t('rpt.durationLbl')}</b> {p.start_date || '—'} → {p.end_date || '—'}</div>
-          <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)} {p.currency || 'VUV'}</div>
-          <div><b>{t('rpt.locationsLbl')}</b> {(p.provinces || []).join(', ') || 'National'}</div>
-          <div><b>{t('rpt.reportingPeriodLbl')}</b> {period || '—'}</div>
-        </div>
-      </Section>
-
-      <Section n="2" title={t('rpt.executiveSummary')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.overallStatusLbl')}</b> {OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</div>
-          <div><b>{t('rpt.physicalProgressLbl')}</b> {phys != null ? `${phys}%` : '—'}</div>
-          <div><b>{t('rpt.financialUtilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.openRisksLbl')}</b> {risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
-        </div>
-        <Narr text={learn.key_achievements} />
-      </Section>
-
-      <Section n="3" title={t('rpt.progressAgainst')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.level')}</th><th>{t('rpt.statement')}</th></tr></thead>
-          <tbody>
-            {d.objectives.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.objective')}</td><td>{o.statement}</td></tr>)}
-            {d.outcomes.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.outcome')}</td><td>{o.statement}</td></tr>)}
-            {d.outputs.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.output')}</td><td>{o.statement}</td></tr>)}
-          </tbody>
-        </table>
-      </Section>
-
-      <Section n="4" title={t('rpt.indicatorPerformance')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.indicator')}</th><th>{t('rpt.baseline')}</th><th>{t('rpt.periodTarget')}</th><th>{t('rpt.current')}</th><th>{t('rpt.finalTarget')}</th><th>{t('rpt.achievementPct')}</th><th>{t('rpt.status')}</th></tr></thead>
-          <tbody>
-            {inds.map((i) => { const l = indLast(i); return (
-              <tr key={i.code}><td>{i.code} {i.name}</td><td>{i.baseline_value ?? '—'}</td><td>{l?.period_target ?? '—'}</td>
-                <td>{l?.cumulative_actual ?? '—'}</td><td>{i.target_value ?? '—'}</td><td>{fmtPct(l?.achievement_pct)}</td>
-                <td>{OPT.labelOf(OPT.PERFORMANCE_STATUS, l?.performance_status)}</td></tr>); })}
-            {inds.length === 0 && <tr><td colSpan={7} className="rp-muted">{t('rpt.noIndicators')}</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-
-      <Section n="5" title={t('rpt.activityImplementation')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.activity')}</th><th>{t('rpt.status')}</th><th>{t('rpt.progress')}</th><th>{t('rpt.plannedBudget')}</th><th>{t('rpt.actualExp')}</th></tr></thead>
-          <tbody>
-            {acts.map((a) => <tr key={a.code}><td>{a.code}</td><td>{a.name}</td><td>{OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</td>
-              <td>{a.physical_progress_pct != null ? `${a.physical_progress_pct}%` : '—'}</td><td>{fmtAmount(a.planned_budget)}</td><td>{fmtAmount(a.actual_expenditure)}</td></tr>)}
-            {acts.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noActivities')}</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-
-      <Section n="6" title={t('rpt.financialPerformance')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div>
-          <div><b>{t('rpt.periodBudgetLbl')}</b> {fmtAmount(fin?.period_budget)}</div>
-          <div><b>{t('rpt.expenditureThisPeriodLbl')}</b> {fmtAmount(fin?.expenditure_period)}</div>
-          <div><b>{t('rpt.cumulativeExpenditureLbl')}</b> {fmtAmount(exp)}</div>
-          <div><b>{t('rpt.remainingBalanceLbl')}</b> {fmtAmount(fin?.remaining_balance ?? ((Number(budget) || 0) - (Number(exp) || 0)))}</div>
-          <div><b>{t('rpt.utilisationPctLbl')}</b> {fmtPct(fin?.utilisation_pct ?? utilisationPct(budget, exp))}</div>
-        </div>
-        <Narr text={fin?.narrative} />
-      </Section>
-
-      <Section n="7" title={t('rpt.geographicImplementation')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.island')}</th><th>{t('rpt.areaCouncil')}</th><th>{t('rpt.community')}</th><th>{t('rpt.beneficiaries')}</th></tr></thead>
-          <tbody>
-            {locs.map((l) => <tr key={l.id}><td>{l.province || '—'}</td><td>{l.island || '—'}</td><td>{l.area_council || '—'}</td><td>{l.community || '—'}</td><td>{l.beneficiaries ?? '—'}</td></tr>)}
-            {locs.length === 0 && <tr><td colSpan={5} className="rp-muted">{t('rpt.noLocations')}</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-
-      <Section n="8" title={t('rpt.beneficiariesGedsi')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.period')}</th><th>{t('rpt.totalDirect')}</th><th>{t('rpt.female')}</th><th>{t('rpt.male')}</th><th>{t('rpt.youth')}</th><th>{t('rpt.pwd')}</th></tr></thead>
-          <tbody>
-            {bens.map((b) => <tr key={b.id}><td>{b.reporting_period || '—'}</td><td>{b.total_direct ?? '—'}</td><td>{b.female ?? '—'}</td><td>{b.male ?? '—'}</td><td>{b.youth ?? '—'}</td><td>{b.persons_with_disability ?? '—'}</td></tr>)}
-            {bens.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noBeneficiaryData')}</td></tr>}
-          </tbody>
-        </table>
-        <p className="rp-muted">{t('rpt.blankCells')}</p>
-      </Section>
-
-      <Section n="9" title={t('rpt.keyAchievements')}><Narr text={[learn.key_achievements, learn.major_results].filter(Boolean).join('\n\n')} /></Section>
-      <Section n="10" title={t('rpt.challengesRisks')}>
-        <Narr text={learn.challenges} />
-        <table className="rp-t"><thead><tr><th>{t('rpt.id')}</th><th>{t('rpt.type')}</th><th>{t('rpt.description')}</th><th>{t('rpt.rating')}</th><th>{t('rpt.status')}</th><th>{t('rpt.mitigation')}</th></tr></thead>
-          <tbody>
-            {risks.map((r) => <tr key={r.code}><td>{r.code}</td><td>{OPT.labelOf(OPT.RISK_TYPE, r.type)}</td><td>{r.description}</td><td>{r.risk_rating || '—'}</td><td>{OPT.labelOf(OPT.RISK_STATUS, r.status)}</td><td>{r.mitigation || '—'}</td></tr>)}
-            {risks.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noRisks')}</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-      <Section n="11" title={t('rpt.lessonsLearned')}><Narr text={learn.lessons_learned} /></Section>
-      <Section n="12" title={t('rpt.nextPeriodPriorities')}><Narr text={learn.next_period_priorities} /></Section>
-      <Section n="13" title={t('rpt.recommendations')}><Narr text={learn.recommendations} /></Section>
-      <Section n="14" title={t('rpt.supportingEvidence')}><p className="rp-muted">{t('rpt.evidenceNote')}</p></Section>
-    </div>
-  );
-}
-
-// ── Portfolio Performance ─────────────────────────────────────────────────────
-function Portfolio({ d, period }) {
-  const { t } = useTranslation();
-  const fin = latestByProject(d.financial);
-  const budget = sum(d.projects, (p) => p.budget_vuv);
-  const exp = [...fin.values()].reduce((a, r) => a + (Number(r.cumulative_expenditure) || 0), 0);
-  return (
-    <div>
-      <h2>{t('rpt.portfolioPerformanceReport')}</h2>
-      <div className="rp-muted">All projects{period ? ` · ${period}` : ''}</div>
-      <Section n="1" title={t('rpt.portfolioSummary')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.projectsLbl')}</b> {d.projects.length}</div>
-          <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div>
-          <div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div>
-          <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.totalBeneficiariesLbl')}</b> {fmtNum(portfolioBeneficiaries(d.beneficiaries) ?? 0)}</div>
-          <div><b>{t('rpt.openRisksLbl')}</b> {d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
-        </div>
-      </Section>
-      <Section n="2" title={t('rpt.projects')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.donor')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th><th>{t('rpt.utilisation')}</th></tr></thead>
-          <tbody>
-            {d.projects.map((p) => { const f = fin.get(p.id); const b = f?.approved_budget ?? p.budget_vuv; const e = f?.cumulative_expenditure ?? p.spent_vuv;
-              return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{p.donor || '—'}</td><td>{fmtAmount(b)}</td><td>{fmtAmount(e)}</td><td>{fmtPct(utilisationPct(b, e))}</td></tr>; })}
-          </tbody>
-        </table>
-      </Section>
-    </div>
-  );
-}
-
-// ── Indicator Performance ─────────────────────────────────────────────────────
-function IndicatorReport({ d, period }) {
-  const { t } = useTranslation();
-  const rows = period ? d.progress.filter((r) => r.reporting_period === period) : d.progress;
-  return (
-    <div>
-      <h2>{t('rpt.indicatorPerformanceReport')}</h2>
-      <div className="rp-muted">{period || 'All periods'}</div>
-      <table className="rp-t"><thead><tr><th>{t('rpt.indicator')}</th><th>{t('rpt.period')}</th><th>{t('rpt.periodTarget')}</th><th>{t('rpt.current')}</th><th>{t('rpt.finalTarget')}</th><th>{t('rpt.achievementPct')}</th><th>{t('rpt.status')}</th></tr></thead>
-        <tbody>
-          {rows.map((r, i) => <tr key={i}><td>{r.indicator_code} {r.indicator_name}</td><td>{r.reporting_period}</td><td>{r.period_target ?? '—'}</td><td>{r.cumulative_actual ?? '—'}</td><td>{r.final_target ?? '—'}</td><td>{fmtPct(r.achievement_pct)}</td><td>{OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status)}</td></tr>)}
-          {rows.length === 0 && <tr><td colSpan={7} className="rp-muted">{t('rpt.noIndicatorProgress')}</td></tr>}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ── Financial Performance ─────────────────────────────────────────────────────
-function FinancialReport({ d }) {
-  const { t } = useTranslation();
-  const fin = latestByProject(d.financial);
-  let tb = 0, te = 0;
-  const rows = d.projects.map((p) => { const f = fin.get(p.id); const b = f?.approved_budget ?? p.budget_vuv; const e = f?.cumulative_expenditure ?? p.spent_vuv; tb += Number(b) || 0; te += Number(e) || 0; return { p, b, e, avail: f?.funds_available }; });
-  return (
-    <div>
-      <h2>{t('rpt.financialPerformanceReport')}</h2>
-      <div className="rp-meta">
-        <div><b>{t('rpt.totalApprovedLbl')}</b> {fmtAmount(tb)}</div>
-        <div><b>{t('rpt.totalExpenditureLbl')}</b> {fmtAmount(te)}</div>
-        <div><b>{t('rpt.remainingLbl')}</b> {fmtAmount(tb - te)}</div>
-        <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(tb, te))}</div>
-      </div>
-      <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.approved')}</th><th>{t('rpt.expenditure')}</th><th>{t('rpt.remaining')}</th><th>{t('rpt.utilisation')}</th><th>{t('rpt.fundsAvailable')}</th></tr></thead>
-        <tbody>
-          {rows.map(({ p, b, e, avail }) => <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{fmtAmount(b)}</td><td>{fmtAmount(e)}</td><td>{fmtAmount((Number(b) || 0) - (Number(e) || 0))}</td><td>{fmtPct(utilisationPct(b, e))}</td><td>{fmtAmount(avail)}</td></tr>)}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ── Geographic / Provincial ───────────────────────────────────────────────────
-function GeographicReport({ d, province }) {
-  const { t } = useTranslation();
-  const locs = province ? d.locations.filter((l) => l.province === province) : d.locations;
-  const projectIds = new Set(locs.map((l) => l.project_id));
-  const projs = d.projects.filter((p) => projectIds.has(p.id) || (province && (p.provinces || []).includes(province)));
-  return (
-    <div>
-      <h2>{province ? `${province} Province` : 'Geographic'} Report</h2>
-      <Section n="1" title={t('rpt.coverageSummary')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div>
-          <div><b>{t('rpt.sitesLbl')}</b> {locs.length}</div>
-          <div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(sum(locs, (l) => l.beneficiaries))}</div>
-        </div>
-      </Section>
-      <Section n="2" title={t('rpt.sites')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.island')}</th><th>{t('rpt.areaCouncil')}</th><th>{t('rpt.community')}</th><th>{t('rpt.intervention')}</th><th>{t('rpt.beneficiaries')}</th></tr></thead>
-          <tbody>
-            {locs.map((l) => <tr key={l.id}><td>{l.province || '—'}</td><td>{l.island || '—'}</td><td>{l.area_council || '—'}</td><td>{l.community || '—'}</td><td>{l.intervention || '—'}</td><td>{l.beneficiaries ?? '—'}</td></tr>)}
-            {locs.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noSites')}</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-    </div>
-  );
-}
-
-// ── Funding Partner / Donor ───────────────────────────────────────────────────
-function DonorReport({ d, donor }) {
-  const { t } = useTranslation();
-  const projs = donor ? d.projects.filter((p) => p.donor === donor) : d.projects;
-  const fin = latestByProject(d.financial);
-  const ids = new Set(projs.map((p) => p.id));
-  const budget = sum(projs, (p) => p.budget_vuv);
-  const exp = projs.reduce((a, p) => a + (Number(fin.get(p.id)?.cumulative_expenditure ?? p.spent_vuv) || 0), 0);
-  const bens = portfolioBeneficiaries(d.beneficiaries.filter((b) => ids.has(b.project_id))) ?? 0;
-  return (
-    <div>
-      <h2>{donor || 'All Donors'} — Funding Partner Report</h2>
-      <Section n="1" title={t('rpt.investmentSummary')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div>
-          <div><b>{t('rpt.investmentLbl')}</b> {fmtAmount(budget)}</div>
-          <div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div>
-          <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(bens)}</div>
-        </div>
-      </Section>
-      <Section n="2" title={t('rpt.projects')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th></tr></thead>
-          <tbody>
-            {projs.map((p) => <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{fmtAmount(p.budget_vuv)}</td><td>{fmtAmount(fin.get(p.id)?.cumulative_expenditure ?? p.spent_vuv)}</td></tr>)}
-          </tbody>
-        </table>
-      </Section>
-    </div>
-  );
-}
+function T({cols,rows}){return <div className="rpt-table-wrap"><table className="rpt-t"><thead><tr>{cols.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{rows.length?rows.map((r,i)=><tr key={i}>{r.map((v,j)=><td key={j}>{v}</td>)}</tr>):<tr><td colSpan={cols.length}>No matching records.</td></tr>}</tbody></table></div>;}
