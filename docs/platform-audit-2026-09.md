@@ -17,7 +17,7 @@ routes and **no dead, misrouted or silently-failing control was found**. The
 approval workflow is enforced in the database, not merely by hiding buttons — this
 was proved by executing the approval RPC as each real role, not by reading the code.
 
-Three things qualify the verdict:
+Four things qualify the verdict:
 
 1. **The demonstration depends on six external internet hosts** (unpkg, Google Fonts,
    and four ArcGIS/UNOCHA services). This is the single largest presentation risk and
@@ -28,6 +28,9 @@ Three things qualify the verdict:
    rule. The two disagreed. Fixed, tested, and locked behind a new CI check.
 3. **The live site runs against the staging Supabase project**, not the production
    government backend. Fine for a demonstration, provided everyone knows it.
+4. **A long-standing intermittent CI failure turned out to be a real bug** — a
+   cancelled read could strand the public dashboard behind a "data unavailable"
+   dialog. Found, root-caused and fixed during this audit (P1-3).
 
 Nothing was hidden, disabled, or stubbed to make the demonstration look complete.
 
@@ -194,6 +197,32 @@ URL regains access after sign-out.
   substitute the offline `VanuatuMap` views on the Overview, which use the bundled
   GeoJSON and need no network.
 
+### P1-3 · A cancelled read left the portal behind a "data unavailable" dialog — **FIXED**
+
+- **Where:** `frontend/src/supabaseClient.ts` (`monitoredFetch`)
+- **Found by CI, not by inspection.** `qa/public-dashboard.mjs` had been failing
+  intermittently *on `main`* — commit `d0622c6` both passed (run 160) and failed
+  (run 161). Always the same way: at 390px the hamburger could not be clicked
+  because the data-availability dialog was covering it.
+- **Root cause.** The dialog was right to exist and wrong to be there. The fetch
+  wrapper records a failed PostgREST read so the UI blocks the values rather than
+  rendering a transport failure as a believable zero — but its catch block treated
+  *any* thrown fetch as a failure, and an abort is a thrown fetch.
+  `fetchPublicSnapshot` passes `.abortSignal(signal)`, so React Query cancels the
+  public snapshot's reads once the query is no longer needed. Navigating away from
+  the public dashboard while those reads were in flight recorded a failure, and the
+  guard then covered the portal until a reload — over a page whose reads were fine.
+  It needed a read in flight at the moment of navigation, hence the flake.
+- **Not only a test problem.** The window widens the slower the connection, and the
+  portal is built for phones in the field. A visitor tapping between sections on a
+  slow link could land on a permanent "data unavailable" dialog over a working
+  public dashboard — which is step 1 of the demonstration script.
+- **Fix:** an aborted request records nothing; a genuine transport failure still does.
+- **Verification:** `qa/read-failure-guard.mjs` asserts **both** directions, since
+  narrowing this must not stop the guard blocking a real failure. Against the pre-fix
+  build the three abort checks fail and the genuine-failure check passes, so it tests
+  what it claims. Added to the `portal-qa` CI workflow.
+
 ### P2-1 · Hard-coded English strings in a bilingual portal — **FIXED**
 
 - **Where:** `MerlReporting.jsx` (reopen confirmation body, "Review note:", the
@@ -276,7 +305,8 @@ well-tested, and preserve the null-≠-zero rule throughout — a missing input 
   derived by `merl.refresh_public_portal()` from approved periods — **not hard-coded**.
 - `DataAvailabilityGuard` blocks the whole portal after a failed REST read, so a
   transport or permission failure cannot be rendered as a legitimate zero. (406 is
-  correctly excluded, since PostgREST uses it for an intentionally empty `.single()`.)
+  correctly excluded, since PostgREST uses it for an intentionally empty `.single()`;
+  a cancelled request is now excluded too — see P1-3.)
 
 **No hard-coded demonstration values were found in any KPI or chart.** The staging
 data is seeded and `DEMO-` prefixed, but it is real data read live.
