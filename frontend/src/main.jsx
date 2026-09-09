@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import { ConfirmHost } from './lib/confirm';
 import DataAvailabilityGuard from './components/DataAvailabilityGuard';
 import AreaPerformanceBridge from './components/AreaPerformanceBridge';
+import EvidenceUploadPortal from './components/EvidenceUploadPortal';
 
 // i18n must be imported before the application entry so translations are ready
 import './i18n';
@@ -74,6 +75,7 @@ function PortalApp() {
         <>
           <PublicEntry />
           <AreaPerformanceBridge />
+          <EvidenceUploadPortal />
           <ConfirmHost />
           <DataAvailabilityGuard />
         </>
