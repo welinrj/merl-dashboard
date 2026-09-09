@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { createRoot, createPortal } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
+import { createPortal } from 'react-dom';
 import { HashRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -99,19 +100,23 @@ function ProjectRegisterShortcut() {
   if (!signedIn || location.pathname !== '/dashboards' || !heading) return null;
 
   return createPortal(
-    <Link
-      to="/docc-project-register"
-      className="ovx-export"
-      style={{
-        border: '1px solid var(--border)',
-        background: 'var(--white)',
-        color: 'var(--green-700)',
-        textDecoration: 'none',
-        boxShadow: 'none',
-      }}
-    >
-      DoCC Project Register
-    </Link>,
+    <>
+      <style>{`.dsh .ovx-heading > button.ovx-export { margin-left: auto; order: 2; }`}</style>
+      <Link
+        to="/docc-project-register"
+        className="ovx-export"
+        style={{
+          order: 1,
+          border: '1px solid var(--border)',
+          background: 'var(--white)',
+          color: 'var(--green-700)',
+          textDecoration: 'none',
+          boxShadow: 'none',
+        }}
+      >
+        DoCC Project Register
+      </Link>
+    </>,
     heading,
   );
 }
