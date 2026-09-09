@@ -1,0 +1,55 @@
+/* Keep the authenticated MERL shell stationary while page content scrolls.
+   The full-width header and blue navigation remain visible; only the workspace
+   content pane scrolls. Public pages are unaffected because this is scoped to .dsh. */
+.dsh {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dsh .dsh-scroll {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+/* Header and sidebar live outside the scrolling content pane. */
+.dsh .dsh-head {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+}
+
+.dsh .dsh-side {
+  position: sticky;
+  z-index: 40;
+}
+
+/* Preserve the existing mobile drawer behaviour. */
+@media (max-width: 760px) {
+  .dsh .dsh-side {
+    position: fixed;
+    z-index: 60;
+  }
+  .dsh .dsh-scroll {
+    scrollbar-gutter: auto;
+  }
+}
+
+/* Printing needs the full document rather than an internal scroll pane. */
+@media print {
+  .dsh {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .dsh .dsh-scroll {
+    height: auto;
+    overflow: visible !important;
+  }
+}
