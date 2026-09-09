@@ -1,0 +1,71 @@
+/* MERL Reporting UX fixes: make period selection and disabled form actions unmistakable. */
+
+/* Keep long project names readable without pushing the reporting-period control away. */
+select.field-input {
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+/* Disabled reporting actions previously retained the same strong blue fill as active actions. */
+button:disabled {
+  opacity: 0.42 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  filter: grayscale(0.18);
+}
+
+/* Make the MERL module navigation easier to scan and tap on tablets. */
+.mr-tabs {
+  gap: 0.5rem !important;
+  padding-bottom: 0.2rem;
+}
+
+.mr-tab {
+  min-height: 40px;
+  padding: 0.55rem 0.8rem !important;
+  font-weight: 700 !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 9px !important;
+  background: var(--white) !important;
+}
+
+.mr-tab.active {
+  color: #fff !important;
+  background: #245bb5 !important;
+  border-color: #245bb5 !important;
+  box-shadow: 0 3px 10px rgba(36, 91, 181, 0.16);
+}
+
+/* Stronger hierarchy for the currently selected form. */
+.mr-tabs + div > div:first-child strong {
+  font-weight: 800 !important;
+  color: var(--text-1);
+}
+
+/* Improve modal form legibility on iPad/mobile. */
+.mr-form-grid .field-label {
+  font-weight: 700;
+}
+
+.mr-form-grid .field-input {
+  min-height: 44px;
+}
+
+@media (max-width: 900px) {
+  .mr-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mr-tab {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .mr-tabs {
+    grid-template-columns: 1fr;
+  }
+}
