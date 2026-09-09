@@ -1,6 +1,8 @@
-// Reported beneficiary totals. Form 8 rows may be recorded by period,
-// activity or location, so never discard them merely because they share a project.
-const FIELDS = ['total_direct', 'female', 'male', 'other_gender', 'youth', 'persons_with_disability', 'indirect'];
+// Form 8 reported breakdowns, with the same direct-reach rule used by all
+// portfolio and project reports. Do not turn repeated periods into extra people.
+import { portfolioBeneficiaries } from './docc/projectAnalysis.js';
+
+const FIELDS = ['female', 'male', 'other_gender', 'youth', 'persons_with_disability', 'indirect'];
 
 export function aggregateBeneficiaries(rows = []) {
   const result = Object.fromEntries(FIELDS.map(field => [field, null]));
@@ -23,6 +25,7 @@ export function aggregateBeneficiaries(rows = []) {
   }
   for (const field of present) result[field] = values[field];
   return {
+    total_direct: portfolioBeneficiaries(rows),
     ...result,
     records: rows.length,
     projects: projects.size,
