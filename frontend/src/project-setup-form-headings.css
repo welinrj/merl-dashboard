@@ -1,0 +1,10 @@
+/* Project Setup: make MERL form headings clearly bold and prominent. */
+.ps-actual-head h2,
+.ps-form-title h3,
+.ps-form-number {
+  font-weight: 800 !important;
+}
+
+.ps-form-title h3 {
+  color: var(--text-1);
+}
