@@ -62,12 +62,15 @@ export function publicTotals(projects, summary, allScope) {
 // Inventory is independent of the public-results filters. Never substitute a
 // filtered published count for the total number of records in MERL.
 export function publicProjectCount(inventory, publishedCount, allScope) {
-  const totalProjects = Number(inventory?.total_projects);
-  const approvedProjects = Number(inventory?.approved_projects);
-  const otherProjects = Number(inventory?.other_projects);
   if (!allScope) return { value: publishedCount, scope: 'published' };
-  if (!Number.isFinite(totalProjects) || !Number.isFinite(approvedProjects) || !Number.isFinite(otherProjects)) {
+  const fields = ['total_projects', 'approved_projects', 'other_projects'];
+  if (!inventory || fields.some(field => inventory[field] == null || !Number.isFinite(Number(inventory[field])))) {
     return { value: null, scope: 'unavailable' };
   }
-  return { value: totalProjects, approved: approvedProjects, other: otherProjects, scope: 'all' };
+  return {
+    value: Number(inventory.total_projects),
+    approved: Number(inventory.approved_projects),
+    other: Number(inventory.other_projects),
+    scope: 'all',
+  };
 }
