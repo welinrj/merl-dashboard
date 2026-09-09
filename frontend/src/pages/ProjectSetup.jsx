@@ -23,6 +23,92 @@ const blankProfile = () => ({
 
 const field = { display: 'flex', flexDirection: 'column', gap: '.3rem' };
 
+const FORM_GUIDE = [
+  {
+    title: 'Project Profile / Registration',
+    purpose: 'Basic information required to register and identify the project.',
+    href: '#project-profile',
+    fields: ['Project title and acronym', 'Status and project description', 'Theme / sector and project type', 'Expected primary outcome', 'Lead, executing and implementing agencies', 'Project Manager, DoCC M&E Officer and Finance Officer', 'Donor, funding window, approved budget and currency', 'Start, end and approval dates', 'Province / geographic coverage', 'Expected direct and indirect beneficiaries'],
+  },
+  {
+    title: 'Results Framework',
+    purpose: 'Defines what the project intends to achieve and how success will be measured.',
+    href: '#/analytics/results',
+    fields: ['Project objectives', 'Expected outcomes', 'Expected outputs', 'Indicators', 'Baseline values', 'Targets', 'Units of measure', 'Responsible officers and reporting frequency'],
+  },
+  {
+    title: 'Form 4 · Indicator Progress',
+    purpose: 'Tracks whether indicators are achieving their targets.',
+    href: '#/analytics/reporting',
+    fields: ['Indicator being reported', 'Target for the reporting period', 'Actual achievement this period', 'Cumulative achievement', 'Previous reported value', 'Performance status', 'Progress narrative', 'Reason for variance', 'Corrective action', 'Date reported'],
+  },
+  {
+    title: 'Form 6 · Financial Progress',
+    purpose: 'Tracks budget, expenditure and financial utilisation.',
+    href: '#/analytics/reporting',
+    fields: ['Approved project budget', 'Annual budget', 'Budget for the reporting period', 'Expenditure this period', 'Cumulative expenditure', 'Funds received', 'Funds committed', 'Financial narrative / explanation'],
+  },
+  {
+    title: 'Form 8 · Beneficiaries & GEDSI',
+    purpose: 'Records who is benefiting from project activities and supports GEDSI reporting.',
+    href: '#/analytics/reporting',
+    fields: ['Related activity', 'Location', 'Total direct beneficiaries', 'Female, male and other / not reported', 'Youth', 'Persons with disabilities', 'Indirect beneficiaries', 'Other vulnerable groups', 'Data source', 'Double-counting check', 'Comments'],
+  },
+  {
+    title: 'Form 9 · Risks & Issues',
+    purpose: 'Tracks problems that may affect implementation and the actions required.',
+    href: '#/analytics/reporting',
+    fields: ['Risk or issue type', 'Description and category', 'Date identified', 'Likelihood and impact', 'Mitigation / response', 'Responsible person', 'Due date', 'Current status', 'Latest update', 'Resolution date'],
+  },
+  {
+    title: 'Form 10 · Achievements & Learning',
+    purpose: 'Captures achievements, challenges, lessons and management response.',
+    href: '#/analytics/reporting',
+    fields: ['Key achievements', 'Major results', 'Challenges', 'Lessons learned', 'Successful approaches', 'What did not work', 'Corrective actions taken', 'Recommendations', 'Emerging opportunities', 'Next-period priorities', 'Success story'],
+  },
+  {
+    title: 'Form 11 · Reporting Period & Submission',
+    purpose: 'Defines the reporting period and manages submission, review and approval.',
+    href: '#/analytics/reporting',
+    fields: ['Reporting period label', 'Reporting period type', 'Period start date', 'Period end date', 'Submission status', 'Reviewer comments / corrections', 'Approval or reopening reason where applicable'],
+  },
+  {
+    title: 'Form 12 · Evidence / Means of Verification',
+    purpose: 'Links supporting evidence to reported activities and results.',
+    href: '#/analytics/reporting',
+    fields: ['Evidence / document title', 'Document type', 'Related indicator', 'Related activity', 'Description', 'Document date', 'File or URL', 'Verification status'],
+  },
+];
+
+function FormsGuide() {
+  return (
+    <section className="ps-guide" aria-labelledby="ps-guide-title">
+      <div className="ps-guide-head">
+        <div>
+          <h2 id="ps-guide-title">MERL Forms & Information Required</h2>
+          <p>Use this checklist before entering data. Open any section below to see the information the project team should prepare.</p>
+        </div>
+        <span>{FORM_GUIDE.length} sections</span>
+      </div>
+      <div className="ps-guide-grid">
+        {FORM_GUIDE.map((form, index) => (
+          <details className="ps-guide-card" key={form.title} open={index === 0}>
+            <summary>
+              <div><strong>{form.title}</strong><small>{form.purpose}</small></div>
+              <span>View requirements</span>
+            </summary>
+            <div className="ps-guide-body">
+              <h3>Information needed</h3>
+              <ul>{form.fields.map((item) => <li key={item}>{item}</li>)}</ul>
+              <a className="ps-guide-link" href={form.href}>{index === 0 ? 'Go to project profile' : 'Open this MERL workspace'} →</a>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function ProjectSetup({ user }) {
   const { t } = useTranslation();
   const canEdit = EDITOR_ROLES.includes(user?.role);
@@ -31,7 +117,7 @@ export default function ProjectSetup({ user }) {
   const [registered, setRegistered] = useState(null);
   const [resetKey, setResetKey] = useState(0);
   const title = 'Project Registration';
-  const subtitle = 'Register a new project. Existing projects are managed through the approved review and administration workflows.';
+  const subtitle = 'Register a new project and review the information required across all MERL forms before reporting.';
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setMulti = (k) => (e) => setV((s) => ({ ...s, [k]: Array.from(e.target.selectedOptions).map((o) => o.value) }));
   const dirty = useMemo(() => Object.entries(v).some(([k, value]) => {
@@ -40,7 +126,7 @@ export default function ProjectSetup({ user }) {
   }), [v]);
 
   if (!canEdit) {
-    return <div className="page-pad" style={{ maxWidth: 760, margin: '0 auto' }}><h1>{title}</h1><p>You do not have permission to register projects.</p></div>;
+    return <div className="page-pad" style={{ maxWidth: 1100, margin: '0 auto' }}><h1>{title}</h1><FormsGuide /><p>You do not have permission to register projects, but you can use the form guide above to see what information is required.</p></div>;
   }
 
   const save = async (e) => {
@@ -98,10 +184,11 @@ export default function ProjectSetup({ user }) {
   };
 
   return (
-    <div className="page-pad" style={{ maxWidth: 1100, margin: '0 auto' }} key={resetKey}>
+    <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }} key={resetKey}>
       <PageHeader title={title} subtitle={subtitle} />
+      <FormsGuide />
       {registered && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was registered. The form has been cleared for the next project.</div>}
-      <form onSubmit={save}>
+      <form onSubmit={save} id="project-profile">
         <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
           <h2 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Project Profile</h2>
           <div className="ps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '.8rem' }}>
@@ -145,7 +232,13 @@ export default function ProjectSetup({ user }) {
           <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Registering…' : 'Register project'}</button>
         </div>
       </form>
-      <style>{`@media(max-width:700px){.ps-grid{grid-template-columns:1fr!important}.ps-grid>*{grid-column:1!important}}`}</style>
+      <style>{`
+        .ps-guide{margin:0 0 1rem;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}
+        .ps-guide-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.8rem}.ps-guide-head h2{margin:0;font-size:1.05rem}.ps-guide-head p{margin:.3rem 0 0;color:var(--text-3);font-size:.8rem;max-width:760px}.ps-guide-head>span{white-space:nowrap;background:var(--green-50);color:var(--green-700);border:1px solid var(--border);border-radius:999px;padding:.25rem .55rem;font-size:.7rem;font-weight:700}
+        .ps-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.ps-guide-card{border:1px solid var(--border);border-radius:10px;background:#fff;overflow:hidden}.ps-guide-card summary{list-style:none;display:flex;justify-content:space-between;gap:.8rem;align-items:center;padding:.75rem .8rem;cursor:pointer}.ps-guide-card summary::-webkit-details-marker{display:none}.ps-guide-card summary strong{display:block;font-size:.82rem}.ps-guide-card summary small{display:block;margin-top:.18rem;color:var(--text-3);font-size:.68rem;line-height:1.35}.ps-guide-card summary>span{font-size:.66rem;color:var(--green-700);font-weight:700;white-space:nowrap}.ps-guide-card[open] summary{background:var(--green-50)}.ps-guide-body{padding:.75rem .9rem;border-top:1px solid var(--border)}.ps-guide-body h3{margin:0 0 .45rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)}.ps-guide-body ul{margin:.2rem 0 .7rem;padding-left:1.1rem;columns:2;column-gap:1.4rem}.ps-guide-body li{font-size:.72rem;line-height:1.4;margin-bottom:.28rem;break-inside:avoid}.ps-guide-link{font-size:.72rem;font-weight:700;color:var(--green-700);text-decoration:none}
+        @media(max-width:850px){.ps-guide-grid{grid-template-columns:1fr}.ps-guide-body ul{columns:1}}
+        @media(max-width:700px){.ps-grid{grid-template-columns:1fr!important}.ps-grid>*{grid-column:1!important}.ps-guide-head{flex-direction:column}}
+      `}</style>
     </div>
   );
 }
