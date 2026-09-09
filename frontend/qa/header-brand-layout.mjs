@@ -39,7 +39,7 @@ async function setup(authenticated) {
   return context;
 }
 
-async function check(page, label, width) {
+async function check(page, label, width, authenticated) {
   const result = await page.locator('.dsh-head').evaluate(header => {
     const group = header.querySelector('.merl-partner-logos');
     const images = [...group.querySelectorAll('img')];
@@ -72,6 +72,8 @@ async function check(page, label, width) {
       nationalTitleBeforeDoCC: group.firstElementChild===state && state.nextElementSibling===docc && docc.nextElementSibling===mfat && !overlaps(t,rect(docc)),
       leftAligned: Math.abs(g.left-h.left-padding)<=2,
       sameRow: Math.abs((g.top+g.bottom-c.top-c.bottom)/2)<=3,
+      verticalPaddingBalanced: Math.abs((g.top-h.top)-(h.bottom-g.bottom))<=2,
+      compactWorkspaceHeader: h.height<=80,
       inside: fits(g,h) && boxes.every(b=>fits(b,g)),
       distinct: boxes.every((b,i)=>boxes.slice(i+1).every(x=>!overlaps(b,x))),
       controlsClear: !overlaps(g,c),
@@ -84,12 +86,14 @@ async function check(page, label, width) {
       onePublicForm: !form || header.querySelectorAll('form.pbd-header-login').length===1,
     };
   });
+  const singleRow = authenticated ? width>760 : width>1280;
   const expected = {
     imageCount:3, imagesLoaded:true, proportions:true,
     nationalTitle:'The republic of Vanuatu', nationalTitleInside:true,
     nationalTitleBesideCrest:true, nationalTitleBeforeDoCC:true,
-    leftAligned:true, sameRow:width>1280, inside:true, distinct:true,
-    controlsClear:true, controlsInside:true, menuClear:true,
+    leftAligned:true, sameRow:singleRow, verticalPaddingBalanced:singleRow,
+    compactWorkspaceHeader:authenticated && width>760,
+    inside:true, distinct:true, controlsClear:true, controlsInside:true, menuClear:true,
     horizontalOverflow:false, headerWordmark:false, headerHeightSynced:true,
     sidebarPresent:true, onePublicForm:true,
   };
@@ -109,8 +113,8 @@ try {
       await page.goto('http://127.0.0.1:5199/#/dashboards', {waitUntil:'domcontentloaded'});
       await page.locator(authenticated?'.dsh-user':'.pbd-header-login').waitFor({timeout:15000});
       await Promise.all([...Array(3)].map((_,i)=>page.locator('.merl-partner-logos img').nth(i).evaluate(img=>img.decode())));
-      await check(page, `${authenticated?'Workspace':'Public'} ${width}px`, width);
-      if (width===1440 || width===390) {
+      await check(page, `${authenticated?'Workspace':'Public'} ${width}px`, width, authenticated);
+      if (width===1440 || width===1024 || width===390) {
         await page.screenshot({path:`qa-artifacts/header-${authenticated?'workspace':'public'}-${width}.png`,animations:'disabled'});
       }
       if (width<=760) {
