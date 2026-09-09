@@ -86,13 +86,15 @@ async function check(page, label, width, authenticated) {
       onePublicForm: !form || header.querySelectorAll('form.pbd-header-login').length===1,
     };
   });
-  const singleRow = authenticated ? width>760 : width>1280;
+  const publicTabletSingleRow = width>=900 && width<=1180;
+  const singleRow = authenticated ? width>760 : (width>1280 || publicTabletSingleRow);
+  const compactHeader = authenticated ? width>760 : publicTabletSingleRow;
   const expected = {
     imageCount:3, imagesLoaded:true, proportions:true,
     nationalTitle:'The republic of Vanuatu', nationalTitleInside:true,
     nationalTitleBesideCrest:true, nationalTitleBeforeDoCC:true,
     leftAligned:true, sameRow:singleRow, verticalPaddingBalanced:singleRow,
-    compactWorkspaceHeader:authenticated && width>760,
+    compactWorkspaceHeader:compactHeader,
     inside:true, distinct:true, controlsClear:true, controlsInside:true, menuClear:true,
     horizontalOverflow:false, headerWordmark:false, headerHeightSynced:true,
     sidebarPresent:true, onePublicForm:true,

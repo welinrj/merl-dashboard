@@ -34,6 +34,8 @@ import './sidebar-coastal.css';
 import './twentyfirst-dashboard.css';
 // Final institutional header arrangement, after the existing shell and login styles.
 import './header-institutional-layout.css';
+// Public page only: align partner logos, language selector and sign-in controls on tablets.
+import './public-header-alignment.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
