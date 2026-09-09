@@ -5,10 +5,9 @@ import { localised, i18nCols } from '../lib/contentLocale';
 import { dbErrorMessage } from '../lib/dbError';
 import * as OPT from '../constants/formOptions';
 
-const text = (code, statement) => [code, statement].filter(Boolean).join(' · ');
 const value = (v) => (v === null || v === undefined || v === '' ? '—' : String(v));
 
-export default function ResultsWorkspace() {
+export default function ResultsWorkspace({ user: _user }) {
   const { i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const [data, setData] = useState({ projects: [], objectives: [], outcomes: [], outputs: [], indicators: [] });
