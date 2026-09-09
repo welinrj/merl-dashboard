@@ -20,8 +20,7 @@
   display: grid; flex: 0 0 auto; align-items: center;
   min-height: 84px; padding: 14px 12px 12px;
 }
-/* One balanced desktop row. Do not make a second row merely because the
-   viewport is an iPad: compact search and the artwork before wrapping. */
+/* One balanced desktop row. Compact search and artwork before wrapping. */
 .dsh .dsh-head:has(> .merl-partner-logos) {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto;
   align-items: center; justify-content: stretch; column-gap: 16px; row-gap: 0;
@@ -112,31 +111,42 @@
   .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 112px; max-height: 34px; }
 }
 @media (max-width: 760px) {
-  .dsh .dsh-head:has(> .merl-partner-logos) {
+  /* Match the tablet selector's specificity so the phone layout wins. */
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) {
     grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto;
     column-gap: 10px; row-gap: 8px; min-height: 0; padding: 10px 12px;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
     grid-column: 1 / -1; grid-row: 1; justify-self: start; justify-content: flex-start; gap: 12px;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
     display: inline-flex; grid-column: 1; grid-row: 2; justify-self: start;
     align-items: center; justify-content: center; width: 40px; height: 40px;
     min-width: 40px; min-height: 40px;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
     grid-column: 2; grid-row: 2; justify-content: flex-end; width: 100%;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) .gs-trigger {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger {
     width: 42px; min-width: 42px !important; flex: 0 0 42px; justify-content: center; padding: 0;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) .gs-trigger-lbl,
-  .dsh .dsh-head:has(> .merl-partner-logos) .gs-trigger .gs-kbd { display: none; }
-  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) { grid-template-rows: auto auto auto; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger-lbl,
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger .gs-kbd { display: none; }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
+    grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto auto;
+    column-gap: 10px; row-gap: 8px; min-height: 0; padding: 10px 12px;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+    grid-column: 1 / -1; grid-row: 1; justify-self: start; justify-content: flex-start; gap: 12px;
+  }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
     grid-column: 1 / -1; grid-row: 3; width: 100%;
   }
-  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger { display: inline-flex; grid-row: 2; }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
+    display: inline-flex; grid-column: 1; grid-row: 2; justify-self: start;
+    align-items: center; justify-content: center; width: 40px; height: 40px;
+    min-width: 40px; min-height: 40px;
+  }
   /* Only the area outside the drawer is an overlay click target. */
   .dsh.pbd-root .pbd-overlay {
     left: min(280px, calc(100vw - 32px)); top: var(--workspace-header-h);
