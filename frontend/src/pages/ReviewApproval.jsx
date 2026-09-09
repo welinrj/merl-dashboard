@@ -1,367 +1,65 @@
-// =============================================================================
-// ReviewApproval.jsx — DoCC M&E Officer Review & Approval workspace (spec §19-21).
-// Portfolio-wide queue of reporting-period submissions with Review / Return /
-// Approve / Reopen actions. Reads public.v_reporting_periods (+ v_projects for
-// codes) and drives the SECURITY DEFINER workflow RPCs, which enforce that only
-// the DoCC M&E Officer (or System Admin) may act.
-// =============================================================================
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle2, RotateCcw, Eye, Unlock, AlertTriangle, X, FileText } from '../components/ui/icons';
+import { CheckCircle2, RotateCcw, Eye, AlertTriangle, X, FileText } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
-import DataTable from '../components/ui/DataTable';
-import StatusBadge from '../components/ui/StatusBadge';
 import StatTile from '../components/ui/StatTile';
-import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
-import { localised, i18nCols } from '../lib/contentLocale';
 
-// Read-only modules summarised in the review drawer so the officer can see what
-// they are approving before they act. Period-scoped modules are matched on the
-// period label; risks & issues are project-scoped.
-const REVIEW_SECTIONS = [
-  { key: 'indicator_progress', label: 'merl.modIndicatorProgress', form: '4', view: 'v_indicator_progress', periodScoped: true,
-    line: (r) => `${r.indicator_code || '—'} · cumulative ${fmtNum(r.cumulative_actual)}${r.achievement_pct != null ? ` · ${Math.round(r.achievement_pct)}%` : ''}` },
-  { key: 'financial_progress', label: 'merl.modFinancialProgress', form: '6', view: 'v_financial_progress', periodScoped: true,
-    line: (r) => `Cumulative exp. ${fmtNum(r.cumulative_expenditure)}${r.utilisation_pct != null ? ` · ${Math.round(r.utilisation_pct)}% utilised` : ''}` },
-  { key: 'beneficiaries', label: 'merl.modBeneficiaries', form: '8', view: 'v_beneficiaries', periodScoped: true,
-    line: (r) => `${r.location || 'All'} · direct ${fmtNum(r.total_direct)} (F ${fmtNum(r.female)} / M ${fmtNum(r.male)} / PWD ${fmtNum(r.persons_with_disability)})` },
-  { key: 'learning_updates', label: 'merl.modLearning', form: '10', view: 'v_learning_updates', periodScoped: true,
-    line: (r) => (r.key_achievements || r.major_results || r.lessons_learned || 'Recorded').slice(0, 120) },
-  { key: 'evidence', label: 'merl.modEvidence', form: '12', view: 'v_evidence', periodScoped: true,
-    line: (r) => `${r.title || '—'}${r.verification_status ? ` · ${r.verification_status}` : ''}` },
-  { key: 'risks_issues', label: 'merl.modRisks', form: '9', view: 'v_risks_issues', periodScoped: false,
-    line: (r) => `${r.code || ''} ${(r.description || '').slice(0, 80)}${r.risk_rating ? ` · ${r.risk_rating}` : ''}`.trim() },
+const REVIEWER_ROLES=['ROLE_ADMIN','ROLE_DOCC_MEO'];
+const SECTIONS=[
+  ['indicator_progress','Indicator progress','v_indicator_progress',true],
+  ['financial_progress','Financial progress','v_financial_progress',true],
+  ['beneficiaries','Beneficiaries & GEDSI','v_beneficiaries',true],
+  ['learning_updates','Achievements & learning','v_learning_updates',true],
+  ['evidence','Evidence','v_evidence',true],
+  ['risks_issues','Risks & issues','v_risks_issues',false],
 ];
+const requiredKeys=['indicator_progress','financial_progress','learning_updates'];
+const isOverdue=r=>r.period_end&&r.submission_status!=='approved'&&new Date(`${r.period_end}T23:59:59`)<new Date();
+const rank={submitted:0,reviewed:1,returned:2,draft:3,approved:4};
 
-const REVIEWER_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
-const isOverdue = r => r.period_end && r.submission_status !== 'approved' && new Date(r.period_end) < new Date();
-
-export default function ReviewApproval({ user }) {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage;
-  const canReview = !!user && REVIEWER_ROLES.includes(user.role);
-  const [rows, setRows] = useState([]);
-  const [projById, setProjById] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('queue'); // queue | all | approved
-  const [busy, setBusy] = useState(null);
-  const [detail, setDetail] = useState(null); // reporting-period row open in the review drawer
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [rp, pj] = await Promise.all([
-      localised(supabase.from('v_reporting_periods').select('*')),
-      localised(() => supabase.from('v_projects').select(i18nCols('id, code, name'))),
-    ]);
-    setRows(rp.error ? [] : (rp.data ?? []));
-    const map = {};
-    (pj.data ?? []).forEach(p => { map[p.id] = p; });
-    setProjById(map);
-    setLoading(false);
-  }, [lang]);
-  useEffect(() => { load(); }, [load]);
-
-  const kpi = useMemo(() => {
-    const k = { submitted: 0, reviewed: 0, returned: 0, approved: 0, overdue: 0, reopened: 0 };
-    rows.forEach(r => {
-      if (k[r.submission_status] !== undefined) k[r.submission_status] += 1;
-      if (isOverdue(r)) k.overdue += 1;
-      if (r.reopened_at) k.reopened += 1;
-    });
-    return k;
-  }, [rows]);
-
-  const visible = useMemo(() => {
-    const base = filter === 'approved'
-      ? rows.filter(r => r.submission_status === 'approved')
-      : filter === 'all'
-        ? rows
-        : rows.filter(r => ['submitted', 'reviewed', 'returned'].includes(r.submission_status));
-    // Actionable first, then by submitted/updated date desc.
-    const rank = { submitted: 0, reviewed: 1, returned: 2, draft: 3, approved: 4 };
-    return [...base].sort((a, b) =>
-      (rank[a.submission_status] - rank[b.submission_status]) ||
-      ((b.submitted_at ?? b.created_at ?? '') > (a.submitted_at ?? a.created_at ?? '') ? 1 : -1));
-  }, [rows, filter]);
-
-  const act = async (rpc, params, okMsg) => {
-    setBusy(params.p_id);
-    const { error } = await supabase.rpc(rpc, params);
-    setBusy(null);
-    if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success(okMsg);
-    setDetail(null);
-    load();
-  };
-
-  const doReview = r => act('review_reporting_period', { p_id: r.id, p_decision: 'review', p_comments: null }, t('merl.markedUnderReview'));
-  const doReturn = async r => {
-    const c = await promptDialog({ title:t('merl.returnForCorrection'), label:t('merl.whatNeedsCorrection'), required:true, multiline:true,
-      message:t('merl.pmWillSee') });
-    if (c == null || !c.trim()) return;
-    act('review_reporting_period', { p_id: r.id, p_decision: 'return', p_comments: c.trim() }, t('merl.returnedToast'));
-  };
-  const doApprove = async r => {
-    const ok = await confirmDialog({
-      title: t('merl.approveConfirm'),
-      message: t('merl.approveConfirmBody'),
-      confirmLabel: t('merl.approve'),
-    });
-    if (!ok) return;
-    act('review_reporting_period', { p_id: r.id, p_decision: 'approve', p_comments: r.review_comments ?? null }, t('merl.approvedLockedToast'));
-  };
-  const doReopen = async r => {
-    const reason = await promptDialog({ title:t('merl.reopenPeriod'), label:t('merl.reopenReason'), required:true, multiline:true,
-      message:t('merl.reopenConfirmBody') });
-    if (reason == null || !reason.trim()) return;
-    act('reopen_reporting_period', { p_id: r.id, p_reason: reason.trim() }, t('merl.periodReopenedToast'));
-  };
-
-  return (
-    <div className="page-pad" style={{ maxWidth: 1200 }}>
-      <PageHeader
-        title={t('merl.reviewTitle')}
-        subtitle={t('merl.reviewSubtitle')}
-      />
-
-      {!canReview && (
-        <div className="card" style={{ padding: '0.7rem 0.9rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-2)' }}>
-          <AlertTriangle size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> {t('merl.reviewRestricted')}
-        </div>
-      )}
-
-      {/* KPI cards */}
-      <div className="grid-kpi" style={{ marginBottom: '1rem' }}>
-        <StatTile label={t('merl.awaitingReview')} value={kpi.submitted} />
-        <StatTile label={t('merl.underReview')} value={kpi.reviewed} />
-        <StatTile label={t('merl.returned')} value={kpi.returned} status={kpi.returned ? 'amber' : 'green'} />
-        <StatTile label={t('merl.approved')} value={kpi.approved} />
-        <StatTile label={t('merl.overdue')} value={kpi.overdue} status={kpi.overdue ? 'red' : 'green'} />
-      </div>
-
-      {/* Filter */}
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        {[['queue', 'merl.filterQueue'], ['approved', 'merl.filterApproved'], ['all', 'merl.filterAll']].map(([k, lbl]) => (
-          <button key={k} onClick={() => setFilter(k)}
-            style={{ padding: '0.35rem 0.8rem', borderRadius: 9999, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
-              border: `1px solid ${filter === k ? 'var(--green-600)' : 'var(--border)'}`,
-              background: filter === k ? 'var(--green-50)' : 'var(--white)', color: filter === k ? 'var(--green-700)' : 'var(--text-2)' }}>
-            {t(lbl)}
-          </button>
-        ))}
-      </div>
-
-      {/* Queue */}
-      <DataTable
-        rows={visible}
-        keyField="id"
-        loading={loading}
-        minWidth={880}
-        searchPlaceholder={t('merl.searchQueue')}
-        searchable={(r) => {
-          const p = projById[r.project_id];
-          return `${p?.code || ''} ${p?.name || ''} ${r.period_label || ''} ${r.reporting_officer_name || ''}`;
-        }}
-        empty={{
-          title: t(filter === 'queue' ? 'merl.emptyQueueTitle' : 'merl.emptyAllTitle'),
-          description: t(filter === 'queue' ? 'merl.emptyQueueBody' : 'merl.emptyAllBody'),
-        }}
-        columns={[
-          { key: 'project', header: t('merl.colProject'), sortable: true,
-            sortValue: (r) => projById[r.project_id]?.code || '',
-            render: (r) => {
-              const p = projById[r.project_id];
-              return (
-                <>
-                  <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: '0.8125rem' }}>{p?.code ?? '—'}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p?.name ?? ''}</div>
-                </>
-              );
-            } },
-          { key: 'period_label', header: t('merl.colPeriod'), sortable: true,
-            render: (r) => (
-              <span style={{ fontSize: '0.8rem' }}>
-                {r.period_label}
-                {isOverdue(r) && <StatusBadge tone="danger" label={t('merl.overdue')} />}
-                {r.reopened_at && <span title={r.reopen_reason || ''} style={{ marginLeft: 6 }}><StatusBadge tone="info" label={t('merl.reopened')} /></span>}
-              </span>
-            ) },
-          { key: 'reporting_officer_name', header: t('merl.colSubmittedBy'), sortable: true,
-            render: (r) => <span style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>{r.reporting_officer_name ?? '—'}</span> },
-          { key: 'submitted_at', header: t('merl.colSubmitted'), sortable: true,
-            render: (r) => <span style={{ fontSize: '0.78rem', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{fmtDate(r.submitted_at)}</span> },
-          { key: 'submission_status', header: t('merl.colStatus'), sortable: true,
-            render: (r) => (
-              <>
-                <StatusBadge status={r.submission_status} />
-                {r.submission_status === 'returned' && r.review_comments && (
-                  <div style={{ fontSize: '0.68rem', color: '#8a6416', marginTop: 3, maxWidth: 220 }}>“{r.review_comments}”</div>
-                )}
-              </>
-            ) },
-          { key: '_actions', header: t('merl.colActions'), align: 'right',
-            render: (r) => (
-              <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
-                {r.submission_status !== 'draft' && (
-                  <button onClick={() => setDetail(r)} style={rowBtnGhost}><FileText size={13} /> {t('merl.view')}</button>
-                )}
-                {canReview && ['submitted', 'reviewed'].includes(r.submission_status) && (
-                  <>
-                    {r.submission_status === 'submitted' && (
-                      <button disabled={busy === r.id} onClick={() => doReview(r)} style={{ ...rowBtnSecondary, ...(busy === r.id ? disabledBtn : null) }}><Eye size={13} /> {t('merl.review')}</button>
-                    )}
-                    <button disabled={busy === r.id} onClick={() => doReturn(r)} style={{ ...rowBtnWarning, ...(busy === r.id ? disabledBtn : null) }}><RotateCcw size={13} /> {t('merl.returnLbl')}</button>
-                    <button disabled={busy === r.id} onClick={() => doApprove(r)} style={{ ...rowBtnPrimary, ...(busy === r.id ? disabledBtn : null) }}><CheckCircle2 size={13} /> {t('merl.approve')}</button>
-                  </>
-                )}
-                {canReview && r.submission_status === 'approved' && (
-                  <button disabled={busy === r.id} onClick={() => doReopen(r)} style={{ ...rowBtnSecondary, ...(busy === r.id ? disabledBtn : null) }}><Unlock size={13} /> {t('merl.reopen')}</button>
-                )}
-                {(!canReview && r.submission_status === 'draft') && <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>}
-              </span>
-            ) },
-        ]}
-      />
-
-      {detail && (
-        <SubmissionDrawer
-          row={detail}
-          project={projById[detail.project_id]}
-          canReview={canReview}
-          busy={busy === detail.id}
-          onClose={() => setDetail(null)}
-          onReview={() => doReview(detail)}
-          onReturn={() => doReturn(detail)}
-          onApprove={() => doApprove(detail)}
-          onReopen={() => doReopen(detail)}
-        />
-      )}
-    </div>
-  );
+export default function ReviewApproval({user}){
+  const canReview=!!user&&REVIEWER_ROLES.includes(user.role);
+  const [rows,setRows]=useState([]),[projects,setProjects]=useState([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(null),[detail,setDetail]=useState(null);
+  const [status,setStatus]=useState('queue'),[projectFilter,setProjectFilter]=useState(''),[query,setQuery]=useState('');
+  const load=useCallback(async()=>{setLoading(true);const [rp,pj]=await Promise.all([supabase.from('v_reporting_periods').select('*'),supabase.from('v_projects').select('id,code,name')]);if(rp.error)toast.error(dbErrorMessage(rp.error));setRows(rp.data||[]);setProjects(pj.data||[]);setLoading(false);},[]);
+  useEffect(()=>{load();},[load]);
+  const byId=useMemo(()=>Object.fromEntries(projects.map(p=>[p.id,p])),[projects]);
+  const kpi=useMemo(()=>{const k={submitted:0,reviewed:0,returned:0,approved:0,overdue:0};rows.forEach(r=>{if(k[r.submission_status]!=null)k[r.submission_status]++;if(isOverdue(r))k.overdue++;});return k;},[rows]);
+  const visible=useMemo(()=>rows.filter(r=>{
+    if(status==='queue'&&!['submitted','reviewed','returned'].includes(r.submission_status))return false;
+    if(status==='approved'&&r.submission_status!=='approved')return false;
+    if(status==='overdue'&&!isOverdue(r))return false;
+    if(projectFilter&&r.project_id!==projectFilter)return false;
+    const p=byId[r.project_id]; const q=query.trim().toLowerCase(); if(q&&!`${p?.code||''} ${p?.name||''} ${r.period_label||''}`.toLowerCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>(rank[a.submission_status]??9)-(rank[b.submission_status]??9)||String(a.period_end||'').localeCompare(String(b.period_end||''))),[rows,status,projectFilter,query,byId]);
+  const act=async(rpc,params,msg)=>{setBusy(params.p_id);const {error}=await supabase.rpc(rpc,params);setBusy(null);if(error){toast.error(dbErrorMessage(error));return;}toast.success(msg);setDetail(null);load();};
+  const review=r=>act('review_reporting_period',{p_id:r.id,p_decision:'review',p_comments:null},'Marked under review.');
+  const returnForCorrection=async r=>{const c=await promptDialog({title:'Return for correction',label:'What needs correction?',required:true,multiline:true,message:'The Project Manager will see this feedback.'});if(c?.trim())act('review_reporting_period',{p_id:r.id,p_decision:'return',p_comments:c.trim()},'Report returned for correction.');};
+  const approve=async r=>{if(!(await confirmDialog({title:'Approve reporting period?',message:'Approved information becomes the official reporting record and is locked until formally reopened.',confirmLabel:'Approve'})))return;act('review_reporting_period',{p_id:r.id,p_decision:'approve',p_comments:r.review_comments??null},'Reporting period approved.');};
+  const reopen=async r=>{const reason=await promptDialog({title:'Reopen approved period',label:'Reason for reopening',required:true,multiline:true,message:'The reason is retained in the review history.'});if(reason?.trim())act('reopen_reporting_period',{p_id:r.id,p_reason:reason.trim()},'Reporting period reopened.');};
+  return <div className="page-pad rv" style={{maxWidth:1280,margin:'0 auto'}}><style>{`
+    .rv-filter{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:.6rem;margin:.8rem 0 1rem;padding:.8rem;background:#fff;border:1px solid var(--border);border-radius:12px}.rv-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:#fff}.rv-table{width:100%;border-collapse:collapse;font-size:.8rem}.rv-table th,.rv-table td{padding:.65rem .7rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.rv-table th{position:sticky;top:0;background:var(--green-50);font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3)}.rv-badge{display:inline-flex;padding:.18rem .48rem;border-radius:999px;font-size:.66rem;font-weight:700;background:#eef2f7}.rv-badge.overdue{background:#fee2e2;color:#991b1b}.rv-actions{display:flex;gap:.35rem;flex-wrap:wrap}.rv-btn{display:inline-flex;align-items:center;gap:.3rem;border:1px solid var(--border);border-radius:7px;background:#fff;padding:.38rem .55rem;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer}.rv-drawer{position:fixed;inset:0;z-index:90;background:rgba(15,23,42,.32);display:flex;justify-content:flex-end}.rv-panel{width:min(760px,96vw);height:100%;overflow:auto;background:#fff;padding:1rem 1.1rem;box-shadow:-12px 0 30px rgba(0,0,0,.16)}.rv-panel-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;border-bottom:1px solid var(--border);padding-bottom:.8rem;margin-bottom:.8rem}.rv-section{border:1px solid var(--border);border-radius:10px;padding:.75rem;margin-bottom:.6rem}.rv-section h3{margin:0 0 .45rem;font-size:.85rem}.rv-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.rv-item{padding:.55rem;background:#f8fafc;border-radius:8px;font-size:.75rem}.rv-validation{padding:.7rem;border-radius:9px;margin:.6rem 0}.rv-validation.ok{background:#ecfdf5;color:#166534}.rv-validation.warn{background:#fffbeb;color:#92400e}.rv-comment{padding:.7rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;font-size:.78rem}.rv-empty{padding:2rem;text-align:center;color:var(--text-3)}@media(max-width:760px){.rv-filter{grid-template-columns:1fr}.rv-grid{grid-template-columns:1fr}}
+  `}</style><PageHeader title="Review & Approval" subtitle="Portfolio-wide queue for validating, returning, approving and reopening MERL reporting periods."/>
+  {!canReview&&<div className="rv-validation warn"><AlertTriangle size={15}/> This account is read-only in the review workspace. Only the DoCC M&E Officer and System Administrator can take review decisions.</div>}
+  <div className="grid-kpi" style={{marginBottom:'1rem'}}><StatTile label="Awaiting review" value={kpi.submitted}/><StatTile label="Under review" value={kpi.reviewed}/><StatTile label="Returned" value={kpi.returned}/><StatTile label="Approved" value={kpi.approved}/><StatTile label="Overdue" value={kpi.overdue} status={kpi.overdue?'red':'green'}/></div>
+  <div className="rv-filter"><label><span className="field-label">Queue</span><select className="field-input" value={status} onChange={e=>setStatus(e.target.value)}><option value="queue">Action queue</option><option value="all">All periods</option><option value="approved">Approved</option><option value="overdue">Overdue</option></select></label><label><span className="field-label">Project</span><select className="field-input" value={projectFilter} onChange={e=>setProjectFilter(e.target.value)}><option value="">All projects</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}</select></label><label><span className="field-label">Search</span><input className="field-input" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Project or reporting period"/></label></div>
+  {loading?<div className="rv-empty">Loading review queue…</div>:<div className="rv-table-wrap"><table className="rv-table"><thead><tr><th>Project</th><th>Period</th><th>Due date</th><th>Status</th><th>Reviewer comments</th><th>Actions</th></tr></thead><tbody>{visible.length?visible.map(r=>{const p=byId[r.project_id];return <tr key={r.id}><td><b>{p?.code||'—'}</b><br/>{p?.name||'Unknown project'}</td><td>{r.period_label}<br/><small>{r.period_type||''}</small></td><td>{fmtDate(r.period_end)}{isOverdue(r)&&<><br/><span className="rv-badge overdue">Overdue</span></>}</td><td><span className="rv-badge">{r.submission_status}</span></td><td>{r.review_comments||'—'}</td><td><div className="rv-actions"><button className="rv-btn" onClick={()=>setDetail(r)}><Eye size={14}/>Review</button>{canReview&&r.submission_status==='submitted'&&<button className="rv-btn" disabled={busy===r.id} onClick={()=>review(r)}>Start review</button>}{canReview&&['submitted','reviewed'].includes(r.submission_status)&&<button className="rv-btn" disabled={busy===r.id} onClick={()=>returnForCorrection(r)}><RotateCcw size={13}/>Return</button>}{canReview&&['submitted','reviewed'].includes(r.submission_status)&&<button className="rv-btn" disabled={busy===r.id} onClick={()=>approve(r)}><CheckCircle2 size={13}/>Approve</button>}{canReview&&r.submission_status==='approved'&&<button className="rv-btn" disabled={busy===r.id} onClick={()=>reopen(r)}><RotateCcw size={13}/>Reopen</button>}</div></td></tr>}):<tr><td colSpan="6"><div className="rv-empty">No reporting periods match these filters.</div></td></tr>}</tbody></table></div>}
+  {detail&&<ReviewDrawer row={detail} project={byId[detail.project_id]} onClose={()=>setDetail(null)} canReview={canReview} busy={busy} review={review} returnForCorrection={returnForCorrection} approve={approve} reopen={reopen}/>}</div>;
 }
 
-// Read-only review drawer: loads the reported records for a period across all
-// modules so the officer can see what they are approving before acting.
-function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, onReturn, onApprove, onReopen }) {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage;
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    setData(null);
-    Promise.all(REVIEW_SECTIONS.map(async (s) => {
-      let q = supabase.from(s.view).select('*').eq('project_id', row.project_id);
-      if (s.periodScoped) q = q.eq('reporting_period', row.period_label);
-      const { data: rows } = await localised(q);
-      return [s.key, rows ?? []];
-    })).then((entries) => { if (alive) setData(Object.fromEntries(entries)); });
-    return () => { alive = false; };
-  }, [row.project_id, row.period_label, lang]);
-
-  const status = row.submission_status;
-
-  return (
-    <div role="dialog" aria-modal="true" aria-label={t('merl.periodDetail')}
-      style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.4)' }} />
-      <div style={{ position: 'relative', width: 'min(560px, 100%)', maxWidth: '100%', height: '100%', background: 'var(--surface-1, var(--white))',
-        boxShadow: '-8px 0 24px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <div style={{ padding: '1rem 1.1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 700 }}>{project?.code ?? '—'}</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-1)' }}>{project?.name ?? ''}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-2)' }}>{row.period_label}</span>
-              <StatusBadge status={status} />
-            </div>
-          </div>
-          <button onClick={onClose} aria-label={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4, flexShrink: 0 }}>
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Meta */}
-        <div style={{ padding: '0.75rem 1.1rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-2)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem 0.75rem' }}>
-          <span>{t('merl.submittedBy')} <strong style={{ color: 'var(--text-1)' }}>{row.reporting_officer_name ?? '—'}</strong></span>
-          <span>{t('merl.submittedOn')} <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.submitted_at)}</strong></span>
-          {row.period_start && <span>{t('merl.periodLbl')} <strong style={{ color: 'var(--text-1)' }}>{fmtDate(row.period_start)} – {fmtDate(row.period_end)}</strong></span>}
-          {row.reopened_at && <span style={{ color: '#8a6416' }}>{t('merl.reopenedOn')} {fmtDate(row.reopened_at)}</span>}
-        </div>
-
-        {status === 'returned' && row.review_comments && (
-          <div style={{ margin: '0.75rem 1.1rem 0', padding: '0.6rem 0.8rem', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, fontSize: '0.78rem', color: '#8a6416' }}>
-            <strong>{t('merl.returnedForCorrection')}</strong> {row.review_comments}
-          </div>
-        )}
-
-        {/* Sections */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0.9rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-          {data == null ? (
-            <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('merl.loadingReported')}</p>
-          ) : REVIEW_SECTIONS.map((s) => {
-            const rows = data[s.key] || [];
-            return (
-              <div key={s.key}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                  <strong style={{ fontSize: '0.82rem', color: 'var(--text-1)' }}>{t(s.label)}</strong>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{t('merl.form', { n: s.form })}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 700, color: rows.length ? 'var(--green-700)' : 'var(--text-3)' }}>
-                    {t('merl.recordCount', { count: rows.length })}
-                  </span>
-                </div>
-                {rows.length === 0 ? (
-                  <div style={{ fontSize: '0.76rem', color: 'var(--text-3)', fontStyle: 'italic', paddingLeft: '0.1rem' }}>{t('merl.noDataReported')}</div>
-                ) : (
-                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                    {rows.slice(0, 8).map((r) => (
-                      <li key={r.id} style={{ fontSize: '0.78rem', color: 'var(--text-2)', padding: '0.35rem 0.55rem', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 7 }}>
-                        {s.line(r)}
-                      </li>
-                    ))}
-                    {rows.length > 8 && <li style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>+ {rows.length - 8} more…</li>}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Actions */}
-        {canReview && ['submitted', 'reviewed', 'approved'].includes(status) && (
-          <div style={{ padding: '0.8rem 1.1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {['submitted', 'reviewed'].includes(status) && (
-              <>
-                {status === 'submitted' && <button disabled={busy} onClick={onReview} style={{ ...rowBtnSecondary, ...(busy ? disabledBtn : null) }}><Eye size={14} /> {t('merl.markUnderReview')}</button>}
-                <button disabled={busy} onClick={onReturn} style={{ ...rowBtnWarning, ...(busy ? disabledBtn : null) }}><RotateCcw size={14} /> {t('merl.returnLbl')}</button>
-                <button disabled={busy} onClick={onApprove} style={{ ...rowBtnPrimary, ...(busy ? disabledBtn : null) }}><CheckCircle2 size={14} /> {t('merl.approveLock')}</button>
-              </>
-            )}
-            {status === 'approved' && <button disabled={busy} onClick={onReopen} style={{ ...rowBtnSecondary, ...(busy ? disabledBtn : null) }}><Unlock size={14} /> {t('merl.reopen')}</button>}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+function ReviewDrawer({row,project,onClose,canReview,busy,review,returnForCorrection,approve,reopen}){
+  const [current,setCurrent]=useState({}),[previous,setPrevious]=useState({}),[loading,setLoading]=useState(true),[prevPeriod,setPrevPeriod]=useState(null);
+  useEffect(()=>{let alive=true;(async()=>{setLoading(true);const {data:periods}=await supabase.from('v_reporting_periods').select('*').eq('project_id',row.project_id).eq('submission_status','approved').lt('period_end',row.period_end||'9999-12-31').order('period_end',{ascending:false}).limit(1);const prev=periods?.[0]||null;const reads=await Promise.all(SECTIONS.map(async([key,,view,scoped])=>{let q=supabase.from(view).select('*').eq('project_id',row.project_id);if(scoped)q=q.eq('reporting_period',row.period_label);const {data}=await q;return [key,data||[]];}));let prevReads=[];if(prev)prevReads=await Promise.all(SECTIONS.filter(x=>x[3]).map(async([key,,view])=>{const {data}=await supabase.from(view).select('*').eq('project_id',row.project_id).eq('reporting_period',prev.period_label);return [key,data||[]];}));if(alive){setCurrent(Object.fromEntries(reads));setPrevious(Object.fromEntries(prevReads));setPrevPeriod(prev);setLoading(false);}})();return()=>{alive=false;};},[row]);
+  const missing=requiredKeys.filter(k=>!(current[k]||[]).length); const evidence=(current.evidence||[]).length; const ready=!missing.length;
+  return <div className="rv-drawer" role="dialog" aria-modal="true" aria-label="Review reporting period"><div className="rv-panel"><div className="rv-panel-head"><div><h2 style={{margin:0}}>{project?.code} — {project?.name}</h2><p style={{margin:'.25rem 0 0',color:'var(--text-3)'}}>{row.period_label} · {row.submission_status} · due {fmtDate(row.period_end)}</p></div><button className="rv-btn" onClick={onClose} aria-label="Close"><X size={16}/></button></div>
+  {row.review_comments&&<div className="rv-comment"><b>Existing reviewer feedback</b><br/>{row.review_comments}</div>}
+  {loading?<div className="rv-empty">Loading submitted records…</div>:<><div className={`rv-validation ${ready?'ok':'warn'}`}><b>{ready?'Core reporting sections are present.':'Submission has validation gaps.'}</b><br/>{missing.length?`Missing saved records: ${missing.join(', ')}.`:'Indicator progress, financial progress and achievements/learning are present.'} Evidence attachments: {evidence}.</div>
+  <div className="rv-grid">{SECTIONS.map(([key,label])=><div className="rv-section" key={key}><h3>{label}</h3><div><b>{fmtNum((current[key]||[]).length)}</b> record(s) this period</div>{prevPeriod&&previous[key]!==undefined&&<small>Previous approved period ({prevPeriod.period_label}): {fmtNum(previous[key].length)} record(s)</small>}<SectionPreview keyName={key} rows={current[key]||[]}/></div>)}</div></>}
+  <div className="rv-actions" style={{position:'sticky',bottom:0,background:'#fff',padding:'1rem 0 0',borderTop:'1px solid var(--border)',marginTop:'1rem'}}>{canReview&&row.submission_status==='submitted'&&<button className="btn btn-secondary" disabled={busy===row.id} onClick={()=>review(row)}>Mark under review</button>}{canReview&&['submitted','reviewed'].includes(row.submission_status)&&<button className="btn btn-secondary" disabled={busy===row.id} onClick={()=>returnForCorrection(row)}>Return for correction</button>}{canReview&&['submitted','reviewed'].includes(row.submission_status)&&<button className="btn btn-primary" disabled={busy===row.id||!ready} title={!ready?'Core reporting sections are missing.':''} onClick={()=>approve(row)}>Approve reporting period</button>}{canReview&&row.submission_status==='approved'&&<button className="btn btn-secondary" disabled={busy===row.id} onClick={()=>reopen(row)}>Reopen approved period</button>}</div></div></div>;
 }
-
-// Compact row/drawer action buttons — one primary per row (Approve), the
-// rest secondary (outlined) or tertiary (plain text), so actions don't all
-// carry the same visual weight (spec §12).
-const rowBtnBase = {
-  display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.6rem',
-  borderRadius: 'var(--radius-control)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
-};
-// Inline style objects cannot express :disabled, so a button that is disabled
-// mid-request kept rendering at full strength — the officer got no sign their
-// click had registered. Spread this wherever `disabled` is set.
-const disabledBtn = { opacity: 0.45, cursor: 'not-allowed' };
-const rowBtnPrimary = { ...rowBtnBase, border: 'none', background: 'var(--green-600)', color: '#fff' };
-const rowBtnSecondary = { ...rowBtnBase, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--text-2)' };
-const rowBtnWarning = { ...rowBtnBase, border: '1px solid var(--border)', background: 'var(--white)', color: '#8a6416' };
-const rowBtnGhost = { ...rowBtnBase, border: 'none', background: 'none', padding: '0.3rem 0.3rem', color: 'var(--green-700)' };
+function SectionPreview({keyName,rows}){if(!rows.length)return <div style={{color:'var(--text-3)',fontSize:'.72rem',marginTop:'.35rem'}}>No records.</div>;const text=r=>{if(keyName==='indicator_progress')return `${r.indicator_code||'Indicator'} · ${r.achievement_pct!=null?Math.round(r.achievement_pct)+'%':'actual '+(r.cumulative_actual??'—')}`;if(keyName==='financial_progress')return `Cumulative expenditure ${Number(r.cumulative_expenditure||0).toLocaleString('en-US')}`;if(keyName==='beneficiaries')return `${r.location||'All locations'} · direct ${fmtNum(r.total_direct||0)}`;if(keyName==='evidence')return r.title||r.file_name||'Evidence record';if(keyName==='risks_issues')return `${r.code||''} ${r.description||''}`.trim();return r.key_achievements||r.major_results||r.lessons_learned||r.narrative||'Recorded';};return <div style={{marginTop:'.35rem'}}>{rows.slice(0,3).map((r,i)=><div className="rv-item" key={r.id||i}>{String(text(r)).slice(0,150)}</div>)}{rows.length>3&&<small>+ {rows.length-3} more</small>}</div>;}
