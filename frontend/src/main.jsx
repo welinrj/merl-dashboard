@@ -41,6 +41,8 @@ import './public-header-alignment.css';
 import './fixed-workspace-shell.css';
 // Project Setup: make the actual MERL form headings clearly bold.
 import './project-setup-form-headings.css';
+// MERL Reporting: improve form navigation, long project labels and disabled-state clarity.
+import './merl-reporting-fix.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
