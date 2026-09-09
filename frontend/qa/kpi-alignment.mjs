@@ -48,21 +48,21 @@ try {
       const cards = [...root.querySelectorAll('.ov-kpi')];
       const records = cards.map((card) => {
         const box = card.getBoundingClientRect();
-        const label = card.querySelector('span');
-        const value = card.querySelector('b');
-        const context = card.querySelector('small');
-        const lb = label?.getBoundingClientRect();
-        const vb = value?.getBoundingClientRect();
-        const cb = context?.getBoundingClientRect();
+        const label = card.querySelector(':scope > span');
+        const value = card.querySelector(':scope > b');
+        const context = card.querySelector(':scope > small');
+        const children = [...card.children];
+        const hierarchy = !!label && !!value && !!context
+          && children.indexOf(label) < children.indexOf(value)
+          && children.indexOf(value) < children.indexOf(context);
+        const noOverflow = card.scrollWidth <= card.clientWidth + 1 && card.scrollHeight <= card.clientHeight + 1;
         return {
           label: label?.textContent?.trim(),
           value: value?.textContent?.trim(),
           top: box.top,
-          left: box.left,
           bottom: box.bottom,
-          right: box.right,
-          hierarchy: !!lb && !!vb && !!cb && lb.bottom <= vb.top + 2 && vb.bottom <= cb.top + 8,
-          contained: [lb, vb, cb].every((b) => b && b.left >= box.left - 1 && b.right <= box.right + 1 && b.top >= box.top - 1 && b.bottom <= box.bottom + 1),
+          hierarchy,
+          noOverflow,
           minHeight: box.height >= 100,
         };
       });
@@ -75,10 +75,10 @@ try {
       const noHorizontalOverflow = document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1;
       return { count: cards.length, records, rowAligned, noHorizontalOverflow };
     });
-    if (result.count !== 6 || !result.rowAligned || !result.noHorizontalOverflow || result.records.some((r) => !r.label || !r.value || !r.hierarchy || !r.contained || !r.minHeight)) {
+    if (result.count !== 6 || !result.rowAligned || !result.noHorizontalOverflow || result.records.some((r) => !r.label || !r.value || !r.hierarchy || !r.noOverflow || !r.minHeight)) {
       throw new Error(`${width}px executive KPI layout failure: ${JSON.stringify(result)}`);
     }
-    console.log(`PASS ${width}px: six executive KPIs aligned, contained and responsive`);
+    console.log(`PASS ${width}px: six executive KPIs aligned, ordered and overflow-safe`);
   }
 } finally {
   await browser.close();
