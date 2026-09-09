@@ -67,6 +67,24 @@
   position: relative;
   z-index: 1;
 }
+/* Treat the crest and its national title as one identity. */
+.dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-state-name {
+  display: block;
+  max-width: 132px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: inherit;
+  overflow-wrap: normal;
+}
 .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos img {
   display: block;
   width: auto;
@@ -126,23 +144,20 @@
   width: auto;
   max-width: 490px;
 }
-/* At tablet widths, search becomes compact and the public credentials get
-   their own row. The logo group stays left aligned rather than floating. */
+/* At tablet widths, place utilities below the identity instead of shrinking
+   the institutional artwork or allowing the new title to collide with search. */
 @media (max-width: 1180px) {
   .dsh .dsh-head:has(> .merl-partner-logos) {
-    column-gap: 18px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 0;
+    row-gap: 8px;
     padding-inline: 20px;
   }
   .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos { gap: 12px; }
   .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc { width: 160px; }
   .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 130px; }
-}
-@media (max-width: 1050px) {
-  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    row-gap: 10px;
-  }
+  .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions,
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
     grid-column: 1 / -1;
     grid-row: 2;
@@ -204,7 +219,23 @@
   }
 }
 @media (max-width: 520px) {
-  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos { gap: 8px; }
+  /* Keep the national title beside its crest, then give the two partner
+     wordmarks a separate row so no logo or text becomes illegibly small. */
+  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 16px;
+    width: 100%;
+    max-width: 100%;
+    justify-items: center;
+  }
+  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-state {
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-state-name {
+    max-width: 190px;
+  }
   .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-crest {
     width: 36px;
     height: 36px;
@@ -214,9 +245,11 @@
   .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc {
     width: min(38vw, 145px);
     max-height: 36px;
+    justify-self: end;
   }
   .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat {
     width: min(30vw, 115px);
     max-height: 32px;
+    justify-self: start;
   }
 }
