@@ -39,6 +39,8 @@ import './public-header-alignment.css';
 // Authenticated workspace only: keep the header and navigation stationary while
 // the page content scrolls independently.
 import './fixed-workspace-shell.css';
+// Project Setup: make the actual MERL form headings clearly bold.
+import './project-setup-form-headings.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
