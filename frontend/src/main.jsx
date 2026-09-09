@@ -37,6 +37,9 @@ import './twentyfirst-dashboard.css';
 import './header-institutional-layout.css';
 // Public page only: align partner logos, language selector and sign-in controls on tablets.
 import './public-header-alignment.css';
+// Authenticated workspace only: keep the header and navigation stationary while
+// the page content scrolls independently.
+import './fixed-workspace-shell.css';
 
 // React Query client — aggressive retry on network errors, conservative on 4xx
 const queryClient = new QueryClient({
