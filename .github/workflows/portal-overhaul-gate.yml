@@ -1,0 +1,69 @@
+name: Portal overhaul release gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit and contract tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Guard against destructive migration changes
+        shell: bash
+        working-directory: .
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+          FILES=$(git diff --name-only "$BASE_SHA" HEAD -- 'supabase/migrations/*.sql' || true)
+          if [ -z "$FILES" ]; then
+            echo "No migration changes in this release."
+            exit 0
+          fi
+          echo "$FILES"
+          DIFF=$(git diff "$BASE_SHA" HEAD -- $FILES)
+          if printf '%s' "$DIFF" | grep -E '^\+.*\b(TRUNCATE|DROP[[:space:]]+TABLE|DROP[[:space:]]+SCHEMA|DELETE[[:space:]]+FROM[[:space:]]+merl\.users)\b' -i; then
+            echo "Potentially destructive migration detected. Review manually before release."
+            exit 1
+          fi
+
+      - name: Release gate summary
+        run: |
+          echo "Portal release gate passed: typecheck, tests, build, dependency audit and destructive-migration guard."
