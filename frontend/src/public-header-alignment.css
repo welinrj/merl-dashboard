@@ -1,7 +1,7 @@
 /* Public dashboard header alignment only.
    Keeps all existing controls/content and changes only spacing/alignment. */
 
-@media (min-width: 761px) and (max-width: 1180px) {
+@media (min-width: 900px) and (max-width: 1180px) {
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
