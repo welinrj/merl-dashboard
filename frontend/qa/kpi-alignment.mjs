@@ -1,5 +1,6 @@
-// Regression for the user-approved 21st.dev hierarchy: title, chart with its
-// value inside, context, and destination. No production data is modified.
+// Executive cockpit regression: KPI cards must remain readable, aligned and
+// clickable from desktop through phone widths. The overview now uses six compact
+// management KPIs rather than the retired four-card gauge layout.
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 
@@ -42,51 +43,42 @@ try {
   for (const [width, height] of [[1440, 900], [1024, 768], [768, 1024], [390, 844], [360, 780]]) {
     await page.setViewportSize({ width, height });
     await page.goto('http://127.0.0.1:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
-    await page.locator('.ovx-kpis .ovx-kpi').first().waitFor({ timeout: 15000 });
-    const result = await page.locator('.ovx-kpis').evaluate((root) => {
-      const cards = [...root.querySelectorAll('.ovx-kpi')];
-      const rect = (element) => element.getBoundingClientRect();
-      const fits = (inner, outer) => inner.left >= outer.left - 1 && inner.right <= outer.right + 1 && inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1;
+    await page.locator('.ov-kpis .ov-kpi').first().waitFor({ timeout: 15000 });
+    const result = await page.locator('.ov-kpis').evaluate((root) => {
+      const cards = [...root.querySelectorAll('.ov-kpi')];
       const records = cards.map((card) => {
-        const title = card.querySelector('.kpi-card-label');
-        const visual = card.querySelector('.kpi-card-visual');
-        const value = card.querySelector('.kpi-card-value');
-        const context = card.querySelector('.kpi-card-sub');
-        const footer = card.querySelector('.kpi-card-link');
-        const gauge = card.querySelector('.k21-gauge');
-        const a = rect(card), t = rect(title), v = rect(visual), n = rect(value), c = rect(context), f = rect(footer);
-        const hierarchy = t.bottom <= v.top + 1 && v.bottom <= c.top + 1 && c.bottom <= f.top + 1;
-        const withinCard = [t, v, n, c, f].every((box) => fits(box, a));
-        let gaugeValid = true;
-        if (gauge) {
-          const g = rect(gauge);
-          const path = gauge.querySelector('.k21-gauge-value');
-          const p = rect(path);
-          const number = Number(value.textContent.replace(/[^0-9.]/g, ''));
-          const offset = Number(path.getAttribute('stroke-dashoffset'));
-          gaugeValid = value.closest('.k21-gauge-copy') !== null && fits(n, g)
-            && n.top > g.top + g.height * .3
-            && p.width > 0 && p.height > 0 && getComputedStyle(path).stroke !== 'none'
-            && Math.abs(offset - (100 - number)) <= 1;
-        } else {
-          gaugeValid = value.parentElement === visual;
-        }
-        return { title: title.textContent.trim(), value: value.textContent.trim(), cardTop: a.top,
-          titleTop: t.top, hierarchy, withinCard, gaugeValid, hasGauge: !!gauge,
-          duplicateValue: card.querySelectorAll('.kpi-card-value').length !== 1 };
+        const box = card.getBoundingClientRect();
+        const label = card.querySelector('span');
+        const value = card.querySelector('b');
+        const context = card.querySelector('small');
+        const lb = label?.getBoundingClientRect();
+        const vb = value?.getBoundingClientRect();
+        const cb = context?.getBoundingClientRect();
+        return {
+          label: label?.textContent?.trim(),
+          value: value?.textContent?.trim(),
+          top: box.top,
+          left: box.left,
+          bottom: box.bottom,
+          right: box.right,
+          hierarchy: !!lb && !!vb && !!cb && lb.bottom <= vb.top + 2 && vb.bottom <= cb.top + 8,
+          contained: [lb, vb, cb].every((b) => b && b.left >= box.left - 1 && b.right <= box.right + 1 && b.top >= box.top - 1 && b.bottom <= box.bottom + 1),
+          minHeight: box.height >= 100,
+        };
       });
-      const groups = [];
-      for (const record of records) {
-        const group = groups.find((row) => Math.abs(row[0].cardTop - record.cardTop) <= 2);
-        if (group) group.push(record); else groups.push([record]);
+      const rowGroups = [];
+      for (const r of records) {
+        const row = rowGroups.find((g) => Math.abs(g[0].top - r.top) <= 2);
+        if (row) row.push(r); else rowGroups.push([r]);
       }
-      const aligned = groups.every((row) => row.every((record) => Math.abs(record.titleTop - row[0].titleTop) <= 1));
-      return { count: cards.length, records, aligned, gaugeCount: records.filter((r) => r.hasGauge).length };
+      const rowAligned = rowGroups.every((row) => Math.max(...row.map(r => r.bottom)) - Math.min(...row.map(r => r.bottom)) <= 2);
+      const noHorizontalOverflow = document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1;
+      return { count: cards.length, records, rowAligned, noHorizontalOverflow };
     });
-    if (result.count !== 4 || !result.aligned || result.gaugeCount !== 2 || result.records.some((r) => !r.hierarchy || !r.withinCard || !r.gaugeValid || r.duplicateValue)) {
-      throw new Error(`${width}px KPI hierarchy failure: ${JSON.stringify(result)}`);
+    if (result.count !== 6 || !result.rowAligned || !result.noHorizontalOverflow || result.records.some((r) => !r.label || !r.value || !r.hierarchy || !r.contained || !r.minHeight)) {
+      throw new Error(`${width}px executive KPI layout failure: ${JSON.stringify(result)}`);
     }
-    console.log(`✓ ${width}px: title → visual/number → context → action; two visible score gauges`);
+    console.log(`PASS ${width}px: six executive KPIs aligned, contained and responsive`);
   }
 } finally {
   await browser.close();
