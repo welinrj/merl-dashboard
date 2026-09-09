@@ -81,4 +81,5 @@ for (const [label, route] of [
 
 await b.close();
 console.log(failed ? `\n${failed} check(s) failed` : '\nAll pages report the same headcount');
-process.exit(failed ? 1 : 0);
+// Let node exit on its own once Playwright has shut the browser down.
+process.exitCode = failed ? 1 : 0;

@@ -34,12 +34,16 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
     const url = route.request().url();
     if (url.includes('public_portal_')) {
       // Slow, so navigating away cancels it mid-flight — the real-world case is
-      // a field phone on a slow connection.
+      // a field phone on a slow connection. The request being cancelled is the
+      // point of the test, so fulfilling it afterwards is expected to fail:
+      // swallow that rather than leave a rejected promise behind.
       await new Promise((r) => setTimeout(r, 4000));
       return route.fulfill({ status: 200, contentType: 'application/json',
-        body: url.includes('summary') ? '{"singleton":true,"project_count":0}' : '[]' });
+        body: url.includes('summary') ? '{"singleton":true,"project_count":0}' : '[]' })
+        .catch(() => {});
     }
-    return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+      .catch(() => {});
   });
   const page = await ctx.newPage();
   const guarded = () => page.locator(GUARD).count();
@@ -61,6 +65,11 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
     return hit === el || el.contains(hit);
   }).catch(() => false);
   check('the mobile menu is not covered', clickable === true);
+  // Route handlers deliberately sleep, so some may still be in flight. Drop them
+  // before closing: tearing the context down underneath a pending handler leaves
+  // the browser process behind, and an orphan per run is enough to slow the next
+  // script in the suite past its own load timeout on a small CI runner.
+  await ctx.unrouteAll({ behavior: 'ignoreErrors' });
   await ctx.close();
 }
 
@@ -80,9 +89,12 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
   await page.waitForTimeout(4000);
   check('a failed read still blocks the portal', (await page.locator(GUARD).count()) === 1,
     'the guard exists to stop a transport failure reading as a legitimate zero');
+  await ctx.unrouteAll({ behavior: 'ignoreErrors' });
   await ctx.close();
 }
 
 await browser.close();
 console.log(failed ? `\n${failed} check(s) failed` : '\nRead-failure guard behaves correctly in both directions');
-process.exit(failed ? 1 : 0);
+// Set the code and let node exit on its own: process.exit() here would kill the
+// process before Playwright has finished shutting the browser down.
+process.exitCode = failed ? 1 : 0;
