@@ -51,10 +51,16 @@
   grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: flex-end;
   flex-wrap: wrap; gap: 10px; width: auto; min-width: 0; margin: 0; position: relative; z-index: 1;
 }
+.dsh .dsh-head:has(> .merl-partner-logos) .dsh-lang {
+  display: flex !important; align-items: center; flex-shrink: 0;
+}
 .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger { display: none; margin: 0; position: relative; z-index: 2; }
 .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) { position: relative; top: auto; }
+.dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
+  width: max-content; max-width: 100%; flex-wrap: nowrap;
+}
 .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login {
-  order: 0; flex: 0 1 490px; width: auto; max-width: 490px;
+  order: 0; flex: 0 0 490px; width: 490px; max-width: 490px;
 }
 /* The utility row moves below the identity before either group becomes crowded. */
 @media (max-width: 1280px) {
@@ -68,7 +74,9 @@
   }
   .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc { width: 160px; }
   .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 130px; }
-  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions { grid-column: 1; grid-row: 2; width: 100%; }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
+    grid-column: 1; grid-row: 2; width: 100%; flex-wrap: wrap;
+  }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login {
     order: 3; flex: 1 1 100%; width: 100%; max-width: none;
   }
