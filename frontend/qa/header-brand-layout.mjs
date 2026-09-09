@@ -51,7 +51,7 @@ async function check(page, label, { authenticated, width }) {
     const rect = el => el.getBoundingClientRect();
     const h = rect(header), g = rect(group);
     const fits = (a,b) => a.left >= b.left-1 && a.right <= b.right+1 && a.top >= b.top-1 && a.bottom <= b.bottom+1;
-    const overlaps = (a,b) => a.left < b.right-1 && a.right > b.left+1 && a.top < b.bottom-1 && a.bottom > c.top+1;
+    const overlaps = (a,b) => a.left < b.right-1 && a.right > b.left+1 && a.top < b.bottom-1 && a.bottom > b.top+1;
     const boxes = images.map(rect);
     const controls = header.querySelector('.dsh-head-actions');
     const menu = header.querySelector('.dsh-hamburger');
