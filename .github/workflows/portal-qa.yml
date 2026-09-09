@@ -103,6 +103,10 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/data-and-ux.mjs
 
+      - name: Validate read-failure guard
+        working-directory: frontend
+        run: node qa/read-failure-guard.mjs
+
       - name: Validate anonymous public dashboard
         working-directory: frontend
         run: node qa/public-dashboard.mjs

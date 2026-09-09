@@ -28,6 +28,16 @@ function publishReadFailure(failure: SupabaseReadFailure) {
  * A dashboard can accidentally coalesce that null to [] and display believable
  * zeroes. Record and emit failed REST reads so the UI blocks those values.
  */
+/**
+ * Was this rejection the caller cancelling the request rather than the network
+ * or the database failing it? Browsers reject an aborted fetch with a DOMException
+ * named "AbortError"; the signal itself is checked too, since a request aborted
+ * before it was even issued can surface differently.
+ */
+const isAbort = (error: unknown, init?: RequestInit): boolean =>
+  (error as { name?: string } | null)?.name === 'AbortError'
+  || init?.signal?.aborted === true;
+
 const monitoredFetch: typeof fetch = async (input, init) => {
   try {
     const response = await fetch(input, init);
@@ -42,7 +52,18 @@ const monitoredFetch: typeof fetch = async (input, init) => {
     }
     return response;
   } catch (error) {
-    publishReadFailure({ status: 0, method: String(init?.method ?? 'GET').toUpperCase() });
+    // A request the app itself cancelled says nothing about whether the data is
+    // available. React Query aborts in-flight reads when a query is no longer
+    // needed — fetchPublicSnapshot passes `.abortSignal(signal)` — so simply
+    // navigating away from the public dashboard while its snapshot was still
+    // loading recorded a "failure" and left the whole portal behind the
+    // data-unavailable dialog, over a page whose reads were perfectly fine.
+    // It only reproduced when a read was still in flight at the moment of
+    // navigation, which is why it presented as an intermittent QA failure.
+    // A genuine transport failure still records and still blocks.
+    if (!isAbort(error, init)) {
+      publishReadFailure({ status: 0, method: String(init?.method ?? 'GET').toUpperCase() });
+    }
     throw error;
   }
 };
