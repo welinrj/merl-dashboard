@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { HashRouter, Link, Route, Routes } from 'react-router-dom';
+import { createRoot, createPortal } from 'react-dom/client';
+import { HashRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { ConfirmHost } from './lib/confirm';
@@ -61,6 +61,8 @@ const queryClient = new QueryClient({
 
 function ProjectRegisterShortcut() {
   const [signedIn, setSignedIn] = useState(false);
+  const [heading, setHeading] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
     let mounted = true;
@@ -76,32 +78,41 @@ function ProjectRegisterShortcut() {
     };
   }, []);
 
-  if (!signedIn || window.location.hash.startsWith('#/docc-project-register')) return null;
+  // The overview is mounted asynchronously after its data loads. Follow its
+  // actual heading so the shortcut is an ordinary page action, not a floating
+  // overlay. Reattach if a reload replaces the heading, and clean up on exit.
+  useEffect(() => {
+    if (!signedIn || location.pathname !== '/dashboards') {
+      setHeading(null);
+      return;
+    }
+    const findHeading = () => {
+      const next = document.querySelector('.dsh .ovx-heading');
+      setHeading((current) => current === next ? current : next);
+    };
+    findHeading();
+    const observer = new MutationObserver(findHeading);
+    observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [signedIn, location.pathname]);
 
-  return (
+  if (!signedIn || location.pathname !== '/dashboards' || !heading) return null;
+
+  return createPortal(
     <Link
       to="/docc-project-register"
+      className="ovx-export"
       style={{
-        position: 'fixed',
-        right: 18,
-        bottom: 18,
-        zIndex: 1200,
-        minHeight: 40,
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '0 14px',
-        borderRadius: 8,
-        border: '1px solid rgba(255,255,255,.22)',
-        background: '#08233C',
-        color: '#fff',
+        border: '1px solid var(--border)',
+        background: 'var(--white)',
+        color: 'var(--green-700)',
         textDecoration: 'none',
-        fontSize: 13,
-        fontWeight: 800,
-        boxShadow: '0 8px 24px rgba(8,35,60,.22)',
+        boxShadow: 'none',
       }}
     >
       DoCC Project Register
-    </Link>
+    </Link>,
+    heading,
   );
 }
 
