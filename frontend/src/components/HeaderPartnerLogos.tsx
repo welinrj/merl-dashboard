@@ -36,7 +36,10 @@ export default function HeaderPartnerLogos() {
 
   return (
     <div ref={groupRef} className="merl-partner-logos" role="group" aria-label="Institutional partners">
-      <img className="merl-partner-crest" src={asset('vanuatu-coat-of-arms.svg')} alt="Coat of arms of Vanuatu" />
+      <div className="merl-partner-state">
+        <img className="merl-partner-crest" src={asset('vanuatu-coat-of-arms.svg')} alt="Coat of arms of Vanuatu" />
+        <span className="merl-partner-state-name">The republic of Vanuatu</span>
+      </div>
       <img className="merl-partner-docc" src={asset('docc-logo.png')} alt="Department of Climate Change, Vanuatu" />
       <img className="merl-partner-mfat" src={asset('mfat-logo.png')} alt="New Zealand Ministry of Foreign Affairs and Trade" />
     </div>
