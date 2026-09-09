@@ -1,9 +1,10 @@
-/* Final institutional layout, loaded after the existing shell styles. */
+/* Institutional identity: one compact, left-aligned group beside the utilities.
+   Keep the existing MERL product identity in the sidebar. */
 .dsh:has(.dsh-head > .merl-partner-logos) {
   grid-template-rows: auto minmax(0, 1fr);
 }
-/* Keep the translated page title available to assistive technology, but
-   remove the old CSS-generated MERL wordmark and emblem from the header. */
+/* Retain the translated page title for assistive technology, without the
+   obsolete CSS-generated header emblem or wordmark. */
 .dsh .dsh-head:has(> .merl-partner-logos) > div:has(> .dsh-head-title) {
   position: absolute !important;
   display: block !important;
@@ -29,7 +30,6 @@
   line-height: inherit !important;
   color: inherit;
 }
-/* Retain the existing MERL identity in the sidebar. */
 .dsh .dsh-side .dsh-brand {
   display: grid;
   flex: 0 0 auto;
@@ -37,29 +37,29 @@
   min-height: 84px;
   padding: 14px 12px 12px;
 }
-/* Three institutional emblems, one centered band, no stretching. */
+/* The header has a logo column and a utility column, not a large empty
+   full-width logo row. Natural image proportions are never distorted. */
 .dsh .dsh-head:has(> .merl-partner-logos) {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto;
   align-items: center;
   justify-content: stretch;
-  column-gap: 12px;
-  row-gap: 8px;
+  column-gap: 24px;
+  row-gap: 0;
   height: auto;
-  min-height: 0;
-  padding: 10px 20px 18px;
+  min-height: 76px;
+  padding: 10px 24px 16px;
   box-sizing: border-box;
 }
 .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
-  grid-column: 1 / -1;
+  grid-column: 1;
   grid-row: 1;
-  justify-self: center;
-  display: grid;
-  grid-template-columns: 52px 190px 150px;
+  justify-self: start;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 20px;
+  justify-content: flex-start;
+  gap: 18px;
   width: max-content;
   max-width: 100%;
   min-width: 0;
@@ -69,58 +69,85 @@
 }
 .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos img {
   display: block;
-  width: 100%;
-  height: 48px;
+  width: auto;
   max-width: 100%;
-  max-height: 48px;
+  height: auto;
   object-fit: contain;
   object-position: center;
-  min-width: 0;
-  flex: none;
+  flex-shrink: 1;
 }
 .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-crest {
-  width: 52px;
-  height: 48px;
-  flex: 0 0 auto !important;
+  width: 44px;
+  height: 44px;
+  max-height: 44px;
+  flex: 0 0 44px !important;
 }
-.dsh .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
-  grid-column: 1;
-  grid-row: 2;
-  justify-self: start;
-  margin: 0;
-  position: relative;
-  z-index: 2;
+.dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc {
+  width: 178px;
+  max-height: 44px;
+}
+.dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat {
+  width: 144px;
+  max-height: 38px;
 }
 .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  width: 100%;
+  gap: 10px;
+  width: auto;
   min-width: 0;
   margin: 0;
   position: relative;
   z-index: 1;
 }
-/* Public sign-in remains the only login and gets its own available width. */
+.dsh .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
+  display: none;
+  margin: 0;
+  position: relative;
+  z-index: 2;
+}
+/* Keep the public sign-in on the same desktop row; never overlay it. */
 .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
   position: relative;
   top: auto;
 }
 .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
-  grid-column: 1 / -1;
-  grid-row: 2;
+  grid-column: 2;
+  grid-row: 1;
+  width: auto;
 }
-.dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
-  display: none;
+.dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login {
+  order: 0;
+  flex: 0 1 490px;
+  width: auto;
+  max-width: 490px;
+}
+/* At tablet widths, search becomes compact and the public credentials get
+   their own row. The logo group stays left aligned rather than floating. */
+@media (max-width: 1180px) {
+  .dsh .dsh-head:has(> .merl-partner-logos) {
+    column-gap: 18px;
+    padding-inline: 20px;
+  }
+  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos { gap: 12px; }
+  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc { width: 160px; }
+  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 130px; }
 }
 @media (max-width: 1050px) {
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    row-gap: 10px;
+  }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
-    flex: 1 1 auto;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-end;
     width: 100%;
-    margin: 0;
   }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login {
     order: 3;
@@ -133,17 +160,35 @@
   .dsh .dsh-head:has(> .merl-partner-logos) {
     grid-template-columns: 40px minmax(0, 1fr);
     grid-template-rows: auto auto;
-    gap: 8px;
-    padding: 10px 12px 16px;
+    column-gap: 10px;
+    row-gap: 8px;
+    min-height: 0;
+    padding: 10px 12px 14px;
+  }
+  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+    justify-content: center;
+    gap: 12px;
   }
   .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
     display: inline-flex;
     grid-column: 1;
     grid-row: 2;
-    min-width: 40px;
-    min-height: 40px;
+    justify-self: start;
+    align-items: center;
+    justify-content: center;
     width: 40px;
     height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
+    grid-column: 2;
+    grid-row: 2;
+    justify-content: flex-end;
+    width: 100%;
   }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
     grid-template-rows: auto auto auto;
@@ -152,7 +197,6 @@
     grid-column: 1 / -1;
     grid-row: 3;
     width: 100%;
-    justify-content: flex-end;
   }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
     display: inline-flex;
@@ -160,27 +204,19 @@
   }
 }
 @media (max-width: 520px) {
-  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
-    grid-template-columns: 40px minmax(0, 150px) minmax(0, 120px);
-    gap: 8px;
-    width: 100%;
-  }
-  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos img {
-    height: 40px;
-    max-height: 40px;
-  }
-  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-crest {
-    width: 40px;
-    height: 40px;
-  }
-}
-@media (max-width: 350px) {
-  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
-    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
-    gap: 6px;
-  }
+  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos { gap: 8px; }
   .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-crest {
     width: 36px;
     height: 36px;
+    max-height: 36px;
+    flex-basis: 36px !important;
+  }
+  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc {
+    width: min(38vw, 145px);
+    max-height: 36px;
+  }
+  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat {
+    width: min(30vw, 115px);
+    max-height: 32px;
   }
 }
