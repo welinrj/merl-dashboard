@@ -86,7 +86,7 @@ async function check(page, label, width, authenticated) {
       onePublicForm: !form || header.querySelectorAll('form.pbd-header-login').length===1,
     };
   });
-  const singleRow = authenticated ? width>760 : width>1280;
+  const singleRow = width>760;
   const expected = {
     imageCount:3, imagesLoaded:true, proportions:true,
     nationalTitle:'The republic of Vanuatu', nationalTitleInside:true,
