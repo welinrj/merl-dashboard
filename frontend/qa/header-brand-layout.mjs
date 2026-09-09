@@ -43,6 +43,11 @@ async function check(page, label, { authenticated, width }) {
   const result = await page.locator('.dsh-head').evaluate(header => {
     const group = header.querySelector('.merl-partner-logos');
     const images = [...group.querySelectorAll('img')];
+    const state = group.querySelector('.merl-partner-state');
+    const title = state?.querySelector('.merl-partner-state-name');
+    const crest = state?.querySelector('.merl-partner-crest');
+    const docc = group.querySelector('.merl-partner-docc');
+    const mfat = group.querySelector('.merl-partner-mfat');
     const rect = el => el.getBoundingClientRect();
     const h = rect(header), g = rect(group);
     const fits = (a,b) => a.left >= b.left-1 && a.right <= b.right+1 && a.top >= b.top-1 && a.bottom <= b.bottom+1;
@@ -52,10 +57,16 @@ async function check(page, label, { authenticated, width }) {
     const menu = header.querySelector('.dsh-hamburger');
     const visible = el => el && getComputedStyle(el).display !== 'none';
     const padding = parseFloat(getComputedStyle(header).paddingLeft) || 0;
+    const titleBox = title && rect(title);
     return {
       imageCount:images.length,
       imagesLoaded:images.every(i=>i.complete && i.naturalWidth>0),
       proportions:images.every(i=>getComputedStyle(i).objectFit==='contain'),
+      nationalTitle:title?.textContent?.trim(),
+      nationalTitleVisible:!!titleBox && titleBox.width>0 && titleBox.height>0 && getComputedStyle(title).visibility!=='hidden',
+      nationalTitleInside:!!titleBox && fits(titleBox,rect(state)) && fits(rect(state),g),
+      nationalTitleBesideCrest:!!titleBox && titleBox.left>=rect(crest).right-1 && Math.abs((titleBox.top+titleBox.bottom-rect(crest).top-rect(crest).bottom)/2)<=4,
+      nationalTitleBeforeDoCC:group.firstElementChild===state && state.nextElementSibling===docc && docc.nextElementSibling===mfat && !overlaps(titleBox,rect(docc)),
       leftAligned:Math.abs(g.left-h.left-padding)<=2,
       centered:Math.abs((g.left+g.right-h.left-h.right)/2)<=2,
       sameRow:!!controls && Math.abs((g.top+g.bottom-controls.getBoundingClientRect().top-controls.getBoundingClientRect().bottom)/2)<=3,
@@ -71,13 +82,13 @@ async function check(page, label, { authenticated, width }) {
   const mobile = width <= 760;
   const expected = {
     imageCount:3, imagesLoaded:true, proportions:true,
+    nationalTitle:'The republic of Vanuatu', nationalTitleVisible:true,
+    nationalTitleInside:true, nationalTitleBesideCrest:true, nationalTitleBeforeDoCC:true,
     leftAligned:!mobile, centered:mobile,
-    sameRow:authenticated && !mobile,
+    sameRow:width>1180,
     inside:true, distinct:true, controlsClear:true, controlsInside:true,
     menuClear:true, horizontalOverflow:false, headerWordmark:false,
   };
-  // Public credentials intentionally move below the logos at tablet widths.
-  if (!authenticated && width > 1050) expected.sameRow = true;
   for (const [key,value] of Object.entries(result)) {
     if (value!==expected[key]) throw new Error(`${label}: ${key} expected ${expected[key]}, got ${value}`);
   }
