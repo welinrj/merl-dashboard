@@ -10,7 +10,6 @@ import AreaPerformanceBridge from './components/AreaPerformanceBridge';
 // i18n must be imported before the application entry so translations are ready
 import './i18n';
 import PublicEntry from './PublicEntry';
-import DoCCProjectRegister from './pages/DoCCProjectRegister';
 import './index.css';
 // Shell theme — loaded after index.css so it overrides the shell rules there.
 import './shell-theme.css';
@@ -64,7 +63,9 @@ const queryClient = new QueryClient({
 function PortalApp() {
   return (
     <Routes>
-      <Route path="/docc-project-register" element={<DoCCProjectRegister />} />
+      {/* Every hash/path now passes through PublicEntry. It validates the MERL
+          session + profile before exposing any internal destination, and sends
+          everyone else to the approved public dashboard. */}
       <Route path="*" element={(
         <>
           <PublicEntry />
