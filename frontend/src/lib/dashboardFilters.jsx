@@ -1,25 +1,27 @@
-// =============================================================================
-// dashboardFilters.jsx — shared global-filter state for the Overview dashboard.
-// Both the sidebar "Filter Quick Links" (in the app shell) and the Overview's
-// global filter bar bind to this one context, so a change in either place — or
-// a cross-filter click on a chart — updates every widget consistently.
-// =============================================================================
+// Shared filters and operational status classification for the MERL dashboard.
 import { createContext, useContext, useMemo, useState, useCallback } from 'react';
 
 const EMPTY = { fy: '', status: '', theme: '', province: '', partner: '' };
 
-// Project operational statuses grouped into the four dashboard buckets.
+// Include both the current Form 1 vocabulary and legacy operational values.
+// Registration approval is a separate workflow and is not an operational status.
 export const STATUS_BUCKETS = {
-  on_track:    ['on_track'],
-  at_risk:     ['at_risk', 'delayed', 'suspended'],
-  not_started: ['pipeline', 'approved', 'not_started'],
-  completed:   ['completed', 'closed'],
+  on_track: ['active', 'on_track', 'ongoing', 'in_progress'],
+  at_risk: ['at_risk', 'delayed', 'suspended', 'on_hold'],
+  not_started: ['planning', 'not_started', 'pipeline', 'approved'],
+  completed: ['completed', 'closed'],
+  cancelled: ['cancelled'],
 };
 export const STATUS_BUCKET_LABEL = {
-  on_track: 'On Track', at_risk: 'At Risk / Delayed', not_started: 'Not Started', completed: 'Completed',
+  on_track: 'Ongoing / On Track',
+  at_risk: 'At Risk / Delayed / On Hold',
+  not_started: 'Planning / Not Started',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  unknown: 'Other / Unclassified',
 };
 export const bucketOf = (status) =>
-  Object.keys(STATUS_BUCKETS).find((k) => STATUS_BUCKETS[k].includes(status)) ?? 'not_started';
+  Object.keys(STATUS_BUCKETS).find((k) => STATUS_BUCKETS[k].includes(status)) ?? 'unknown';
 
 const Ctx = createContext(null);
 
@@ -40,9 +42,8 @@ export function useDashboardFilters() {
   return v;
 }
 
-// Predicate: does a project row pass the active filters?
 export function projectMatches(p, filters) {
-  if (filters.status && !STATUS_BUCKETS[filters.status]?.includes(p.status)) return false;
+  if (filters.status && bucketOf(p.status) !== filters.status) return false;
   if (filters.theme && p.category !== filters.theme) return false;
   if (filters.partner && p.donor !== filters.partner) return false;
   if (filters.province && !(p.provinces || []).includes(filters.province)) return false;
