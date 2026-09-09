@@ -1,5 +1,5 @@
 /* Single source of truth for institutional header layout. MERL stays in the
-   sidebar. Keep the real translated page title accessible, not a second logo. */
+   sidebar. The real translated page title remains accessible, not a second logo. */
 .dsh:has(.dsh-head > .merl-partner-logos) { grid-template-rows: auto minmax(0, 1fr); }
 .dsh .dsh-head:has(> .merl-partner-logos) > div:has(> .dsh-head-title) {
   position: absolute !important; display: block !important;
@@ -20,15 +20,15 @@
   display: grid; flex: 0 0 auto; align-items: center;
   min-height: 84px; padding: 14px 12px 12px;
 }
-/* Desktop: institutional identity on the left, utilities on the right. */
+/* One balanced desktop row. Compact search and artwork before wrapping. */
 .dsh .dsh-head:has(> .merl-partner-logos) {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto;
-  align-items: center; justify-content: stretch; column-gap: 24px; row-gap: 0;
-  height: auto; min-height: 76px; padding: 10px 24px 16px; box-sizing: border-box;
+  align-items: center; justify-content: stretch; column-gap: 16px; row-gap: 0;
+  height: auto; min-height: 72px; padding: 12px 20px; box-sizing: border-box;
 }
 .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
   grid-column: 1; grid-row: 1; justify-self: start;
-  display: flex; align-items: center; justify-content: flex-start; gap: 18px;
+  display: flex; align-items: center; justify-content: flex-start; gap: 14px;
   width: max-content; max-width: 100%; min-width: 0; margin: 0; position: relative; z-index: 1;
 }
 .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-state {
@@ -49,12 +49,17 @@
 .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 144px; max-height: 38px; }
 .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
   grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: flex-end;
-  flex-wrap: wrap; gap: 10px; width: auto; min-width: 0; margin: 0; position: relative; z-index: 1;
+  flex-wrap: nowrap; gap: 10px; width: auto; min-width: 0; margin: 0; position: relative; z-index: 1;
 }
 .dsh .dsh-head:has(> .merl-partner-logos) .dsh-lang {
   display: flex !important; align-items: center; flex-shrink: 0;
 }
 .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger { display: none; margin: 0; position: relative; z-index: 2; }
+/* Search remains functional at every size, but need not consume a third of
+   the header. The existing search control still opens the full search UI. */
+.dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger {
+  width: clamp(180px, 22vw, 320px); max-width: 100%;
+}
 .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) { position: relative; top: auto; }
 .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
   width: max-content; max-width: 100%; flex-wrap: nowrap;
@@ -62,51 +67,86 @@
 .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login {
   order: 0; flex: 0 0 490px; width: 490px; max-width: 490px;
 }
-/* The utility row moves below the identity before either group becomes crowded. */
+/* Workspace only: fit the existing controls beside the logos on tablets.
+   The public page retains its full inline credentials and may wrap below. */
 @media (max-width: 1280px) {
-  .dsh .dsh-head:has(> .merl-partner-logos) {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto;
+    column-gap: 12px; row-gap: 0; padding-inline: 16px;
+  }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos { gap: 12px; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
+    grid-column: 2; grid-row: 1; width: auto; gap: 8px; flex-wrap: nowrap;
+  }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc { width: 160px; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 130px; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger {
+    width: 42px; min-width: 42px !important; flex: 0 0 42px; justify-content: center; padding: 0;
+  }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger-lbl,
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger .gs-kbd { display: none; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .dsh-user-meta { display: none; }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
     grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto;
     column-gap: 0; row-gap: 8px; padding-inline: 20px;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos { grid-column: 1; grid-row: 1; gap: 12px; }
-  .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
-    grid-column: 1; grid-row: 2; justify-content: flex-end; width: 100%;
-  }
-  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc { width: 160px; }
-  .dsh .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 130px; }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos { grid-column: 1; grid-row: 1; gap: 12px; }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
-    grid-column: 1; grid-row: 2; width: 100%; flex-wrap: wrap;
+    grid-column: 1; grid-row: 2; justify-content: flex-end; width: 100%; flex-wrap: wrap;
   }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc { width: 160px; }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 130px; }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login {
     order: 3; flex: 1 1 100%; width: 100%; max-width: none;
   }
 }
+/* Smaller tablets: reduce artwork widths before wrapping the workspace. */
+@media (min-width: 761px) and (max-width: 980px) {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) { padding-inline: 12px; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos { gap: 10px; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .merl-partner-state { gap: 6px; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .merl-partner-state-name { max-width: 146px; font-size: 12px; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-crest { width: 40px; height: 40px; max-height: 40px; flex-basis: 40px !important; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc { width: 140px; max-height: 40px; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat { width: 112px; max-height: 34px; }
+}
 @media (max-width: 760px) {
-  .dsh .dsh-head:has(> .merl-partner-logos) {
+  /* Match the tablet selector's specificity so the phone layout wins. */
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) {
     grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto;
-    column-gap: 10px; row-gap: 8px; min-height: 0; padding: 10px 12px 14px;
+    column-gap: 10px; row-gap: 8px; min-height: 0; padding: 10px 12px;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
     grid-column: 1 / -1; grid-row: 1; justify-self: start; justify-content: flex-start; gap: 12px;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
     display: inline-flex; grid-column: 1; grid-row: 2; justify-self: start;
     align-items: center; justify-content: center; width: 40px; height: 40px;
     min-width: 40px; min-height: 40px;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
     grid-column: 2; grid-row: 2; justify-content: flex-end; width: 100%;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) .gs-trigger {
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger {
     width: 42px; min-width: 42px !important; flex: 0 0 42px; justify-content: center; padding: 0;
   }
-  .dsh .dsh-head:has(> .merl-partner-logos) .gs-trigger-lbl,
-  .dsh .dsh-head:has(> .merl-partner-logos) .gs-trigger .gs-kbd { display: none; }
-  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) { grid-template-rows: auto auto auto; }
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger-lbl,
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) .gs-trigger .gs-kbd { display: none; }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
+    grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto auto;
+    column-gap: 10px; row-gap: 8px; min-height: 0; padding: 10px 12px;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+    grid-column: 1 / -1; grid-row: 1; justify-self: start; justify-content: flex-start; gap: 12px;
+  }
   .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
     grid-column: 1 / -1; grid-row: 3; width: 100%;
   }
-  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger { display: inline-flex; grid-row: 2; }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-hamburger {
+    display: inline-flex; grid-column: 1; grid-row: 2; justify-self: start;
+    align-items: center; justify-content: center; width: 40px; height: 40px;
+    min-width: 40px; min-height: 40px;
+  }
   /* Only the area outside the drawer is an overlay click target. */
   .dsh.pbd-root .pbd-overlay {
     left: min(280px, calc(100vw - 32px)); top: var(--workspace-header-h);
