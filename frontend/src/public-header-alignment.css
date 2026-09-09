@@ -1,0 +1,101 @@
+/* Public dashboard header alignment only.
+   Keeps all existing controls/content and changes only spacing/alignment. */
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 0;
+    min-height: 72px;
+    padding: 10px 12px;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .merl-partner-state {
+    gap: 6px;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .merl-partner-state-name {
+    max-width: 126px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-crest {
+    width: 38px;
+    height: 38px;
+    max-height: 38px;
+    flex-basis: 38px !important;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-docc {
+    width: 138px;
+    max-height: 38px;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .merl-partner-logos .merl-partner-mfat {
+    width: 112px;
+    max-height: 32px;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .dsh-lang {
+    align-self: center;
+    flex: 0 0 auto;
+  }
+
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login {
+    order: 0;
+    flex: 0 1 390px;
+    width: clamp(320px, 38vw, 390px);
+    max-width: 390px;
+    margin: 0;
+  }
+
+  .dsh.pbd-root .pbd-header-login-fields {
+    grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto;
+    align-items: end;
+    gap: 6px;
+  }
+
+  .dsh.pbd-root .pbd-header-login label {
+    gap: 3px;
+    font-size: .66rem;
+  }
+
+  .dsh.pbd-root .pbd-header-login input,
+  .dsh.pbd-root .pbd-header-login button {
+    height: 36px;
+  }
+
+  .dsh.pbd-root .pbd-header-login button {
+    min-width: 72px;
+    padding-inline: 10px;
+  }
+}
