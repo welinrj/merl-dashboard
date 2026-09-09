@@ -4,21 +4,23 @@ import { normalizePublishedProjects, normalizeProvince } from './publicProvinces
 
 export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 
-// Never read internal v_* views or use an elevated credential from this module.
-// A cancelled request must not overwrite a newer approved snapshot. All three
-// reads must succeed before React Query replaces the previously displayed data.
+// The inventory RPC exposes counts only. Never read internal v_* views or use
+// an elevated credential from this module. All reads must succeed before React
+// Query replaces the previously displayed data.
 export async function fetchPublicSnapshot({ signal } = {}) {
-  const [summary, projects, areas] = await Promise.all([
+  const [summary, projects, areas, inventory] = await Promise.all([
     supabase.from('public_portal_summary').select('*').abortSignal(signal).single(),
     supabase.from('public_portal_projects').select('*').order('name').abortSignal(signal),
     supabase.from('public_portal_area_councils').select('*').order('project_count', { ascending: false }).abortSignal(signal),
+    supabase.rpc('public_portal_project_inventory').abortSignal(signal).single(),
   ]);
-  const failed = [summary, projects, areas].find(result => result.error);
+  const failed = [summary, projects, areas, inventory].find(result => result.error);
   if (failed) throw failed.error;
   return {
     summary: summary.data,
     projects: normalizePublishedProjects(projects.data || []),
     areas: (areas.data || []).map(area => ({...area, province: normalizeProvince(area.province)})),
+    inventory: inventory.data,
   };
 }
 
@@ -55,4 +57,17 @@ export function publicTotals(projects, summary, allScope) {
     investment: total(projects.map(project => project.budget_vuv)),
     beneficiaries: total(projects.map(project => project.published_beneficiaries)),
   };
+}
+
+// Inventory is independent of the public-results filters. Never substitute a
+// filtered published count for the total number of records in MERL.
+export function publicProjectCount(inventory, publishedCount, allScope) {
+  const totalProjects = Number(inventory?.total_projects);
+  const approvedProjects = Number(inventory?.approved_projects);
+  const otherProjects = Number(inventory?.other_projects);
+  if (!allScope) return { value: publishedCount, scope: 'published' };
+  if (!Number.isFinite(totalProjects) || !Number.isFinite(approvedProjects) || !Number.isFinite(otherProjects)) {
+    return { value: null, scope: 'unavailable' };
+  }
+  return { value: totalProjects, approved: approvedProjects, other: otherProjects, scope: 'all' };
 }
