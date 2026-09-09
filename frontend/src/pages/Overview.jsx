@@ -1,737 +1,96 @@
-// =============================================================================
-// Overview.jsx — MERL Project Portfolio Dashboard (Executive Overview)
-//
-// Executive reading order:
-//   1. Overall progress · Projects · Budget utilisation · Beneficiaries
-//   2. Needs attention · Implementation performance
-//   3. Portfolio/results performance · Geographic coverage
-//   4. Reporting and upcoming deadlines
-//
-// All figures are read live from the existing Supabase public.v_* views. There
-// are no mock KPI values in this page. If one of the required backend reads
-// fails, the dashboard now shows a retryable connection error instead of
-// silently treating the failure as an empty portfolio.
-// =============================================================================
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
-} from 'recharts';
-import { AlertTriangle, Printer, ArrowRight } from '../components/ui/icons';
+import { AlertTriangle, ArrowRight, Printer } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
-import * as OPT from '../constants/formOptions';
-import { PROVINCE_LIST } from '../constants/vanuatuGeo';
 import { VanuatuMapMini } from '../components/VanuatuMap';
-import {
-  useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
-} from '../lib/dashboardFilters';
-import KpiCard from '../components/ui/KpiCard';
-import { useTranslation } from 'react-i18next';
-import { fmtDate, fmtNum } from '../lib/locale';
-import { localised, i18nCols } from '../lib/contentLocale';
+import { useDashboardFilters, projectMatches, STATUS_BUCKETS, STATUS_BUCKET_LABEL } from '../lib/dashboardFilters';
 import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
+import { fmtDate, fmtNum } from '../lib/locale';
+import { readPortfolio, latestApprovedPeriod, restrictToApprovedPeriods } from '../lib/portfolioRead';
+import {
+  projectStatusSummary, indicatorSummary, financialSummary, reportingSummary,
+  riskSummary, physicalFinancialVariance,
+} from '../lib/portfolioMetrics';
 
-const C = {
-  violet: '#6b55a7',
-  green: '#22a565',
-  amber: '#e0a12a',
-  red: '#dc2626',
-};
-
-const STATUS_COLOR = {
-  on_track: C.green,
-  at_risk: C.amber,
-  not_started: C.red,
-  completed: '#7c3aed',
-};
-
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const sum = (rows, getter) => rows.reduce((a, r) => a + (Number(getter(r)) || 0), 0);
-const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
-
-function fmtVUV(v) {
-  const n = Number(v) || 0;
-  if (n >= 1e9) return `VT ${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `VT ${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `VT ${(n / 1e3).toFixed(1)}K`;
-  return `VT ${fmtNum(n)}`;
-}
-
-function statusLabel(key, t) {
-  return {
-    on_track: t('overview.bucketOnTrack'),
-    at_risk: t('overview.bucketAtRisk'),
-    not_started: t('overview.bucketNotStarted'),
-    completed: t('overview.bucketCompleted'),
-  }[key] || key;
-}
+const PROJECT_TONES = { on_track:'#16a34a', at_risk:'#d97706', not_started:'#64748b', completed:'#7c3aed', cancelled:'#991b1b', unknown:'#94a3b8' };
+const money = v => { const n=Number(v||0); if(n>=1e9)return `VT ${(n/1e9).toFixed(2)}B`; if(n>=1e6)return `VT ${(n/1e6).toFixed(2)}M`; if(n>=1e3)return `VT ${(n/1e3).toFixed(1)}K`; return `VT ${fmtNum(n)}`; };
+const percent = v => v == null || !Number.isFinite(Number(v)) ? '—' : `${Math.round(Number(v))}%`;
 
 export default function Overview() {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage;
-  const nav = useNavigate();
-  const { filters, setFilter, reset, active } = useDashboardFilters();
+  const nav=useNavigate();
+  const { filters,setFilter,reset,active }=useDashboardFilters();
+  const [snapshot,setSnapshot]=useState(null),[fatal,setFatal]=useState(null),[reload,setReload]=useState(0);
+  const previous=useRef(null);
 
-  const [data, setData] = useState(null);
-  const [loadError, setLoadError] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
+  useEffect(()=>{let alive=true;(async()=>{
+    setFatal(null);
+    const q=(view,columns)=>()=>supabase.from(view).select(columns);
+    try{
+      const result=await readPortfolio({
+        projects:q('v_projects','id,code,name,status,budget_vuv,spent_vuv,provinces,donor,category,start_date,end_date,updated_at'),
+        financial:q('v_financial_progress','project_id,approved_budget,cumulative_expenditure,remaining_balance,utilisation_pct,funds_received,funds_committed,reporting_period,created_at'),
+        risks:q('v_risks_issues','project_id,risk_rating,status,due_date'),
+        beneficiaries:q('v_beneficiaries','project_id,total_direct,female,male,other_gender,youth,persons_with_disability,indirect,reporting_period'),
+        activities:q('v_project_activities','project_id,status,physical_progress_pct,planned_end_date,next_action,next_action_due'),
+        indicators:q('v_project_indicators','project_id,id'),
+        progress:q('v_indicator_progress','project_id,indicator_id,achievement_pct,performance_status,reporting_period,created_at'),
+        reporting:q('v_reporting_periods','project_id,period_label,period_end,submission_status,approved_at,updated_at'),
+        locations:q('v_project_locations','project_id,province,island,area_council,community,latitude,longitude'),
+      },previous.current);
+      if(!alive)return; previous.current=result; setSnapshot(result);
+    }catch(e){if(alive)setFatal(e);}
+  })();return()=>{alive=false;};},[reload]);
 
-  useEffect(() => {
-    let mounted = true;
-    setData(null);
-    setLoadError(null);
+  if(fatal&&!snapshot)return <State title="Dashboard data could not be loaded" body={fatal.message} action="Retry" onAction={()=>setReload(n=>n+1)} warning/>;
+  if(!snapshot)return <Loading/>;
+  const d=snapshot.data;
+  if(!d.projects.length)return <State title="No projects registered" body="Register the first project to begin portfolio monitoring." action="Register project" onAction={()=>nav('/project-setup')}/>;
 
-    (async () => {
-      try {
-        const q = (view, columns) => localised(() => (
-          supabase.from(view).select(i18nCols(columns))
-        ));
-
-        const responses = await Promise.all([
-          q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, updated_at'),
-          q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at'),
-          q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
-          q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
-          q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
-          q('v_project_indicators', 'project_id, id'),
-          q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
-          q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
-          q('v_project_locations', 'project_id, province'),
-        ]);
-
-        const failed = responses.find((r) => r?.error);
-        if (failed?.error) throw failed.error;
-        if (!mounted) return;
-
-        const [proj, fin, risk, ben, act, ind, prog, rep, loc] = responses;
-        setData({
-          projects: proj.data ?? [],
-          financial: fin.data ?? [],
-          risks: risk.data ?? [],
-          beneficiaries: ben.data ?? [],
-          activities: act.data ?? [],
-          indicators: ind.data ?? [],
-          progress: prog.data ?? [],
-          reporting: rep.data ?? [],
-          locations: loc.data ?? [],
-        });
-      } catch (err) {
-        if (mounted) setLoadError(err);
-      }
-    })();
-
-    return () => { mounted = false; };
-  }, [lang, reloadKey]);
-
-  if (loadError) {
-    return <BackendError onRetry={() => setReloadKey((n) => n + 1)} />;
-  }
-  if (!data) return <OverviewSkeleton />;
-  if (data.projects.length === 0) return <EmptyPortfolio />;
-
-  const years = [...new Set(
-    data.projects.flatMap((p) => [p.start_date, p.end_date]
-      .filter(Boolean)
-      .map((x) => new Date(x).getFullYear())),
-  )].sort((a, b) => b - a);
-  const donors = [...new Set(data.projects.map((p) => p.donor).filter(Boolean))].sort();
-  const themes = [...new Set(data.projects.map((p) => p.category).filter(Boolean))].sort();
-
-  const projects = data.projects.filter((p) => projectMatches(p, filters));
-  const ids = new Set(projects.map((p) => p.id));
-  const inScope = (rows) => rows.filter((r) => ids.has(r.project_id));
-
-  const financial = inScope(data.financial);
-  const risks = inScope(data.risks);
-  const beneficiaries = inScope(data.beneficiaries);
-  const activities = inScope(data.activities);
-  const indicators = inScope(data.indicators);
-  const progress = inScope(data.progress);
-  const reporting = inScope(data.reporting);
-
-  const total = projects.length;
-  const byBucket = { on_track: 0, at_risk: 0, not_started: 0, completed: 0 };
-  for (const p of projects) {
-    const key = bucketOf(p.status);
-    if (key in byBucket) byBucket[key] += 1;
-  }
-
-  const completed = byBucket.completed;
-  const activeProjects = total - completed;
-
-  const latestFinance = new Map();
-  for (const row of financial) {
-    const prev = latestFinance.get(row.project_id);
-    if (!prev || (row.created_at ?? '') > (prev.created_at ?? '')) {
-      latestFinance.set(row.project_id, row);
-    }
-  }
-  const totalBudget = sum(projects, (p) => p.budget_vuv);
-  const totalExpenditure = [...latestFinance.values()]
-    .reduce((a, f) => a + (Number(f.cumulative_expenditure) || 0), 0);
-  const budgetUtilisation = totalBudget ? Math.round((totalExpenditure / totalBudget) * 100) : 0;
-
-  // Latest recorded result per indicator. This keeps the headline result from
-  // overweighting indicators that have more historical reporting periods.
-  const latestProgress = new Map();
-  for (const row of progress) {
-    const prev = latestProgress.get(row.indicator_id);
-    const rank = row.created_at ?? row.reporting_period ?? '';
-    const prevRank = prev?.created_at ?? prev?.reporting_period ?? '';
-    if (!prev || rank > prevRank) latestProgress.set(row.indicator_id, row);
-  }
-
-  const latestAchievement = indicators
-    .map((ind) => latestProgress.get(ind.id)?.achievement_pct)
-    .filter((v) => v != null)
-    .map(Number);
-  const overallProgress = latestAchievement.length
-    ? Math.round(latestAchievement.reduce((a, b) => a + b, 0) / latestAchievement.length)
-    : null;
-
-  const indicatorStatus = { on_track: 0, attention_required: 0, off_track: 0, no_data: 0 };
-  for (const ind of indicators) {
-    const key = latestProgress.get(ind.id)?.performance_status || 'no_data';
-    indicatorStatus[key in indicatorStatus ? key : 'no_data'] += 1;
-  }
-
-  // Reduced per project under the shared double-counting rule, so this KPI
-  // agrees with the per-project figure on Project Analysis.
-  const totalBeneficiaries = portfolioBeneficiaries(beneficiaries) ?? 0;
-  const hasField = (field) => beneficiaries.some((b) => b[field] != null);
-  const fieldSum = (field) => hasField(field)
-    ? beneficiaries.reduce((a, b) => a + (b[field] != null ? Number(b[field]) : 0), 0)
-    : null;
-  const female = fieldSum('female');
-  const male = fieldSum('male');
-  const genderSummary = female != null || male != null
-    ? `${female != null ? fmtNum(female) : '—'} ${t('overview.beneFemale')} · ${male != null ? fmtNum(male) : '—'} ${t('overview.beneMale')}`
-    : null;
-
-  const approvedDates = data.reporting
-    .filter((r) => r.submission_status === 'approved')
-    .map((r) => r.approved_at || r.period_end)
-    .filter(Boolean)
-    .sort();
-  const dataAsAt = approvedDates.length
-    ? approvedDates[approvedDates.length - 1].slice(0, 10)
-    : '—';
-
-  const provinceCounts = {};
-  for (const p of projects) {
-    for (const province of (p.provinces || [])) {
-      provinceCounts[province] = (provinceCounts[province] || 0) + 1;
-    }
-  }
-  const nationalCount = projects.filter((p) => !(p.provinces || []).length).length;
-
-  const provincesByProject = new Map(data.projects.map((p) => [p.id, p.provinces || []]));
-  const provinceBeneficiaries = {};
-  for (const row of beneficiaries) {
-    const value = Number(row.total_direct) || 0;
-    for (const province of (provincesByProject.get(row.project_id) || [])) {
-      provinceBeneficiaries[province] = (provinceBeneficiaries[province] || 0) + value;
-    }
-  }
-
-  const now = todayIso();
-  const overdueActivities = activities.filter((a) => (
-    a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < now
-  )).length;
-  const overdueReports = reporting.filter((r) => (
-    r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < now
-  )).length;
-  const awaitingReview = reporting.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
-  const offTrackIndicators = indicatorStatus.off_track;
-
-  const attention = [
-    { key: 'reports', label: t('overview.attnOverdue'), value: overdueReports, to: '/merl-reporting', tone: overdueReports ? 'critical' : 'clear' },
-    { key: 'indicators', label: t('overview.attnOffTrack'), value: offTrackIndicators, to: '/analytics/results', tone: offTrackIndicators ? 'warning' : 'clear' },
-    { key: 'activities', label: t('overview.attnDelayed'), value: overdueActivities, to: '/merl-reporting', tone: overdueActivities ? 'warning' : 'clear' },
-    { key: 'review', label: t('overview.attnAwaiting'), value: awaitingReview, to: '/review', tone: awaitingReview ? 'warning' : 'clear' },
+  const options=useMemo(()=>({
+    years:[...new Set(d.projects.flatMap(p=>[p.start_date,p.end_date].filter(Boolean).map(x=>String(new Date(x).getFullYear()))))].sort().reverse(),
+    themes:[...new Set(d.projects.map(p=>p.category).filter(Boolean))].sort(),
+    donors:[...new Set(d.projects.map(p=>p.donor).filter(Boolean))].sort(),
+    provinces:[...new Set(d.projects.flatMap(p=>p.provinces||[]))].sort(),
+  }),[d.projects]);
+  const projects=d.projects.filter(p=>projectMatches(p,filters));
+  const ids=new Set(projects.map(p=>p.id)); const inScope=rows=>rows.filter(r=>ids.has(r.project_id));
+  const reporting=inScope(d.reporting);
+  const approvedReporting=reporting.filter(r=>r.submission_status==='approved');
+  const progress=restrictToApprovedPeriods(inScope(d.progress),reporting);
+  const financial=restrictToApprovedPeriods(inScope(d.financial),reporting);
+  const beneficiaries=restrictToApprovedPeriods(inScope(d.beneficiaries),reporting);
+  const activities=inScope(d.activities), indicators=inScope(d.indicators), risks=inScope(d.risks), locations=inScope(d.locations);
+  const status=projectStatusSummary(projects), indicator=indicatorSummary(indicators,progress), finance=financialSummary(projects,financial), reports=reportingSummary(reporting), risk=riskSummary(risks), variance=physicalFinancialVariance(projects,activities,financial);
+  const bene=portfolioBeneficiaries(beneficiaries)||0;
+  const gender=k=>beneficiaries.reduce((a,r)=>a+(Number(r[k])||0),0);
+  const female=gender('female'),male=gender('male'),youth=gender('youth'),pwd=gender('persons_with_disability');
+  const delayedActivities=activities.filter(a=>a.status!=='completed'&&a.planned_end_date&&a.planned_end_date.slice(0,10)<new Date().toISOString().slice(0,10)).length;
+  const provinceCounts={}; locations.forEach(r=>{if(r.province)provinceCounts[r.province]=(provinceCounts[r.province]||0)+1;});
+  if(!Object.keys(provinceCounts).length) projects.forEach(p=>(p.provinces||[]).forEach(x=>provinceCounts[x]=(provinceCounts[x]||0)+1));
+  const fresh=latestApprovedPeriod(d.reporting);
+  const attention=[
+    ['Overdue reporting',reports.overdue,'/analytics/reporting',reports.overdue?'critical':'clear'],
+    ['Pending approval',reports.pendingApproval,'/review',reports.pendingApproval?'warning':'clear'],
+    ['At-risk projects',status.at_risk,'/analytics/portfolio',status.at_risk?'warning':'clear'],
+    ['High / critical open risks',risk.high+risk.critical,'/analytics/risks',risk.high+risk.critical?'critical':'clear'],
+    ['Overdue activities',delayedActivities,'/project-setup',delayedActivities?'warning':'clear'],
+    ['Off-track indicators',indicator.statuses.off_track,'/analytics/results',indicator.statuses.off_track?'critical':'clear'],
   ];
 
-  const statusData = Object.keys(byBucket).map((key) => ({
-    key,
-    name: statusLabel(key, t),
-    value: byBucket[key],
-    color: STATUS_COLOR[key],
-  }));
-
-  const activitiesDone = activities.filter((a) => a.status === 'completed').length;
-  const reportsApproved = reporting.filter((r) => r.submission_status === 'approved').length;
-  const performanceRows = [
-    {
-      key: 'indicators',
-      label: t('overview.perfIndicators'),
-      value: pct(indicatorStatus.on_track, indicators.length),
-      detail: `${fmtNum(indicatorStatus.on_track)} / ${fmtNum(indicators.length)}`,
-    },
-    {
-      key: 'activities',
-      label: t('overview.perfActivities'),
-      value: pct(activitiesDone, activities.length),
-      detail: `${fmtNum(activitiesDone)} / ${fmtNum(activities.length)}`,
-    },
-    {
-      key: 'budget',
-      label: t('overview.perfBudget'),
-      value: budgetUtilisation,
-      detail: fmtVUV(totalExpenditure),
-    },
-    {
-      key: 'reporting',
-      label: t('overview.perfReporting'),
-      value: pct(reportsApproved, reporting.length),
-      detail: `${fmtNum(reportsApproved)} / ${fmtNum(reporting.length)}`,
-    },
-  ];
-
-  const projectName = (id) => data.projects.find((p) => p.id === id)?.name || '—';
-  const daysUntil = (date) => Math.round((new Date(date.slice(0, 10)) - new Date(now)) / 864e5);
-  const reportStatus = (row) => {
-    if (row.submission_status === 'approved') return { label: t('overview.statusApproved'), tone: 'ok' };
-    if (['submitted', 'reviewed'].includes(row.submission_status)) return { label: t('overview.statusSubmitted'), tone: 'info' };
-    if (!row.period_end) return { label: t('overview.statusPending'), tone: 'warn' };
-    const left = daysUntil(row.period_end);
-    if (left < 0) return { label: t('overview.statusOverdue'), tone: 'crit' };
-    return { label: t('overview.dueInDays', { count: left }), tone: left <= 7 ? 'crit' : 'warn' };
-  };
-
-  const reportRows = [...reporting]
-    .filter((r) => r.period_end && daysUntil(r.period_end) >= -60)
-    .sort((a, b) => (a.period_end || '').localeCompare(b.period_end || ''))
-    .slice(0, 6)
-    .map((r) => ({
-      id: `${r.project_id}-${r.period_label}`,
-      item: r.period_label || t('overview.reportingPeriod'),
-      project: projectName(r.project_id),
-      due: r.period_end,
-      status: reportStatus(r),
-    }));
-
-  return (
-    <div className="ovx">
-      <OverviewStyles />
-
-      <section className="ovx-heading rp-noprint">
-        <div>
-          <h1>{t('overview.title')}</h1>
-          <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
-        </div>
-        <button type="button" className="ovx-export" onClick={() => window.print()}>
-          <Printer size={15} aria-hidden="true" /> {t('ui.export')}
-        </button>
-      </section>
-
-      <section className="ovx-filterbar rp-noprint" aria-label={t('overview.title')}>
-        <FilterSelect label={t('overview.filterFy')} value={filters.fy}
-          onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
-        <FilterSelect label={t('overview.filterStatus')} value={filters.status}
-          onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((key) => ({ value: key, label: statusLabel(key, t) }))} />
-        <FilterSelect label={t('overview.filterTheme')} value={filters.theme}
-          onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
-        <FilterSelect label={t('overview.filterProvince')} value={filters.province}
-          onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((province) => ({ value: province, label: province }))} />
-        <FilterSelect label={t('overview.filterPartner')} value={filters.partner}
-          onChange={(v) => setFilter('partner', v)} options={donors.map((donor) => ({ value: donor, label: donor }))} />
-        <button type="button" className="ovx-reset" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
-      </section>
-
-      <section className="ovx-kpis" aria-label={t('overview.title')}>
-        <KpiCard
-          className="ovx-kpi ovx-kpi-progress"
-          label={t('overview.overallProgress')}
-          value={overallProgress == null ? '—' : `${overallProgress}%`}
-          sub={`${fmtNum(indicatorStatus.on_track)} / ${fmtNum(indicators.length)} · ${t('overview.indicatorsOnTrack')}`}
-          progress={overallProgress}
-          progressColor={C.violet}
-          linkLabel={t('overview.viewPerformance')}
-          onClick={() => nav('/analytics/results')}
-        />
-        <KpiCard
-          className="ovx-kpi ovx-kpi-projects"
-          label={t('overview.kpiProjects')}
-          value={fmtNum(total)}
-          sub={t('overview.activeCompleted', { active: activeProjects, completed })}
-          linkLabel={t('overview.viewProjects')}
-          onClick={() => nav('/analytics/portfolio')}
-        />
-        <KpiCard
-          className="ovx-kpi ovx-kpi-budget"
-          label={t('overview.budgetUtilisation')}
-          value={`${budgetUtilisation}%`}
-          sub={`${fmtVUV(totalExpenditure)} / ${fmtVUV(totalBudget)}`}
-          progress={budgetUtilisation}
-          progressColor={C.amber}
-          linkLabel={t('overview.viewFinancials')}
-          onClick={() => nav('/analytics/financial')}
-        />
-        <KpiCard
-          className="ovx-kpi ovx-kpi-beneficiaries"
-          label={t('overview.kpiBeneficiaries')}
-          value={fmtNum(totalBeneficiaries)}
-          sub={genderSummary || undefined}
-          linkLabel={t('overview.viewBeneficiaries')}
-          onClick={() => nav('/analytics/geographic')}
-        />
-      </section>
-
-      <section className="ovx-priority-grid">
-        <article className="ovx-card ovx-attention-card">
-          <CardHeading icon={<AlertTriangle size={17} aria-hidden="true" />} title={t('overview.needsAttention')} />
-          <div className="ovx-attention-grid">
-            {attention.map((item) => (
-              <button key={item.key} type="button" className={`ovx-attention-item tone-${item.tone}`} onClick={() => nav(item.to)}>
-                <span className="ovx-attention-number">{fmtNum(item.value)}</span>
-                <span className="ovx-attention-label">{item.label}</span>
-                <span className="ovx-attention-action">{t('overview.viewAll')} <ArrowRight size={12} /></span>
-              </button>
-            ))}
-          </div>
-        </article>
-
-        <article className="ovx-card">
-          <CardHeading title={t('overview.implementation')} />
-          <div className="ovx-implementation">
-            <Donut data={statusData} total={total} onSlice={(slice) => setFilter('status', slice.key)} />
-            <div className="ovx-status-list">
-              {statusData.map((item) => (
-                <button key={item.key} type="button" className="ovx-status-row" onClick={() => setFilter('status', item.key)}>
-                  <span className="ovx-status-dot" style={{ background: item.color }} />
-                  <span className="ovx-status-name">{item.name}</span>
-                  <b>{fmtNum(item.value)}</b>
-                  <span>{pct(item.value, total)}%</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <CardLink onClick={() => nav('/analytics/portfolio')}>{t('overview.viewPerformance')}</CardLink>
-        </article>
-      </section>
-
-      <section className="ovx-secondary-grid">
-        <article className="ovx-card">
-          <CardHeading title={t('overview.portfolio')} />
-          <div className="ovx-performance-list">
-            {performanceRows.map((row) => (
-              <div key={row.key} className="ovx-performance-row">
-                <div className="ovx-performance-meta">
-                  <span>{row.label}</span>
-                  <b>{row.value}%</b>
-                </div>
-                <div className="ovx-performance-track">
-                  <div style={{ width: `${Math.min(100, Math.max(0, row.value))}%` }} />
-                </div>
-                <span className="ovx-performance-detail">{row.detail}</span>
-              </div>
-            ))}
-          </div>
-          <CardLink onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')}</CardLink>
-        </article>
-
-        <ProjectLocations
-          counts={provinceCounts}
-          beneficiaries={provinceBeneficiaries}
-          nationalCount={nationalCount}
-          selected={filters.province}
-          onSelect={(province) => setFilter('province', province)}
-          onView={() => nav('/analytics/geographic')}
-        />
-      </section>
-
-      <section className="ovx-card ovx-reporting-card">
-        <CardHeading title={t('overview.recentUpcoming')} />
-        {reportRows.length === 0 ? (
-          <div className="ovx-empty">{t('overview.nothingDueSoon')}</div>
-        ) : (
-          <div className="ovx-table-wrap">
-            <table className="ovx-table">
-              <thead>
-                <tr>
-                  <th>{t('overview.colItem')}</th>
-                  <th>{t('overview.colProject')}</th>
-                  <th>{t('overview.colDueDate')}</th>
-                  <th>{t('overview.colStatus')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportRows.map((row) => (
-                  <tr key={row.id} onClick={() => nav('/analytics/reporting')}>
-                    <td className="ovx-table-strong">{row.item}</td>
-                    <td>{row.project}</td>
-                    <td>{fmtDate(row.due)}</td>
-                    <td><span className={`ovx-badge tone-${row.status.tone}`}>{row.status.label}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <CardLink onClick={() => nav('/analytics/reporting')}>{t('overview.viewAllReports')}</CardLink>
-      </section>
-
-      <div className="ovx-updated">{t('overview.subtitle')} <b>{dataAsAt}</b></div>
-    </div>
-  );
+  return <div className="ov2"><style>{`
+    .ov2{max-width:1440px;margin:0 auto;padding:1rem;color:var(--text-1)}.ov2-head{display:flex;justify-content:space-between;align-items:end;gap:1rem;margin-bottom:.8rem}.ov2-head h1{margin:0;font-size:1.8rem}.ov2-head p{margin:.25rem 0 0;color:var(--text-3);font-size:.8rem}.ov2-actions{display:flex;gap:.45rem}.ov2-stale{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:.65rem .8rem;margin-bottom:.75rem;border:1px solid #f59e0b;background:#fffbeb;border-radius:9px;color:#92400e;font-size:.76rem}.ov2-filter{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:.55rem;align-items:end;background:#fff;border:1px solid var(--border);border-radius:12px;padding:.75rem;margin-bottom:.8rem}.ov2-filter label span{display:block;margin-bottom:.25rem;font-size:.62rem;text-transform:uppercase;color:var(--text-3);font-weight:800}.ov2-filter select{width:100%;min-height:39px;border:1px solid var(--border);border-radius:8px;padding:.4rem .55rem;background:#fff}.ov2-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.65rem;margin-bottom:.8rem}.ov2-kpi{position:relative;min-height:112px;border:1px solid var(--border);border-radius:12px;background:#fff;padding:.8rem;overflow:hidden;text-align:left}.ov2-kpi button{position:absolute;inset:0;border:0;background:transparent;cursor:pointer}.ov2-kpi span{display:block;font-size:.65rem;text-transform:uppercase;color:var(--text-3);font-weight:800}.ov2-kpi b{display:block;margin:.35rem 0;font-size:1.6rem}.ov2-kpi small{display:block;color:var(--text-3);font-size:.68rem}.ov2-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem}.ov2-card{border:1px solid var(--border);border-radius:12px;background:#fff;padding:.9rem;min-width:0}.ov2-card h2{margin:0 0 .75rem;font-size:.95rem}.ov2-statuses{display:grid;grid-template-columns:repeat(2,1fr);gap:.45rem}.ov2-status{display:flex;align-items:center;gap:.55rem;border:1px solid var(--border);border-radius:9px;background:#fff;padding:.6rem;cursor:pointer;text-align:left}.ov2-dot{width:9px;height:9px;border-radius:50%;flex:none}.ov2-status span{flex:1;font-size:.75rem}.ov2-status b{font-size:1rem}.ov2-attn{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem}.ov2-attn button{border:1px solid var(--border);border-radius:9px;background:#fff;padding:.65rem;text-align:left;cursor:pointer}.ov2-attn b{display:block;font-size:1.25rem}.ov2-attn span{font-size:.7rem;color:var(--text-2)}.ov2-attn .critical b{color:#b91c1c}.ov2-attn .warning b{color:#b45309}.ov2-attn .clear b{color:#15803d}.ov2-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:9px}.ov2-table{width:100%;border-collapse:collapse;font-size:.75rem}.ov2-table th,.ov2-table td{padding:.55rem .6rem;border-bottom:1px solid var(--border);text-align:left}.ov2-table th{background:var(--green-50);font-size:.62rem;text-transform:uppercase;color:var(--text-3)}.ov2-progress{height:8px;border-radius:99px;background:#eef2f7;overflow:hidden;margin:.45rem 0}.ov2-progress span{display:block;height:100%;background:var(--green-600)}.ov2-map{min-height:280px;border:1px solid var(--border);border-radius:9px;overflow:hidden}.ov2-method{font-size:.68rem;color:var(--text-3);line-height:1.5;margin-top:.55rem}.ov2-state{display:flex;min-height:55vh;align-items:center;justify-content:center}.ov2-state>div{max-width:600px;padding:1.2rem;border:1px solid var(--border);border-radius:12px;background:#fff;text-align:center}.ov2-skel{height:120px;border-radius:12px;background:#eef2f7}@media(max-width:1180px){.ov2-kpis{grid-template-columns:repeat(3,1fr)}.ov2-filter{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.ov2-grid{grid-template-columns:1fr}.ov2-kpis{grid-template-columns:repeat(2,1fr)}.ov2-attn{grid-template-columns:repeat(2,1fr)}.ov2-filter{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.ov2-head{align-items:flex-start;flex-direction:column}.ov2-filter,.ov2-kpis,.ov2-attn,.ov2-statuses{grid-template-columns:1fr}.ov2-actions{width:100%}.ov2-actions button{flex:1}}
+  `}</style>
+  <div className="ov2-head"><div><h1>Dashboard Overview</h1><p>Portfolio monitoring, evaluation and reporting · Approved data as at <b>{fresh?fmtDate(fresh):'not yet available'}</b></p></div><div className="ov2-actions"><button className="btn btn-secondary" onClick={()=>setReload(n=>n+1)}>Refresh</button><button className="btn btn-primary" onClick={()=>window.print()}><Printer size={14}/> Export</button></div></div>
+  {snapshot.stale&&<div className="ov2-stale"><span><AlertTriangle size={14}/> Showing the last successful snapshot from {fmtDate(snapshot.loadedAt)} because {snapshot.failedSources.join(', ')} could not refresh.</span><button className="btn btn-secondary" onClick={()=>setReload(n=>n+1)}>Retry</button></div>}
+  <div className="ov2-filter"><F label="Financial year" value={filters.fy} values={options.years} onChange={v=>setFilter('fy',v)}/><F label="Status" value={filters.status} values={Object.keys(STATUS_BUCKETS)} labels={STATUS_BUCKET_LABEL} onChange={v=>setFilter('status',v)}/><F label="Theme" value={filters.theme} values={options.themes} onChange={v=>setFilter('theme',v)}/><F label="Province" value={filters.province} values={options.provinces} onChange={v=>setFilter('province',v)}/><F label="Partner" value={filters.partner} values={options.donors} onChange={v=>setFilter('partner',v)}/><button className="btn btn-secondary" disabled={!active} onClick={reset}>Reset</button></div>
+  <div className="ov2-kpis"><K label="Projects" value={fmtNum(status.total)} note={`${status.active} active · ${status.completed} completed`} go={()=>nav('/project-setup')}/><K label="Overall progress" value={percent(indicator.averageAchievementPct)} note={`${indicator.reported} / ${indicator.total} indicators reported`} go={()=>nav('/analytics/results')}/><K label="Budget utilisation" value={percent(finance.utilisationPct)} note={`${money(finance.expenditure)} / ${money(finance.approvedBudget)}`} go={()=>nav('/analytics/financial')}/><K label="Direct beneficiaries" value={fmtNum(bene)} note={`${fmtNum(female)} female · ${fmtNum(male)} male`} go={()=>nav('/project-setup')}/><K label="Overdue reports" value={fmtNum(reports.overdue)} note={`${reports.pendingApproval} pending approval`} go={()=>nav('/analytics/reporting')}/><K label="Open risks" value={fmtNum(risk.open)} note={`${risk.high+risk.critical} high / critical`} go={()=>nav('/analytics/risks')}/></div>
+  <div className="ov2-grid"><section className="ov2-card"><h2>Projects by status</h2><div className="ov2-statuses">{['on_track','at_risk','not_started','completed','cancelled','unknown'].map(key=><button className="ov2-status" key={key} onClick={()=>key==='unknown'?nav('/analytics/portfolio'):setFilter('status',key)}><i className="ov2-dot" style={{background:PROJECT_TONES[key]}}/><span>{STATUS_BUCKET_LABEL[key]||'Other / Unclassified'}</span><b>{status[key]}</b></button>)}</div><div className="ov2-method">Status grouping is shared across the portal. Project identity colors are separate from performance colors.</div></section><section className="ov2-card"><h2>Needs attention</h2><div className="ov2-attn">{attention.map(([label,value,to,tone])=><button key={label} className={tone} onClick={()=>nav(to)}><b>{fmtNum(value)}</b><span>{label}</span></button>)}</div></section></div>
+  <div className="ov2-grid"><section className="ov2-card"><h2>Implementation versus finance</h2><div style={{display:'grid',gap:'.7rem'}}><Progress label="Physical progress" value={variance.physicalPct}/><Progress label="Financial utilisation" value={variance.financialPct}/></div><div className="ov2-method">Physical progress averages recorded activity completion. Financial utilisation is cumulative expenditure divided by approved budget. Their difference ({variance.variancePctPoints==null?'—':`${Math.round(variance.variancePctPoints)} percentage points`}) is a management signal, not a performance score.</div><div style={{marginTop:'.8rem'}}><b>Beneficiary disaggregation</b><div className="ov2-table-wrap" style={{marginTop:'.45rem'}}><table className="ov2-table"><tbody><tr><td>Female</td><td>{fmtNum(female)}</td><td>Male</td><td>{fmtNum(male)}</td></tr><tr><td>Youth</td><td>{fmtNum(youth)}</td><td>Persons with disability</td><td>{fmtNum(pwd)}</td></tr></tbody></table></div></div></section><section className="ov2-card"><h2>Geographic coverage</h2><div className="ov2-map"><VanuatuMapMini counts={provinceCounts} selected={filters.province} onSelect={p=>setFilter('province',p)}/></div><div className="ov2-method">Map counts use verified project-location records where available, with registered province coverage as the fallback.</div></section></div>
+  <section className="ov2-card"><h2>Reporting calendar and approvals</h2><div className="ov2-table-wrap"><table className="ov2-table"><thead><tr><th>Project</th><th>Reporting period</th><th>Due</th><th>Status</th></tr></thead><tbody>{[...reporting].sort((a,b)=>String(a.period_end||'').localeCompare(String(b.period_end||''))).slice(0,8).map((r,i)=><tr key={`${r.project_id}-${r.period_label}-${i}`}><td>{projects.find(p=>p.id===r.project_id)?.name||'—'}</td><td>{r.period_label||'—'}</td><td>{fmtDate(r.period_end)}</td><td>{r.submission_status||'—'}</td></tr>)}</tbody></table></div><button className="btn btn-secondary" style={{marginTop:'.7rem'}} onClick={()=>nav('/analytics/reporting')}>View reporting analysis <ArrowRight size={13}/></button><div className="ov2-method">Approved periods in current scope: {approvedReporting.length}. Data failures are never shown as zero; the last successful snapshot is retained and labelled stale.</div></section>
+  </div>;
 }
-
-function FilterSelect({ label, value, onChange, options }) {
-  const { t } = useTranslation();
-  return (
-    <label className="ovx-filter">
-      <span>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
-        <option value="">{t('ui.all')}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{OPT.optionLabel(option)}</option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function CardHeading({ title, icon }) {
-  return (
-    <div className="ovx-card-heading">
-      <div className="ovx-card-title">{icon}{title}</div>
-    </div>
-  );
-}
-
-function CardLink({ onClick, children }) {
-  return (
-    <button type="button" className="ovx-card-link" onClick={onClick}>
-      {children} <ArrowRight size={13} aria-hidden="true" />
-    </button>
-  );
-}
-
-function Donut({ data, total, onSlice }) {
-  return (
-    <div className="ovx-donut-wrap">
-      {total === 0 ? (
-        <div className="ovx-empty">—</div>
-      ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={47}
-              outerRadius={68}
-              paddingAngle={2}
-              onClick={(entry) => onSlice?.(entry?.payload ?? entry)}
-              cursor="pointer"
-            >
-              {data.map((item) => <Cell key={item.key} fill={item.color} />)}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
-      )}
-      <div className="ovx-donut-center">
-        <b>{fmtNum(total)}</b>
-        <span>Total</span>
-      </div>
-    </div>
-  );
-}
-
-function ProjectLocations({ counts, beneficiaries, nationalCount, selected, onSelect, onView }) {
-  const { t } = useTranslation();
-  const [hovered, setHovered] = useState(null);
-
-  return (
-    <article className="ovx-card ovx-location-card">
-      <CardHeading title={t('overview.locations')} />
-      <div className="ovx-location-layout">
-        <div className="ovx-map-panel">
-          <VanuatuMapMini
-            counts={counts}
-            selected={selected}
-            hovered={hovered}
-            onHover={setHovered}
-            onSelect={onSelect}
-          />
-        </div>
-        <div className="ovx-location-table-wrap">
-          <table className="ovx-location-table">
-            <thead>
-              <tr>
-                <th>{t('overview.colProvince')}</th>
-                <th>{t('overview.colProjects')}</th>
-                <th>{t('overview.colBeneficiaries')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PROVINCE_LIST.map((province) => (
-                <tr
-                  key={province}
-                  className={`${selected === province ? 'selected ' : ''}${hovered === province ? 'hovered' : ''}`}
-                  onClick={() => onSelect(province)}
-                  onMouseEnter={() => setHovered(province)}
-                  onMouseLeave={() => setHovered(null)}
-                >
-                  <td><span className="ovx-province-dot" style={{ opacity: counts[province] ? 1 : 0.28 }} />{province}</td>
-                  <td>{fmtNum(counts[province] || 0)}</td>
-                  <td>{fmtNum(beneficiaries[province] || 0)}</td>
-                </tr>
-              ))}
-              {nationalCount > 0 && (
-                <tr>
-                  <td><span className="ovx-province-dot is-muted" />{t('overview.nationalMulti')}</td>
-                  <td>{fmtNum(nationalCount)}</td>
-                  <td>—</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <CardLink onClick={onView}>{t('overview.viewCoverage')}</CardLink>
-    </article>
-  );
-}
-
-function BackendError({ onRetry }) {
-  const { t } = useTranslation();
-  return (
-    <div className="ovx ovx-error-state">
-      <OverviewStyles />
-      <div className="ovx-error-card">
-        <AlertTriangle size={22} aria-hidden="true" />
-        <div>
-          <h2>{t('ppa.sectionFailed')}</h2>
-          <p>{t('ppa.sectionFailed')}</p>
-        </div>
-        <button type="button" className="ovx-export" onClick={onRetry}>{t('ppa.retry')}</button>
-      </div>
-    </div>
-  );
-}
-
-function EmptyPortfolio() {
-  const { t } = useTranslation();
-  const nav = useNavigate();
-  return (
-    <div className="ovx ovx-error-state">
-      <OverviewStyles />
-      <div className="ovx-empty-card">
-        <h2>{t('overview.emptyTitle')}</h2>
-        <p>{t('overview.emptyBody')}</p>
-        <button type="button" className="ovx-export" onClick={() => nav('/project-setup')}>{t('overview.emptyCta')}</button>
-      </div>
-    </div>
-  );
-}
-
-function OverviewSkeleton() {
-  return (
-    <div className="ovx">
-      <OverviewStyles />
-      <div className="ovx-skeleton ovx-skeleton-heading" />
-      <div className="ovx-skeleton ovx-skeleton-filters" />
-      <div className="ovx-kpis">
-        {Array.from({ length: 4 }).map((_, i) => <div className="ovx-skeleton ovx-skeleton-kpi" key={i} />)}
-      </div>
-      <div className="ovx-priority-grid">
-        <div className="ovx-skeleton ovx-skeleton-panel" />
-        <div className="ovx-skeleton ovx-skeleton-panel" />
-      </div>
-    </div>
-  );
-}
-
-function OverviewStyles() {
-  return (
-    <style>{`
-      .ovx{max-width:1440px;margin:0 auto;padding:1.05rem 1.05rem 1.5rem;color:var(--text-1)}
-      .ovx-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin:.1rem 0 .9rem}
-      .ovx-heading h1{margin:0;color:#2a2148;font-size:clamp(1.55rem,2.3vw,2rem);font-weight:780;letter-spacing:-.035em}
-      .ovx-heading p{margin:.3rem 0 0;color:#91899f;font-size:.82rem}
-      .ovx-heading p b{color:#736a84;font-weight:700}
-      .ovx-export{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#5b4692;color:#fff;font:inherit;font-size:.79rem;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(74,55,125,.14)}
-      .ovx-export:hover{background:#4b377d}
-
-      .ovx-filterbar{display:grid;grid-template-columns:.8fr .8fr 1.25fr .9fr 1.2fr auto;gap:.65rem;align-items:end;margin-bottom:1rem;padding:.85rem .9rem;border:1px solid #ebe7f2;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}
-      .ovx-filter{display:block;min-width:0}
-      .ovx-filter>span{display:block;margin:0 0 .32rem;color:#898194;font-size:.62rem;font-weight:760;letter-spacing:.065em;text-transform:uppercase}
-      .ovx-filter select{width:100%;min-height:40px;padding:.5rem .7rem;border:1px solid #e4dfed;border-radius:9px;background:#fff;color:#41374f;font:inherit;font-size:.8rem;outline:none}
-      .ovx-filter select:focus{border-color:#7a66aa;box-shadow:0 0 0 3px rgba(91,70,146,.1)}
-      .ovx-reset{min-height:40px;padding:.5rem .85rem;border:1px solid #e6e1ef;border-radius:9px;background:#f9f8fc;color:#7f778c;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer}
-      .ovx-reset:disabled{opacity:.45;cursor:not-allowed}
-
-      .ovx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;margin-bottom:.9rem}
-      .ovx-kpi{min-height:174px!important;border-radius:14px!important;border-color:#ebe7f2!important;padding:1rem!important;box-shadow:var(--shadow-sm)!important}
-      .ovx-kpi::before{content:'';position:absolute;left:-1px;top:14px;bottom:14px;width:4px;border-radius:0 5px 5px 0;background:#6b55a7}
-      .ovx-kpi-projects::before{background:#4ea76b}.ovx-kpi-budget::before{background:#f0b323}.ovx-kpi-beneficiaries::before{background:#338bdc}
-      .ovx-kpi [class*='uppercase']{text-transform:none!important;letter-spacing:.01em!important;font-size:.7rem!important;color:#7e758e!important}
-      .ovx-kpi [class*='font-extrabold']{font-size:clamp(1.55rem,2.1vw,2rem)!important;color:#281f48!important}
-      .ovx-kpi [class*='text-xs']{color:#786f87!important}
-
-      .ovx-priority-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr);gap:.9rem;margin-bottom:.9rem}
-      .ovx-secondary-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.45fr);gap:.9rem;margin-bottom:.9rem}
-      .ovx-card{display:flex;min-width:0;flex-direction:column;border:1px solid #ebe7f2;border-radius:14px;background:#fff;padding:1rem;box-shadow:var(--shadow-sm)}
-      .ovx-card-heading{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin-bottom:.8rem}
-      .ovx-card-title{display:flex;align-items:center;gap:.48rem;color:#33284f;font-size:.91rem;font-weight:760;letter-spacing:-.015em}
-      .ovx-card-title svg{color:#b16a43}
-      .ovx-card-link{display:inline-flex;align-items:center;gap:.35rem;align-self:flex-start;margin-top:auto;padding:.75rem 0 0;border:0;background:none;color:#5b4692;font:inherit;font-size:.72rem;font-weight:730;cursor:pointer}
-      .ovx-card-link:hover{text-decoration:underline}
-
-      .ovx-attention-card{background:linear-gradient(180deg,#fffdfa 0%,#fff 30%)}
-      .ovx-attention-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
-      .ovx-attention-item{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'num label' 'num action';column-gap:.7rem;row-gap:.18rem;min-width:0;padding:.72rem;border:1px solid #eee9f3;border-radius:11px;background:#fff;text-align:left;cursor:pointer;font:inherit}
-      .ovx-attention-item:hover{border-color:#ddd4e9;background:#fcfbfe}
-      .ovx-attention-number{grid-area:num;align-self:center;min-width:1.7ch;color:#4b377d;font-size:1.35rem;font-weight:820;font-family:var(--font-display);line-height:1}
-      .ovx-attention-label{grid-area:label;min-width:0;color:#50475d;font-size:.74rem;font-weight:650;line-height:1.25}
-      .ovx-attention-action{grid-area:action;display:flex;align-items:center;gap:.2rem;color:#91899f;font-size:.64rem;font-weight:650}
-      .ovx-attention-item.tone-critical .ovx-attention-number{color:#c23b32}.ovx-attention-item.tone-warning .ovx-attention-number{color:#c78417}.ovx-attention-item.tone-clear .ovx-attention-number{color:#4b9a67}
-
-      .ovx-implementation{display:grid;grid-template-columns:170px minmax(0,1fr);gap:1rem;align-items:center;min-height:178px}
-      .ovx-donut-wrap{position:relative;width:170px;height:170px}
-      .ovx-donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-      .ovx-donut-center b{color:#2d234d;font-size:1.35rem;font-family:var(--font-display)}
-      .ovx-donut-center span{color:#91899f;font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
-      .ovx-status-list{display:flex;flex-direction:column;gap:.3rem}
-      .ovx-status-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto 44px;gap:.55rem;align-items:center;width:100%;padding:.48rem .35rem;border:0;border-bottom:1px solid #f0edf4;background:none;color:#5b5268;text-align:left;cursor:pointer;font:inherit;font-size:.73rem}
-      .ovx-status-row:last-child{border-bottom:0}.ovx-status-row:hover{background:#faf8fd}
-      .ovx-status-dot{width:9px;height:9px;border-radius:3px}.ovx-status-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ovx-status-row b{color:#31274d;font-size:.78rem}.ovx-status-row>span:last-child{text-align:right;color:#91899f}
-
-      .ovx-performance-list{display:flex;flex-direction:column;gap:.9rem;padding:.25rem 0 .35rem}
-      .ovx-performance-row{display:grid;grid-template-columns:1fr auto;grid-template-areas:'meta meta' 'track detail';gap:.35rem .7rem}
-      .ovx-performance-meta{grid-area:meta;display:flex;align-items:center;justify-content:space-between;gap:.8rem;color:#62596f;font-size:.74rem;font-weight:650}
-      .ovx-performance-meta b{color:#34284f;font-size:.82rem}
-      .ovx-performance-track{grid-area:track;height:7px;overflow:hidden;border-radius:999px;background:#efecf5}
-      .ovx-performance-track>div{height:100%;border-radius:inherit;background:linear-gradient(90deg,#6b55a7,#806bb4)}
-      .ovx-performance-detail{grid-area:detail;min-width:62px;color:#9991a5;font-size:.64rem;text-align:right}
-
-      .ovx-location-layout{display:grid;grid-template-columns:minmax(230px,.92fr) minmax(300px,1.08fr);gap:.8rem;align-items:stretch}
-      .ovx-map-panel{min-height:270px;overflow:hidden;border:1px solid #ebe7f2;border-radius:11px;background:#f4f3fa}
-      .ovx-location-table-wrap{overflow:auto}
-      .ovx-location-table{width:100%;border-collapse:collapse;font-size:.72rem}
-      .ovx-location-table th{padding:.55rem .48rem;border-bottom:1px solid #eae6f0;color:#8f879c;background:#faf9fc;font-size:.61rem;font-weight:760;letter-spacing:.05em;text-align:right;text-transform:uppercase}
-      .ovx-location-table th:first-child{text-align:left}.ovx-location-table td{padding:.55rem .48rem;border-bottom:1px solid #f0edf4;color:#554c62;text-align:right}.ovx-location-table td:first-child{display:flex;align-items:center;gap:.45rem;color:#3d334f;font-weight:680;text-align:left}.ovx-location-table tr{cursor:pointer}.ovx-location-table tbody tr:hover,.ovx-location-table tr.hovered{background:#faf8fd}.ovx-location-table tr.selected{background:#f4effb}
-      .ovx-province-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b55a7;flex-shrink:0}.ovx-province-dot.is-muted{background:#a9a2b3}
-
-      .ovx-reporting-card{margin-bottom:.7rem}
-      .ovx-table-wrap{overflow:auto;border:1px solid #ece8f2;border-radius:11px}
-      .ovx-table{width:100%;border-collapse:collapse;font-size:.74rem}
-      .ovx-table th{padding:.65rem .75rem;background:#faf9fc;color:#8c8499;font-size:.62rem;font-weight:760;letter-spacing:.055em;text-align:left;text-transform:uppercase}
-      .ovx-table td{padding:.7rem .75rem;border-top:1px solid #efecf4;color:#61586d}.ovx-table tbody tr{cursor:pointer}.ovx-table tbody tr:hover{background:#faf9fd}.ovx-table-strong{color:#372c50!important;font-weight:680}
-      .ovx-badge{display:inline-flex;padding:.18rem .5rem;border-radius:999px;font-size:.62rem;font-weight:730;white-space:nowrap}.ovx-badge.tone-ok{background:#e8f6ec;color:#2f7d49}.ovx-badge.tone-info{background:#eef3ff;color:#4169a9}.ovx-badge.tone-warn{background:#fff6df;color:#996713}.ovx-badge.tone-crit{background:#feebea;color:#b53b34}
-      .ovx-empty{display:flex;min-height:110px;align-items:center;justify-content:center;color:#9a92a5;font-size:.78rem}.ovx-updated{padding:.2rem .15rem;color:#9a92a5;font-size:.66rem;text-align:right}
-
-      .ovx-error-state{display:flex;min-height:60vh;align-items:center;justify-content:center}.ovx-error-card,.ovx-empty-card{display:flex;max-width:620px;align-items:flex-start;gap:.9rem;padding:1.1rem;border:1px solid #ebe7f2;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}.ovx-empty-card{display:block;text-align:center}.ovx-error-card svg{color:#c78417;flex-shrink:0}.ovx-error-card h2,.ovx-empty-card h2{margin:0 0 .25rem;color:#33284f;font-size:1rem}.ovx-error-card p,.ovx-empty-card p{margin:0;color:#776e84;font-size:.78rem;line-height:1.5}.ovx-error-card .ovx-export{margin-left:auto;flex-shrink:0}.ovx-empty-card .ovx-export{margin-top:.8rem}
-
-      .ovx-skeleton{position:relative;overflow:hidden;border-radius:14px;background:#ece9f2}.ovx-skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:ovx-shimmer 1.4s infinite}.ovx-skeleton-heading{height:58px;margin-bottom:.9rem}.ovx-skeleton-filters{height:82px;margin-bottom:1rem}.ovx-skeleton-kpi{height:174px}.ovx-skeleton-panel{height:270px}@keyframes ovx-shimmer{to{transform:translateX(100%)}}
-
-      @media(max-width:1180px){.ovx-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.ovx-reset{align-self:end}.ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}}
-      @media(max-width:980px){.ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}.ovx-location-layout{grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr)}}
-      @media(max-width:760px){.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
-      @media(max-width:560px){.ovx-heading{flex-direction:column}.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
-      @media print{.ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export{display:none!important}.ovx-card,.ovx-kpi{box-shadow:none!important}}
-    `}</style>
-  );
-}
+function F({label,value,values,labels,onChange}){return <label><span>{label}</span><select value={value} onChange={e=>onChange(e.target.value)}><option value="">All</option>{values.map(v=><option key={v} value={v}>{labels?.[v]||v}</option>)}</select></label>;}
+function K({label,value,note,go}){return <div className="ov2-kpi"><span>{label}</span><b>{value}</b><small>{note}</small><button aria-label={`Open ${label}`} onClick={go}/></div>;}
+function Progress({label,value}){const safe=value==null?0:Math.min(100,Math.max(0,Number(value)));return <div><div style={{display:'flex',justifyContent:'space-between',fontSize:'.75rem'}}><span>{label}</span><b>{percent(value)}</b></div><div className="ov2-progress"><span style={{width:`${safe}%`}}/></div></div>;}
+function Loading(){return <div className="ov2"><div className="ov2-head"><div><h1>Dashboard Overview</h1><p>Loading live portfolio information…</p></div></div><div className="ov2-kpis">{Array.from({length:6}).map((_,i)=><div className="ov2-skel" key={i}/>)}</div></div>;}
+function State({title,body,action,onAction,warning}){return <div className="ov2 ov2-state"><div>{warning&&<AlertTriangle size={22}/>}<h2>{title}</h2><p>{body}</p><button className="btn btn-primary" onClick={onAction}>{action}</button></div></div>;}
