@@ -1,4 +1,4 @@
-// Public regression: shared entry, approved data, automatic refresh, filters and access.
+// Public regression: shared entry, aggregate inventory, approved data, refresh, filters and access.
 import { chromium } from 'playwright';
 const HOST = 'https://ndntvncboeajanipafeq.supabase.co';
 const projects = [
@@ -9,6 +9,7 @@ const fixtures = {
   public_portal_summary:[{project_count:2,overall_progress_pct:70,published_beneficiaries:120,total_investment_vuv:3000000,updated_at:'2026-07-01T00:00:00Z'}],
   public_portal_projects:projects,
   public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:2,project_ids:['pa','pb'],project_names:['Coastal Resilience','Water Security']},{province:'TORBA',area_council:'Torres',project_count:1,project_ids:['pb'],project_names:['Water Security']}],
+  public_portal_project_inventory:[{total_projects:24,approved_projects:12,other_projects:12}],
 };
 let failures = 0;
 const check = (name, ok) => {console.log(`${ok?'✓':'✗'} ${name}`);if(!ok)failures++;};
@@ -20,7 +21,7 @@ await context.route(`${HOST}/**`, async route => {
   const request = route.request(), url = new URL(request.url());
   if(url.pathname.startsWith('/rest/v1/')) {
     const rel = url.pathname.split('/').pop(); reads.push(rel);
-    if(request.method() !== 'GET') return route.fulfill({status:403,body:'{}'});
+    if(request.method() !== 'GET' && !(rel==='public_portal_project_inventory' && request.method()==='POST')) return route.fulfill({status:403,body:'{}'});
     if(!(rel in fixtures)) return route.fulfill({status:403,contentType:'application/json',body:JSON.stringify({message:'not available to anonymous users'})});
     const rows = fixtures[rel];
     const single = (request.headers().accept||'').includes('vnd.pgrst.object');
@@ -47,12 +48,12 @@ const waitForKpis = async values => {
     return false;
   }
 };
-
 try {
 await go('');
 check('bare URL resolves to the shared dashboard',new URL(page.url()).hash==='#/dashboards');
 check('anonymous visitor sees public dashboard',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
-check('approved project count is 2',await has('2'));
+check('inventory counts all 24 records',await has('24'));
+check('inventory distinguishes approved and other records',await kpis.getByText(/12 approved for public view.*12 other \/ demo/).count()===1);
 check('approved beneficiaries are shown',await has('120'));
 check('approved progress is shown',await has('70%'));
 check('no internal editing or approval navigation',await page.getByRole('button',{name:/project setup|risk analysis|review & approval|administration/i}).count()===0);
@@ -74,7 +75,7 @@ check('filtered progress uses published project results',await has('70%'));
 check('filtered beneficiaries use published project results',await has('120'));
 check('filtered investment uses selected projects',await has('VT 3,000,000'));
 await page.getByRole('button',{name:'Reset',exact:true}).click();
-check('reset restores published total',await has('2') && await has('120'));
+check('reset restores inventory and published results',await has('24') && await has('120'));
 await page.locator('.pbd-search input').fill('Water Security');
 check('search filters published projects',await has('1'));
 await page.getByRole('button',{name:'Reset',exact:true}).click();
@@ -87,7 +88,6 @@ check('public results navigation works',await page.getByRole('heading',{name:'Re
 await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:'Geographic Coverage'}).click();
 check('coverage navigation works',await page.locator('.pub-leaflet-wrap').count()===1);
 await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:'Public Overview'}).click();
-
 fixtures.public_portal_summary[0] = {...fixtures.public_portal_summary[0],overall_progress_pct:80,published_beneficiaries:150,updated_at:'2026-09-08T08:01:00Z'};
 fixtures.public_portal_projects[0] = {...fixtures.public_portal_projects[0],progress_pct:60,published_beneficiaries:80};
 const beforeRefresh = reads.filter(x=>x==='public_portal_summary').length;
@@ -98,7 +98,7 @@ await page.locator('.pbd-filters select').nth(2).selectOption('Sanma');
 check('refreshed filtered values reconcile',await waitForKpis(['80%','150']));
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 check('manual refresh remains available',await page.getByRole('button',{name:'Refresh',exact:true}).count()===1);
-check('anonymous reads use only approved snapshot tables',reads.every(x=>x in fixtures));
+check('anonymous reads use only approved snapshots and aggregate inventory',reads.every(x=>x in fixtures));
 check('no browser exception',errors.length===0);
 check('header contains one credentials form',await page.locator('.pbd-root .dsh-head form.pbd-header-login').count()===1);
 check('public page has no duplicate sign-in links',await page.locator('.pbd-root a[href="#/login"]').count()===0);
