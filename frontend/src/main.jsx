@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { createPortal } from 'react-dom';
-import { HashRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { ConfirmHost } from './lib/confirm';
 import DataAvailabilityGuard from './components/DataAvailabilityGuard';
 import AreaPerformanceBridge from './components/AreaPerformanceBridge';
-import { supabase } from './supabaseClient';
 
 // i18n must be imported before the application entry so translations are ready
 import './i18n';
@@ -60,67 +58,6 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProjectRegisterShortcut() {
-  const [signedIn, setSignedIn] = useState(false);
-  const [heading, setHeading] = useState(null);
-  const location = useLocation();
-
-  useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setSignedIn(Boolean(data?.session));
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setSignedIn(Boolean(session));
-    });
-    return () => {
-      mounted = false;
-      listener?.subscription?.unsubscribe?.();
-    };
-  }, []);
-
-  // The overview is mounted asynchronously after its data loads. Follow its
-  // actual heading so the shortcut is an ordinary page action, not a floating
-  // overlay. Reattach if a reload replaces the heading, and clean up on exit.
-  useEffect(() => {
-    if (!signedIn || location.pathname !== '/dashboards') {
-      setHeading(null);
-      return;
-    }
-    const findHeading = () => {
-      const next = document.querySelector('.dsh .ovx-heading');
-      setHeading((current) => current === next ? current : next);
-    };
-    findHeading();
-    const observer = new MutationObserver(findHeading);
-    observer.observe(document.getElementById('root'), { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [signedIn, location.pathname]);
-
-  if (!signedIn || location.pathname !== '/dashboards' || !heading) return null;
-
-  return createPortal(
-    <>
-      <style>{`.dsh .ovx-heading > button.ovx-export { margin-left: auto; order: 2; }`}</style>
-      <Link
-        to="/docc-project-register"
-        className="ovx-export"
-        style={{
-          order: 1,
-          border: '1px solid var(--border)',
-          background: 'var(--white)',
-          color: 'var(--green-700)',
-          textDecoration: 'none',
-          boxShadow: 'none',
-        }}
-      >
-        DoCC Project Register
-      </Link>
-    </>,
-    heading,
-  );
-}
-
 function PortalApp() {
   return (
     <Routes>
@@ -131,7 +68,6 @@ function PortalApp() {
           <AreaPerformanceBridge />
           <ConfirmHost />
           <DataAvailabilityGuard />
-          <ProjectRegisterShortcut />
         </>
       )} />
     </Routes>
