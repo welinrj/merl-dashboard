@@ -79,6 +79,12 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/sweep-controls.mjs
 
+      - name: Validate beneficiary totals reconcile across pages
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture-multiperiod.json
+        run: node qa/beneficiary-reconciliation.mjs
+
       - name: Validate role permission matrix
         working-directory: frontend
         env:
@@ -96,6 +102,10 @@ jobs:
         env:
           STUB_FILE: qa/fixture.json
         run: node qa/data-and-ux.mjs
+
+      - name: Validate read-failure guard
+        working-directory: frontend
+        run: node qa/read-failure-guard.mjs
 
       - name: Validate anonymous public dashboard
         working-directory: frontend

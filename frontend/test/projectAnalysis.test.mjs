@@ -10,7 +10,7 @@ import {
   beneficiarySummary, riskSummary, reportingCompliance, dataCompleteness,
   scheduleHealth, resultsHealth, riskHealth, dataQualityHealth, financialHealth,
   overallHealth, comparisonBars, managementAttention, geographicSummary,
-  analyseProject, HEALTH_RULES,
+  analyseProject, HEALTH_RULES, beneficiaryReach, portfolioBeneficiaries,
 } from '../src/lib/docc/projectAnalysis.js';
 
 const check = (name, fn) => test(name, fn);
@@ -206,6 +206,43 @@ check('categories are never assumed to add up to the total', () => {
 check('a category nobody filled in is absent, not zero', () => {
   const b = beneficiarySummary({}, [{ total_direct: 10, female: 6, double_counting_check: true }]);
   assert.deepEqual(b.categories.map((c) => c.key), ['female']);
+});
+
+// ── Portfolio beneficiaries reconcile with the per-project figure ────────────
+// The Overview, the dashboards and the printed reports used to add up every
+// beneficiary row in the portfolio. Project Analysis reduced each project under
+// the double-counting rule. The two disagreed the moment a project reported a
+// second period, and both were presented as the same headcount.
+check('a portfolio total is the sum of each project reduced on its own', () => {
+  const rows = [
+    { project_id: 'p1', total_direct: 100, double_counting_check: false },
+    { project_id: 'p1', total_direct: 120, double_counting_check: null },
+    { project_id: 'p2', total_direct: 40,  double_counting_check: true },
+  ];
+  // p1 is unchecked across two periods -> largest (120); p2 is a lone record -> 40.
+  assert.equal(portfolioBeneficiaries(rows), 160);
+  assert.notEqual(portfolioBeneficiaries(rows), 260, 'a flat sum double-counts p1');
+});
+check('the portfolio total agrees with beneficiarySummary per project', () => {
+  const rows = [
+    { project_id: 'p1', total_direct: 100, double_counting_check: false },
+    { project_id: 'p1', total_direct: 120, double_counting_check: false },
+    { project_id: 'p2', total_direct: 55,  double_counting_check: true },
+    { project_id: 'p2', total_direct: 45,  double_counting_check: true },
+  ];
+  const perProject = ['p1', 'p2']
+    .map((id) => beneficiarySummary({}, rows.filter((r) => r.project_id === id)).reached)
+    .reduce((a, b) => a + b, 0);
+  assert.equal(portfolioBeneficiaries(rows), perProject);
+  assert.equal(perProject, 220);   // 120 (largest) + 100 (summed)
+});
+check('no beneficiary figures anywhere stays null, not a believable zero', () => {
+  assert.equal(portfolioBeneficiaries([]), null);
+  assert.equal(portfolioBeneficiaries([{ project_id: 'p1', total_direct: null }]), null);
+  assert.equal(beneficiaryReach([]).basis, 'none');
+});
+check('a recorded zero is a real figure and survives', () => {
+  assert.equal(portfolioBeneficiaries([{ project_id: 'p1', total_direct: 0 }]), 0);
 });
 
 // ── Risks ────────────────────────────────────────────────────────────────────

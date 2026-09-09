@@ -117,7 +117,7 @@ export const MODULES = [
       { name: 'double_counting_check', label: 'merl.doubleCounting', type: 'checkbox' },
       { name: 'comments', label: 'merl.comments', type: 'textarea' },
     ],
-    note: 'Leave a count blank if it was not collected — a blank is stored as "no data", which is different from a recorded 0.',
+    note: 'merl.beneficiaryBlankNote',
     // The gender split is a partition of the total; youth and disability are
     // separate axes over the same people, so each is bounded on its own.
     validate: (v) => {
@@ -125,12 +125,16 @@ export const MODULES = [
       if (v.total_direct === '' || v.total_direct == null) return null;
       const total = Number(v.total_direct);
       const split = n(v.female) + n(v.male) + n(v.other_gender);
+      // A key plus its numbers, resolved by the caller: this runs at module
+      // scope, where there is no `t` to call.
       if (split > total) {
-        return `Female, male and other add up to ${split}, more than the ${total} total direct beneficiaries.`;
+        return { key: 'merl.beneficiarySplitExceedsTotal', params: { split, total } };
       }
-      if (n(v.youth) > total) return `Youth (${n(v.youth)}) cannot exceed the ${total} total direct beneficiaries.`;
+      if (n(v.youth) > total) {
+        return { key: 'merl.beneficiaryYouthExceedsTotal', params: { youth: n(v.youth), total } };
+      }
       if (n(v.persons_with_disability) > total) {
-        return `Persons with disabilities (${n(v.persons_with_disability)}) cannot exceed the ${total} total direct beneficiaries.`;
+        return { key: 'merl.beneficiaryPwdExceedsTotal', params: { pwd: n(v.persons_with_disability), total } };
       }
       return null;
     },
@@ -376,7 +380,7 @@ export default function MerlReporting({ user }) {
     // Cross-field rules the database also enforces, checked here first so the
     // officer is told which figures disagree rather than seeing a constraint.
     const problem = m.validate?.(values);
-    if (problem) { toast.error(problem); return; }
+    if (problem) { toast.error(t(problem.key, problem.params)); return; }
     try {
       await saveModuleRecord({ module: m, values, id: editing?.id ?? null, projectId, reportingPeriod: activePeriod, indicators });
     } catch (error) { toast.error(dbErrorMessage(error)); return; }
@@ -418,7 +422,7 @@ export default function MerlReporting({ user }) {
     if (rpc === 'reopen_reporting_period') {
       // Reopening an approved period requires a reason (recorded in the audit trail).
       const reason = await promptDialog({ title:t('merl.reopenPeriod'), label:t('merl.reopenReason'), required:true, multiline:true,
-        message:'This approved period will return to draft for correction. The reason is recorded in the audit trail.' });
+        message:t('merl.reopenConfirmBody') });
       if (reason == null || !reason.trim()) return;
       params = { p_id: id, p_reason: reason.trim() };
     } else if (decision === 'return') {
@@ -544,7 +548,7 @@ export default function MerlReporting({ user }) {
             </span>
           )}
           {currentPeriodRow.submission_status === 'returned' && currentPeriodRow.review_comments && (
-            <span style={{ fontSize: '0.72rem', color: '#8a6416' }}>Review note: {currentPeriodRow.review_comments}</span>
+            <span style={{ fontSize: '0.72rem', color: '#8a6416' }}>{t('merl.reviewNoteLbl')} {currentPeriodRow.review_comments}</span>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && (
@@ -668,7 +672,7 @@ export default function MerlReporting({ user }) {
         {activeModule.note && (
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', fontSize: '0.75rem', color: 'var(--text-2)', background: 'var(--green-50)', border: '1px solid var(--green-100)', borderRadius: 8, padding: '0.5rem 0.7rem', marginBottom: '0.6rem' }}>
             <Info size={14} style={{ color: 'var(--green-700)', flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
-            <span>{activeModule.note}</span>
+            <span>{t(activeModule.note)}</span>
           </div>
         )}
 

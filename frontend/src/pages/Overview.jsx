@@ -29,6 +29,7 @@ import KpiCard from '../components/ui/KpiCard';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
+import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
 
 const C = {
   violet: '#6b55a7',
@@ -194,7 +195,9 @@ export default function Overview() {
     indicatorStatus[key in indicatorStatus ? key : 'no_data'] += 1;
   }
 
-  const totalBeneficiaries = sum(beneficiaries, (b) => b.total_direct);
+  // Reduced per project under the shared double-counting rule, so this KPI
+  // agrees with the per-project figure on Project Analysis.
+  const totalBeneficiaries = portfolioBeneficiaries(beneficiaries) ?? 0;
   const hasField = (field) => beneficiaries.some((b) => b[field] != null);
   const fieldSum = (field) => hasField(field)
     ? beneficiaries.reduce((a, b) => a + (b[field] != null ? Number(b[field]) : 0), 0)

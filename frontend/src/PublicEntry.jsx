@@ -42,7 +42,11 @@ export default function PublicEntry() {
   // Guests see only the approved-public snapshot. Signed-in users enter the
   // existing workspace, whose profile and role checks remain unchanged.
   if (pathname === DEFAULT_PATH) {
-    if (session === undefined) return <div role="status" className="pbd-state">Opening MERL…</div>;
+    if (session === undefined) {
+      return <div role="status" className="pbd-state">
+        {i18n.resolvedLanguage?.startsWith('fr') ? 'Ouverture de MERL…' : 'Opening MERL…'}
+      </div>;
+    }
     if (!session) return <PublicDashboard />;
   }
 

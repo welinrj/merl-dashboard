@@ -13,6 +13,7 @@ import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
+import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
@@ -388,7 +389,7 @@ function Portfolio({ d, period }) {
           <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div>
           <div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div>
           <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.totalBeneficiariesLbl')}</b> {fmtNum(sum(d.beneficiaries, (b) => b.total_direct))}</div>
+          <div><b>{t('rpt.totalBeneficiariesLbl')}</b> {fmtNum(portfolioBeneficiaries(d.beneficiaries) ?? 0)}</div>
           <div><b>{t('rpt.openRisksLbl')}</b> {d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
         </div>
       </Section>
@@ -482,7 +483,7 @@ function DonorReport({ d, donor }) {
   const ids = new Set(projs.map((p) => p.id));
   const budget = sum(projs, (p) => p.budget_vuv);
   const exp = projs.reduce((a, p) => a + (Number(fin.get(p.id)?.cumulative_expenditure ?? p.spent_vuv) || 0), 0);
-  const bens = sum(d.beneficiaries.filter((b) => ids.has(b.project_id)), (b) => b.total_direct);
+  const bens = portfolioBeneficiaries(d.beneficiaries.filter((b) => ids.has(b.project_id))) ?? 0;
   return (
     <div>
       <h2>{donor || 'All Donors'} — Funding Partner Report</h2>
