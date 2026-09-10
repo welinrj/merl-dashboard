@@ -94,6 +94,43 @@ check("invalidate with secret succeeds", ok.status === 200);
 const r5 = await get("/srf-analytics");
 check("read after invalidate is a MISS", r5.cache === "MISS");
 
+// An upstream failure must not hand the caller the database's own words: this
+// endpoint is public and unauthenticated, and PostgREST errors name views,
+// columns and permission details.
+{
+  const leakyApp = createApp({
+    store: createStore("memory://"),
+    supabaseUrl: "http://origin.invalid",
+    supabaseAnonKey: "anon",
+    ttl: 60,
+    fetchImpl: async () => new Response(
+      'permission denied for view v_srf_analytics in schema merl',
+      { status: 403 }),
+  });
+  const leakyServer = leakyApp.listen(0);
+  await new Promise(r => leakyServer.once("listening", r));
+  const leakyBase = `http://127.0.0.1:${leakyServer.address().port}`;
+  const res = await fetch(leakyBase + "/srf-analytics");
+  const body = await res.text();
+  check("upstream failure is a 502", res.status === 502);
+  check("upstream error body is not echoed to the caller",
+    !/permission denied|v_srf_analytics|merl/i.test(body));
+  leakyServer.close();
+}
+
+// A wrong secret is refused whatever its length (the comparison is constant
+// time, so a length mismatch must not short-circuit into a different answer).
+{
+  const r = await fetch(base + "/invalidate", {
+    method: "POST", headers: { "x-invalidate-secret": "x" },
+  });
+  check("short wrong secret is 403", r.status === 403);
+  const r2 = await fetch(base + "/invalidate", {
+    method: "POST", headers: { "x-invalidate-secret": "s3cretttttt" },
+  });
+  check("long wrong secret is 403", r2.status === 403);
+}
+
 server.close();
 await store.quit();
 

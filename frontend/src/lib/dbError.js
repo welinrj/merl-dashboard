@@ -131,9 +131,39 @@ export function dbErrorMessage(error, fallback) {
     return i18n.t('err.noPermission');
   }
 
-  // Anything else — including our own RPC validation messages, which are
-  // already written for the officer reading them.
-  return raw;
+  // Anything else. Our own RPCs raise messages written for the officer reading
+  // them ("Approver access required (DoCC M&E Officer)", "Your current password
+  // is not correct"), and those should pass through untouched. What must not
+  // pass through is a raw Postgres or PostgREST error, which names relations,
+  // columns, constraints, function signatures and schemas — a free map of the
+  // database handed to whoever provoked the error.
+  return looksInternal(raw) ? i18n.t('err.fallback') : raw;
+}
+
+// Markers that only appear in a database's own diagnostics, never in a message
+// this codebase writes for an officer. Matching on these rather than trying to
+// recognise our own messages means a new RPC message is shown as written,
+// while a new *kind* of internal error is still withheld — the safe direction
+// for each to fail in.
+const INTERNAL_MARKERS = [
+  /\b(relation|column|constraint|operator|type|schema|index|sequence|trigger)\s+"/i,
+  /\bfunction\s+[a-z_]+\.[a-z_]+\s*\(/i,
+  // A schema prefix, which must be followed by an identifier: this matches
+  // "public.v_projects" but not a sentence that happens to end "…is public."
+  /\b(merl|public|auth|storage|extensions|pg_catalog|information_schema)\.[a-z_]/i,
+  /\bpg_[a-z_]+\b/i,
+  /\bSQLSTATE\b|\bPGRST\d+\b/i,
+  /\bsyntax error\b|\bat character \d+|\bLINE \d+:/i,
+  /\bdoes not exist\b/i,
+  /\binput syntax for (type )?[a-z ]+\b/i,
+  /\bstack\b.*\bat \w+/i,
+];
+
+/** True when the message reads like the database talking, not the portal. */
+function looksInternal(message) {
+  const text = String(message ?? '');
+  if (!text) return true;
+  return INTERNAL_MARKERS.some((re) => re.test(text));
 }
 
 // PostgREST resolves an RPC by the exact set of argument names it is given, so
