@@ -5,6 +5,7 @@ import App from './App';
 import PublicDashboard from './pages/PublicDashboard';
 import DoCCProjectRegister from './pages/DoCCProjectRegister';
 import { supabase } from './supabaseClient';
+import { loadCurrentProfile } from './lib/authProfile';
 import './login-home-link.css';
 import './pages/public-refresh.css';
 
@@ -31,8 +32,11 @@ export default function PublicEntry() {
       }
       setProfileValid(undefined);
       try {
-        const { data, error } = await supabase.rpc('current_profile');
-        const valid = !error && Array.isArray(data) && !!data[0]?.id && !!data[0]?.role;
+        // Do not reject a valid MERL user because the first profile RPC fires a
+        // fraction too early after SIGNED_IN/TOKEN_REFRESHED. The shared helper
+        // retries briefly, then fails closed if no linked profile exists.
+        const { profile } = await loadCurrentProfile();
+        const valid = !!profile?.id && !!profile?.role;
         if (!alive) return;
         setProfileValid(valid);
         // A Supabase session without a valid MERL profile is not a valid portal
