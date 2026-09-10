@@ -233,7 +233,20 @@ these fixes remove the dependence on it being perfect forever.
   already fails the build on one.
 - **Recommended:** `npm audit fix` on the next maintenance pass.
 
-### 3.7 `merl.audit_logs` has no RLS
+### 3.7 The public inventory RPC discloses the count of unpublished projects
+- **Severity:** Low · `public.public_portal_project_inventory()`
+- Added by main's recent public-inventory work and callable anonymously, it
+  returns `{total_projects: 31, approved_projects: 12, other_projects: 19}` —
+  telling the public that 19 unapproved or draft government projects exist. It is
+  a count only: no name, code or content leaks, and the sibling
+  `public_portal_project_plan()` was checked and correctly returns only the 12
+  approved projects.
+- **Not changed:** the commit history ("aggregate-only public project inventory")
+  makes clear this is deliberate, and it drives a feature shipped yesterday.
+- **Recommended:** confirm the Department is content to publish that count. If
+  not, return only `approved_projects`.
+
+### 3.8 `merl.audit_logs` has no RLS
 - **Severity:** Low (not reachable) · Every authenticated role holds `SELECT` on
   it and RLS is off, but **no view in `public` exposes it**, so PostgREST cannot
   reach it. Worth enabling RLS for defence in depth.
@@ -294,4 +307,25 @@ these fixes remove the dependence on it being perfect forever.
 | RPCs callable by `authenticated` | 89 → 89 |
 | Upload permission by role | 3 editors yes, Viewer no, unknown no |
 
-Browser QA results are recorded in §6.
+### Browser QA — 9 of 10 suites pass
+
+`permission-matrix`, `auth-lifecycle`, `read-failure-guard`,
+`beneficiary-reconciliation`, `data-and-ux` (30/30), `public-single-signin`,
+`header-inline-auth`, `kpi-alignment` and `admin-role-colors` all pass. The role
+matrix is byte-for-byte unchanged from before the grant revokes, which is the
+result that matters most here.
+
+`public-dashboard` fails one check — *"province chart drills down to matching
+projects"*. **This is pre-existing on `main` and not caused by this work**,
+proved by reverting the one frontend file this audit touches
+(`dbError.js`) to main's version, rebuilding, and reproducing the identical
+failure.
+
+Diagnosed while it was in front of me, because it sits on the public dashboard:
+clicking a province in the chart *does* filter correctly — the panel reports
+"1 Published projects" — but the projects panel now renders the new
+`PublicProjectCatalogue`, which opens on its **"DoCC website"** tab showing the
+twelve hard-coded directory entries. The filtered MERL result is behind the
+**"MERL records"** tab. So a province drill-down looks like it did nothing.
+Not a security issue, and not changed here, but worth knowing before a
+demonstration that opens on the public dashboard.
