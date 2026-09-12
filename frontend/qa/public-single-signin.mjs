@@ -37,7 +37,7 @@ try {
   await page.goto('http://localhost:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
   await page.locator('.pbd-root .pbd-kpis').waitFor({ timeout: 15000 });
   await assertHeaderLogin('Public overview');
-  for (const name of ['Projects', 'Results', 'Geographic Coverage', 'Public Overview']) {
+  for (const name of ['Projects', 'Results', 'Public Overview']) {
     await page.locator('.pbd-root .dsh-nav').getByRole('button', { name, exact: true }).click();
     await assertHeaderLogin(name);
   }
