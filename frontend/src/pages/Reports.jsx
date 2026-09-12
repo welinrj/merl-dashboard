@@ -19,6 +19,13 @@ import { fmtDateTime, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
 
 
+const PERIOD_TYPES = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'six_monthly', label: 'Six-monthly' },
+  { value: 'annual', label: 'Annual' },
+];
+
 const REPORT_TYPES = [
   { key: 'project',    label: 'rpt.projectProgressReport' },
   { key: 'portfolio',  label: 'rpt.portfolioPerformanceReport' },
@@ -43,6 +50,7 @@ export default function Reports() {
   const [projectId, setProjectId] = useState('');
   const [province, setProvince] = useState('');
   const [donor, setDonor] = useState('');
+  const [periodType, setPeriodType] = useState('quarterly');
   const [period, setPeriod] = useState('');
   const [runs, setRuns] = useState([]);
 
@@ -58,7 +66,7 @@ export default function Reports() {
     (async () => {
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
-      const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op, learn] = await Promise.all([
+      const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn] = await Promise.all([
         q('v_projects', '*'),
         q('v_financial_progress', '*'),
         q('v_risks_issues', '*'),
@@ -67,17 +75,19 @@ export default function Reports() {
         q('v_project_indicators', '*'),
         q('v_indicator_progress', '*'),
         q('v_reporting_periods', '*'),
-        q('v_project_locations', '*'),
-        q('v_objectives', '*'),
-        q('v_outcomes', '*'),
-        q('v_outputs', '*'),
+        q('v_framework_nodes', '*'),
+        q('v_project_area_councils', '*'),
+        q('v_project_organizations', '*'),
+        q('v_result_narratives', '*'),
+        q('v_project_portfolio_status', '*'),
         q('v_learning_updates', '*'),
       ]);
       setD({
         projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
-        progress: prog.data ?? [], reporting: rep.data ?? [], locations: loc.data ?? [],
-        objectives: obj.data ?? [], outcomes: oc.data ?? [], outputs: op.data ?? [], learning: learn.data ?? [],
+        progress: prog.data ?? [], reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
+        areaCouncils: areas.data ?? [], organizations: orgs.data ?? [], narratives: narr.data ?? [],
+        portfolioStatus: status.data ?? [], learning: learn.data ?? [],
       });
       if ((proj.data ?? []).length) setProjectId(proj.data[0].id);
     })();
@@ -86,8 +96,16 @@ export default function Reports() {
 
   if (!d) return <div className="page-pad"><p style={{ color: 'var(--text-3)' }}>{t('rpt.loading')}</p></div>;
 
-  const donors = [...new Set(d.projects.map((p) => p.donor).filter(Boolean))];
+  const donors = [...new Set([
+    ...d.projects.map((p) => p.donor).filter(Boolean),
+    ...d.organizations.filter((o) => ['donor','co_financier'].includes(o.role)).map((o) => o.name).filter(Boolean),
+  ])].sort();
   const provinces = ['TORBA', 'SANMA', 'PENAMA', 'MALAMPA', 'SHEFA', 'TAFEA'];
+  const periodOptions = [...new Map(
+    d.reporting
+      .filter((r) => !periodType || r.period_type === periodType)
+      .map((r) => [r.period_label, r])
+  ).values()].sort((a,b) => String(a.period_start || a.period_label).localeCompare(String(b.period_start || b.period_label)));
 
   // "Data as at" (§76): latest timestamp across the datasets this report reads.
   const times = [d.reporting, d.progress, d.financial, d.beneficiaries, d.risks, d.learning, d.activities]
@@ -104,7 +122,7 @@ export default function Reports() {
       p_report_label: label,
       p_project_id: type === 'project' ? (projectId || null) : null,
       p_reporting_period: period || null,
-      p_params: { province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
+      p_params: { period_type: periodType, province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
     });
     if (!error) loadRuns();
     window.print();
@@ -180,9 +198,18 @@ export default function Reports() {
             </select>
           </div>
         )}
-        <div style={{ flex: '0 1 160px' }}>
+        <div style={{ flex: '0 1 165px' }}>
+          <label className="field-label">Report frequency</label>
+          <select className="field-input" value={periodType} onChange={(e) => { setPeriodType(e.target.value); setPeriod(''); }}>
+            {PERIOD_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: '0 1 190px' }}>
           <label className="field-label">{t('rpt.reportingPeriod')}</label>
-          <input className="field-input" placeholder="e.g. 2026-Q1" value={period} onChange={(e) => setPeriod(e.target.value)} />
+          <select className="field-input" value={period} onChange={(e) => setPeriod(e.target.value)}>
+            <option value="">All {PERIOD_TYPES.find((p) => p.value === periodType)?.label.toLowerCase()} periods</option>
+            {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}
+          </select>
         </div>
         <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> {t('rpt.printPdf')}
@@ -255,7 +282,7 @@ function ProjectProgress({ d, projectId, period }) {
   const prog = d.progress.filter((x) => x.project_id === projectId);
   const acts = d.activities.filter((a) => a.project_id === projectId);
   const risks = d.risks.filter((r) => r.project_id === projectId);
-  const locs = d.locations.filter((l) => l.project_id === projectId);
+  const locs = d.areaCouncils.filter((l) => l.project_id === projectId);
   const bens = d.beneficiaries.filter((b) => b.project_id === projectId);
   const learn = d.learning.filter((l) => l.project_id === projectId).sort((a, b) => (b.reporting_period ?? '').localeCompare(a.reporting_period ?? ''))[0] || {};
   const budget = fin?.approved_budget ?? p.budget_vuv;
@@ -295,9 +322,9 @@ function ProjectProgress({ d, projectId, period }) {
       <Section n="3" title={t('rpt.progressAgainst')}>
         <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.level')}</th><th>{t('rpt.statement')}</th></tr></thead>
           <tbody>
-            {d.objectives.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.objective')}</td><td>{o.statement}</td></tr>)}
-            {d.outcomes.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.outcome')}</td><td>{o.statement}</td></tr>)}
-            {d.outputs.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.output')}</td><td>{o.statement}</td></tr>)}
+            {d.frameworkNodes.filter((o) => o.project_id === projectId)
+              .sort((a,b) => (Number(a.sort_order)||0)-(Number(b.sort_order)||0) || String(a.node_code||'').localeCompare(String(b.node_code||'')))
+              .map((o) => <tr key={o.id}><td>{o.node_code || '—'}</td><td>{String(o.node_type || 'result').replaceAll('_',' ')}</td><td>{o.title}</td></tr>)}
           </tbody>
         </table>
       </Section>
@@ -336,11 +363,11 @@ function ProjectProgress({ d, projectId, period }) {
         <Narr text={fin?.narrative} />
       </Section>
 
-      <Section n="7" title={t('rpt.geographicImplementation')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.island')}</th><th>{t('rpt.areaCouncil')}</th><th>{t('rpt.community')}</th><th>{t('rpt.beneficiaries')}</th></tr></thead>
+      <Section n="7" title="Area Council Coverage & Feasibility">
+        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.areaCouncil')}</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead>
           <tbody>
-            {locs.map((l) => <tr key={l.id}><td>{l.province || '—'}</td><td>{l.island || '—'}</td><td>{l.area_council || '—'}</td><td>{l.community || '—'}</td><td>{l.beneficiaries ?? '—'}</td></tr>)}
-            {locs.length === 0 && <tr><td colSpan={5} className="rp-muted">{t('rpt.noLocations')}</td></tr>}
+            {locs.map((l) => <tr key={l.id}><td>{l.province_code || '—'}</td><td>{l.area_council_name || '—'}</td><td>{l.coverage_status || '—'}</td><td>{l.feasibility_status || '—'}</td><td>{l.feasibility_note || '—'}</td></tr>)}
+            {locs.length === 0 && <tr><td colSpan={5} className="rp-muted">No Area Council coverage recorded.</td></tr>}
           </tbody>
         </table>
       </Section>
@@ -450,24 +477,26 @@ function FinancialReport({ d }) {
 // ── Geographic / Provincial ───────────────────────────────────────────────────
 function GeographicReport({ d, province }) {
   const { t } = useTranslation();
-  const locs = province ? d.locations.filter((l) => l.province === province) : d.locations;
-  const projectIds = new Set(locs.map((l) => l.project_id));
+  const areas = province ? d.areaCouncils.filter((l) => l.province_code === province) : d.areaCouncils;
+  const projectIds = new Set(areas.map((l) => l.project_id));
   const projs = d.projects.filter((p) => projectIds.has(p.id) || (province && (p.provinces || []).includes(province)));
+  const covered = areas.filter((a) => a.coverage_status !== 'not_covered');
+  const confirmed = areas.filter((a) => a.feasibility_status === 'confirmed');
   return (
     <div>
-      <h2>{province ? `${province} Province` : 'Geographic'} Report</h2>
+      <h2>{province ? `${province} Province` : 'Area Council Coverage'} Report</h2>
       <Section n="1" title={t('rpt.coverageSummary')}>
         <div className="rp-meta">
           <div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div>
-          <div><b>{t('rpt.sitesLbl')}</b> {locs.length}</div>
-          <div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(sum(locs, (l) => l.beneficiaries))}</div>
+          <div><b>Area Councils covered</b> {new Set(covered.map((a) => a.area_council_name)).size}</div>
+          <div><b>Feasibility confirmed</b> {confirmed.length}</div>
         </div>
       </Section>
-      <Section n="2" title={t('rpt.sites')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.island')}</th><th>{t('rpt.areaCouncil')}</th><th>{t('rpt.community')}</th><th>{t('rpt.intervention')}</th><th>{t('rpt.beneficiaries')}</th></tr></thead>
+      <Section n="2" title="Area Councils">
+        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.areaCouncil')}</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead>
           <tbody>
-            {locs.map((l) => <tr key={l.id}><td>{l.province || '—'}</td><td>{l.island || '—'}</td><td>{l.area_council || '—'}</td><td>{l.community || '—'}</td><td>{l.intervention || '—'}</td><td>{l.beneficiaries ?? '—'}</td></tr>)}
-            {locs.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noSites')}</td></tr>}
+            {areas.map((a) => <tr key={a.id}><td>{a.province_code || '—'}</td><td>{a.area_council_name || '—'}</td><td>{a.coverage_status || '—'}</td><td>{a.feasibility_status || '—'}</td><td>{a.feasibility_note || '—'}</td></tr>)}
+            {areas.length === 0 && <tr><td colSpan={5} className="rp-muted">No Area Council coverage records.</td></tr>}
           </tbody>
         </table>
       </Section>
@@ -478,7 +507,8 @@ function GeographicReport({ d, province }) {
 // ── Funding Partner / Donor ───────────────────────────────────────────────────
 function DonorReport({ d, donor }) {
   const { t } = useTranslation();
-  const projs = donor ? d.projects.filter((p) => p.donor === donor) : d.projects;
+  const donorProjectIds = donor ? new Set(d.organizations.filter((o) => o.name === donor && ['donor','co_financier'].includes(o.role)).map((o) => o.project_id)) : null;
+  const projs = donor ? d.projects.filter((p) => p.donor === donor || donorProjectIds.has(p.id)) : d.projects;
   const fin = latestByProject(d.financial);
   const ids = new Set(projs.map((p) => p.id));
   const budget = sum(projs, (p) => p.budget_vuv);
