@@ -18,7 +18,6 @@ import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
 import FilterBar from '../components/ui/FilterBar';
-import VanuatuMap from '../components/VanuatuMap';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { beneficiaryReach, portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
@@ -72,25 +71,24 @@ export default function Dashboards({ initialTab }) {
       setLoading(true);
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
-      const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op] = await Promise.all([
+      const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs] = await Promise.all([
         q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
         q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at'),
         q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
         q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, other_vulnerable, indirect, reporting_period'),
         q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code'),
-        q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level'),
-        q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, reporting_period, final_target, created_at'),
+        q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level, framework_node_id'),
+        q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, schedule_status, reporting_period, final_target, created_at'),
         q('v_reporting_periods', 'project_id, period_label, period_type, submission_status, period_end'),
-        q('v_project_locations', 'project_id, province, island, area_council, community, beneficiaries, latitude, longitude'),
-        q('v_objectives', 'project_id, code, statement'),
-        q('v_outcomes', 'project_id, code, statement, objective_id'),
-        q('v_outputs', 'project_id, code, statement, outcome_id'),
+        supabase.from('v_framework_nodes').select('id, project_id, parent_node_id, node_code, node_type, title, status, sort_order'),
+        supabase.from('v_project_area_councils').select('id, project_id, province_code, area_council_name, coverage_status, feasibility_status, feasibility_note'),
+        supabase.from('v_project_organizations').select('project_id, role, name'),
       ]);
       setD({
         projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
-        progress: prog.data ?? [], reporting: rep.data ?? [], locations: loc.data ?? [],
-        objectives: obj.data ?? [], outcomes: oc.data ?? [], outputs: op.data ?? [],
+        progress: prog.data ?? [], reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
+        areaCouncils: areas.data ?? [], organizations: orgs.data ?? [],
       });
       if ((proj.data ?? []).length && !projectId) setProjectId(proj.data[0].id);
       setLoading(false);
@@ -213,7 +211,7 @@ function Portfolio({ d, onNavigate }) {
   // filter once it arrives — clearable like any other, and absent by default.
   const [params, setParams] = useSearchParams();
   const handedOver = params.get('project') ?? '';
-  const [flt, setFlt] = useState({ status: '', theme: '', province: '', donor: '', project: handedOver });
+  const [flt, setFlt] = useState({ status: '', theme: '', province: '', donor: '', partner: '', project: handedOver });
   useEffect(() => { setFlt((f) => (f.project === handedOver ? f : { ...f, project: handedOver })); }, [handedOver]);
   const clearHandover = (value) => setParams((prev) => {
     const next = new URLSearchParams(prev);
@@ -225,9 +223,18 @@ function Portfolio({ d, onNavigate }) {
   const opts = useMemo(() => {
     const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
     return {
-      provinces: uniq(d.projects.flatMap((p) => p.provinces || [])),
+      provinces: uniq([
+        ...d.projects.flatMap((p) => p.provinces || []),
+        ...d.areaCouncils.map((a) => a.province_code),
+      ]),
       themes: uniq(d.projects.map((p) => p.category)),
-      donors: uniq(d.projects.map((p) => p.donor)),
+      donors: uniq([
+        ...d.projects.map((p) => p.donor),
+        ...d.organizations.filter((o) => ['donor','co_financier'].includes(o.role)).map((o) => o.name),
+      ]),
+      partners: uniq(d.organizations
+        .filter((o) => ['accredited_entity','executing_entity','implementing_partner','technical_partner','government_partner'].includes(o.role))
+        .map((o) => o.name)),
     };
   }, [d]);
 
@@ -237,8 +244,13 @@ function Portfolio({ d, onNavigate }) {
       (!flt.project || p.id === flt.project)
       && (!flt.status || p.status === flt.status)
       && (!flt.theme || p.category === flt.theme)
-      && (!flt.province || (p.provinces || []).includes(flt.province))
-      && (!flt.donor || p.donor === flt.donor));
+      && (!flt.province || (p.provinces || []).includes(flt.province)
+        || d.areaCouncils.some((a) => a.project_id === p.id && a.province_code === flt.province))
+      && (!flt.donor || p.donor === flt.donor
+        || d.organizations.some((o) => o.project_id === p.id && ['donor','co_financier'].includes(o.role) && o.name === flt.donor))
+      && (!flt.partner || d.organizations.some((o) => o.project_id === p.id
+        && ['accredited_entity','executing_entity','implementing_partner','technical_partner','government_partner'].includes(o.role)
+        && o.name === flt.partner)));
     const pid = new Set(projects.map((p) => p.id));
     const within = (arr) => arr.filter((r) => pid.has(r.project_id));
     const financial = within(d.financial), risks = within(d.risks), progress = within(d.progress);
@@ -319,8 +331,10 @@ function Portfolio({ d, onNavigate }) {
             options: [{ value: '', label: t('dash.allThemes') }, ...opts.themes.map((theme) => ({ value: theme, label: OPT.labelOf(OPT.CLIMATE_THEME, theme) || theme }))] },
           { key: 'province', label: t('dash.province'), value: flt.province, onChange: (v) => setFlt((s) => ({ ...s, province: v })),
             options: [{ value: '', label: t('dash.allProvinces') }, ...opts.provinces.map((p) => ({ value: p, label: p }))] },
-          { key: 'donor', label: t('dash.fundingPartner'), value: flt.donor, onChange: (v) => setFlt((s) => ({ ...s, donor: v })),
-            options: [{ value: '', label: t('dash.allPartners') }, ...opts.donors.map((x) => ({ value: x, label: x }))] },
+          { key: 'donor', label: 'Donor', value: flt.donor, onChange: (v) => setFlt((s) => ({ ...s, donor: v })),
+            options: [{ value: '', label: 'All donors' }, ...opts.donors.map((x) => ({ value: x, label: x }))] },
+          { key: 'partner', label: 'Partner', value: flt.partner, onChange: (v) => setFlt((s) => ({ ...s, partner: v })),
+            options: [{ value: '', label: 'All partners' }, ...opts.partners.map((x) => ({ value: x, label: x }))] },
           // Only offered once a project has actually been handed over, so the
           // portfolio view is not cluttered with a filter nobody asked for.
           ...(flt.project ? [{
@@ -330,7 +344,7 @@ function Portfolio({ d, onNavigate }) {
               ...d.projects.filter((p) => p.id === flt.project).map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))],
           }] : []),
         ]}
-        onReset={() => { setFlt({ status: '', theme: '', province: '', donor: '', project: '' }); clearHandover(''); }}
+        onReset={() => { setFlt({ status: '', theme: '', province: '', donor: '', partner: '', project: '' }); clearHandover(''); }}
       />
       <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', margin: '0.6rem 0' }}>
         {t('dash.showing')} <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} projects
@@ -548,9 +562,9 @@ function Results({ d }) {
   return (
     <>
       <MetricStrip title={t('dash.resultsFramework')} items={[
-        { label: t('dash.objectives'), value: d.objectives.length },
-        { label: t('dash.outcomes'), value: d.outcomes.length },
-        { label: t('dash.outputs'), value: d.outputs.length },
+        { label: 'Components', value: d.frameworkNodes.filter((n) => n.node_type === 'component').length },
+        { label: 'Outcomes', value: d.frameworkNodes.filter((n) => n.node_type === 'outcome').length },
+        { label: 'Outputs', value: d.frameworkNodes.filter((n) => n.node_type === 'output').length },
         { label: t('dash.indicators'), value: d.indicators.length },
       ]} />
       <div className="db-2">
@@ -620,48 +634,60 @@ function Financial({ d }) {
 // ── Geographic ───────────────────────────────────────────────────────────────
 function Geographic({ d }) {
   const { t } = useTranslation();
-  const [province, setProvince] = useState(null);
-  const locs = province ? d.locations.filter((l) => l.province === province) : d.locations;
-  const provinceCounts = Object.fromEntries(countBy(d.locations, (l) => l.province)); // { province: sites }
-  const byIsland = countBy(locs, (l) => l.island);
-  const byAC = countBy(locs, (l) => l.area_council);
-  const benByProvince = (() => {
-    const m = new Map();
-    for (const l of d.locations) if (l.province) m.set(l.province, (m.get(l.province) || 0) + (Number(l.beneficiaries) || 0));
-    return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  })();
-  const withCoords = locs.filter((l) => l.latitude != null && l.longitude != null);
+  const [province, setProvince] = useState('');
+  const areas = province
+    ? d.areaCouncils.filter((a) => a.province_code === province)
+    : d.areaCouncils;
+  const activeAreas = areas.filter((a) => a.coverage_status !== 'not_covered');
+  const provinceCounts = countBy(d.areaCouncils.filter((a) => a.coverage_status !== 'not_covered'), (a) => a.province_code);
+  const feasibility = countBy(activeAreas, (a) => String(a.feasibility_status || 'not_assessed').replaceAll('_',' '));
+  const coverage = countBy(activeAreas, (a) => String(a.coverage_status || 'planned').replaceAll('_',' '));
+  const provinces = [...new Set(d.areaCouncils.map((a) => a.province_code).filter(Boolean))].sort();
+
   return (
     <>
-      <MetricStrip title={t('dash.geoCoverage')} items={[
-        { label: t('dash.sites'), value: locs.length },
-        { label: t('dash.provinces'), value: Object.keys(provinceCounts).length },
-        { label: t('dash.areaCouncils'), value: byAC.length },
-        { label: t('dash.geoSites'), value: withCoords.length },
+      <div style={{ maxWidth: 280, marginBottom: '0.8rem' }}>
+        <label className="field-label">{t('dash.province')}</label>
+        <select className="field-input" value={province} onChange={(e) => setProvince(e.target.value)}>
+          <option value="">{t('dash.allProvinces')}</option>
+          {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </div>
+
+      <MetricStrip title="Area Council Coverage & Feasibility" items={[
+        { label: 'Area Councils covered', value: activeAreas.length },
+        { label: 'Provinces', value: province ? 1 : provinceCounts.length },
+        { label: 'Feasibility confirmed', value: activeAreas.filter((a) => a.feasibility_status === 'confirmed').length },
+        { label: 'Under assessment', value: activeAreas.filter((a) => a.feasibility_status === 'under_assessment').length },
+        { label: 'Conditional', value: activeAreas.filter((a) => a.feasibility_status === 'conditional').length },
+        { label: 'Not feasible', value: activeAreas.filter((a) => a.feasibility_status === 'not_feasible').length },
       ]} />
 
-      {/* Vanuatu geographic dashboard (§36) — click a province to filter. */}
-      <div className="db-card" style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3 className="db-h" style={{ margin: 0 }}>{t('dash.sitesAcross')}</h3>
-          {province && (
-            <button onClick={() => setProvince(null)} style={{ background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>
-              {province} · clear ×
-            </button>
-          )}
-        </div>
-        <div style={{ marginTop: '0.6rem' }}>
-          <VanuatuMap counts={provinceCounts} nationalCount={d.locations.length}
-            selected={province} onSelect={(p) => setProvince((prev) => (prev === p ? null : p))} />
-        </div>
+      <div className="db-2">
+        <div className="db-card"><h3 className="db-h">Coverage status</h3><BarList rows={coverage} total={activeAreas.length} accent="#2563eb" /></div>
+        <div className="db-card"><h3 className="db-h">Feasibility status</h3><BarList rows={feasibility} total={activeAreas.length} accent="#7c3aed" /></div>
       </div>
 
-      <div className="db-2">
-        <div className="db-card"><h3 className="db-h">{t('dash.benByProvince')}</h3><BarList rows={benByProvince} accent="#7c3aed" /></div>
-        <div className="db-card"><h3 className="db-h">Sites by Island{province ? ` · ${province}` : ''}</h3><BarList rows={byIsland} accent="#2563eb" /></div>
-      </div>
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">Sites by Area Council{province ? ` · ${province}` : ''}</h3><BarList rows={byAC} accent="#0891b2" />
+        <h3 className="db-h">Area Councils{province ? ` · ${province}` : ''}</h3>
+        {activeAreas.length === 0 ? (
+          <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>No Area Council coverage has been recorded for this selection.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}><table className="db-table">
+            <thead><tr><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead>
+            <tbody>
+              {[...activeAreas].sort((a,b) => String(a.province_code||'').localeCompare(String(b.province_code||'')) || String(a.area_council_name||'').localeCompare(String(b.area_council_name||''))).map((a) => (
+                <tr key={a.id}>
+                  <td>{a.province_code || '—'}</td>
+                  <td style={{ fontWeight: 700 }}>{a.area_council_name || '—'}</td>
+                  <td>{String(a.coverage_status || '—').replaceAll('_',' ')}</td>
+                  <td>{String(a.feasibility_status || '—').replaceAll('_',' ')}</td>
+                  <td>{a.feasibility_note || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
       </div>
     </>
   );
