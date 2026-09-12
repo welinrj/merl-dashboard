@@ -13,7 +13,7 @@ const toArr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
 
 const blankProfile = () => ({
   name: '', acronym: '', description: '', status: 'pipeline', category: '', lead_agency: '',
-  executing_agency: '', implementing_partners: [], donor: '', funding_window: '', currency: 'VUV',
+  executing_agency: '', implementing_partners_text: '', donor: '', funding_window: '', currency: 'VUV',
   budget_vuv: '', start_date: '', end_date: '', approval_date: '', project_type: '',
   primary_climate_theme: '', coverage_type: '', provinces: [], islands: [], area_councils: [], communities: [],
   project_manager: '', me_officer: '', finance_officer: '',
@@ -219,7 +219,7 @@ export default function ProjectSetup({ user }) {
       p_category: toNull(v.category?.trim()),
       p_lead_agency: toNull(v.lead_agency?.trim()),
       p_executing_agency: toNull(v.executing_agency?.trim()),
-      p_implementing_partners: toArr(v.implementing_partners),
+      p_implementing_partners: v.implementing_partners_text.split(',').map((x) => x.trim()).filter(Boolean),
       p_donor: toNull(v.donor),
       p_funding_window: toNull(v.funding_window?.trim()),
       p_currency: v.currency || 'VUV',
@@ -278,7 +278,7 @@ export default function ProjectSetup({ user }) {
             <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Institutions</h3>
             <label style={field}><span className="field-label">Lead Department / Agency</span><input className="field-input" value={v.lead_agency} onChange={set('lead_agency')} /></label>
             <label style={field}><span className="field-label">Executing Agency</span><input className="field-input" value={v.executing_agency} onChange={set('executing_agency')} /></label>
-            <label style={{ ...field, gridColumn: '1 / -1' }}><span className="field-label">Implementing Partners</span><input className="field-input" value={v.implementing_partners.join(', ')} onChange={(e) => setV((s) => ({ ...s, implementing_partners: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) }))} placeholder="Separate multiple partners with commas" /><small style={{ color: 'var(--text-3)' }}>Partners are stored separately from donors and can be filtered independently on the Overview.</small></label>
+            <label style={{ ...field, gridColumn: '1 / -1' }}><span className="field-label">Implementing Partners</span><input className="field-input" value={v.implementing_partners_text} onChange={set('implementing_partners_text')} placeholder="Separate multiple partners with commas" /><small style={{ color: 'var(--text-3)' }}>Partners are stored separately from donors and can be filtered independently on the Overview.</small></label>
             <label style={field}><span className="field-label">Project Manager</span><input className="field-input" value={v.project_manager} onChange={set('project_manager')} /></label>
             <label style={field}><span className="field-label">DoCC M&E Officer</span><input className="field-input" value={v.me_officer} onChange={set('me_officer')} /></label>
             <label style={field}><span className="field-label">Finance Officer</span><input className="field-input" value={v.finance_officer} onChange={set('finance_officer')} /></label>
