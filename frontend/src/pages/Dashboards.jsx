@@ -266,7 +266,6 @@ function Portfolio({ d, onNavigate }) {
     const avgAch = achieved.length ? Math.round(achieved.reduce((a, r) => a + Number(r.achievement_pct), 0) / achieved.length) : null;
 
     // Attention Required (§31) — clickable management intelligence.
-    const atRiskDelayed = projects.filter((p) => ['at_risk', 'delayed'].includes(p.status)).length;
     const offTrack = progress.filter((p) => p.performance_status === 'off_track').length;
     const reportsOverdue = reporting.filter((r) => r.period_end && r.period_end < today() && r.submission_status !== 'approved').length;
     const highRiskOverdue = risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
