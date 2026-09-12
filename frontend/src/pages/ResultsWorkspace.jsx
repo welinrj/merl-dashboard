@@ -7,39 +7,74 @@ import { dbErrorMessage } from '../lib/dbError';
 import { projectColor } from '../components/PublicProjectResults';
 import * as OPT from '../constants/formOptions';
 
-const empty = { projects: [], objectives: [], outcomes: [], outputs: [], indicators: [] };
-const blank = () => ({ kind: '', id: null, projectId: '', statement: '', parentId: '', name: '', unit: '', baseline: '', target: '', frequency: '' });
-const number = v => v === '' || v == null ? null : Number(v);
-const display = v => v === '' || v == null ? '—' : String(v);
-const kinds = ['objective', 'outcome', 'output', 'indicator'];
-const plural = { objective: 'objectives', outcome: 'outcomes', output: 'outputs', indicator: 'indicators' };
-const title = kind => kind.charAt(0).toUpperCase() + kind.slice(1);
+const NODE_TYPES = [
+  ['project_objective', 'Project objective'],
+  ['impact', 'Impact'],
+  ['paradigm_shift', 'Paradigm shift'],
+  ['gcf_result_area', 'GCF result area'],
+  ['component', 'Component'],
+  ['outcome', 'Outcome'],
+  ['output', 'Output'],
+  ['sub_output', 'Sub-output'],
+  ['co_benefit', 'Co-benefit'],
+];
 
-// One row represents a real framework record. Missing parents are retained rather
-// than silently hiding orphaned records. No project data or codes are fabricated.
-function buildRows(data) {
-  const projects = new Map(data.projects.map(p => [p.id, p]));
-  const objectives = new Map(data.objectives.map(r => [r.id, r]));
-  const outcomes = new Map(data.outcomes.map(r => [r.id, r]));
-  const outputs = new Map(data.outputs.map(r => [r.id, r]));
-  const rows = [];
-  const shown = { objective: new Set(), outcome: new Set(), output: new Set(), indicator: new Set() };
-  const add = (kind, record) => {
-    const project = projects.get(record.project_id);
-    if (!project) return;
-    const output = kind === 'output' ? record : kind === 'indicator' ? outputs.get(record.output_id) : null;
-    const outcome = kind === 'outcome' ? record : output ? outcomes.get(output.outcome_id) : kind === 'indicator' ? outcomes.get(record.outcome_id) : null;
-    const objective = kind === 'objective' ? record : outcome ? objectives.get(outcome.objective_id) : kind === 'indicator' ? objectives.get(record.objective_id) : null;
-    const chain = { project, objective, outcome, output, indicator: kind === 'indicator' ? record : null };
-    rows.push(chain);
-    for (const level of kinds) if (chain[level]) shown[level].add(chain[level].id);
-  };
-  for (const r of data.indicators) add('indicator', r);
-  for (const r of data.outputs) if (!shown.output.has(r.id)) add('output', r);
-  for (const r of data.outcomes) if (!shown.outcome.has(r.id)) add('outcome', r);
-  for (const r of data.objectives) if (!shown.objective.has(r.id)) add('objective', r);
-  for (const project of data.projects) if (!rows.some(r => r.project.id === project.id)) rows.push({ project, objective: null, outcome: null, output: null, indicator: null });
-  return rows.sort((a,b) => `${a.project.code || ''} ${a.project.name}`.localeCompare(`${b.project.code || ''} ${b.project.name}`) || kinds.map(k => a[k]?.code || '').join('/').localeCompare(kinds.map(k => b[k]?.code || '').join('/')));
+const empty = {
+  projects: [], nodes: [], indicators: [], targets: [], progress: [], narratives: [],
+};
+
+const blankNode = () => ({
+  mode: 'node', id: null, projectId: '', parentId: '', nodeType: 'outcome',
+  title: '', description: '', status: 'draft', sortOrder: 0,
+});
+
+const blankIndicator = () => ({
+  mode: 'indicator', id: null, projectId: '', frameworkNodeId: '', name: '', unit: '',
+  baseline: '', finalTarget: '', frequency: '', direction: 'increase',
+  aggregationMethod: 'latest', progressMethod: 'auto', meansOfVerification: '',
+  dataSource: '', collectionMethod: '', disaggregation: '', assumptions: '',
+  isQualitative: false, higherIsBetter: true, responsibleOfficer: '',
+});
+
+const asNumber = (v) => v === '' || v == null ? null : Number(v);
+const display = (v) => v === '' || v == null ? '—' : String(v);
+const pct = (v) => v == null || Number.isNaN(Number(v)) ? '—' : `${Math.round(Number(v))}%`;
+
+function nodeTypeLabel(value) {
+  return NODE_TYPES.find(([v]) => v === value)?.[1] || value || 'Result';
+}
+
+function buildNodePath(nodeId, nodesById) {
+  const path = [];
+  const seen = new Set();
+  let current = nodesById.get(nodeId);
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    path.unshift(current);
+    current = current.parent_node_id ? nodesById.get(current.parent_node_id) : null;
+  }
+  return path;
+}
+
+function latestBy(rows, key, ranker = (r) => r.created_at || r.updated_at || '') {
+  const out = new Map();
+  for (const row of rows || []) {
+    const k = row[key];
+    if (!k) continue;
+    const prev = out.get(k);
+    if (!prev || ranker(row) > ranker(prev)) out.set(k, row);
+  }
+  return out;
+}
+
+function targetLookup(targets) {
+  const map = new Map();
+  for (const row of targets || []) {
+    if (!map.has(row.indicator_id)) map.set(row.indicator_id, {});
+    const bag = map.get(row.indicator_id);
+    if (!bag[row.target_type]) bag[row.target_type] = row;
+  }
+  return map;
 }
 
 export default function ResultsWorkspace({ user }) {
@@ -49,12 +84,13 @@ export default function ResultsWorkspace({ user }) {
   const [error, setError] = useState('');
   const [permissionError, setPermissionError] = useState('');
   const [editableIds, setEditableIds] = useState(new Set());
-  const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
-  const [editing, setEditing] = useState(blank);
+  const [search, setSearch] = useState('');
+  const [editor, setEditor] = useState(null);
   const [saving, setSaving] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const reload = () => setReloadKey(n => n + 1);
+
+  const reload = () => setReloadKey((n) => n + 1);
 
   useEffect(() => {
     let alive = true;
@@ -62,126 +98,383 @@ export default function ResultsWorkspace({ user }) {
     setError('');
     Promise.all([
       localised(() => supabase.from('v_projects').select(i18nCols('id, code, acronym, name, status')).order('code')),
-      localised(() => supabase.from('v_objectives').select('*').order('code')),
-      localised(() => supabase.from('v_outcomes').select('*').order('code')),
-      localised(() => supabase.from('v_outputs').select('*').order('code')),
+      localised(() => supabase.from('v_framework_nodes').select('*').order('sort_order').order('node_code')),
       localised(() => supabase.from('v_project_indicators').select('*').order('code')),
+      supabase.from('v_indicator_targets').select('*'),
+      localised(() => supabase.from('v_indicator_progress').select('*')),
+      supabase.from('v_result_narratives').select('*'),
       supabase.rpc('list_results_framework_editable_projects'),
-    ]).then(responses => {
+    ]).then((responses) => {
       if (!alive) return;
-      const failed = responses.slice(0,5).find(r => r.error);
-      if (failed) throw failed.error;
-      const [projects, objectives, outcomes, outputs, indicators] = responses.slice(0,5).map(r => r.data || []);
-      setData({ projects, objectives, outcomes, outputs, indicators });
-      const permission = responses[5];
-      // A failed permission lookup must never grant portfolio-wide editing.
-      setEditableIds(new Set(permission.error ? [] : (permission.data || []).map(r => r.project_id)));
-      setPermissionError(permission.error ? 'Editing permissions could not be verified. The framework remains read-only.' : '');
+      const failed = responses.slice(0, 6).find((r) => r.error);
+      if (failed?.error) throw failed.error;
+      const [projects, nodes, indicators, targets, progress, narratives] = responses.slice(0, 6).map((r) => r.data || []);
+      setData({ projects, nodes, indicators, targets, progress, narratives });
+
+      const permission = responses[6];
+      setEditableIds(new Set(permission.error ? [] : (permission.data || []).map((r) => r.project_id)));
+      setPermissionError(permission.error
+        ? 'Editing permissions could not be verified. The framework remains read-only.'
+        : '');
       setLoading(false);
-    }).catch(err => { if (alive) { setError(dbErrorMessage(err)); setLoading(false); } });
+    }).catch((err) => {
+      if (alive) {
+        setError(dbErrorMessage(err));
+        setLoading(false);
+      }
+    });
     return () => { alive = false; };
   }, [i18n.resolvedLanguage, reloadKey, user?.id]);
 
-  const rows = useMemo(() => buildRows(data), [data]);
-  const filtered = useMemo(() => rows.filter(r => (projectFilter === 'all' || r.project.id === projectFilter) && (!search.trim() || [r.project.code, r.project.acronym, r.project.name, ...kinds.flatMap(k => [r[k]?.code, r[k]?.statement, r[k]?.name])].join(' ').toLowerCase().includes(search.trim().toLowerCase()))), [rows, projectFilter, search]);
-  const editorProject = data.projects.find(p => p.id === editing.projectId);
-  const canEdit = projectId => !loading && !saving && editableIds.has(projectId);
-  const records = kind => data[plural[kind]].filter(r => r.project_id === editing.projectId);
-  const parents = kind => kind === 'outcome' ? records('objective').map(r => ({ id:r.id, label:`${r.code} — ${r.statement}` })) : kind === 'output' ? records('outcome').map(r => ({ id:r.id, label:`${r.code} — ${r.statement}` })) : kind === 'indicator' ? kinds.slice(0,3).flatMap(level => records(level).map(r => ({ id:`${level}:${r.id}`, label:`${r.code} — ${r.statement}` }))) : [];
-  const openNew = (projectId, kind, parentId = '') => { if (canEdit(projectId)) setEditing({ ...blank(), projectId, kind, parentId }); };
-  const openExisting = (projectId, kind, record) => {
-    if (!canEdit(projectId) || !record || record.project_id !== projectId) return;
-    setEditing({ ...blank(), kind, id:record.id, projectId, statement:record.statement || '', name:record.name || '', unit:record.unit || '', baseline:record.baseline_value ?? '', target:record.target_value ?? '', frequency:record.frequency || '', parentId:kind === 'outcome' ? record.objective_id || '' : kind === 'output' ? record.outcome_id || '' : kind === 'indicator' ? record.output_id ? `output:${record.output_id}` : record.outcome_id ? `outcome:${record.outcome_id}` : record.objective_id ? `objective:${record.objective_id}` : '' : '' });
-  };
-  const change = (key, val) => setEditing(s => ({ ...s, [key]:val }));
-  const cancel = () => setEditing(blank());
+  const nodesById = useMemo(() => new Map(data.nodes.map((r) => [r.id, r])), [data.nodes]);
+  const targetsByIndicator = useMemo(() => targetLookup(data.targets), [data.targets]);
+  const latestProgress = useMemo(() => latestBy(data.progress, 'indicator_id', (r) => r.date_reported || r.created_at || ''), [data.progress]);
+  const narrativeByProgress = useMemo(() => new Map(data.narratives.map((r) => [r.indicator_progress_id, r])), [data.narratives]);
 
-  const saveEdit = async e => {
+  const rows = useMemo(() => {
+    const projectMap = new Map(data.projects.map((p) => [p.id, p]));
+    const indicatorRows = data.indicators.map((indicator) => {
+      const node = indicator.framework_node_id ? nodesById.get(indicator.framework_node_id) : null;
+      const progress = latestProgress.get(indicator.id) || null;
+      const narrative = progress ? narrativeByProgress.get(progress.id) || null : null;
+      return {
+        type: 'indicator',
+        project: projectMap.get(indicator.project_id),
+        node,
+        path: node ? buildNodePath(node.id, nodesById) : [],
+        indicator,
+        progress,
+        narrative,
+        targets: targetsByIndicator.get(indicator.id) || {},
+      };
+    }).filter((r) => r.project);
+
+    const linkedNodeIds = new Set(data.indicators.map((i) => i.framework_node_id).filter(Boolean));
+    const standaloneNodes = data.nodes
+      .filter((n) => !linkedNodeIds.has(n.id))
+      .map((node) => ({
+        type: 'node',
+        project: projectMap.get(node.project_id),
+        node,
+        path: buildNodePath(node.id, nodesById),
+        indicator: null,
+        progress: null,
+        narrative: null,
+        targets: {},
+      }))
+      .filter((r) => r.project);
+
+    return [...indicatorRows, ...standaloneNodes].sort((a, b) => {
+      const pa = `${a.project.code || ''} ${a.project.name}`;
+      const pb = `${b.project.code || ''} ${b.project.name}`;
+      return pa.localeCompare(pb)
+        || a.path.map((n) => `${String(n.sort_order || 0).padStart(5, '0')}-${n.node_code || n.title}`).join('/').localeCompare(
+          b.path.map((n) => `${String(n.sort_order || 0).padStart(5, '0')}-${n.node_code || n.title}`).join('/')
+        )
+        || (a.indicator?.code || '').localeCompare(b.indicator?.code || '');
+    });
+  }, [data.projects, data.nodes, data.indicators, nodesById, latestProgress, narrativeByProgress, targetsByIndicator]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (projectFilter !== 'all' && r.project.id !== projectFilter) return false;
+      if (!q) return true;
+      const haystack = [
+        r.project.code, r.project.acronym, r.project.name,
+        ...r.path.flatMap((n) => [n.node_code, n.node_type, n.title, n.description]),
+        r.indicator?.code, r.indicator?.name, r.indicator?.unit,
+        r.narrative?.progress_summary, r.narrative?.key_achievements,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [rows, projectFilter, search]);
+
+  const projectNodes = (projectId) => data.nodes.filter((n) => n.project_id === projectId);
+  const canEdit = (projectId) => !loading && !saving && editableIds.has(projectId);
+
+  const openNewNode = (projectId) => {
+    if (!canEdit(projectId)) return;
+    setEditor({ ...blankNode(), projectId });
+  };
+  const openNewIndicator = (projectId) => {
+    if (!canEdit(projectId)) return;
+    setEditor({ ...blankIndicator(), projectId });
+  };
+  const editNode = (node) => {
+    if (!canEdit(node.project_id)) return;
+    setEditor({
+      ...blankNode(), id: node.id, projectId: node.project_id,
+      parentId: node.parent_node_id || '', nodeType: node.node_type,
+      title: node.title || '', description: node.description || '',
+      status: node.status || 'draft', sortOrder: node.sort_order || 0,
+    });
+  };
+  const editIndicator = (indicator) => {
+    if (!canEdit(indicator.project_id)) return;
+    setEditor({
+      ...blankIndicator(), id: indicator.id, projectId: indicator.project_id,
+      frameworkNodeId: indicator.framework_node_id || '', name: indicator.name || '',
+      unit: indicator.unit || '', baseline: indicator.baseline_value ?? '',
+      finalTarget: indicator.target_value ?? '', frequency: indicator.official_reporting_frequency || indicator.frequency || '',
+      direction: indicator.direction || 'increase', aggregationMethod: indicator.aggregation_method || 'latest',
+      progressMethod: indicator.progress_method || 'auto', meansOfVerification: indicator.means_of_verification || '',
+      dataSource: indicator.data_source || '', collectionMethod: indicator.collection_method || '',
+      disaggregation: indicator.disaggregation || '', assumptions: indicator.assumptions || '',
+      isQualitative: Boolean(indicator.is_qualitative), higherIsBetter: indicator.higher_is_better !== false,
+      responsibleOfficer: indicator.responsible_officer || '',
+    });
+  };
+
+  const saveEditor = async (e) => {
     e.preventDefault();
-    if (saving || !editableIds.has(editing.projectId) || !kinds.includes(editing.kind)) return;
-    const current = editing.id ? data[plural[editing.kind]].find(r => r.id === editing.id && r.project_id === editing.projectId) : null;
-    if (editing.id && !current) { toast.error('The selected record is no longer available. Refresh and try again.'); return; }
-    const parent = editing.parentId;
-    if (!editing.id && ['outcome','output'].includes(editing.kind) && !parent) { toast.error('Select a parent record.'); return; }
-    if (!editing.id && editing.kind === 'indicator' && !parent) { toast.error('Select the result level for this indicator.'); return; }
-    if (parent) {
-      const [level, id] = editing.kind === 'indicator' ? parent.split(':') : [editing.kind === 'outcome' ? 'objective' : 'outcome', parent];
-      if (!data[plural[level]]?.some(r => r.id === id && r.project_id === editing.projectId)) { toast.error('Select a parent from the same project.'); return; }
-    }
-    if (editing.kind === 'indicator' && [editing.baseline, editing.target].some(v => v !== '' && !Number.isFinite(Number(v)))) { toast.error('Baseline and target must be valid numbers.'); return; }
+    if (!editor || saving || !editableIds.has(editor.projectId)) return;
     setSaving(true);
     try {
       let result;
-      if (editing.kind === 'objective') result = current
-        ? await supabase.rpc('update_objective', { p_id:current.id, p_statement:editing.statement, p_climate_theme:current.climate_theme ?? null, p_expected_outcome:current.expected_outcome ?? null, p_notes:current.notes ?? null, p_status:'draft' })
-        : await supabase.rpc('create_objective', { p_project_id:editing.projectId, p_statement:editing.statement, p_climate_theme:null, p_expected_outcome:null, p_notes:null });
-      else if (editing.kind === 'outcome') result = current
-        ? await supabase.rpc('update_outcome', { p_id:current.id, p_statement:editing.statement, p_responsible_officer_id:current.responsible_officer_id ?? null, p_status:'draft' })
-        : await supabase.rpc('create_outcome', { p_objective_id:parent, p_statement:editing.statement, p_responsible_officer_id:null });
-      else if (editing.kind === 'output') result = current
-        ? await supabase.rpc('update_output', { p_id:current.id, p_statement:editing.statement, p_responsible_officer_id:current.responsible_officer_id ?? null, p_status:'draft' })
-        : await supabase.rpc('create_output', { p_outcome_id:parent, p_statement:editing.statement, p_responsible_officer_id:null });
-      else {
-        const [level, linkedId] = parent ? parent.split(':') : [null,null];
-        result = await supabase.rpc('upsert_project_indicator', {
-          p_id:editing.id, p_project_id:editing.projectId, p_name:editing.name, p_unit:editing.unit || null,
-          p_baseline_value:number(editing.baseline), p_target_value:number(editing.target),
-          p_means_of_verification:current?.means_of_verification ?? null, p_frequency:editing.frequency || null,
-          p_indicator_level:current?.indicator_level ?? null, p_definition:current?.definition ?? null,
-          p_baseline_year:current?.baseline_year ?? null, p_target_date:current?.target_date ?? null,
-          p_data_source:current?.data_source ?? null, p_collection_method:current?.collection_method ?? null,
-          p_responsible_officer_id:current?.responsible_officer_id ?? null, p_disaggregation:current?.disaggregation ?? null,
-          p_verification_method:current?.verification_method ?? null, p_assumptions:current?.assumptions ?? null,
-          p_objective_id:level === 'objective' ? linkedId : null, p_outcome_id:level === 'outcome' ? linkedId : null,
-          p_output_id:level === 'output' ? linkedId : null, p_is_qualitative:current?.is_qualitative ?? false,
-          p_higher_is_better:current?.higher_is_better ?? true, p_responsible_officer:current?.responsible_officer ?? null,
+      if (editor.mode === 'node') {
+        result = await supabase.rpc('upsert_framework_node', {
+          p_id: editor.id,
+          p_project_id: editor.projectId,
+          p_parent_node_id: editor.parentId || null,
+          p_node_type: editor.nodeType,
+          p_title: editor.title,
+          p_description: editor.description || null,
+          p_status: editor.status || 'draft',
+          p_sort_order: Number(editor.sortOrder) || 0,
+        });
+      } else {
+        if (!editor.frameworkNodeId) throw new Error('Select the result node this indicator belongs to.');
+        result = await supabase.rpc('upsert_project_indicator_v2', {
+          p_id: editor.id,
+          p_project_id: editor.projectId,
+          p_framework_node_id: editor.frameworkNodeId,
+          p_name: editor.name,
+          p_unit: editor.unit || null,
+          p_baseline_value: asNumber(editor.baseline),
+          p_final_target: asNumber(editor.finalTarget),
+          p_frequency: editor.frequency || null,
+          p_direction: editor.direction,
+          p_aggregation_method: editor.aggregationMethod,
+          p_progress_method: editor.progressMethod,
+          p_means_of_verification: editor.meansOfVerification || null,
+          p_data_source: editor.dataSource || null,
+          p_collection_method: editor.collectionMethod || null,
+          p_disaggregation: editor.disaggregation || null,
+          p_assumptions: editor.assumptions || null,
+          p_is_qualitative: editor.isQualitative,
+          p_higher_is_better: editor.higherIsBetter,
+          p_responsible_officer: editor.responsibleOfficer || null,
         });
       }
       if (result?.error) throw result.error;
-      toast.success('Results framework saved.'); cancel(); reload();
-    } catch (err) { toast.error(dbErrorMessage(err)); } finally { setSaving(false); }
+      toast.success(editor.mode === 'node' ? 'Result node saved.' : 'Indicator saved.');
+      setEditor(null);
+      reload();
+    } catch (err) {
+      toast.error(dbErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const remove = async (projectId, kind, record) => {
-    if (saving || !editableIds.has(projectId) || record.project_id !== projectId) return;
-    const children = kind === 'objective' ? data.outcomes.some(r => r.objective_id === record.id) || data.indicators.some(r => r.objective_id === record.id) : kind === 'outcome' ? data.outputs.some(r => r.outcome_id === record.id) || data.indicators.some(r => r.outcome_id === record.id) : kind === 'output' ? data.indicators.some(r => r.output_id === record.id) : false;
-    if (children) { toast.error('This record has linked children. Remove or reassign those records first.'); return; }
-    if (!window.confirm(`Delete ${record.code || title(kind)}? This cannot be undone.`)) return;
+  const removeNode = async (node) => {
+    if (!canEdit(node.project_id)) return;
+    if (!window.confirm(`Delete ${node.node_code || node.title}? Linked children or indicators must be removed first.`)) return;
     setSaving(true);
     try {
-      const rpc = kind === 'indicator' ? 'delete_project_indicator' : `delete_${kind}`;
-      const { error:err } = await supabase.rpc(rpc, { p_id:record.id });
+      const { error: err } = await supabase.rpc('delete_framework_node', { p_id: node.id });
       if (err) throw err;
-      toast.success(`${title(kind)} deleted.`); cancel(); reload();
-    } catch (err) { toast.error(dbErrorMessage(err)); } finally { setSaving(false); }
+      toast.success('Result node deleted.');
+      reload();
+    } catch (err) {
+      toast.error(dbErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const rowActions = (projectId, kind, record) => canEdit(projectId) ? <span className="rf-row-actions"><button type="button" onClick={() => openExisting(projectId,kind,record)} aria-label={`Edit ${kind} ${record.code || ''}`}>Edit</button><button type="button" className="danger" onClick={() => remove(projectId,kind,record)} aria-label={`Delete ${kind} ${record.code || ''}`}>Delete</button></span> : null;
-  const cell = (row, kind) => <td className="rf-level">{row[kind] ? <><span className="rf-code">{row[kind].code}</span><div>{row[kind].statement || row[kind].name}</div>{rowActions(row.project.id,kind,row[kind])}</> : '—'}</td>;
-  const editor = editing.kind && editorProject && editableIds.has(editing.projectId) ? <form className="rf-edit-form" onSubmit={saveEdit}>
-    <h3>{editing.id ? 'Edit' : 'Add'} {editing.kind} · {editorProject.name}</h3>
-    <p className="rf-hint">Changes to the framework are saved as drafts for the normal review process. Project codes are generated automatically.</p>
-    <div className="rf-edit-form-grid">
-      {editing.kind !== 'indicator' ? <label className="rf-form-full">Statement<textarea className="field-input" rows={3} value={editing.statement} onChange={e => change('statement',e.target.value)} required /></label> : <>
-        <label className="rf-form-full">Indicator name<input className="field-input" value={editing.name} onChange={e => change('name',e.target.value)} required /></label>
-        <label>Baseline<input className="field-input" type="number" step="any" value={editing.baseline} onChange={e => change('baseline',e.target.value)} /></label>
-        <label>Target<input className="field-input" type="number" step="any" value={editing.target} onChange={e => change('target',e.target.value)} /></label>
-        <label>Unit<input className="field-input" value={editing.unit} onChange={e => change('unit',e.target.value)} /></label>
-        <label>Reporting frequency<select className="field-input" value={editing.frequency} onChange={e => change('frequency',e.target.value)}><option value="">Select</option>{OPT.REPORTING_FREQUENCY.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
-      </>}
-      {(editing.kind === 'indicator' || (editing.kind !== 'objective' && !editing.id)) && <label className="rf-form-full">Parent result<select className="field-input" value={editing.parentId} onChange={e => change('parentId',e.target.value)} required><option value="">Select a parent</option>{parents(editing.kind).map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>}
-    </div>
-    <div className="rf-form-actions"><button type="button" className="btn btn-secondary" disabled={saving} onClick={cancel}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></div>
-  </form> : null;
+  const removeIndicator = async (indicator) => {
+    if (!canEdit(indicator.project_id)) return;
+    if (!window.confirm(`Delete ${indicator.code || indicator.name}? This cannot be undone.`)) return;
+    setSaving(true);
+    try {
+      const { error: err } = await supabase.rpc('delete_project_indicator', { p_id: indicator.id });
+      if (err) throw err;
+      toast.success('Indicator deleted.');
+      reload();
+    } catch (err) {
+      toast.error(dbErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  return <div className="page-pad rf-page">
-    <style>{`.rf-page{max-width:none;margin:0 auto}.rf-title{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}.rf-title h1{margin:0;font-size:1.7rem}.rf-title p,.rf-hint{color:var(--text-2);font-size:.78rem;line-height:1.5}.rf-directory,.rf-tools,.rf-editor{border:1px solid var(--border);border-radius:12px;background:var(--white);padding:.9rem;margin-bottom:.85rem}.rf-directory-head,.rf-editor-head{display:flex;justify-content:space-between;align-items:center;gap:.8rem;flex-wrap:wrap}.rf-directory-head h2,.rf-editor-head h2{margin:0;font-size:.95rem}.rf-project-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.5rem;margin-top:.7rem}.rf-project-card{border:1px solid var(--project-ink);border-radius:9px;padding:.65rem;background:var(--project-bg);color:var(--project-ink);display:flex;justify-content:space-between;gap:.5rem;text-align:left;font:inherit}.rf-project-card strong{font-size:.78rem}.rf-project-card small{display:block;font-size:.66rem;margin-top:.2rem}.rf-edit-badge{font-size:.65rem;font-weight:700}.rf-stats{display:flex;gap:.5rem}.rf-stat{padding:.5rem .8rem;border:1px solid var(--border);border-radius:9px}.rf-stat strong{display:block}.rf-stat span{font-size:.68rem;color:var(--text-2)}.rf-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,350px) auto;gap:.65rem;align-items:end}.rf-tools label,.rf-edit-form label{display:grid;gap:.25rem;font-size:.72rem;font-weight:700}.rf-editor{background:var(--surface-1)}.rf-editor-head{margin-bottom:.65rem}.rf-editor-select{min-width:250px;max-width:520px}.rf-add-actions,.rf-row-actions,.rf-form-actions{display:flex;gap:.35rem;flex-wrap:wrap}.rf-add-actions{margin:.7rem 0}.rf-add-actions button,.rf-row-actions button{border:1px solid var(--border);border-radius:6px;background:var(--white);padding:.3rem .5rem;font:inherit;font-size:.7rem;cursor:pointer}.rf-row-actions{margin-top:.4rem}.rf-row-actions button.danger{color:var(--red-600,#b91c1c)}.rf-row-actions button:focus-visible,.rf-project-card:focus-visible{outline:3px solid var(--project-ink,#2563eb);outline-offset:2px}.rf-edit-form{padding:.8rem;border:1px solid var(--border);border-radius:10px;background:var(--white)}.rf-edit-form h3{margin:0 0 .5rem;font-size:.9rem}.rf-edit-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.rf-form-full{grid-column:1/-1}.rf-form-actions{justify-content:flex-end;margin-top:.7rem}.rf-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--white);max-height:calc(100vh - 300px)}.rf-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1450px;font-size:.78rem}.rf-table th{position:sticky;top:0;z-index:3;background:var(--surface-1);text-align:left;padding:.65rem;border-bottom:1px solid var(--border);font-size:.68rem;text-transform:uppercase}.rf-table td{vertical-align:top;padding:.65rem;border-bottom:1px solid var(--border);border-right:1px solid var(--border);line-height:1.4}.rf-table td:last-child{border-right:0}.rf-project{min-width:230px}.rf-level{min-width:245px}.rf-num{min-width:85px;text-align:right}.rf-small{min-width:110px}.rf-code{display:block;font-family:var(--font-mono);font-size:.68rem;font-weight:700;margin-bottom:.2rem;color:var(--green-700)}.rf-project-mark{border-left:5px solid var(--project-ink);background:var(--project-bg);padding:.45rem .6rem;border-radius:5px;color:var(--project-ink)}.rf-project-mark strong{display:block}.rf-empty{padding:1.5rem;color:var(--text-2);text-align:center}@media(max-width:760px){.rf-tools,.rf-edit-form-grid{grid-template-columns:1fr}.rf-form-full{grid-column:1}.rf-table-wrap{max-height:none}.rf-editor-select{min-width:0;width:100%}}`}</style>
-    <div className="rf-title"><div><h1>Results Framework</h1><p>View project objectives, outcomes, outputs and indicators. Authorised users can add, edit and delete records directly from the table.</p></div><div className="rf-stats"><div className="rf-stat"><strong>{new Set(filtered.map(r => r.project.id)).size}</strong><span>Projects shown</span></div><div className="rf-stat"><strong>{filtered.filter(r => r.indicator).length}</strong><span>Indicator rows</span></div></div></div>
-    <section className="rf-directory"><div className="rf-directory-head"><h2>All Registered Projects</h2><span>{data.projects.length} projects</span></div><div className="rf-project-grid">{data.projects.map(p => <button type="button" key={p.id} className="rf-project-card" style={projectColor(p)} onClick={() => { setProjectFilter(p.id); if (canEdit(p.id)) setEditing({ ...blank(), projectId:p.id }); }}><span><strong>{p.name}</strong><small>{p.code || p.acronym || 'No project code'}</small></span>{editableIds.has(p.id) && <span className="rf-edit-badge">Editable</span>}</button>)}</div></section>
-    {permissionError && <p role="alert" className="rf-hint">{permissionError}</p>}
-    {editableIds.size > 0 && <section className="rf-editor"><div className="rf-editor-head"><div><h2>Edit Results Framework</h2><p className="rf-hint">Select an authorised project, then add a record or use Edit/Delete in the table. Project registration fields remain in Project Setup.</p></div><select className="field-input rf-editor-select" value={editing.projectId} onChange={e => setEditing({ ...blank(), projectId:e.target.value })}><option value="">Select a project to edit</option>{data.projects.filter(p => editableIds.has(p.id)).map(p => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}</select></div>{editorProject && <div className="rf-add-actions">{kinds.map(kind => <button type="button" key={kind} disabled={saving} onClick={() => openNew(editorProject.id,kind)}>+ Add {kind}</button>)}</div>}{editor}</section>}
-    <div className="rf-tools"><label>Search framework<input className="field-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Project, objective, outcome, output or indicator" /></label><label>Project<select className="field-input" value={projectFilter} onChange={e => setProjectFilter(e.target.value)}><option value="all">All projects</option>{data.projects.map(p => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}</select></label><button type="button" className="btn btn-secondary" onClick={() => { setSearch(''); setProjectFilter('all'); }}>Reset</button></div>
-    {loading && <div className="rf-empty" role="status">Loading results framework…</div>}{error && <div className="rf-empty" role="alert">{error}</div>}
-    {!loading && !error && <div className="rf-table-wrap"><table className="rf-table"><thead><tr><th>Project</th><th>Objective</th><th>Outcome</th><th>Output</th><th>Indicator</th><th>Baseline</th><th>Target</th><th>Unit</th><th>Reporting Frequency</th></tr></thead><tbody>{filtered.map((r,idx) => <tr key={`${r.project.id}-${r.indicator?.id || r.output?.id || r.outcome?.id || r.objective?.id || idx}`}><td className="rf-project"><div className="rf-project-mark" style={projectColor(r.project)}><span className="rf-code">{r.project.code || r.project.acronym || 'NO CODE'}</span><strong>{r.project.name}</strong></div>{canEdit(r.project.id) && <div className="rf-row-actions">{kinds.map(kind => <button type="button" key={kind} onClick={() => openNew(r.project.id,kind,r[kind === 'outcome' ? 'objective' : kind === 'output' ? 'outcome' : 'output']?.id ? kind === 'indicator' ? `output:${r.output.id}` : kind === 'outcome' ? r.objective.id : r.outcome.id : '')}>+ {title(kind)}</button>)}</div>}</td>{cell(r,'objective')}{cell(r,'outcome')}{cell(r,'output')}<td className="rf-level">{r.indicator ? <><span className="rf-code">{r.indicator.code}</span><div>{r.indicator.name}</div>{rowActions(r.project.id,'indicator',r.indicator)}</> : '—'}</td><td className="rf-num">{display(r.indicator?.baseline_value)}</td><td className="rf-num">{display(r.indicator?.target_value)}</td><td className="rf-small">{display(r.indicator?.unit)}</td><td className="rf-small">{r.indicator?.frequency ? OPT.labelOf(OPT.REPORTING_FREQUENCY,r.indicator.frequency) : '—'}</td></tr>)}</tbody></table>{!filtered.length && <div className="rf-empty">No results-framework rows match the current filters.</div>}</div>}
+  const status = (row) => {
+    if (!row.progress) return <span className="rf2-pill neutral">No data</span>;
+    const performance = row.progress.performance_status || 'no_data';
+    const schedule = row.progress.schedule_status || 'on_schedule';
+    return <div className="rf2-status-stack">
+      <span className={`rf2-pill ${performance}`}>{performance.replaceAll('_', ' ')}</span>
+      {schedule === 'delayed' && <span className="rf2-pill delayed">Delayed</span>}
+    </div>;
+  };
+
+  return <div className="page-pad rf2-page">
+    <ResultsStyles />
+
+    <header className="rf2-header">
+      <div>
+        <h1>Results Framework</h1>
+        <p>Official project frameworks are preserved while MERL standardises targets, actuals, progress, narratives and review status.</p>
+      </div>
+      <div className="rf2-summary">
+        <div><b>{new Set(filtered.map((r) => r.project.id)).size}</b><span>Projects shown</span></div>
+        <div><b>{filtered.filter((r) => r.indicator).length}</b><span>Indicators shown</span></div>
+      </div>
+    </header>
+
+    <section className="rf2-tools">
+      <label>Project
+        <select className="field-input" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+          <option value="all">All projects</option>
+          {data.projects.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
+        </select>
+      </label>
+      <label>Search framework
+        <input className="field-input" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Result, indicator, narrative…" />
+      </label>
+      <button type="button" className="btn btn-secondary" onClick={() => { setProjectFilter('all'); setSearch(''); }}>Reset</button>
+    </section>
+
+    {permissionError && <div className="rf2-note" role="alert">{permissionError}</div>}
+
+    {editableIds.size > 0 && <section className="rf2-editor-shell">
+      <div className="rf2-editor-head">
+        <div><b>Framework editor</b><span>Use flexible result nodes for VCAP2, VCCRP and future project frameworks.</span></div>
+        <select className="field-input" value={editor?.projectId || ''} onChange={(e) => setEditor(e.target.value ? { ...blankNode(), projectId: e.target.value } : null)}>
+          <option value="">Select project to edit</option>
+          {data.projects.filter((p) => editableIds.has(p.id)).map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
+        </select>
+      </div>
+      {editor?.projectId && <div className="rf2-editor-actions">
+        <button type="button" onClick={() => openNewNode(editor.projectId)}>+ Result node</button>
+        <button type="button" onClick={() => openNewIndicator(editor.projectId)}>+ Indicator</button>
+      </div>}
+      {editor && <EditorForm editor={editor} setEditor={setEditor} nodes={projectNodes(editor.projectId)} saving={saving} onSubmit={saveEditor} onCancel={() => setEditor(null)} />}
+    </section>}
+
+    {loading && <div className="rf2-empty" role="status">Loading results framework…</div>}
+    {error && <div className="rf2-empty" role="alert">{error}</div>}
+
+    {!loading && !error && <div className="rf2-table-wrap">
+      <table className="rf2-table">
+        <thead><tr>
+          <th>Project</th><th>Results pathway</th><th>Indicator</th>
+          <th>Baseline</th><th>Mid-term</th><th>Final target</th>
+          <th>Latest actual</th><th>Progress</th><th>Status</th>
+          <th>Narrative</th><th>Reporting</th>
+        </tr></thead>
+        <tbody>
+          {filtered.map((row, idx) => {
+            const baseline = row.targets.baseline?.numeric_value ?? row.indicator?.baseline_value;
+            const mid = row.targets.mid_term?.numeric_value ?? row.targets.mid_term?.text_value;
+            const finalTarget = row.targets.final?.numeric_value ?? row.indicator?.target_value;
+            const actual = row.progress?.cumulative_actual ?? row.progress?.actual_this_period;
+            const narrative = row.narrative?.progress_summary || row.progress?.narrative || '';
+            return <tr key={row.indicator?.id || row.node?.id || idx}>
+              <td className="rf2-project">
+                <div className="rf2-project-mark" style={projectColor(row.project)}>
+                  <small>{row.project.code || row.project.acronym || 'NO CODE'}</small>
+                  <b>{row.project.name}</b>
+                </div>
+              </td>
+              <td className="rf2-path">
+                {row.path.length ? row.path.map((node) => <div key={node.id} className="rf2-path-row">
+                  <span>{nodeTypeLabel(node.node_type)}</span>
+                  <b>{node.node_code || ''}</b>
+                  <p>{node.title}</p>
+                  {canEdit(row.project.id) && node.id === row.node?.id && <span className="rf2-inline-actions">
+                    <button type="button" onClick={() => editNode(node)}>Edit</button>
+                    <button type="button" className="danger" onClick={() => removeNode(node)}>Delete</button>
+                  </span>}
+                </div>) : <span className="rf2-muted">Unlinked</span>}
+              </td>
+              <td className="rf2-indicator">
+                {row.indicator ? <>
+                  <small>{row.indicator.code}</small><b>{row.indicator.name}</b>
+                  {row.indicator.unit && <span>{row.indicator.unit}</span>}
+                  {canEdit(row.project.id) && <span className="rf2-inline-actions">
+                    <button type="button" onClick={() => editIndicator(row.indicator)}>Edit</button>
+                    <button type="button" className="danger" onClick={() => removeIndicator(row.indicator)}>Delete</button>
+                  </span>}
+                </> : <span className="rf2-muted">No indicator attached</span>}
+              </td>
+              <td className="rf2-num">{row.indicator ? display(baseline) : '—'}</td>
+              <td className="rf2-num">{row.indicator ? display(mid) : '—'}</td>
+              <td className="rf2-num">{row.indicator ? display(finalTarget) : '—'}</td>
+              <td className="rf2-num">{row.indicator ? display(actual) : '—'}</td>
+              <td className="rf2-num">{row.indicator ? pct(row.progress?.achievement_pct) : '—'}</td>
+              <td>{row.indicator ? status(row) : <span className="rf2-pill neutral">{row.node?.status || 'draft'}</span>}</td>
+              <td className="rf2-narrative">{narrative || '—'}{row.narrative?.challenges && <details><summary>Challenges</summary><p>{row.narrative.challenges}</p></details>}</td>
+              <td className="rf2-small">{row.indicator?.official_reporting_frequency || row.indicator?.frequency
+                ? OPT.labelOf(OPT.REPORTING_FREQUENCY, row.indicator.official_reporting_frequency || row.indicator.frequency)
+                : '—'}</td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+      {!filtered.length && <div className="rf2-empty">No results-framework rows match the current filters.</div>}
+    </div>}
   </div>;
+}
+
+function EditorForm({ editor, setEditor, nodes, saving, onSubmit, onCancel }) {
+  const change = (key, value) => setEditor((s) => ({ ...s, [key]: value }));
+  const sortedNodes = [...nodes].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.node_code || '').localeCompare(b.node_code || ''));
+  return <form className="rf2-form" onSubmit={onSubmit}>
+    <h3>{editor.id ? 'Edit' : 'Add'} {editor.mode === 'node' ? 'result node' : 'indicator'}</h3>
+    {editor.mode === 'node' ? <div className="rf2-form-grid">
+      <label>Result type<select className="field-input" value={editor.nodeType} onChange={(e) => change('nodeType', e.target.value)}>{NODE_TYPES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+      <label>Parent result<select className="field-input" value={editor.parentId} onChange={(e) => change('parentId', e.target.value)}><option value="">Top level</option>{sortedNodes.filter((n) => n.id !== editor.id).map((n) => <option key={n.id} value={n.id}>{n.node_code ? `${n.node_code} — ` : ''}{n.title}</option>)}</select></label>
+      <label className="full">Title<input className="field-input" value={editor.title} onChange={(e) => change('title', e.target.value)} required /></label>
+      <label className="full">Description<textarea className="field-input" rows={3} value={editor.description} onChange={(e) => change('description', e.target.value)} /></label>
+      <label>Sort order<input className="field-input" type="number" value={editor.sortOrder} onChange={(e) => change('sortOrder', e.target.value)} /></label>
+      <label>Status<select className="field-input" value={editor.status} onChange={(e) => change('status', e.target.value)}><option value="draft">Draft</option><option value="approved">Approved</option><option value="archived">Archived</option></select></label>
+    </div> : <div className="rf2-form-grid">
+      <label className="full">Result node<select className="field-input" value={editor.frameworkNodeId} onChange={(e) => change('frameworkNodeId', e.target.value)} required><option value="">Select result node</option>{sortedNodes.map((n) => <option key={n.id} value={n.id}>{nodeTypeLabel(n.node_type)} · {n.node_code ? `${n.node_code} — ` : ''}{n.title}</option>)}</select></label>
+      <label className="full">Indicator name<input className="field-input" value={editor.name} onChange={(e) => change('name', e.target.value)} required /></label>
+      <label>Baseline<input className="field-input" type="number" step="any" value={editor.baseline} onChange={(e) => change('baseline', e.target.value)} /></label>
+      <label>Final target<input className="field-input" type="number" step="any" value={editor.finalTarget} onChange={(e) => change('finalTarget', e.target.value)} /></label>
+      <label>Unit<input className="field-input" value={editor.unit} onChange={(e) => change('unit', e.target.value)} /></label>
+      <label>Official reporting frequency<select className="field-input" value={editor.frequency} onChange={(e) => change('frequency', e.target.value)}><option value="">Select</option>{OPT.REPORTING_FREQUENCY.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
+      <label>Direction<select className="field-input" value={editor.direction} onChange={(e) => change('direction', e.target.value)}><option value="increase">Increase</option><option value="decrease">Decrease</option><option value="maintain">Maintain</option><option value="milestone">Milestone</option><option value="qualitative">Qualitative</option></select></label>
+      <label>Aggregation<select className="field-input" value={editor.aggregationMethod} onChange={(e) => change('aggregationMethod', e.target.value)}><option value="latest">Latest cumulative</option><option value="sum">Sum</option><option value="average">Average</option><option value="minimum">Minimum</option><option value="maximum">Maximum</option><option value="weighted_average">Weighted average</option><option value="percentage">Percentage</option><option value="milestone">Milestone</option><option value="qualitative">Qualitative</option></select></label>
+      <label className="full">Means of verification<textarea className="field-input" rows={2} value={editor.meansOfVerification} onChange={(e) => change('meansOfVerification', e.target.value)} /></label>
+      <label>Data source<input className="field-input" value={editor.dataSource} onChange={(e) => change('dataSource', e.target.value)} /></label>
+      <label>Collection method<input className="field-input" value={editor.collectionMethod} onChange={(e) => change('collectionMethod', e.target.value)} /></label>
+      <label className="full">Disaggregation<input className="field-input" value={editor.disaggregation} onChange={(e) => change('disaggregation', e.target.value)} placeholder="e.g. sex, age, disability, vulnerability" /></label>
+      <label className="full">Assumptions / notes<textarea className="field-input" rows={2} value={editor.assumptions} onChange={(e) => change('assumptions', e.target.value)} /></label>
+    </div>}
+    <div className="rf2-form-actions"><button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></div>
+  </form>;
+}
+
+function ResultsStyles() {
+  return <style>{`
+    .rf2-page{max-width:none}.rf2-header{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:1rem}
+    .rf2-header h1{margin:0;font-size:1.7rem}.rf2-header p,.rf2-note{color:var(--text-2);font-size:.78rem;line-height:1.5}
+    .rf2-summary{display:flex;gap:.55rem}.rf2-summary div{border:1px solid var(--border);border-radius:10px;background:var(--white);padding:.55rem .85rem}.rf2-summary b{display:block;font-size:1rem}.rf2-summary span{font-size:.66rem;color:var(--text-2)}
+    .rf2-tools{display:grid;grid-template-columns:minmax(220px,360px) minmax(260px,1fr) auto;gap:.65rem;align-items:end;border:1px solid var(--border);border-radius:12px;background:var(--white);padding:.85rem;margin-bottom:.85rem}.rf2-tools label,.rf2-form label{display:grid;gap:.25rem;font-size:.72rem;font-weight:700}
+    .rf2-editor-shell{border:1px solid var(--border);border-radius:12px;background:var(--surface-1);padding:.85rem;margin-bottom:.85rem}.rf2-editor-head{display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}.rf2-editor-head>div{display:grid;gap:.2rem}.rf2-editor-head span{font-size:.7rem;color:var(--text-2)}.rf2-editor-head select{min-width:300px}.rf2-editor-actions{display:flex;gap:.45rem;margin-top:.65rem}.rf2-editor-actions button,.rf2-inline-actions button{border:1px solid var(--border);border-radius:6px;background:var(--white);padding:.3rem .5rem;font:inherit;font-size:.68rem;cursor:pointer}.rf2-inline-actions button.danger{color:#b91c1c}
+    .rf2-form{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-top:.7rem}.rf2-form h3{margin:0 0 .65rem;font-size:.9rem}.rf2-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.rf2-form-grid .full{grid-column:1/-1}.rf2-form-actions{display:flex;justify-content:flex-end;gap:.45rem;margin-top:.7rem}
+    .rf2-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--white);max-height:calc(100vh - 260px)}.rf2-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1900px;font-size:.75rem}.rf2-table th{position:sticky;top:0;z-index:4;background:var(--surface-1);padding:.65rem;text-align:left;border-bottom:1px solid var(--border);font-size:.66rem;text-transform:uppercase;letter-spacing:.03em}.rf2-table td{vertical-align:top;padding:.65rem;border-bottom:1px solid var(--border);border-right:1px solid var(--border);line-height:1.38}.rf2-table td:last-child{border-right:0}
+    .rf2-project{min-width:225px}.rf2-project-mark{border-left:5px solid var(--project-ink);background:var(--project-bg);padding:.48rem .6rem;border-radius:6px;color:var(--project-ink)}.rf2-project-mark small,.rf2-indicator small{display:block;font-family:var(--font-mono);font-size:.65rem;font-weight:700}.rf2-project-mark b{display:block;margin-top:.15rem}
+    .rf2-path{min-width:390px}.rf2-path-row{display:grid;grid-template-columns:95px auto 1fr;gap:.35rem;align-items:start;padding:.28rem 0;border-bottom:1px dashed var(--border)}.rf2-path-row:last-child{border-bottom:0}.rf2-path-row>span:first-child{font-size:.62rem;text-transform:uppercase;color:var(--text-2)}.rf2-path-row>b{font-family:var(--font-mono);font-size:.65rem;color:var(--green-700)}.rf2-path-row p{margin:0}.rf2-path-row .rf2-inline-actions{grid-column:3}
+    .rf2-indicator{min-width:300px}.rf2-indicator b{display:block;margin:.1rem 0}.rf2-indicator>span:not(.rf2-inline-actions):not(.rf2-muted){display:block;color:var(--text-2);font-size:.68rem}.rf2-inline-actions{display:flex;gap:.3rem;margin-top:.35rem}
+    .rf2-num{min-width:90px;text-align:right;font-variant-numeric:tabular-nums}.rf2-small{min-width:120px}.rf2-narrative{min-width:300px;max-width:420px;white-space:normal}.rf2-narrative details{margin-top:.35rem}.rf2-narrative summary{cursor:pointer;font-weight:700;color:var(--text-2)}.rf2-narrative p{margin:.25rem 0 0}
+    .rf2-status-stack{display:grid;gap:.25rem}.rf2-pill{display:inline-flex;width:max-content;border-radius:999px;padding:.2rem .45rem;font-size:.62rem;font-weight:800;text-transform:capitalize;background:#e5e7eb;color:#374151}.rf2-pill.on_track{background:#dcfce7;color:#166534}.rf2-pill.attention_required,.rf2-pill.attention{background:#fef3c7;color:#92400e}.rf2-pill.off_track,.rf2-pill.at_risk{background:#ffedd5;color:#9a3412}.rf2-pill.delayed{background:#fee2e2;color:#991b1b}.rf2-pill.completed,.rf2-pill.approved{background:#ede9fe;color:#5b21b6}.rf2-pill.neutral{background:#f3f4f6;color:#6b7280}
+    .rf2-muted{color:var(--text-2);font-style:italic}.rf2-empty{padding:1.3rem;text-align:center;color:var(--text-2)}
+    @media(max-width:800px){.rf2-tools,.rf2-form-grid{grid-template-columns:1fr}.rf2-form-grid .full{grid-column:1}.rf2-editor-head select{min-width:0;width:100%}.rf2-table-wrap{max-height:none}}
+  `}</style>;
 }
