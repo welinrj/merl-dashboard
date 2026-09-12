@@ -1,5 +1,4 @@
 import { supabase } from '../supabaseClient';
-import { achievementPct, variance } from './docc/reporting';
 
 const toNull = (value) => value === '' || value === undefined ? null : value;
 const toNum = (value) => value === '' || value == null ? null : Number(value);
@@ -18,11 +17,10 @@ export async function saveModuleRecord({ module, values, id = null, projectId, r
     params[`p_${field.name}`] = field.type === 'number' ? toNum(raw)
       : field.type === 'checkbox' ? !!raw : toNull(raw);
   }
-  if (module.key === 'indicator_progress') {
-    const indicator = indicators.find((item) => item.id === values.indicator_id);
-    params.p_achievement_pct = achievementPct(values.cumulative_actual, indicator?.target_value);
-    params.p_variance = variance(values.actual_this_period, values.period_target);
-  }
-  const { error } = await supabase.rpc(module.rpc, params);
+  // Indicator achievement, variance and performance status are calculated in
+  // the database RPC. The client sends source values only, so reports, cards
+  // and exports cannot drift because one browser used a different formula.
+  const { data, error } = await supabase.rpc(module.rpc, params);
   if (error) throw error;
+  return data;
 }
