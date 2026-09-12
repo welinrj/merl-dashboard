@@ -1,7 +1,7 @@
 // Shared filters and operational status classification for the MERL dashboard.
 import { createContext, useContext, useMemo, useState, useCallback } from 'react';
 
-const EMPTY = { fy: '', status: '', theme: '', province: '', donor: '', partner: '' };
+const EMPTY = { fy: '', status: '', theme: '', province: '', areaCouncil: '', donor: '', partner: '' };
 
 // Include both the current Form 1 vocabulary and legacy operational values.
 // Registration approval is a separate workflow and is not an operational status.
@@ -52,6 +52,7 @@ export function projectMatches(p, filters) {
   if (filters.donor && p.donor !== filters.donor && !(p.donors || []).includes(filters.donor)) return false;
   if (filters.partner && !(p.partners || p.implementing_partners || []).includes(filters.partner)) return false;
   if (filters.province && !(p.provinces || []).includes(filters.province)) return false;
+  if (filters.areaCouncil && !(p.areaCouncils || []).includes(filters.areaCouncil)) return false;
   if (filters.fy) {
     const y = Number(filters.fy);
     const sy = p.start_date ? new Date(p.start_date).getFullYear() : null;
