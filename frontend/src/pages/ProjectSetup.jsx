@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { dbErrorMessage, isMissingRpcArgument } from '../lib/dbError';
+import { confirmDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
@@ -166,7 +167,7 @@ function ActualMerlForms() {
 }
 
 
-function ProjectConfiguration({ preferredProjectId }) {
+function ProjectConfiguration({ preferredProjectId, canEdit }) {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState('');
   const [refs, setRefs] = useState([]);
@@ -221,8 +222,12 @@ function ProjectConfiguration({ preferredProjectId }) {
     loadConfig(projectId);
   };
   const deleteArea = async (id) => {
+    if (!canEdit) return;
+    const row=areas.find((x)=>x.id===id);
+    if (!(await confirmDialog({ title:'Delete Area Council coverage', message:`Remove ${row?.area_council_name || 'this Area Council'} from this project's coverage? This cannot be undone.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_area_council',{ p_id:id });
     if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success('Area Council coverage deleted.');
     loadConfig(projectId);
   };
   const saveKpi = async () => {
@@ -242,8 +247,12 @@ function ProjectConfiguration({ preferredProjectId }) {
     loadConfig(projectId);
   };
   const deleteKpi = async (id) => {
+    if (!canEdit) return;
+    const row=kpis.find((x)=>x.id===id);
+    if (!(await confirmDialog({ title:'Delete KPI card', message:`Remove ${row?.short_label || 'this KPI'} from the dashboard configuration? The indicator itself will not be deleted.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_dashboard_kpi_config',{ p_id:id });
     if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success('KPI card deleted.');
     loadConfig(projectId);
   };
 
@@ -262,14 +271,18 @@ function ProjectConfiguration({ preferredProjectId }) {
     loadConfig(projectId);
   };
   const deleteOrganization = async (id) => {
+    if (!canEdit) return;
+    const row=organizations.find((x)=>x.id===id);
+    if (!(await confirmDialog({ title:'Delete donor / partner link', message:`Remove ${row?.name || 'this organization'} from this project? The organization master record will remain available for other projects.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_organization',{ p_id:id });
     if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success('Donor / partner link deleted.');
     loadConfig(projectId);
   };
 
   return <section className="ps-config">
     <div className="ps-config-head">
-      <div><h2>Coverage & Dashboard Configuration</h2><p>Manage the selected project's Area Council coverage/feasibility and choose which official indicators appear as project KPI cards.</p></div>
+      <div><h2>Coverage & Dashboard Configuration</h2><p>Manage the selected project's Area Council coverage/feasibility and choose which official indicators appear as project KPI cards.</p>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access: deletion and editing are available to authorised project editors.</p>}</div>
       <select className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
         <option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
       </select>
@@ -290,7 +303,7 @@ function ProjectConfiguration({ preferredProjectId }) {
           </select></label>
           <label className="ps-check full"><input type="checkbox" checked={!!orgEdit.is_primary} onChange={(e)=>setOrgEdit(s=>({...s,is_primary:e.target.checked}))}/> Primary organization for this role</label>
         </div>
-        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setOrgEdit({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy} onClick={saveOrganization}>Save organization</button></div>
+        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setOrgEdit({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveOrganization}>Save organization</button></div>
         <div className="ps-mini-table"><table><thead><tr><th>Role</th><th>Organization</th><th>Primary</th><th></th></tr></thead><tbody>{organizations.map(o=><tr key={o.id}><td>{String(o.role||'').replaceAll('_',' ')}</td><td><b>{o.name}</b><small>{o.short_name||o.organization_type||''}</small></td><td>{o.is_primary?'Yes':'No'}</td><td><button type="button" onClick={()=>setOrgEdit({ id:o.id, name:o.name||'', short_name:o.short_name||'', organization_type:o.organization_type||'', role:o.role||'implementing_partner', is_primary:!!o.is_primary })}>Edit</button><button type="button" className="danger" onClick={()=>deleteOrganization(o.id)}>Delete</button></td></tr>)}</tbody></table></div>
       </div>
 
@@ -302,7 +315,7 @@ function ProjectConfiguration({ preferredProjectId }) {
           <label><span className="field-label">Feasibility</span><select className="field-input" value={areaEdit.feasibility_status} onChange={(e)=>setAreaEdit(s=>({...s,feasibility_status:e.target.value}))}><option value="not_assessed">Not assessed</option><option value="under_assessment">Under assessment</option><option value="confirmed">Confirmed</option><option value="conditional">Conditional</option><option value="not_feasible">Not feasible</option></select></label>
           <label className="full"><span className="field-label">Feasibility note</span><textarea className="field-input" rows={2} value={areaEdit.feasibility_note} onChange={(e)=>setAreaEdit(s=>({...s,feasibility_note:e.target.value}))}/></label>
         </div>
-        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setAreaEdit({ id:null, area_council_name:'', coverage_status:'active', feasibility_status:'not_assessed', feasibility_note:'' })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy} onClick={saveArea}>Save coverage</button></div>
+        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setAreaEdit({ id:null, area_council_name:'', coverage_status:'active', feasibility_status:'not_assessed', feasibility_note:'' })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveArea}>Save coverage</button></div>
         <div className="ps-mini-table"><table><thead><tr><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th></th></tr></thead><tbody>{areas.map(r=><tr key={r.id}><td><b>{r.area_council_name}</b><small>{r.province_code||''}</small></td><td>{r.coverage_status.replaceAll('_',' ')}</td><td>{r.feasibility_status.replaceAll('_',' ')}</td><td><button type="button" onClick={()=>setAreaEdit({...r,feasibility_note:r.feasibility_note||''})}>Edit</button><button type="button" className="danger" onClick={()=>deleteArea(r.id)}>Delete</button></td></tr>)}</tbody></table></div>
       </div>
 
@@ -317,7 +330,7 @@ function ProjectConfiguration({ preferredProjectId }) {
           <label className="ps-check"><input type="checkbox" checked={kpiEdit.is_public} onChange={(e)=>setKpiEdit(s=>({...s,is_public:e.target.checked}))}/> Allow on public dashboard</label>
           <label className="ps-check"><input type="checkbox" checked={kpiEdit.active} onChange={(e)=>setKpiEdit(s=>({...s,active:e.target.checked}))}/> Active</label>
         </div>
-        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setKpiEdit({ id:null, indicator_id:'', short_label:'', display_order:0, show_target:true, show_progress:true, is_public:false, active:true })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy} onClick={saveKpi}>Save KPI</button></div>
+        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setKpiEdit({ id:null, indicator_id:'', short_label:'', display_order:0, show_target:true, show_progress:true, is_public:false, active:true })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveKpi}>Save KPI</button></div>
         <div className="ps-mini-table"><table><thead><tr><th>Order</th><th>KPI</th><th>Target</th><th>Progress</th><th></th></tr></thead><tbody>{kpis.map(k=><tr key={k.id}><td>{k.display_order}</td><td><b>{k.short_label}</b></td><td>{k.show_target?'Yes':'No'}</td><td>{k.show_progress?'Yes':'No'}</td><td><button type="button" onClick={()=>setKpiEdit({...k})}>Edit</button><button type="button" className="danger" onClick={()=>deleteKpi(k.id)}>Delete</button></td></tr>)}</tbody></table></div>
       </div>
     </div>}
@@ -446,7 +459,7 @@ export default function ProjectSetup({ user }) {
         </div>
       </form>
 
-      <ProjectConfiguration preferredProjectId={registered?.id} />
+      <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} />
 
       <ActualMerlForms />
 
