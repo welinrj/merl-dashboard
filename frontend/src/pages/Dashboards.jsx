@@ -18,7 +18,6 @@ import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
 import FilterBar from '../components/ui/FilterBar';
-import VanuatuMap from '../components/VanuatuMap';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { beneficiaryReach, portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
@@ -72,7 +71,7 @@ export default function Dashboards({ initialTab }) {
       setLoading(true);
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
-      const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op] = await Promise.all([
+      const [proj, fin, risk, ben, act, ind, prog, rep, ac, fw] = await Promise.all([
         q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
         q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at'),
         q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
@@ -81,10 +80,8 @@ export default function Dashboards({ initialTab }) {
         q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level'),
         q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, reporting_period, final_target, created_at'),
         q('v_reporting_periods', 'project_id, period_label, period_type, submission_status, period_end'),
-        q('v_project_locations', 'project_id, province, island, area_council, community, beneficiaries, latitude, longitude'),
-        q('v_objectives', 'project_id, code, statement'),
-        q('v_outcomes', 'project_id, code, statement, objective_id'),
-        q('v_outputs', 'project_id, code, statement, outcome_id'),
+        q('v_project_area_councils', 'id, project_id, province_code, area_council_name, coverage_status, feasibility_status'),
+        q('v_framework_nodes', 'id, project_id, node_code, node_type, title, parent_node_id, sort_order'),
       ]);
       setD({
         projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
@@ -203,7 +200,7 @@ function BarList({ rows, total, accent = 'var(--green-600)' }) {
     </div>
   );
 }
-const perfTint = (s) => ({ on_track: '#16a34a', target_achieved: '#0891b2', attention_required: '#d97706', off_track: '#dc2626', no_data: '#94a3b8' }[s] || '#94a3b8');
+const perfTint = (s) => ({ on_track: '#16a34a', target_achieved: '#0891b2', attention_required: '#d97706', at_risk: '#dc2626', no_data: '#94a3b8' }[s] || '#94a3b8');
 
 // ── Executive Portfolio ──────────────────────────────────────────────────────
 function Portfolio({ d, onNavigate }) {
@@ -255,7 +252,7 @@ function Portfolio({ d, onNavigate }) {
 
     // Attention Required (§31) — clickable management intelligence.
     const atRiskDelayed = projects.filter((p) => ['at_risk', 'delayed'].includes(p.status)).length;
-    const offTrack = progress.filter((p) => p.performance_status === 'off_track').length;
+    const offTrack = progress.filter((p) => p.performance_status === 'at_risk').length;
     const reportsOverdue = reporting.filter((r) => r.period_end && r.period_end < today() && r.submission_status !== 'approved').length;
     const highRiskOverdue = risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
       && r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status)).length;
@@ -548,9 +545,9 @@ function Results({ d }) {
   return (
     <>
       <MetricStrip title={t('dash.resultsFramework')} items={[
-        { label: t('dash.objectives'), value: d.objectives.length },
-        { label: t('dash.outcomes'), value: d.outcomes.length },
-        { label: t('dash.outputs'), value: d.outputs.length },
+        { label: t('dash.objectives'), value: d.frameworkNodes.filter((x) => ['project_objective','impact','paradigm_shift','gcf_result_area'].includes(x.node_type)).length },
+        { label: t('dash.outcomes'), value: d.frameworkNodes.filter((x) => x.node_type === 'outcome').length },
+        { label: t('dash.outputs'), value: d.frameworkNodes.filter((x) => ['output','sub_output'].includes(x.node_type)).length },
         { label: t('dash.indicators'), value: d.indicators.length },
       ]} />
       <div className="db-2">
@@ -620,48 +617,46 @@ function Financial({ d }) {
 // ── Geographic ───────────────────────────────────────────────────────────────
 function Geographic({ d }) {
   const { t } = useTranslation();
-  const [province, setProvince] = useState(null);
-  const locs = province ? d.locations.filter((l) => l.province === province) : d.locations;
-  const provinceCounts = Object.fromEntries(countBy(d.locations, (l) => l.province)); // { province: sites }
-  const byIsland = countBy(locs, (l) => l.island);
-  const byAC = countBy(locs, (l) => l.area_council);
-  const benByProvince = (() => {
-    const m = new Map();
-    for (const l of d.locations) if (l.province) m.set(l.province, (m.get(l.province) || 0) + (Number(l.beneficiaries) || 0));
-    return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  })();
-  const withCoords = locs.filter((l) => l.latitude != null && l.longitude != null);
+  const [province, setProvince] = useState('');
+  const rows = d.areaCouncils.filter((x) => x.coverage_status !== 'not_covered');
+  const councils = province ? rows.filter((x) => x.province_code === province) : rows;
+  const provinces = [...new Set(rows.map((x) => x.province_code).filter(Boolean))].sort();
+  const distinctCouncils = new Set(councils.map((x) => x.area_council_name));
+  const confirmed = new Set(councils.filter((x) => x.feasibility_status === 'confirmed').map((x) => x.area_council_name));
+  const byProvince = countBy(rows, (x) => x.province_code || 'Unknown');
+  const byFeasibility = countBy(councils, (x) => String(x.feasibility_status || 'not_assessed').replaceAll('_',' '));
   return (
     <>
       <MetricStrip title={t('dash.geoCoverage')} items={[
-        { label: t('dash.sites'), value: locs.length },
-        { label: t('dash.provinces'), value: Object.keys(provinceCounts).length },
-        { label: t('dash.areaCouncils'), value: byAC.length },
-        { label: t('dash.geoSites'), value: withCoords.length },
+        { label: t('dash.provinces'), value: province ? 1 : provinces.length },
+        { label: t('dash.areaCouncils'), value: distinctCouncils.size },
+        { label: 'Confirmed feasible', value: confirmed.size },
+        { label: 'Coverage records', value: councils.length },
       ]} />
 
-      {/* Vanuatu geographic dashboard (§36) — click a province to filter. */}
       <div className="db-card" style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3 className="db-h" style={{ margin: 0 }}>{t('dash.sitesAcross')}</h3>
-          {province && (
-            <button onClick={() => setProvince(null)} style={{ background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>
-              {province} · clear ×
-            </button>
-          )}
+        <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',gap:'.6rem',flexWrap:'wrap' }}>
+          <h3 className="db-h" style={{ margin:0 }}>Area Council Coverage</h3>
+          <select className="field-input" style={{ maxWidth:220 }} value={province} onChange={(e) => setProvince(e.target.value)}>
+            <option value="">All provinces</option>
+            {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
         </div>
-        <div style={{ marginTop: '0.6rem' }}>
-          <VanuatuMap counts={provinceCounts} nationalCount={d.locations.length}
-            selected={province} onSelect={(p) => setProvince((prev) => (prev === p ? null : p))} />
-        </div>
+        <div style={{ overflowX:'auto', marginTop:'.65rem' }}><table className="db-table">
+          <thead><tr><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th>Project</th></tr></thead>
+          <tbody>
+            {councils.map((x) => {
+              const p=d.projects.find((pr) => pr.id===x.project_id);
+              return <tr key={x.id}><td>{x.province_code || '—'}</td><td>{x.area_council_name}</td><td>{x.coverage_status}</td><td>{String(x.feasibility_status || 'not_assessed').replaceAll('_',' ')}</td><td>{p?.code || p?.name || '—'}</td></tr>;
+            })}
+            {!councils.length && <tr><td colSpan={5} style={{ color:'var(--text-3)' }}>No Area Council coverage recorded.</td></tr>}
+          </tbody>
+        </table></div>
       </div>
 
       <div className="db-2">
-        <div className="db-card"><h3 className="db-h">{t('dash.benByProvince')}</h3><BarList rows={benByProvince} accent="#7c3aed" /></div>
-        <div className="db-card"><h3 className="db-h">Sites by Island{province ? ` · ${province}` : ''}</h3><BarList rows={byIsland} accent="#2563eb" /></div>
-      </div>
-      <div className="db-card" style={{ marginTop: '1rem' }}>
-        <h3 className="db-h">Sites by Area Council{province ? ` · ${province}` : ''}</h3><BarList rows={byAC} accent="#0891b2" />
+        <div className="db-card"><h3 className="db-h">Area Councils by Province</h3><BarList rows={byProvince} accent="#2563eb" /></div>
+        <div className="db-card"><h3 className="db-h">Feasibility</h3><BarList rows={byFeasibility} accent="#0891b2" /></div>
       </div>
     </>
   );
