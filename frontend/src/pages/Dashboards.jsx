@@ -272,7 +272,10 @@ function Portfolio({ d, onNavigate }) {
     const highRiskOverdue = risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
       && r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status)).length;
     const attention = [];
-    if (atRiskDelayed) attention.push({ label: t('dash.attnProjects', { count: atRiskDelayed }), tab: 'portfolio', tone: 'amber' });
+    const atRiskProjects = projects.filter((p) => p.status === 'at_risk').length;
+    const delayedProjects = projects.filter((p) => p.status === 'delayed').length;
+    if (atRiskProjects) attention.push({ label: `${atRiskProjects} project${atRiskProjects === 1 ? '' : 's'} at risk`, tab: 'portfolio', tone: 'amber' });
+    if (delayedProjects) attention.push({ label: `${delayedProjects} delayed project${delayedProjects === 1 ? '' : 's'}`, tab: 'portfolio', tone: 'red' });
     if (offTrack) attention.push({ label: t('dash.attnIndicators', { count: offTrack }), tab: 'results', tone: 'red' });
     if (reportsOverdue) attention.push({ label: t('dash.attnReports', { count: reportsOverdue }), tab: 'reporting', tone: 'red' });
     if (highRiskOverdue) attention.push({ label: t('dash.attnActions', { count: highRiskOverdue }), tab: 'risks', tone: 'red' });
@@ -359,7 +362,8 @@ function Portfolio({ d, onNavigate }) {
       <MetricStrip title={t('dash.portfolioSummary')} style={{ marginTop: '0.7rem' }} items={[
         { label: t('dash.active'), value: m.active },
         { label: t('dash.completed'), value: m.completed },
-        { label: t('dash.atRiskDelayed'), value: m.atRisk + m.delayed, tone: (m.atRisk + m.delayed) ? 'warning' : undefined },
+        { label: 'At risk', value: m.atRisk, tone: m.atRisk ? 'warning' : undefined },
+        { label: 'Delayed', value: m.delayed, tone: m.delayed ? 'danger' : undefined },
         { label: t('dash.expenditure'), value: fmtAmount(m.totalExp) },
         { label: t('dash.activitiesCompleted'), value: m.actCompleted },
         { label: t('dash.openRisks'), value: m.openRisks, tone: m.openRisks ? 'warning' : undefined },
