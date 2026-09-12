@@ -63,6 +63,7 @@ export const MODULES = [
       { name: 'cumulative_actual', label: 'merl.cumulativeActual', type: 'number' },
       { name: 'previous_value', label: 'merl.previousPeriodValue', type: 'number' },
       { name: 'performance_status', label: 'merl.performanceStatus', type: 'select', options: OPT.PERFORMANCE_STATUS },
+      { name: 'schedule_status', label: 'Schedule Status', type: 'select', options: OPT.SCHEDULE_STATUS },
       { name: 'narrative', label: 'merl.progressNarrative', type: 'textarea' },
       { name: 'variance_reason', label: 'merl.reasonForVariance', type: 'textarea' },
       { name: 'corrective_action', label: 'merl.correctiveAction', type: 'textarea' },
@@ -74,6 +75,7 @@ export const MODULES = [
       { label: 'merl.cumulative', get: (r) => (r.cumulative_actual ?? '—') },
       { label: 'merl.achievement', get: (r) => fmtPct(r.achievement_pct) },
       { label: 'merl.status', get: (r) => OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status) },
+      { label: 'Schedule', get: (r) => OPT.labelOf(OPT.SCHEDULE_STATUS, r.schedule_status || 'on_schedule') },
     ],
   },
   {
