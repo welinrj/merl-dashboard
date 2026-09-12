@@ -514,15 +514,13 @@ export function dataCompleteness(d) {
   const checks = [
     { key: 'dates', ok: Boolean(d.project?.start_date && d.project?.end_date) },
     { key: 'budget', ok: isNum(num(d.project?.budget_vuv)) && num(d.project.budget_vuv) > 0 },
-    { key: 'objectives', ok: (d.objectives ?? []).length > 0 },
-    { key: 'outcomes', ok: (d.outcomes ?? []).length > 0 },
-    { key: 'outputs', ok: (d.outputs ?? []).length > 0 },
+    { key: 'resultsFramework', ok: (d.frameworkNodes ?? []).length > 0 },
     { key: 'activities', ok: (d.activities ?? []).length > 0 },
     { key: 'indicators', ok: (d.indicators ?? []).length > 0 },
     { key: 'indicatorProgress', ok: (d.progress ?? []).length > 0 },
     { key: 'financial', ok: (d.financial ?? []).length > 0 },
     { key: 'beneficiaries', ok: (d.beneficiaries ?? []).length > 0 },
-    { key: 'locations', ok: (d.locations ?? []).length > 0 },
+    { key: 'areaCouncils', ok: (d.areaCouncils ?? []).length > 0 },
     { key: 'periods', ok: (d.periods ?? []).length > 0 },
   ];
   const done = checks.filter((c) => c.ok).length;
