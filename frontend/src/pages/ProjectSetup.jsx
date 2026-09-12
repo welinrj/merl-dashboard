@@ -131,54 +131,63 @@ const FORM_PREVIEWS = [
 ];
 
 function PreviewField({ item }) {
-  let control;
-  if (item.type === 'textarea') control = <div className="ps-reference-value ps-reference-textarea">Narrative information entered in MERL Reporting</div>;
-  else if (item.type === 'select') control = <div className="ps-reference-value">{item.options?.length ? item.options.join(' · ') : (item.placeholder || 'Selected from project data')}</div>;
-  else if (item.type === 'checkbox') control = <div className="ps-reference-value">Yes / No</div>;
-  else if (item.type === 'number') control = <div className="ps-reference-value">Numeric value</div>;
-  else if (item.type === 'date') control = <div className="ps-reference-value">Date</div>;
-  else control = <div className="ps-reference-value">{item.placeholder || 'Text information'}</div>;
-  return <div className={item.wide ? 'ps-preview-field ps-preview-wide' : 'ps-preview-field'}><span className="field-label">{item.label}</span>{control}</div>;
+  const typeLabel = item.type === 'select' ? 'Selected from project data'
+    : item.type === 'textarea' ? 'Narrative'
+    : item.type === 'checkbox' ? 'Yes / No'
+    : item.type === 'date' ? 'Date'
+    : item.type === 'number' ? 'Numeric'
+    : 'Text';
+  const helpText = item.help || item.placeholder || (item.type === 'select'
+    ? 'The live reporting workspace supplies this value from project setup or the Results Framework.'
+    : item.type === 'textarea'
+      ? 'A short narrative is entered in the live MERL Reporting workspace.'
+      : 'This value is entered in the live MERL Reporting workspace.');
+  return (
+    <div className={item.wide ? 'ps-reference-field ps-reference-wide' : 'ps-reference-field'}>
+      <div className="ps-reference-field-head">
+        <span className="field-label">{item.label}</span>
+        <span className="ps-reference-kind">{typeLabel}</span>
+      </div>
+      <p>{helpText}</p>
+      {item.options?.length ? <small>Allowed values: {item.options.join(' · ')}</small> : null}
+    </div>
+  );
 }
 
 function ActualMerlForms() {
-  const [openForm, setOpenForm] = useState(null);
   return (
     <section className="ps-actual" aria-labelledby="ps-actual-title">
       <div className="ps-actual-head">
         <div>
           <h2 id="ps-actual-title">MERL Form Reference</h2>
-          <p>A reference guide to the information collected during periodic project reporting. This page is for preparation only — reporting data is entered in the live MERL Reporting workspace.</p>
+          <p>Reference only. This page explains what each reporting form collects. Actual data entry, editing, saving and submission happens in MERL Reporting.</p>
         </div>
         <a className="ps-live-link" href="#/merl-reporting">Open MERL Reporting →</a>
       </div>
 
       <div className="ps-reference-callout">
-        <strong>How to use this reference</strong>
-        <span>Select a form below to see the information required. The fields are examples only and cannot be edited here.</span>
+        <strong>No controls on this page are interactive.</strong>
+        <span>Use the field descriptions below to prepare the required information before opening the live reporting workspace.</span>
       </div>
 
       <div className="ps-reference-list">
-        {FORM_PREVIEWS.map((form) => {
-          const open = openForm === form.form;
-          return (
-            <section className={`ps-reference-item${open ? ' open' : ''}`} key={form.form}>
-              <button type="button" className="ps-reference-summary" onClick={() => setOpenForm(open ? null : form.form)} aria-expanded={open}>
-                <span className="ps-form-number">Form {form.form}</span>
-                <span className="ps-reference-copy"><strong>{form.title}</strong><small>{form.purpose}</small></span>
-                <span className="ps-reference-count">{form.fields.length} fields</span>
-                <span className="ps-reference-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
-              </button>
-              {open && (
-                <div className="ps-reference-detail">
-                  <div className="ps-preview-grid">{form.fields.map((item) => <PreviewField key={`${form.form}-${item.label}`} item={item} />)}</div>
-                </div>
-              )}
-            </section>
-          );
-        })}
+        {FORM_PREVIEWS.map((form) => (
+          <section className="ps-reference-item" key={form.form}>
+            <div className="ps-reference-summary static">
+              <span className="ps-form-number">Form {form.form}</span>
+              <span className="ps-reference-copy"><strong>{form.title}</strong><small>{form.purpose}</small></span>
+              <span className="ps-reference-count">{form.fields.length} fields</span>
+            </div>
+            <div className="ps-reference-detail">
+              <div className="ps-reference-fields">
+                {form.fields.map((item) => <PreviewField key={form.form + '-' + item.label} item={item} />)}
+              </div>
+            </div>
+          </section>
+        ))}
       </div>
-      <div className="ps-preview-note"><strong>Reference only.</strong> Project officers enter and submit actual reporting records under MERL Reporting.</div>
+
+      <div className="ps-preview-note"><strong>Reference only.</strong> Nothing on this page can be selected, edited or saved.</div>
     </section>
   );
 }
@@ -538,7 +547,7 @@ export default function ProjectSetup({ user }) {
         .ps-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.ps-preview-field{display:flex;flex-direction:column;gap:.3rem}.ps-preview-wide{grid-column:1/-1}.ps-preview-control:disabled{opacity:1;color:var(--text-2);background:#f8fafc;cursor:default}.ps-preview-control:disabled::placeholder{color:#94a3b8}.ps-preview-check{display:flex;align-items:center;gap:.5rem;min-height:42px;padding:.55rem .7rem;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:var(--text-3);font-size:.75rem}.ps-preview-note{margin:.9rem 0 0;padding:.7rem .8rem;border-radius:8px;background:#f8fafc;color:var(--text-3);font-size:.72rem;line-height:1.45}
         @media(max-width:800px){.ps-config-grid{grid-template-columns:1fr}.ps-config-head select{min-width:0;width:100%}.ps-preview-grid{grid-template-columns:1fr}.ps-preview-wide{grid-column:1}.ps-actual-head{flex-direction:column}.ps-live-link{white-space:normal}}
         @media(max-width:700px){.ps-grid{grid-template-columns:1fr!important}.ps-grid>*{grid-column:1!important}}
-        .ps-reference-value{min-height:2.15rem;padding:.55rem .65rem;border:1px dashed var(--border);border-radius:7px;background:var(--white);color:var(--text-3);font-size:.7rem;line-height:1.35}.ps-reference-textarea{min-height:3.8rem}
+        .ps-reference-callout{display:flex;gap:.35rem;flex-direction:column;margin:.85rem 0 1rem;padding:.8rem 1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface-1);font-size:.76rem;color:var(--text-2)}.ps-reference-callout strong{color:var(--text-1);font-size:.8rem}.ps-reference-list{display:grid;gap:.7rem}.ps-reference-item{border:1px solid var(--border);border-radius:10px;background:var(--white);overflow:hidden}.ps-reference-summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.8rem;padding:.8rem .9rem;background:var(--white)}.ps-reference-copy{min-width:0}.ps-reference-copy strong{display:block;font-size:.84rem;color:var(--text-1)}.ps-reference-copy small{display:block;margin-top:.15rem;color:var(--text-3);font-size:.69rem;line-height:1.4}.ps-reference-count{font-size:.66rem;color:var(--text-3);white-space:nowrap}.ps-reference-detail{border-top:1px solid var(--border);padding:.9rem;background:var(--surface-1)}.ps-reference-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}.ps-reference-field{border:1px solid var(--border);border-radius:8px;background:var(--white);padding:.7rem}.ps-reference-wide{grid-column:1/-1}.ps-reference-field-head{display:flex;justify-content:space-between;gap:.5rem;align-items:flex-start}.ps-reference-kind{font-size:.6rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em}.ps-reference-field p{margin:.25rem 0 0;color:var(--text-2);font-size:.7rem;line-height:1.4}.ps-reference-field small{display:block;margin-top:.3rem;color:var(--text-3);font-size:.64rem;line-height:1.35}@media(max-width:700px){.ps-reference-summary{grid-template-columns:auto minmax(0,1fr)}.ps-reference-count{display:none}.ps-reference-fields{grid-template-columns:1fr}.ps-reference-wide{grid-column:1}}
       `}</style>
     </div>
   );
