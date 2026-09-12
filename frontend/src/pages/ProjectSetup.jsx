@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { dbErrorMessage, isMissingRpcArgument } from '../lib/dbError';
 import { confirmDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
+import ActivityManager from '../components/ActivityManager';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
 
@@ -30,9 +31,9 @@ const FORM_PREVIEWS = [
       { label: 'Indicator *', type: 'select', placeholder: 'Select indicator' },
       { label: 'Target for Reporting Period', type: 'number' },
       { label: 'Actual Achievement This Period', type: 'number' },
-      { label: 'Cumulative Achievement', type: 'number' },
+      { label: 'Cumulative Achievement', type: 'number', help: 'Enter the cumulative value to the end of this reporting period. Leave blank when it has not been reported; enter 0 only when zero was explicitly measured.' },
       { label: 'Previous Reported Value', type: 'number' },
-      { label: 'Performance Status', type: 'select', options: ['On track', 'At risk', 'Off track', 'Completed'] },
+      { label: 'Performance Status', type: 'select', options: ['On Track', 'Attention Required', 'Off Track', 'Target Achieved', 'No Data'], help: 'Use the same controlled status available in the live reporting form; do not infer a positive status when no data has been reported.' },
       { label: 'Progress Narrative', type: 'textarea', wide: true },
       { label: 'Reason for Variance', type: 'textarea', wide: true },
       { label: 'Corrective Action', type: 'textarea', wide: true },
@@ -46,7 +47,7 @@ const FORM_PREVIEWS = [
       { label: 'Annual Budget', type: 'number' },
       { label: 'Budget for Reporting Period', type: 'number' },
       { label: 'Expenditure This Period', type: 'number' },
-      { label: 'Cumulative Expenditure', type: 'number' },
+      { label: 'Cumulative Expenditure', type: 'number', help: 'Total expenditure to date in the project currency. Leave blank when unreported; a recorded zero is different from missing financial information.' },
       { label: 'Funds Received', type: 'number' },
       { label: 'Funds Committed', type: 'number' },
       { label: 'Financial Narrative / Explanation', type: 'textarea', wide: true },
@@ -66,7 +67,7 @@ const FORM_PREVIEWS = [
       { label: 'Indirect Beneficiaries', type: 'number' },
       { label: 'Other Vulnerable Groups', type: 'text' },
       { label: 'Data Source', type: 'text' },
-      { label: 'Double-counting Check Completed', type: 'checkbox' },
+      { label: 'Double-counting Check Completed', type: 'checkbox', help: 'Confirm whether beneficiary records were checked for overlap before totals are aggregated. Youth and disability categories can overlap with sex-disaggregated totals.' },
       { label: 'Comments', type: 'textarea', wide: true },
     ],
   },
@@ -74,15 +75,15 @@ const FORM_PREVIEWS = [
     form: '9', title: 'Risks & Issues', purpose: 'Records implementation risks, issues, mitigation and management action.',
     fields: [
       { label: 'Type *', type: 'select', options: ['Risk', 'Issue'] },
-      { label: 'Category', type: 'select', options: ['Technical', 'Financial', 'Operational', 'Safeguards', 'Governance', 'Other'] },
+      { label: 'Category', type: 'select', options: ['Financial', 'Technical', 'Operational', 'Environmental', 'Social / GEDSI', 'Governance', 'Procurement', 'Safeguards', 'Other'] },
       { label: 'Description *', type: 'textarea', wide: true },
       { label: 'Date Identified', type: 'date' },
-      { label: 'Likelihood', type: 'select', options: ['Low', 'Medium', 'High'] },
-      { label: 'Impact', type: 'select', options: ['Low', 'Medium', 'High'] },
+      { label: 'Likelihood', type: 'select', options: ['1', '2', '3', '4', '5'], help: 'Use the standard 1–5 likelihood scale used by the live risk form.' },
+      { label: 'Impact', type: 'select', options: ['1', '2', '3', '4', '5'], help: 'Use the standard 1–5 impact scale used by the live risk form.' },
       { label: 'Mitigation / Response', type: 'textarea', wide: true },
       { label: 'Responsible Person', type: 'text' },
       { label: 'Due Date', type: 'date' },
-      { label: 'Current Status', type: 'select', options: ['Open', 'Monitoring', 'Resolved', 'Closed'] },
+      { label: 'Current Status', type: 'select', options: ['Open', 'Monitoring', 'Escalated', 'Resolved', 'Closed'] },
       { label: 'Latest Update', type: 'textarea', wide: true },
       { label: 'Date Resolved', type: 'date' },
     ],
@@ -107,7 +108,7 @@ const FORM_PREVIEWS = [
     form: '11', title: 'Reporting Period & Submission', purpose: 'Defines the reporting period and manages submission, review and approval.',
     fields: [
       { label: 'Reporting Period Label *', type: 'text', placeholder: 'e.g. Q1 2026' },
-      { label: 'Reporting Period Type', type: 'select', options: ['Monthly', 'Quarterly', 'Semi-annual', 'Annual', 'Other'] },
+      { label: 'Reporting Period Type', type: 'select', options: ['Monthly', 'Quarterly', 'Six-monthly', 'Annual', 'Final', 'Ad hoc'] },
       { label: 'Period Start Date', type: 'date' },
       { label: 'Period End Date', type: 'date' },
       { label: 'Submission Status', type: 'select', options: ['Draft', 'Submitted', 'Returned', 'Reviewed', 'Approved'] },
@@ -119,13 +120,13 @@ const FORM_PREVIEWS = [
     form: '12', title: 'Evidence / Means of Verification', purpose: 'Links supporting evidence to reported activities and results.',
     fields: [
       { label: 'Evidence / Document Title *', type: 'text' },
-      { label: 'Document Type', type: 'select', options: ['Report', 'Photo', 'Attendance Sheet', 'Dataset', 'Map', 'Invoice', 'Other'] },
+      { label: 'Document Type', type: 'select', options: ['Attendance List', 'Photograph', 'Monitoring Report', 'Survey / Data', 'Financial Report', 'Contract', 'Completion Report', 'Evaluation', 'Map', 'Other'] },
       { label: 'Related Indicator', type: 'select', placeholder: 'Select indicator' },
       { label: 'Related Activity', type: 'select', placeholder: 'Select activity' },
       { label: 'Description', type: 'textarea', wide: true },
       { label: 'Document Date', type: 'date' },
       { label: 'File or URL', type: 'text', wide: true },
-      { label: 'Verification Status', type: 'select', options: ['Pending', 'Verified', 'Rejected'] },
+      { label: 'Verification Status', type: 'select', options: ['Pending', 'Verified', 'Rejected', 'Superseded'] },
     ],
   },
 ];
@@ -160,13 +161,13 @@ function ActualMerlForms() {
       <div className="ps-actual-head">
         <div>
           <h2 id="ps-actual-title">MERL Form Reference</h2>
-          <p>Reference only. This page explains what each reporting form collects. Actual data entry, editing, saving and submission happens in MERL Reporting.</p>
+          <p>Field examples are read-only. This page explains what each reporting form collects. Actual reporting data is entered, edited, saved and submitted in MERL Reporting; Activities & Workplan (Form 5) is entered under Manage projects.</p>
         </div>
         <a className="ps-live-link" href="#/merl-reporting">Open MERL Reporting →</a>
       </div>
 
       <div className="ps-reference-callout">
-        <strong>No controls on this page are interactive.</strong>
+        <strong>Field examples are read-only.</strong>
         <span>Use the field descriptions below to prepare the required information before opening the live reporting workspace.</span>
       </div>
 
@@ -193,6 +194,12 @@ function ActualMerlForms() {
 }
 
 function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
+  const routeProjectId = (() => {
+    try {
+      const query = window.location.hash.split('?')[1] || '';
+      return new URLSearchParams(query).get('project') || '';
+    } catch { return ''; }
+  })();
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState('');
   const [refs, setRefs] = useState([]);
@@ -214,7 +221,8 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
     setProjects(ps || []);
     setRefs(rs || []);
     setProjectId((old) => {
-      const preferred = (ps || []).some((p) => p.id === preferredProjectId) ? preferredProjectId : '';
+      const requested = preferredProjectId || routeProjectId;
+      const preferred = (ps || []).some((p) => p.id === requested) ? requested : '';
       const existing = (ps || []).some((p) => p.id === old) ? old : '';
       return preferred || existing || ps?.[0]?.id || '';
     });
@@ -383,6 +391,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
         <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setKpiEdit({ id:null, indicator_id:'', short_label:'', display_order:0, show_target:true, show_progress:true, is_public:false, active:true })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveKpi}>Save KPI</button></div>
         <div className="ps-mini-table"><table><thead><tr><th>Order</th><th>KPI</th><th>Target</th><th>Progress</th><th></th></tr></thead><tbody>{kpis.map(k=><tr key={k.id}><td>{k.display_order}</td><td><b>{k.short_label}</b></td><td>{k.show_target?'Yes':'No'}</td><td>{k.show_progress?'Yes':'No'}</td><td>{canEdit && <><button type="button" onClick={()=>setKpiEdit({...k})}>Edit</button><button type="button" className="danger" onClick={()=>deleteKpi(k.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
       </div>
+      <ActivityManager projectId={projectId} canEdit={canEdit} />
     </div>}
   </section>;
 }

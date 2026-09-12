@@ -918,7 +918,7 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}
+    <div role="dialog" aria-modal="true" aria-label={`${initial?.id ? t('merl.edit') : t('merl.add')} — ${t(module.label)}`} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}
       onClick={closeKeepingDraft}>
       <div style={{ background: 'var(--white)', borderRadius: 12, width: '100%', maxWidth: 720, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}>
@@ -934,9 +934,9 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
             <div key={f.name} style={{ gridColumn: f.type === 'textarea' ? '1 / -1' : 'auto' }}>
               <label className="field-label">{t(f.label)}{f.required && ' *'}</label>
               {f.type === 'textarea' ? (
-                <textarea className="field-input" rows={2} value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />
+                <textarea aria-label={t(f.label)} className="field-input" rows={2} value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />
               ) : f.type === 'select' ? (
-                <select className="field-input" value={v[f.name] ?? ''} onChange={set(f.name, f.type)}>
+                <select aria-label={t(f.label)} className="field-input" value={v[f.name] ?? ''} onChange={set(f.name, f.type)}>
                   <option value="">—</option>
                   {(f.dynamicOptions ? dynamicOptions(f.dynamicOptions) : f.options).map((o) => (
                     <option key={o.value} value={o.value}>{OPT.optionLabel(o)}</option>
@@ -944,10 +944,10 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
                 </select>
               ) : f.type === 'checkbox' ? (
                 <div style={{ paddingTop: '0.4rem' }}>
-                  <input type="checkbox" checked={!!v[f.name]} onChange={set(f.name, f.type)} style={{ width: 18, height: 18 }} />
+                  <input aria-label={t(f.label)} type="checkbox" checked={!!v[f.name]} onChange={set(f.name, f.type)} style={{ width: 18, height: 18 }} />
                 </div>
               ) : (
-                <input type={f.type} className="field-input" value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />
+                <input aria-label={t(f.label)} type={f.type} className="field-input" value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />
               )}
             </div>
           ))}

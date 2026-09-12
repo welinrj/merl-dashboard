@@ -167,8 +167,14 @@ export default function ReviewApproval({ user }) {
           return `${p?.code || ''} ${p?.name || ''} ${r.period_label || ''} ${r.reporting_officer_name || ''}`;
         }}
         empty={{
-          title: t(filter === 'queue' ? 'merl.emptyQueueTitle' : 'merl.emptyAllTitle'),
-          description: t(filter === 'queue' ? 'merl.emptyQueueBody' : 'merl.emptyAllBody'),
+          title: filter === 'queue'
+            ? (rows.length === 0 ? 'No reporting periods configured' : 'No submissions awaiting review')
+            : t('merl.emptyAllTitle'),
+          description: filter === 'queue'
+            ? (rows.length === 0
+              ? 'Create a reporting period in MERL Reporting before expecting submissions in this queue.'
+              : 'There are currently no submitted, reviewed or returned periods requiring action.')
+            : t('merl.emptyAllBody'),
         }}
         columns={[
           { key: 'project', header: t('merl.colProject'), sortable: true,
