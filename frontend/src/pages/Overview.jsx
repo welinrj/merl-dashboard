@@ -96,10 +96,10 @@ export default function Overview() {
           q('v_project_indicators', 'project_id, id'),
           q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
           q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
-          q('v_project_organizations', 'project_id, role, name'),
-          q('v_project_area_councils', 'project_id, province_code, area_council_name, coverage_status, feasibility_status'),
-          q('v_project_portfolio_status', 'project_id, progress_pct, performance_status, schedule_status, reporting_completion_pct, area_councils_covered, feasibility_confirmed, at_risk_results, delayed_results'),
-          q('v_project_period_progress', 'project_id, reporting_period_id, period_label, period_type, period_start, period_end, submission_status, progress_pct, result_rows, at_risk_results, delayed_results, approved_results, narrative_rows'),
+          supabase.from('v_project_organizations').select('project_id, role, name'),
+          supabase.from('v_project_area_councils').select('project_id, province_code, area_council_name, coverage_status, feasibility_status'),
+          supabase.from('v_project_portfolio_status').select('project_id, progress_pct, performance_status, schedule_status, reporting_completion_pct, area_councils_covered, feasibility_confirmed, at_risk_results, delayed_results'),
+          supabase.from('v_project_period_progress').select('project_id, reporting_period_id, period_label, period_type, period_start, period_end, submission_status, progress_pct, result_rows, at_risk_results, delayed_results, approved_results, narrative_rows'),
         ]);
 
         const failed = responses.find((r) => r?.error);
