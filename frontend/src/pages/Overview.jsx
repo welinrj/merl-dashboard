@@ -95,7 +95,6 @@ export default function Overview() {
           q('v_project_indicators', 'project_id, id'),
           q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
           q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
-          q('v_project_locations', 'project_id, province'),
           q('v_project_organizations', 'project_id, role, name'),
           q('v_project_area_councils', 'project_id, province_code, area_council_name, coverage_status, feasibility_status'),
           q('v_project_portfolio_status', 'project_id, progress_pct, performance_status, schedule_status, reporting_completion_pct, area_councils_covered, feasibility_confirmed, at_risk_results, delayed_results'),
@@ -105,7 +104,7 @@ export default function Overview() {
         if (failed?.error) throw failed.error;
         if (!mounted) return;
 
-        const [proj, fin, risk, ben, act, ind, prog, rep, loc, org, ac, ps] = responses;
+        const [proj, fin, risk, ben, act, ind, prog, rep, org, ac, ps] = responses;
         setData({
           projects: proj.data ?? [],
           financial: fin.data ?? [],
@@ -115,7 +114,6 @@ export default function Overview() {
           indicators: ind.data ?? [],
           progress: prog.data ?? [],
           reporting: rep.data ?? [],
-          locations: loc.data ?? [],
           organizations: org.data ?? [],
           areaCouncils: ac.data ?? [],
           portfolioStatus: ps.data ?? [],
@@ -727,7 +725,7 @@ function OverviewSkeleton() {
       <div className="ovx-skeleton ovx-skeleton-heading" />
       <div className="ovx-skeleton ovx-skeleton-filters" />
       <div className="ovx-kpis">
-        {Array.from({ length: 4 }).map((_, i) => <div className="ovx-skeleton ovx-skeleton-kpi" key={i} />)}
+        {Array.from({ length: 6 }).map((_, i) => <div className="ovx-skeleton ovx-skeleton-kpi" key={i} />)}
       </div>
       <div className="ovx-priority-grid">
         <div className="ovx-skeleton ovx-skeleton-panel" />
