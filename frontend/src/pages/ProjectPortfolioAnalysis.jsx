@@ -602,13 +602,13 @@ export default function ProjectPortfolioAnalysis() {
     setErrors({});
     setIndicator(null);
 
-    const scoped = (view, cols) => () =>
-      supabase.from(view).select(i18nCols(cols)).eq('project_id', id);
+    const scoped = (view, cols, translatable = true) => () =>
+      supabase.from(view).select(translatable ? i18nCols(cols) : cols).eq('project_id', id);
 
     const jobs = {
       project: () => supabase.from('v_projects').select(i18nCols('*')).eq('id', id).maybeSingle(),
       frameworkNodes: scoped('v_framework_nodes',
-        'id, parent_node_id, node_code, node_type, title, description, status, sort_order'),
+        'id, parent_node_id, node_code, node_type, title, description, status, sort_order', false),
       activities: scoped('v_project_activities',
         'id, code, name, status, output_id, output_code, province, island, area_council, community, '
         + 'planned_start_date, planned_end_date, actual_start_date, actual_end_date, '
@@ -628,9 +628,9 @@ export default function ProjectPortfolioAnalysis() {
         'id, reporting_period, total_direct, female, male, other_gender, youth, '
         + 'persons_with_disability, indirect, double_counting_check'),
       areaCouncils: scoped('v_project_area_councils',
-        'id, province_code, area_council_name, coverage_status, feasibility_status, feasibility_note, verified_at'),
+        'id, province_code, area_council_name, coverage_status, feasibility_status, feasibility_note, verified_at', false),
       kpiConfig: scoped('v_dashboard_kpi_config',
-        'id, indicator_id, dashboard_scope, short_label, display_order, show_target, show_progress, is_public, active'),
+        'id, indicator_id, dashboard_scope, short_label, display_order, show_target, show_progress, is_public, active', false),
       risks: scoped('v_risks_issues',
         'id, code, type, description, category, likelihood, impact, risk_rating, mitigation, '
         + 'responsible_person, due_date, status, date_resolved'),
