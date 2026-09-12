@@ -9,6 +9,7 @@ const fixtures = {
   public_portal_summary:[{project_count:2,overall_progress_pct:70,published_beneficiaries:120,total_investment_vuv:3000000,updated_at:'2026-07-01T00:00:00Z'}],
   public_portal_projects:projects,
   public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:2,project_ids:['pa','pb'],project_names:['Coastal Resilience','Water Security']},{province:'TORBA',area_council:'Torres',project_count:1,project_ids:['pb'],project_names:['Water Security']}],
+  public_portal_kpis:[],
   public_portal_project_inventory:[{total_projects:24,approved_projects:12,other_projects:12}],
 };
 let failures = 0;
@@ -53,7 +54,7 @@ await go('');
 check('bare URL resolves to the shared dashboard',new URL(page.url()).hash==='#/dashboards');
 check('anonymous visitor sees public dashboard',await page.getByRole('heading',{name:'Public Dashboard'}).count()===1);
 check('inventory counts all 24 records',await has('24'));
-check('inventory distinguishes approved and other records',await kpis.getByText(/12 approved for public view.*12 other \/ demo/).count()===1);
+check('inventory distinguishes approved and not-yet-public records',await kpis.getByText(/12 approved for public view.*12 not yet public/).count()===1);
 check('approved beneficiaries are shown',await has('120'));
 check('approved progress is shown',await has('70%'));
 check('no internal editing or approval navigation',await page.getByRole('button',{name:/project setup|risk analysis|review & approval|administration/i}).count()===0);
