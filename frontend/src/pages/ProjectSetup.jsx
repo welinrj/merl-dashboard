@@ -131,13 +131,14 @@ const FORM_PREVIEWS = [
 ];
 
 function PreviewField({ item }) {
-  const common = { className: 'field-input ps-preview-control', disabled: true, 'aria-label': item.label };
   let control;
-  if (item.type === 'textarea') control = <textarea {...common} rows={3} placeholder="Enter information here" />;
-  else if (item.type === 'select') control = <select {...common} defaultValue=""><option value="">{item.placeholder || 'Select'}</option>{(item.options || []).map((o) => <option key={o} value={o}>{o}</option>)}</select>;
-  else if (item.type === 'checkbox') control = <div className="ps-preview-check"><input type="checkbox" disabled /><span>Yes / completed</span></div>;
-  else control = <input {...common} type={item.type || 'text'} placeholder={item.placeholder || (item.type === 'number' ? '0' : 'Enter information')} />;
-  return <label className={item.wide ? 'ps-preview-field ps-preview-wide' : 'ps-preview-field'}><span className="field-label">{item.label}</span>{control}</label>;
+  if (item.type === 'textarea') control = <div className="ps-reference-value ps-reference-textarea">Narrative information entered in MERL Reporting</div>;
+  else if (item.type === 'select') control = <div className="ps-reference-value">{item.options?.length ? item.options.join(' · ') : (item.placeholder || 'Selected from project data')}</div>;
+  else if (item.type === 'checkbox') control = <div className="ps-reference-value">Yes / No</div>;
+  else if (item.type === 'number') control = <div className="ps-reference-value">Numeric value</div>;
+  else if (item.type === 'date') control = <div className="ps-reference-value">Date</div>;
+  else control = <div className="ps-reference-value">{item.placeholder || 'Text information'}</div>;
+  return <div className={item.wide ? 'ps-preview-field ps-preview-wide' : 'ps-preview-field'}><span className="field-label">{item.label}</span>{control}</div>;
 }
 
 function ActualMerlForms() {
@@ -537,7 +538,8 @@ export default function ProjectSetup({ user }) {
         .ps-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.ps-preview-field{display:flex;flex-direction:column;gap:.3rem}.ps-preview-wide{grid-column:1/-1}.ps-preview-control:disabled{opacity:1;color:var(--text-2);background:#f8fafc;cursor:default}.ps-preview-control:disabled::placeholder{color:#94a3b8}.ps-preview-check{display:flex;align-items:center;gap:.5rem;min-height:42px;padding:.55rem .7rem;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:var(--text-3);font-size:.75rem}.ps-preview-note{margin:.9rem 0 0;padding:.7rem .8rem;border-radius:8px;background:#f8fafc;color:var(--text-3);font-size:.72rem;line-height:1.45}
         @media(max-width:800px){.ps-config-grid{grid-template-columns:1fr}.ps-config-head select{min-width:0;width:100%}.ps-preview-grid{grid-template-columns:1fr}.ps-preview-wide{grid-column:1}.ps-actual-head{flex-direction:column}.ps-live-link{white-space:normal}}
         @media(max-width:700px){.ps-grid{grid-template-columns:1fr!important}.ps-grid>*{grid-column:1!important}}
-      `}</style>
+      `}.ps-reference-value{min-height:2.15rem;padding:.55rem .65rem;border:1px dashed var(--border);border-radius:7px;background:var(--white);color:var(--text-3);font-size:.7rem;line-height:1.35}.ps-reference-textarea{min-height:3.8rem}
+        </style>
     </div>
   );
 }
