@@ -73,6 +73,12 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/kpi-alignment.mjs
 
+      - name: Audit core dashboard pages
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/page-smoke.mjs
+
       - name: Sweep visible controls
         working-directory: frontend
         env:
