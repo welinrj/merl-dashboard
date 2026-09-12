@@ -31,7 +31,8 @@ const FORM_PREVIEWS = [
       { label: 'Actual Achievement This Period', type: 'number' },
       { label: 'Cumulative Achievement', type: 'number' },
       { label: 'Previous Reported Value', type: 'number' },
-      { label: 'Performance Status', type: 'select', options: ['On track', 'At risk', 'Off track', 'Completed'] },
+      { label: 'Performance Status', type: 'select', options: ['On Track', 'Attention Required', 'At Risk', 'Target Achieved'] },
+      { label: 'Schedule Status', type: 'select', options: ['On Schedule', 'Delayed'] },
       { label: 'Progress Narrative', type: 'textarea', wide: true },
       { label: 'Reason for Variance', type: 'textarea', wide: true },
       { label: 'Corrective Action', type: 'textarea', wide: true },
@@ -106,7 +107,7 @@ const FORM_PREVIEWS = [
     form: '11', title: 'Reporting Period & Submission', purpose: 'Defines the reporting period and manages submission, review and approval.',
     fields: [
       { label: 'Reporting Period Label *', type: 'text', placeholder: 'e.g. Q1 2026' },
-      { label: 'Reporting Period Type', type: 'select', options: ['Monthly', 'Quarterly', 'Semi-annual', 'Annual', 'Other'] },
+      { label: 'Reporting Period Type', type: 'select', options: ['Monthly', 'Quarterly', 'Six-monthly', 'Annual', 'Other'] },
       { label: 'Period Start Date', type: 'date' },
       { label: 'Period End Date', type: 'date' },
       { label: 'Submission Status', type: 'select', options: ['Draft', 'Submitted', 'Returned', 'Reviewed', 'Approved'] },
