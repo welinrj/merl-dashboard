@@ -46,7 +46,8 @@ export default function PublicProjectResults({ projects = [], lang = 'en', onPro
         {open && <div className="ppr-detail">
           <h3>{c.outcome}</h3><p>{project.expected_primary_outcome || project.description || c.unknown}</p>
           <h3>{c.result}</h3>
-          {!hasResults ? <p className="ppr-note">{c.none}</p> : <div className="ppr-metrics">
+          {!hasResults ? <p className="ppr-note">{c.none}</p> : <>
+          <div className="ppr-metrics">
             <div><span>{c.progress}</span><strong>{percent(project.progress_pct)}</strong><div className="ppr-track"><span style={{width:`${known ? Math.max(0,Math.min(100,Number(project.progress_pct))) : 0}%`}}/></div></div>
             <div><span>{c.indicators}</span><strong>{number(project.published_indicator_count || 0,lang)}</strong></div>
             <div><span>{c.beneficiaries}</span><strong>{number(project.published_beneficiaries || 0,lang)}</strong></div>
@@ -57,7 +58,7 @@ export default function PublicProjectResults({ projects = [], lang = 'en', onPro
               <strong>{metric(kpi.actual_value,kpi.unit,lang)}</strong>
               <small>{kpi.target_value != null ? 'Target ' + metric(kpi.target_value,kpi.unit,lang) : ''}{kpi.progress_pct != null ? (kpi.target_value != null ? ' · ' : '') + percent(kpi.progress_pct) + ' progress' : ''}</small>
             </div>)}
-          </div>}
+          </div>}</>}
           <p className="ppr-note">{c.period}: {project.last_published_period || c.unknown}</p>
           {onProject && <button type="button" className="ppr-detail-link" onClick={() => onProject(project)}>{c.detail} →</button>}
         </div>}
