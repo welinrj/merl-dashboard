@@ -98,7 +98,7 @@ export default function ResultsWorkspace({ user }) {
     setError('');
     Promise.all([
       localised(() => supabase.from('v_projects').select(i18nCols('id, code, acronym, name, status')).order('code')),
-      localised(() => supabase.from('v_framework_nodes').select('*').order('sort_order').order('node_code')),
+      supabase.from('v_framework_nodes').select('*').order('sort_order').order('node_code'),
       localised(() => supabase.from('v_project_indicators').select('*').order('code')),
       supabase.from('v_indicator_targets').select('*'),
       localised(() => supabase.from('v_indicator_progress').select('*')),
