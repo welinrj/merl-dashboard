@@ -2,14 +2,14 @@ name: Audit remediation UI patch
 
 on:
   push:
-    branches: [fix/audit-remediation-20260913]
+    branches:
+      - fix/audit-remediation-20260913
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: "!contains(github.event.head_commit.message, '[audit-ui-applied]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,6 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          # Project Setup: restore Form 5 route and align reference wording/options.
           p = Path('frontend/src/pages/ProjectSetup.jsx')
           s = p.read_text()
           s = s.replace("import PageHeader from '../components/ui/PageHeader';\n", "import PageHeader from '../components/ui/PageHeader';\nimport ActivityManager from '../components/ActivityManager';\n", 1)
@@ -37,21 +36,16 @@ jobs:
           s = s.replace("{ label: 'Verification Status', type: 'select', options: ['Pending', 'Verified', 'Rejected'] },", "{ label: 'Verification Status', type: 'select', options: ['Pending', 'Verified', 'Rejected', 'Superseded'] },", 1)
           s = s.replace("<p>Reference only. This page explains what each reporting form collects. Actual data entry, editing, saving and submission happens in MERL Reporting.</p>", "<p>Field examples are read-only. This page explains what each reporting form collects. Actual reporting data is entered, edited, saved and submitted in MERL Reporting; Activities & Workplan (Form 5) is entered under Manage projects.</p>", 1)
           s = s.replace("<strong>No controls on this page are interactive.</strong>", "<strong>Field examples are read-only.</strong>", 1)
-
-          # Prefer a project explicitly carried in the route so cross-page tasks
-          # cannot silently switch to another project.
           marker = "function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {\n"
           repl = "function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {\n  const routeProjectId = (() => {\n    try {\n      const query = window.location.hash.split('?')[1] || '';\n      return new URLSearchParams(query).get('project') || '';\n    } catch { return ''; }\n  })();\n"
           if marker not in s: raise SystemExit('ProjectConfiguration marker not found')
           s = s.replace(marker, repl, 1)
           s = s.replace("const preferred = (ps || []).some((p) => p.id === preferredProjectId) ? preferredProjectId : '';", "const requested = preferredProjectId || routeProjectId;\n      const preferred = (ps || []).some((p) => p.id === requested) ? requested : '';", 1)
-          # Render Form 5 with the same selected project used by the configuration cards.
           end_marker = "      </div>\n    </div>}\n  </section>;\n}"
           if end_marker not in s: raise SystemExit('ProjectConfiguration end marker not found')
           s = s.replace(end_marker, "      </div>\n      <ActivityManager projectId={projectId} canEdit={canEdit} />\n    </div>}\n  </section>;\n}", 1)
           p.write_text(s)
 
-          # Review queue: distinguish an unconfigured system from a genuinely empty queue.
           p = Path('frontend/src/pages/ReviewApproval.jsx')
           s = p.read_text()
           old = """        empty={{
@@ -71,8 +65,6 @@ jobs:
           if old not in s: raise SystemExit('Review empty block not found')
           p.write_text(s.replace(old, new, 1))
 
-          # MERL modal accessibility: give the dialog and every generated control
-          # a meaningful accessible name. Existing scrolling/stacking behaviour is retained.
           p = Path('frontend/src/pages/MerlReporting.jsx')
           s = p.read_text()
           s = s.replace("<div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}\n      onClick={closeKeepingDraft}>", "<div role=\"dialog\" aria-modal=\"true\" aria-label={`${initial?.id ? t('merl.edit') : t('merl.add')} — ${t(module.label)}`} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}\n      onClick={closeKeepingDraft}>", 1)
