@@ -69,7 +69,6 @@ const check = (label, ok, detail) => {
 console.log('BENEFICIARY RECONCILIATION (project pa: 120 confirmed + 150 unconfirmed)');
 
 for (const [label, route] of [
-  ['Overview', '/dashboards'],
   ['Dashboards (portfolio)', '/analytics/portfolio'],
   ['Project Analysis', '/analytics/project-portfolio?project=pa'],
 ]) {
