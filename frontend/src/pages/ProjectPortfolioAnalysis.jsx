@@ -40,10 +40,9 @@ import StatTile from '../components/ui/StatTile';
 import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
-import VanuatuMap from '../components/VanuatuMap';
 import { fmtDate, fmtNum } from '../lib/locale';
 import { fmtAmount, fmtPct } from '../lib/docc/reporting';
-import { analyseProject, geographicSummary, UNKNOWN } from '../lib/docc/projectAnalysis';
+import { analyseProject, UNKNOWN } from '../lib/docc/projectAnalysis';
 
 // Semantic only — green on track, amber wants attention, red is critical, grey
 // is "we don't know". No colour on this page means anything else.
@@ -348,23 +347,37 @@ function Framework({ d, results, onIndicator }) {
     const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n;
   });
 
-  const byIndicatorId = useMemo(
-    () => new Map(results.rows.map((r) => [r.indicator.id, r])), [results],
-  );
+  const nodes = d.frameworkNodes || [];
+  const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+  const childrenByParent = useMemo(() => {
+    const map = new Map();
+    for (const node of nodes) {
+      const key = node.parent_node_id || null;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(node);
+    }
+    for (const list of map.values()) list.sort((a, b) =>
+      (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0)
+      || String(a.node_code || '').localeCompare(String(b.node_code || '')));
+    return map;
+  }, [nodes]);
 
-  // An indicator can be attached at any level, so it is listed under the level
-  // it names rather than being forced down to the output.
-  const indicatorsFor = (level, id) => results.rows.filter(({ indicator: ind }) =>
-    (level === 'objective' && ind.objective_id === id)
-    || (level === 'outcome' && ind.outcome_id === id)
-    || (level === 'output' && ind.output_id === id)
-    || (ind.linked_level === level && ind.linked_id === id));
+  const resultsByNode = useMemo(() => {
+    const map = new Map();
+    for (const row of results.rows) {
+      const key = row.indicator.framework_node_id || null;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(row);
+    }
+    return map;
+  }, [results.rows]);
 
   const attached = new Set();
-  for (const lvl of [['objective', d.objectives], ['outcome', d.outcomes], ['output', d.outputs]]) {
-    for (const row of lvl[1]) for (const r of indicatorsFor(lvl[0], row.id)) attached.add(r.indicator.id);
+  for (const [nodeId, rows] of resultsByNode.entries()) {
+    if (nodeId && byId.has(nodeId)) rows.forEach((r) => attached.add(r.indicator.id));
   }
   const orphans = results.rows.filter((r) => !attached.has(r.indicator.id));
+  const roots = nodes.filter((n) => !n.parent_node_id || !byId.has(n.parent_node_id));
 
   const IndicatorRow = ({ r }) => (
     <button type="button" onClick={() => onIndicator(r)}
@@ -387,23 +400,26 @@ function Framework({ d, results, onIndicator }) {
     </button>
   );
 
-  const Node = ({ row, level, children, depth }) => {
-    const isOpen = open.has(row.id);
-    const inds = indicatorsFor(level, row.id);
+  const Node = ({ node, depth = 0 }) => {
+    const isOpen = open.has(node.id);
+    const inds = resultsByNode.get(node.id) || [];
+    const children = childrenByParent.get(node.id) || [];
+    const typeLabel = String(node.node_type || 'result').replaceAll('_', ' ');
     return (
       <div style={{ borderTop: '1px solid var(--border)' }}>
-        <button type="button" onClick={() => toggle(row.id)} aria-expanded={isOpen}
+        <button type="button" onClick={() => toggle(node.id)} aria-expanded={isOpen}
           style={{ display: 'flex', width: '100%', gap: '0.5rem', alignItems: 'baseline', padding: '0.55rem 0.6rem',
             paddingLeft: `${0.6 + depth * 0.85}rem`, background: depth === 0 ? 'var(--surface-1)' : 'transparent',
             border: 0, cursor: 'pointer', textAlign: 'left', minHeight: 40 }}>
           <span aria-hidden="true" style={{ color: 'var(--text-3)', fontSize: '0.7rem', width: 10, flexShrink: 0 }}>{isOpen ? '▾' : '▸'}</span>
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)', flexShrink: 0 }}>{row.code}</span>
-          <span style={{ fontSize: '0.81rem', color: 'var(--text-1)', fontWeight: depth === 0 ? 700 : 400, minWidth: 0 }}>{row.statement}</span>
+          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', flexShrink: 0 }}>{typeLabel}</span>
+          {node.node_code && <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--green-700)', flexShrink: 0 }}>{node.node_code}</span>}
+          <span style={{ fontSize: '0.81rem', color: 'var(--text-1)', fontWeight: depth === 0 ? 700 : 400, minWidth: 0 }}>{node.title}</span>
         </button>
         {isOpen && (
           <div>
             {inds.map((r) => <IndicatorRow key={r.indicator.id} r={r} />)}
-            {children}
+            {children.map((child) => <Node key={child.id} node={child} depth={depth + 1} />)}
           </div>
         )}
       </div>
@@ -412,17 +428,7 @@ function Framework({ d, results, onIndicator }) {
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', overflow: 'hidden' }}>
-      {d.objectives.map((obj) => (
-        <Node key={obj.id} row={obj} level="objective" depth={0}>
-          {d.outcomes.filter((oc) => oc.objective_id === obj.id).map((oc) => (
-            <Node key={oc.id} row={oc} level="outcome" depth={1}>
-              {d.outputs.filter((op) => op.outcome_id === oc.id).map((op) => (
-                <Node key={op.id} row={op} level="output" depth={2} />
-              ))}
-            </Node>
-          ))}
-        </Node>
-      ))}
+      {roots.map((node) => <Node key={node.id} node={node} />)}
       {orphans.length > 0 && (
         <div style={{ borderTop: '1px solid var(--border)' }}>
           <div style={{ padding: '0.5rem 0.6rem', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)', background: 'var(--surface-1)' }}>
@@ -431,7 +437,7 @@ function Framework({ d, results, onIndicator }) {
           {orphans.map((r) => <IndicatorRow key={r.indicator.id} r={r} />)}
         </div>
       )}
-      {byIndicatorId.size === 0 && d.objectives.length === 0 && (
+      {results.rows.length === 0 && nodes.length === 0 && (
         <p style={{ padding: '1rem', margin: 0, fontSize: '0.83rem', color: 'var(--text-3)' }}>{t('ppa.noFramework')}</p>
       )}
     </div>
@@ -518,9 +524,8 @@ function IndicatorPanel({ entry, history, onClose }) {
 // ── The page ─────────────────────────────────────────────────────────────────
 
 const EMPTY = {
-  project: null, objectives: [], outcomes: [], outputs: [], activities: [],
-  indicators: [], progress: [], financial: [], beneficiaries: [], locations: [],
-  risks: [], periods: [],
+  project: null, frameworkNodes: [], activities: [], indicators: [], progress: [],
+  financial: [], beneficiaries: [], areaCouncils: [], risks: [], periods: [], kpiConfig: [],
 };
 
 export default function ProjectPortfolioAnalysis() {
@@ -546,7 +551,6 @@ export default function ProjectPortfolioAnalysis() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [indicator, setIndicator] = useState(null);
-  const [mapProvince, setMapProvince] = useState(null);
 
   const setContext = useCallback((next) => {
     setParams((prev) => {
@@ -597,24 +601,23 @@ export default function ProjectPortfolioAnalysis() {
     setD(EMPTY);
     setErrors({});
     setIndicator(null);
-    setMapProvince(null);
 
     const scoped = (view, cols) => () =>
       supabase.from(view).select(i18nCols(cols)).eq('project_id', id);
 
     const jobs = {
       project: () => supabase.from('v_projects').select(i18nCols('*')).eq('id', id).maybeSingle(),
-      objectives: scoped('v_objectives', 'id, code, statement'),
-      outcomes: scoped('v_outcomes', 'id, objective_id, code, statement'),
-      outputs: scoped('v_outputs', 'id, outcome_id, code, statement'),
+      frameworkNodes: scoped('v_framework_nodes',
+        'id, parent_node_id, node_code, node_type, title, description, status, sort_order'),
       activities: scoped('v_project_activities',
         'id, code, name, status, output_id, output_code, province, island, area_council, community, '
         + 'planned_start_date, planned_end_date, actual_start_date, actual_end_date, '
         + 'planned_budget, actual_expenditure, physical_progress_pct, issue_delay, next_action, next_action_due'),
       indicators: scoped('v_project_indicators',
         'id, code, name, unit, baseline_value, target_value, indicator_level, definition, frequency, '
-        + 'data_source, target_date, objective_id, outcome_id, output_id, linked_level, linked_id, '
-        + 'is_qualitative, higher_is_better'),
+        + 'data_source, target_date, framework_node_id, linked_level, linked_id, '
+        + 'is_qualitative, higher_is_better, direction, aggregation_method, progress_method, '
+        + 'official_reporting_frequency, is_featured_kpi, kpi_label, kpi_order'),
       progress: scoped('v_indicator_progress',
         'id, indicator_id, reporting_period, period_target, actual_this_period, cumulative_actual, '
         + 'final_target, achievement_pct, performance_status, narrative, created_at, updated_at'),
@@ -624,8 +627,10 @@ export default function ProjectPortfolioAnalysis() {
       beneficiaries: scoped('v_beneficiaries',
         'id, reporting_period, total_direct, female, male, other_gender, youth, '
         + 'persons_with_disability, indirect, double_counting_check'),
-      locations: scoped('v_project_locations',
-        'id, province, island, area_council, community, latitude, longitude, intervention, status, beneficiaries'),
+      areaCouncils: scoped('v_project_area_councils',
+        'id, province_code, area_council_name, coverage_status, feasibility_status, feasibility_note, verified_at'),
+      kpiConfig: scoped('v_dashboard_kpi_config',
+        'id, indicator_id, dashboard_scope, short_label, display_order, show_target, show_progress, is_public, active'),
       risks: scoped('v_risks_issues',
         'id, code, type, description, category, likelihood, impact, risk_rating, mitigation, '
         + 'responsible_person, due_date, status, date_resolved'),
@@ -656,7 +661,6 @@ export default function ProjectPortfolioAnalysis() {
 
   // ── The analysis ───────────────────────────────────────────────────────────
   const a = useMemo(() => analyseProject(d, period), [d, period]);
-  const geo = useMemo(() => geographicSummary(d.locations, d.activities), [d]);
 
   // Global search opens the owning project and the relevant record/section.
   // Keep the URL context so Back and refresh remain meaningful.
@@ -670,7 +674,7 @@ export default function ProjectPortfolioAnalysis() {
       if (entry) setIndicator(entry);
       else jump('ppa-results');
     } else {
-      const section = ['objective', 'outcome', 'output'].includes(focus) ? 'ppa-results' : focus === 'activity' ? 'ppa-implementation' : null;
+      const section = ['objective', 'impact', 'paradigm_shift', 'gcf_result_area', 'component', 'outcome', 'output', 'sub_output', 'co_benefit'].includes(focus) ? 'ppa-results' : focus === 'activity' ? 'ppa-implementation' : null;
       if (section) requestAnimationFrame(() => document.getElementById(section)?.scrollIntoView({ block: 'start' }));
     }
   }, [projectId, focus, focusRecord, period, loading, d.project, a.results.rows]);
@@ -878,6 +882,32 @@ export default function ProjectPortfolioAnalysis() {
             </button>
           </div>
 
+          {d.kpiConfig.length > 0 && (
+            <Section title="Project Result KPIs" description="Featured indicators configured from this project's official results framework.">
+              <div className="grid-kpi-6">
+                {[...d.kpiConfig].sort((a,b) => a.display_order - b.display_order).map((cfg) => {
+                  const entry = a.results.rows.find((r) => r.indicator.id === cfg.indicator_id);
+                  if (!entry) return null;
+                  const actual = entry.progress?.cumulative_actual ?? entry.progress?.actual_this_period;
+                  const target = entry.progress?.final_target ?? entry.indicator.target_value;
+                  return (
+                    <button type="button" key={cfg.id} onClick={() => setIndicator(entry)} className="kpi-jump">
+                      <StatTile
+                        label={cfg.short_label}
+                        status={entry.status === 'below_target' ? 'red' : entry.status === 'on_track' || entry.status === 'achieved' ? 'green' : 'none'}
+                        value={actual != null ? `${fmtNum(actual)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : t('ppa.notReported')}
+                        placeholder={actual == null}
+                        sub={cfg.show_progress && typeof entry.pct === 'number'
+                          ? `${fmtPct(entry.pct)} progress`
+                          : cfg.show_target && target != null ? `Target: ${fmtNum(target)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : entry.indicator.code}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
+
           {/* 5 — Time vs Money vs Results */}
           <Section title={t('ppa.comparisonTitle')} description={t('ppa.comparisonDesc')}>
             <Comparison comparison={a.comparison} />
@@ -1019,7 +1049,7 @@ export default function ProjectPortfolioAnalysis() {
             <Framework d={d} results={a.results} onIndicator={setIndicator} />
           </Section>
 
-          {/* 13/14 — beneficiaries and geography */}
+          {/* 13/14 — beneficiaries and Area Council coverage */}
           <div className="grid-2">
             <Section
               id="ppa-beneficiaries"
@@ -1043,10 +1073,10 @@ export default function ProjectPortfolioAnalysis() {
                   <table className="data-table" style={{ width: '100%' }}>
                     <thead><tr><th>{t('ppa.category')}</th><th style={{ textAlign: 'right' }}>{t('ppa.count')}</th></tr></thead>
                     <tbody>
-                      {a.beneficiaries.categories.map((c) => (
-                        <tr key={c.key}>
-                          <td>{t(`opt.${c.key}`, { defaultValue: t(`ppa.cat_${c.key}`) })}</td>
-                          <td style={{ textAlign: 'right' }}>{fmtNum(c.value)}</td>
+                      {a.beneficiaries.categories.map((cat) => (
+                        <tr key={cat.key}>
+                          <td>{t(`opt.${cat.key}`, { defaultValue: t(`ppa.cat_${cat.key}`) })}</td>
+                          <td style={{ textAlign: 'right' }}>{fmtNum(cat.value)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1065,43 +1095,44 @@ export default function ProjectPortfolioAnalysis() {
 
             <Section
               id="ppa-geography"
-              title={t('ppa.geographyTitle')}
-              error={errors.locations}
+              title="Area Council Coverage & Feasibility"
+              description="Coverage reporting stops at Area Council level, in line with the stakeholder consultation."
+              error={errors.areaCouncils}
               onRetry={() => load(projectId)}
-              empty={!errors.locations && d.locations.length === 0}
-              emptyTitle={t('ppa.noLocations')}
-              emptyText={t('ppa.noLocationsText')}
-              actions={mapProvince && (
-                <button type="button" className="btn-secondary rp-noprint" onClick={() => setMapProvince(null)}
-                  style={{ padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-control)', fontWeight: 700, fontSize: '0.74rem', cursor: 'pointer' }}>
-                  {t('ppa.clearLocation')}
-                </button>
-              )}
+              empty={!errors.areaCouncils && d.areaCouncils.length === 0}
+              emptyTitle="No Area Council coverage recorded"
+              emptyText="Add the project's approved Area Council coverage and feasibility records in Project Setup."
             >
-              <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
-                <Field label={t('ppa.provinces')} value={fmtNum(geo.provinceCount)} />
-                <Field label={t('ppa.islands')} value={fmtNum(geo.islandCount)} />
-                <Field label={t('ppa.communities')} value={fmtNum(geo.communityCount)} />
-                <Field label={t('ppa.sites')} value={fmtNum(geo.siteCount)} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.7rem', marginBottom: '0.9rem' }}>
+                {[
+                  ['Covered', d.areaCouncils.filter((x) => x.coverage_status !== 'not_covered').length],
+                  ['Confirmed', d.areaCouncils.filter((x) => x.feasibility_status === 'confirmed').length],
+                  ['Assessment', d.areaCouncils.filter((x) => x.feasibility_status === 'under_assessment').length],
+                  ['Conditional', d.areaCouncils.filter((x) => x.feasibility_status === 'conditional').length],
+                  ['Not feasible', d.areaCouncils.filter((x) => x.feasibility_status === 'not_feasible').length],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', padding: '0.55rem 0.65rem' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-1)' }}>{fmtNum(value)}</div>
+                    <div style={{ fontSize: '0.63rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+                  </div>
+                ))}
               </div>
-              <VanuatuMap counts={geo.counts} selected={mapProvince}
-                onSelect={(p) => setMapProvince((cur) => (cur === p ? null : p))} />
-              {(mapProvince ? geo.provinces.filter((p) => p.province === mapProvince) : geo.provinces).map((p) => (
-                <div key={p.province} style={{ marginTop: '0.7rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-1)' }}>
-                    {p.province}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: 2 }}>
-                    {t('ppa.provinceDetail', {
-                      sites: p.sites, activities: p.activities,
-                      beneficiaries: p.beneficiaries != null ? fmtNum(p.beneficiaries) : t('ppa.notReported'),
-                    })}
-                  </div>
-                  {p.communities.length > 0 && (
-                    <div style={{ fontSize: '0.73rem', color: 'var(--text-3)', marginTop: 2 }}>{p.communities.join(' · ')}</div>
-                  )}
-                </div>
-              ))}
+              <Scroller>
+                <table className="data-table" style={{ width: '100%', minWidth: 520 }}>
+                  <thead><tr><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead>
+                  <tbody>
+                    {[...d.areaCouncils].sort((a,b) => String(a.province_code || '').localeCompare(String(b.province_code || '')) || String(a.area_council_name).localeCompare(String(b.area_council_name))).map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.province_code || '—'}</td>
+                        <td style={{ fontWeight: 700 }}>{row.area_council_name}</td>
+                        <td><StatusBadge status={row.coverage_status} /></td>
+                        <td><StatusBadge status={row.feasibility_status} /></td>
+                        <td>{row.feasibility_note || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Scroller>
             </Section>
           </div>
 
