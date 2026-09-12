@@ -111,18 +111,14 @@ if (await search.count()) {
 } else check('global search present', false);
 
 // ── Map ──────────────────────────────────────────────────────────────────────
-console.log('\nMAP');
+console.log('\nGEOGRAPHIC COVERAGE');
 await go('/analytics/geographic');
-const svg = page.locator('svg').first();
-check('map renders', await svg.count() > 0);
-const paths = await page.locator('svg path').count();
-check(`province shapes drawn (${paths})`, paths >= 6);
-const region = page.locator('svg path').first();
-await region.click().catch(() => {});
-await page.waitForTimeout(800);
-check('clicking a region does not error', !/NaN|undefined/.test(await body()));
+tx = await body();
+check('Area Council coverage heading is present', /AREA COUNCIL COVERAGE/i.test(tx));
+check('coverage is reported at Area Council level', /AREA COUNCIL/i.test(tx));
+check('community/site drill-down is not required', !/Sites by Island/i.test(tx));
+check('geographic page does not error', !/This section could not be loaded/i.test(tx));
 
-// ── Export ───────────────────────────────────────────────────────────────────
 console.log('\nEXPORT / PRINT');
 await go('/reports');
 await page.evaluate(() => { window.__printed = false; window.print = () => { window.__printed = true; }; });
