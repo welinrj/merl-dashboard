@@ -43,6 +43,7 @@ export default function Reports() {
   const [projectId, setProjectId] = useState('');
   const [province, setProvince] = useState('');
   const [donor, setDonor] = useState('');
+  const [periodType, setPeriodType] = useState('quarterly');
   const [period, setPeriod] = useState('');
   const [runs, setRuns] = useState([]);
 
@@ -58,7 +59,7 @@ export default function Reports() {
     (async () => {
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
-      const [proj, fin, risk, ben, act, ind, prog, rep, loc, obj, oc, op, learn] = await Promise.all([
+      const [proj, fin, risk, ben, act, ind, prog, rep, ac, fw, learn] = await Promise.all([
         q('v_projects', '*'),
         q('v_financial_progress', '*'),
         q('v_risks_issues', '*'),
@@ -67,17 +68,15 @@ export default function Reports() {
         q('v_project_indicators', '*'),
         q('v_indicator_progress', '*'),
         q('v_reporting_periods', '*'),
-        q('v_project_locations', '*'),
-        q('v_objectives', '*'),
-        q('v_outcomes', '*'),
-        q('v_outputs', '*'),
+        q('v_project_area_councils', '*'),
+        q('v_framework_nodes', '*'),
         q('v_learning_updates', '*'),
       ]);
       setD({
         projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
-        progress: prog.data ?? [], reporting: rep.data ?? [], locations: loc.data ?? [],
-        objectives: obj.data ?? [], outcomes: oc.data ?? [], outputs: op.data ?? [], learning: learn.data ?? [],
+        progress: prog.data ?? [], reporting: rep.data ?? [], areaCouncils: ac.data ?? [],
+        frameworkNodes: fw.data ?? [], learning: learn.data ?? [],
       });
       if ((proj.data ?? []).length) setProjectId(proj.data[0].id);
     })();
@@ -88,6 +87,20 @@ export default function Reports() {
 
   const donors = [...new Set(d.projects.map((p) => p.donor).filter(Boolean))];
   const provinces = ['TORBA', 'SANMA', 'PENAMA', 'MALAMPA', 'SHEFA', 'TAFEA'];
+  const periodOptions = [...new Map(
+    d.reporting
+      .filter((r) => !periodType || r.period_type === periodType)
+      .map((r) => [r.period_label, r])
+  ).values()].sort((a, b) => String(b.period_end || '').localeCompare(String(a.period_end || '')));
+
+  const reportData = period ? {
+    ...d,
+    progress: d.progress.filter((r) => r.reporting_period === period),
+    financial: d.financial.filter((r) => r.reporting_period === period),
+    beneficiaries: d.beneficiaries.filter((r) => r.reporting_period === period),
+    learning: d.learning.filter((r) => r.reporting_period === period),
+    reporting: d.reporting.filter((r) => r.period_label === period),
+  } : d;
 
   // "Data as at" (§76): latest timestamp across the datasets this report reads.
   const times = [d.reporting, d.progress, d.financial, d.beneficiaries, d.risks, d.learning, d.activities]
@@ -104,7 +117,7 @@ export default function Reports() {
       p_report_label: label,
       p_project_id: type === 'project' ? (projectId || null) : null,
       p_reporting_period: period || null,
-      p_params: { province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
+      p_params: { period_type: periodType, province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
     });
     if (!error) loadRuns();
     window.print();
@@ -181,8 +194,20 @@ export default function Reports() {
           </div>
         )}
         <div style={{ flex: '0 1 160px' }}>
+          <label className="field-label">Report frequency</label>
+          <select className="field-input" value={periodType} onChange={(e) => { setPeriodType(e.target.value); setPeriod(''); }}>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="six_monthly">Six-monthly</option>
+            <option value="annual">Annual</option>
+          </select>
+        </div>
+        <div style={{ flex: '0 1 190px' }}>
           <label className="field-label">{t('rpt.reportingPeriod')}</label>
-          <input className="field-input" placeholder="e.g. 2026-Q1" value={period} onChange={(e) => setPeriod(e.target.value)} />
+          <select className="field-input" value={period} onChange={(e) => setPeriod(e.target.value)}>
+            <option value="">All available periods</option>
+            {periodOptions.map((p) => <option key={p.id || p.period_label} value={p.period_label}>{p.period_label}</option>)}
+          </select>
         </div>
         <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> {t('rpt.printPdf')}
@@ -194,12 +219,12 @@ export default function Reports() {
           <span>{t('rpt.generated')} <b>{fmtDateTime(generatedAt)}</b></span>
           <span>{t('rpt.dataAsAt')} <b>{dataAsAt ? fmtDateTime(dataAsAt) : '—'}</b></span>
         </div>
-        {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} />}
-        {type === 'portfolio' && <Portfolio d={d} period={period} />}
-        {type === 'indicator' && <IndicatorReport d={d} period={period} />}
-        {type === 'financial' && <FinancialReport d={d} period={period} />}
-        {type === 'geographic' && <GeographicReport d={d} province={province} period={period} />}
-        {type === 'donor' && <DonorReport d={d} donor={donor} period={period} />}
+        {type === 'project' && <ProjectProgress d={reportData} projectId={projectId} period={period} />}
+        {type === 'portfolio' && <Portfolio d={reportData} period={period} />}
+        {type === 'indicator' && <IndicatorReport d={reportData} period={period} />}
+        {type === 'financial' && <FinancialReport d={reportData} period={period} />}
+        {type === 'geographic' && <GeographicReport d={reportData} province={province} period={period} />}
+        {type === 'donor' && <DonorReport d={reportData} donor={donor} period={period} />}
       </div>
 
       {/* Report Library (§48-51): audit trail of official reports generated */}
@@ -255,7 +280,7 @@ function ProjectProgress({ d, projectId, period }) {
   const prog = d.progress.filter((x) => x.project_id === projectId);
   const acts = d.activities.filter((a) => a.project_id === projectId);
   const risks = d.risks.filter((r) => r.project_id === projectId);
-  const locs = d.locations.filter((l) => l.project_id === projectId);
+  const locs = d.areaCouncils.filter((l) => l.project_id === projectId && l.coverage_status !== 'not_covered');
   const bens = d.beneficiaries.filter((b) => b.project_id === projectId);
   const learn = d.learning.filter((l) => l.project_id === projectId).sort((a, b) => (b.reporting_period ?? '').localeCompare(a.reporting_period ?? ''))[0] || {};
   const budget = fin?.approved_budget ?? p.budget_vuv;
@@ -295,9 +320,9 @@ function ProjectProgress({ d, projectId, period }) {
       <Section n="3" title={t('rpt.progressAgainst')}>
         <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.level')}</th><th>{t('rpt.statement')}</th></tr></thead>
           <tbody>
-            {d.objectives.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.objective')}</td><td>{o.statement}</td></tr>)}
-            {d.outcomes.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.outcome')}</td><td>{o.statement}</td></tr>)}
-            {d.outputs.filter((o) => o.project_id === projectId).map((o) => <tr key={o.code}><td>{o.code}</td><td>{t('rpt.output')}</td><td>{o.statement}</td></tr>)}
+            {d.frameworkNodes.filter((o) => o.project_id === projectId).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map((o) => (
+              <tr key={o.id}><td>{o.node_code || '—'}</td><td>{String(o.node_type || '').replaceAll('_', ' ')}</td><td>{o.title}</td></tr>
+            ))}
           </tbody>
         </table>
       </Section>
@@ -450,24 +475,29 @@ function FinancialReport({ d }) {
 // ── Geographic / Provincial ───────────────────────────────────────────────────
 function GeographicReport({ d, province }) {
   const { t } = useTranslation();
-  const locs = province ? d.locations.filter((l) => l.province === province) : d.locations;
-  const projectIds = new Set(locs.map((l) => l.project_id));
+  const councils = province
+    ? d.areaCouncils.filter((l) => l.province_code === province && l.coverage_status !== 'not_covered')
+    : d.areaCouncils.filter((l) => l.coverage_status !== 'not_covered');
+  const projectIds = new Set(councils.map((l) => l.project_id));
   const projs = d.projects.filter((p) => projectIds.has(p.id) || (province && (p.provinces || []).includes(province)));
   return (
     <div>
-      <h2>{province ? `${province} Province` : 'Geographic'} Report</h2>
+      <h2>{province ? `${province} Province` : 'Area Council Coverage'} Report</h2>
       <Section n="1" title={t('rpt.coverageSummary')}>
         <div className="rp-meta">
           <div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div>
-          <div><b>{t('rpt.sitesLbl')}</b> {locs.length}</div>
-          <div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(sum(locs, (l) => l.beneficiaries))}</div>
+          <div><b>Area Councils</b> {new Set(councils.map((l) => l.area_council_name)).size}</div>
+          <div><b>Confirmed feasible</b> {new Set(councils.filter((l) => l.feasibility_status === 'confirmed').map((l) => l.area_council_name)).size}</div>
         </div>
       </Section>
-      <Section n="2" title={t('rpt.sites')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.island')}</th><th>{t('rpt.areaCouncil')}</th><th>{t('rpt.community')}</th><th>{t('rpt.intervention')}</th><th>{t('rpt.beneficiaries')}</th></tr></thead>
+      <Section n="2" title="Area Council Coverage">
+        <table className="rp-t"><thead><tr><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th>Project</th></tr></thead>
           <tbody>
-            {locs.map((l) => <tr key={l.id}><td>{l.province || '—'}</td><td>{l.island || '—'}</td><td>{l.area_council || '—'}</td><td>{l.community || '—'}</td><td>{l.intervention || '—'}</td><td>{l.beneficiaries ?? '—'}</td></tr>)}
-            {locs.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noSites')}</td></tr>}
+            {councils.map((l) => {
+              const p = d.projects.find((x) => x.id === l.project_id);
+              return <tr key={l.id}><td>{l.province_code || '—'}</td><td>{l.area_council_name}</td><td>{l.coverage_status || '—'}</td><td>{l.feasibility_status || 'Not assessed'}</td><td>{p?.code || p?.name || '—'}</td></tr>;
+            })}
+            {!councils.length && <tr><td colSpan={5} className="rp-muted">No Area Council coverage recorded.</td></tr>}
           </tbody>
         </table>
       </Section>
