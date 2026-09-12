@@ -173,8 +173,10 @@ function ProjectConfiguration({ preferredProjectId }) {
   const [areas, setAreas] = useState([]);
   const [indicators, setIndicators] = useState([]);
   const [kpis, setKpis] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [areaEdit, setAreaEdit] = useState({ id: null, area_council_name: '', coverage_status: 'active', feasibility_status: 'not_assessed', feasibility_note: '' });
   const [kpiEdit, setKpiEdit] = useState({ id: null, indicator_id: '', short_label: '', display_order: 0, show_target: true, show_progress: true, is_public: false, active: true });
+  const [orgEdit, setOrgEdit] = useState({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false });
   const [busy, setBusy] = useState(false);
 
   const loadProjects = useCallback(async () => {
@@ -190,14 +192,15 @@ function ProjectConfiguration({ preferredProjectId }) {
 
   const loadConfig = useCallback(async (pid) => {
     if (!pid) { setAreas([]); setIndicators([]); setKpis([]); return; }
-    const [a,i,k] = await Promise.all([
+    const [a,i,k,o] = await Promise.all([
       supabase.from('v_project_area_councils').select('*').eq('project_id',pid).order('province_code').order('area_council_name'),
       supabase.from('v_project_indicators').select('id,code,name,unit').eq('project_id',pid).order('code'),
       supabase.from('v_dashboard_kpi_config').select('*').eq('project_id',pid).eq('dashboard_scope','project').order('display_order'),
+      supabase.from('v_project_organizations').select('*').eq('project_id',pid).order('role').order('name'),
     ]);
-    const err=a.error||i.error||k.error;
+    const err=a.error||i.error||k.error||o.error;
     if (err) { toast.error(dbErrorMessage(err)); return; }
-    setAreas(a.data||[]); setIndicators(i.data||[]); setKpis(k.data||[]);
+    setAreas(a.data||[]); setIndicators(i.data||[]); setKpis(k.data||[]); setOrganizations(o.data||[]);
   }, []);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
@@ -244,6 +247,26 @@ function ProjectConfiguration({ preferredProjectId }) {
     loadConfig(projectId);
   };
 
+  const saveOrganization = async () => {
+    if (!projectId || !orgEdit.name.trim()) { toast.error('Organization name is required.'); return; }
+    setBusy(true);
+    const { error } = await supabase.rpc('upsert_project_organization', {
+      p_id:orgEdit.id,p_project_id:projectId,p_name:orgEdit.name.trim(),
+      p_short_name:toNull(orgEdit.short_name?.trim()),p_organization_type:toNull(orgEdit.organization_type?.trim()),
+      p_role:orgEdit.role,p_is_primary:!!orgEdit.is_primary,
+    });
+    setBusy(false);
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success('Donor / partner relationship saved.');
+    setOrgEdit({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false });
+    loadConfig(projectId);
+  };
+  const deleteOrganization = async (id) => {
+    const { error } = await supabase.rpc('delete_project_organization',{ p_id:id });
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    loadConfig(projectId);
+  };
+
   return <section className="ps-config">
     <div className="ps-config-head">
       <div><h2>Coverage & Dashboard Configuration</h2><p>Manage the selected project's Area Council coverage/feasibility and choose which official indicators appear as project KPI cards.</p></div>
@@ -252,6 +275,25 @@ function ProjectConfiguration({ preferredProjectId }) {
       </select>
     </div>
     {projectId && <div className="ps-config-grid">
+      <div className="ps-config-card">
+        <h3>Donors & Partners</h3>
+        <p className="ps-config-note">Donors and partners are stored separately by role so dashboard filters and reports do not mix funding sources with implementing organisations.</p>
+        <div className="ps-config-form">
+          <label className="full"><span className="field-label">Organization name</span><input className="field-input" value={orgEdit.name} onChange={(e)=>setOrgEdit(s=>({...s,name:e.target.value}))}/></label>
+          <label><span className="field-label">Short name</span><input className="field-input" value={orgEdit.short_name||''} onChange={(e)=>setOrgEdit(s=>({...s,short_name:e.target.value}))}/></label>
+          <label><span className="field-label">Organization type</span><input className="field-input" value={orgEdit.organization_type||''} onChange={(e)=>setOrgEdit(s=>({...s,organization_type:e.target.value}))} placeholder="e.g. multilateral, NGO, government"/></label>
+          <label className="full"><span className="field-label">Role</span><select className="field-input" value={orgEdit.role} onChange={(e)=>setOrgEdit(s=>({...s,role:e.target.value}))}>
+            <option value="donor">Donor</option><option value="co_financier">Co-financier</option>
+            <option value="accredited_entity">Accredited entity</option><option value="executing_entity">Executing entity</option>
+            <option value="implementing_partner">Implementing partner</option><option value="technical_partner">Technical partner</option>
+            <option value="government_partner">Government partner</option>
+          </select></label>
+          <label className="ps-check full"><input type="checkbox" checked={!!orgEdit.is_primary} onChange={(e)=>setOrgEdit(s=>({...s,is_primary:e.target.checked}))}/> Primary organization for this role</label>
+        </div>
+        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setOrgEdit({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy} onClick={saveOrganization}>Save organization</button></div>
+        <div className="ps-mini-table"><table><thead><tr><th>Role</th><th>Organization</th><th>Primary</th><th></th></tr></thead><tbody>{organizations.map(o=><tr key={o.id}><td>{String(o.role||'').replaceAll('_',' ')}</td><td><b>{o.name}</b><small>{o.short_name||o.organization_type||''}</small></td><td>{o.is_primary?'Yes':'No'}</td><td><button type="button" onClick={()=>setOrgEdit({ id:o.id, name:o.name||'', short_name:o.short_name||'', organization_type:o.organization_type||'', role:o.role||'implementing_partner', is_primary:!!o.is_primary })}>Edit</button><button type="button" className="danger" onClick={()=>deleteOrganization(o.id)}>Delete</button></td></tr>)}</tbody></table></div>
+      </div>
+
       <div className="ps-config-card">
         <h3>Area Council Coverage & Feasibility</h3>
         <div className="ps-config-form">
@@ -409,7 +451,7 @@ export default function ProjectSetup({ user }) {
       <ActualMerlForms />
 
       <style>{`
-        .ps-config{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}.ps-config-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap}.ps-config-head h2{margin:0;font-size:1.08rem}.ps-config-head p{margin:.25rem 0 0;color:var(--text-3);font-size:.78rem;max-width:700px}.ps-config-head select{min-width:300px}.ps-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}.ps-config-card{border:1px solid var(--border);border-radius:10px;padding:.9rem}.ps-config-card h3{margin:0 0 .7rem;font-size:.9rem}.ps-config-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.ps-config-form label{display:flex;flex-direction:column;gap:.25rem}.ps-config-form .full{grid-column:1/-1}.ps-check{flex-direction:row!important;align-items:center;font-size:.72rem;color:var(--text-2)}.ps-config-actions{display:flex;justify-content:flex-end;gap:.5rem;margin:.65rem 0}.ps-mini-table{overflow:auto;max-height:320px}.ps-mini-table table{width:100%;border-collapse:collapse;font-size:.72rem}.ps-mini-table th,.ps-mini-table td{padding:.45rem;border-top:1px solid var(--border);text-align:left}.ps-mini-table th{font-size:.62rem;text-transform:uppercase;color:var(--text-3)}.ps-mini-table td small{display:block;color:var(--text-3)}.ps-mini-table button{border:0;background:none;color:var(--green-700);font:inherit;cursor:pointer;margin-right:.35rem}.ps-mini-table button.danger{color:#b91c1c}
+        .ps-config{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}.ps-config-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap}.ps-config-head h2{margin:0;font-size:1.08rem}.ps-config-head p{margin:.25rem 0 0;color:var(--text-3);font-size:.78rem;max-width:700px}.ps-config-head select{min-width:300px}.ps-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}.ps-config-card{border:1px solid var(--border);border-radius:10px;padding:.9rem}.ps-config-card h3{margin:0 0 .35rem;font-size:.9rem}.ps-config-note{margin:0 0 .7rem;color:var(--text-3);font-size:.7rem;line-height:1.45}.ps-config-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.ps-config-form label{display:flex;flex-direction:column;gap:.25rem}.ps-config-form .full{grid-column:1/-1}.ps-check{flex-direction:row!important;align-items:center;font-size:.72rem;color:var(--text-2)}.ps-config-actions{display:flex;justify-content:flex-end;gap:.5rem;margin:.65rem 0}.ps-mini-table{overflow:auto;max-height:320px}.ps-mini-table table{width:100%;border-collapse:collapse;font-size:.72rem}.ps-mini-table th,.ps-mini-table td{padding:.45rem;border-top:1px solid var(--border);text-align:left}.ps-mini-table th{font-size:.62rem;text-transform:uppercase;color:var(--text-3)}.ps-mini-table td small{display:block;color:var(--text-3)}.ps-mini-table button{border:0;background:none;color:var(--green-700);font:inherit;cursor:pointer;margin-right:.35rem}.ps-mini-table button.danger{color:#b91c1c}
         .ps-actual{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}
         .ps-actual-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}.ps-actual-head h2{margin:0;font-size:1.08rem}.ps-actual-head p{margin:.3rem 0 0;color:var(--text-3);font-size:.8rem;max-width:790px;line-height:1.5}.ps-live-link{white-space:nowrap;text-decoration:none;font-size:.75rem;font-weight:700;color:var(--green-700);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;background:#fff}
         .ps-form-stack{display:grid;gap:1rem}.ps-form-preview{border:1px solid var(--border);border-radius:12px;background:#fff;padding:1rem}.ps-form-title{display:flex;gap:.75rem;align-items:flex-start;padding-bottom:.8rem;margin-bottom:.8rem;border-bottom:1px solid var(--border)}.ps-form-number{flex:0 0 auto;background:var(--green-50);color:var(--green-700);border:1px solid var(--border);border-radius:999px;padding:.28rem .55rem;font-size:.68rem;font-weight:800}.ps-form-title h3{margin:0;font-size:.95rem}.ps-form-title p{margin:.2rem 0 0;color:var(--text-3);font-size:.72rem;line-height:1.4}
