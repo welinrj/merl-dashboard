@@ -167,7 +167,7 @@ function ActualMerlForms() {
 }
 
 
-function ProjectConfiguration({ preferredProjectId, canEdit }) {
+function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState('');
   const [refs, setRefs] = useState([]);
@@ -188,7 +188,11 @@ function ProjectConfiguration({ preferredProjectId, canEdit }) {
     if (pe || re) { toast.error(dbErrorMessage(pe || re)); return; }
     setProjects(ps || []);
     setRefs(rs || []);
-    setProjectId((old) => preferredProjectId || old || ps?.[0]?.id || '');
+    setProjectId((old) => {
+      const preferred = (ps || []).some((p) => p.id === preferredProjectId) ? preferredProjectId : '';
+      const existing = (ps || []).some((p) => p.id === old) ? old : '';
+      return preferred || existing || ps?.[0]?.id || '';
+    });
   }, [preferredProjectId]);
 
   const loadConfig = useCallback(async (pid) => {
@@ -280,12 +284,33 @@ function ProjectConfiguration({ preferredProjectId, canEdit }) {
     loadConfig(projectId);
   };
 
+  const deleteProject = async () => {
+    if (!isAdmin || !projectId) return;
+    const project=projects.find((p)=>p.id===projectId);
+    if (!(await confirmDialog({
+      title:'Delete project and all project data',
+      message:`Delete ${project?.code ? project.code + ' — ' : ''}${project?.name || 'this project'}? This permanently removes its framework, indicators, reporting records, finances, beneficiaries, risks, Area Council coverage, partners and related project data.`,
+      confirmLabel:'Delete project',
+    }))) return;
+    setBusy(true);
+    const { error } = await supabase.rpc('admin_delete_project',{ p_id:projectId });
+    setBusy(false);
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success('Project deleted.');
+    setProjectId('');
+    setAreas([]); setIndicators([]); setKpis([]); setOrganizations([]);
+    await loadProjects();
+  };
+
   return <section className="ps-config">
     <div className="ps-config-head">
       <div><h2>Coverage & Dashboard Configuration</h2><p>Manage the selected project's Area Council coverage/feasibility and choose which official indicators appear as project KPI cards.</p>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access: deletion and editing are available to authorised project editors.</p>}</div>
-      <select className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
-        <option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
-      </select>
+      <div style={{display:'flex',gap:'.5rem',alignItems:'end',flexWrap:'wrap'}}>
+        <select className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
+          <option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
+        </select>
+        {isAdmin && projectId && <button type="button" className="btn btn-secondary" onClick={deleteProject} disabled={busy} style={{color:'var(--red-600)',borderColor:'var(--red-200)'}}>Delete project</button>}
+      </div>
     </div>
     {projectId && <div className="ps-config-grid">
       <div className="ps-config-card">
@@ -459,7 +484,7 @@ export default function ProjectSetup({ user }) {
         </div>
       </form>
 
-      <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} />
+      <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} />
 
       <ActualMerlForms />
 
