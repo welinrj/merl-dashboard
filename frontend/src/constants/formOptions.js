@@ -176,9 +176,14 @@ export const REPORTING_FREQUENCY = [
 export const PERFORMANCE_STATUS = [
   { value: 'on_track',           label: 'On Track' },
   { value: 'attention_required', label: 'Attention Required' },
-  { value: 'off_track',          label: 'Off Track' },
+  { value: 'at_risk',            label: 'At Risk' },
   { value: 'target_achieved',    label: 'Target Achieved' },
   { value: 'no_data',            label: 'No Data' },
+];
+
+export const SCHEDULE_STATUS = [
+  { value: 'on_schedule', label: 'On Schedule' },
+  { value: 'delayed',     label: 'Delayed' },
 ];
 
 // ── Risk / issue (Form 9) ────────────────────────────────────────────────────
