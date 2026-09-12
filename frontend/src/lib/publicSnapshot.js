@@ -8,17 +8,26 @@ export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 // an elevated credential from this module. All reads must succeed before React
 // Query replaces the previously displayed data.
 export async function fetchPublicSnapshot({ signal } = {}) {
-  const [summary, projects, areas, inventory] = await Promise.all([
+  const [summary, projects, areas, kpis, inventory] = await Promise.all([
     supabase.from('public_portal_summary').select('*').abortSignal(signal).single(),
     supabase.from('public_portal_projects').select('*').order('name').abortSignal(signal),
     supabase.from('public_portal_area_councils').select('*').order('project_count', { ascending: false }).abortSignal(signal),
+    supabase.from('public_portal_kpis').select('*').order('display_order').abortSignal(signal),
     supabase.rpc('public_portal_project_inventory').abortSignal(signal).single(),
   ]);
-  const failed = [summary, projects, areas, inventory].find(result => result.error);
+  const failed = [summary, projects, areas, kpis, inventory].find(result => result.error);
   if (failed) throw failed.error;
+  const byProject = new Map();
+  for (const row of kpis.data || []) {
+    if (!byProject.has(String(row.project_id))) byProject.set(String(row.project_id), []);
+    byProject.get(String(row.project_id)).push(row);
+  }
   return {
     summary: summary.data,
-    projects: normalizePublishedProjects(projects.data || []),
+    projects: normalizePublishedProjects(projects.data || []).map(project => ({
+      ...project,
+      public_kpis: byProject.get(String(project.id)) || [],
+    })),
     areas: (areas.data || []).map(area => ({...area, province: normalizeProvince(area.province)})),
     inventory: inventory.data,
   };
