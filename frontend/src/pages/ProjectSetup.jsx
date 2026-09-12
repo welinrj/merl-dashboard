@@ -141,31 +141,46 @@ function PreviewField({ item }) {
 }
 
 function ActualMerlForms() {
+  const [openForm, setOpenForm] = useState(null);
   return (
     <section className="ps-actual" aria-labelledby="ps-actual-title">
       <div className="ps-actual-head">
         <div>
-          <h2 id="ps-actual-title">Actual MERL Reporting Forms</h2>
-          <p>These are the same fields users complete in the live MERL Reporting workspace. They are displayed here so project teams can see the full forms and prepare the required information before reporting.</p>
+          <h2 id="ps-actual-title">MERL Form Reference</h2>
+          <p>A reference guide to the information collected during periodic project reporting. This page is for preparation only — reporting data is entered in the live MERL Reporting workspace.</p>
         </div>
-        <a className="ps-live-link" href="#/merl-reporting">Open live MERL Reporting →</a>
+        <a className="ps-live-link" href="#/merl-reporting">Open MERL Reporting →</a>
       </div>
-      <div className="ps-form-stack">
-        {FORM_PREVIEWS.map((form) => (
-          <section className="ps-form-preview" key={form.form}>
-            <div className="ps-form-title">
-              <span className="ps-form-number">Form {form.form}</span>
-              <div><h3>{form.title}</h3><p>{form.purpose}</p></div>
-            </div>
-            <div className="ps-preview-grid">{form.fields.map((item) => <PreviewField key={`${form.form}-${item.label}`} item={item} />)}</div>
-          </section>
-        ))}
+
+      <div className="ps-reference-callout">
+        <strong>How to use this reference</strong>
+        <span>Select a form below to see the information required. The fields are examples only and cannot be edited here.</span>
       </div>
-      <p className="ps-preview-note">Preview only on Project Setup. Register the project first, then use the live MERL Reporting workspace to enter, save, submit, review and approve these records.</p>
+
+      <div className="ps-reference-list">
+        {FORM_PREVIEWS.map((form) => {
+          const open = openForm === form.form;
+          return (
+            <section className={`ps-reference-item${open ? ' open' : ''}`} key={form.form}>
+              <button type="button" className="ps-reference-summary" onClick={() => setOpenForm(open ? null : form.form)} aria-expanded={open}>
+                <span className="ps-form-number">Form {form.form}</span>
+                <span className="ps-reference-copy"><strong>{form.title}</strong><small>{form.purpose}</small></span>
+                <span className="ps-reference-count">{form.fields.length} fields</span>
+                <span className="ps-reference-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
+              </button>
+              {open && (
+                <div className="ps-reference-detail">
+                  <div className="ps-preview-grid">{form.fields.map((item) => <PreviewField key={`${form.form}-${item.label}`} item={item} />)}</div>
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+      <div className="ps-preview-note"><strong>Reference only.</strong> Project officers enter and submit actual reporting records under MERL Reporting.</div>
     </section>
   );
 }
-
 
 function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
   const [projects, setProjects] = useState([]);
