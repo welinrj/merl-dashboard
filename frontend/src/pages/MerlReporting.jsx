@@ -63,6 +63,10 @@ export const MODULES = [
       { name: 'cumulative_actual', label: 'merl.cumulativeActual', type: 'number' },
       { name: 'previous_value', label: 'merl.previousPeriodValue', type: 'number' },
       { name: 'performance_status', label: 'merl.performanceStatus', type: 'select', options: OPT.PERFORMANCE_STATUS },
+      { name: 'schedule_status', label: 'Schedule status', type: 'select', options: [
+        { value: 'on_schedule', label: 'On schedule' },
+        { value: 'delayed', label: 'Delayed' },
+      ] },
       { name: 'narrative', label: 'merl.progressNarrative', type: 'textarea' },
       { name: 'variance_reason', label: 'merl.reasonForVariance', type: 'textarea' },
       { name: 'corrective_action', label: 'merl.correctiveAction', type: 'textarea' },
@@ -74,6 +78,7 @@ export const MODULES = [
       { label: 'merl.cumulative', get: (r) => (r.cumulative_actual ?? '—') },
       { label: 'merl.achievement', get: (r) => fmtPct(r.achievement_pct) },
       { label: 'merl.status', get: (r) => OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status) },
+      { label: 'Schedule', get: (r) => r.schedule_status === 'delayed' ? 'Delayed' : 'On schedule' },
     ],
   },
   {
@@ -382,7 +387,20 @@ export default function MerlReporting({ user }) {
     const problem = m.validate?.(values);
     if (problem) { toast.error(t(problem.key, problem.params)); return; }
     try {
-      await saveModuleRecord({ module: m, values, id: editing?.id ?? null, projectId, reportingPeriod: activePeriod, indicators });
+      const savedId = await saveModuleRecord({ module: m, values, id: editing?.id ?? null, projectId, reportingPeriod: activePeriod, indicators });
+      if (m.key === 'indicator_progress' && savedId) {
+        const { error: narrativeError } = await supabase.rpc('upsert_result_narrative', {
+          p_indicator_progress_id: savedId,
+          p_progress_summary: toNull(values.narrative),
+          p_key_achievements: null,
+          p_variance_explanation: toNull(values.variance_reason),
+          p_challenges: null,
+          p_corrective_actions: toNull(values.corrective_action),
+          p_next_period_priorities: null,
+          p_public_summary: null,
+        });
+        if (narrativeError) throw narrativeError;
+      }
     } catch (error) { toast.error(dbErrorMessage(error)); return; }
     // The record is saved, so its draft has served its purpose.
     clearDraft(draftKeyFor(m, editing?.id));
@@ -415,6 +433,28 @@ export default function MerlReporting({ user }) {
     setNewPeriodOpen(false);
     setActivePeriod(values.period_label);
     loadContext(projectId);
+  };
+
+  const createStandardPeriods = async () => {
+    const yearText = await promptDialog({
+      title: 'Create standard MERL reporting periods',
+      label: 'Reporting year',
+      required: true,
+      message: 'This creates 12 monthly, 4 quarterly, 2 six-monthly and 1 annual period. Existing periods are kept.',
+    });
+    if (yearText == null) return;
+    const year = Number(yearText.trim());
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      toast.error('Enter a valid four-digit reporting year.');
+      return;
+    }
+    const { data, error } = await supabase.rpc('ensure_standard_reporting_periods', {
+      p_project_id: projectId,
+      p_year: year,
+    });
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success(data ? `${data} reporting periods created.` : 'Standard reporting periods already exist.');
+    await loadContext(projectId);
   };
 
   const periodAction = async (rpc, id, decision) => {
@@ -526,9 +566,14 @@ export default function MerlReporting({ user }) {
           </select>
         </div>
         {canEdit && (
-          <button style={btn('var(--green-700)')} onClick={() => setNewPeriodOpen((o) => !o)}>
-            <Plus size={15} /> {t('merl.newPeriod')}
-          </button>
+          <>
+            <button style={btnSecondary()} onClick={createStandardPeriods}>
+              <Plus size={15} /> Standard periods
+            </button>
+            <button style={btn('var(--green-700)')} onClick={() => setNewPeriodOpen((o) => !o)}>
+              <Plus size={15} /> {t('merl.newPeriod')}
+            </button>
+          </>
         )}
       </div>
 
