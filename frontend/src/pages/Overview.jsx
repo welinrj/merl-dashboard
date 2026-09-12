@@ -74,6 +74,7 @@ export default function Overview() {
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [progressPeriodType, setProgressPeriodType] = useState('quarterly');
 
   useEffect(() => {
     let mounted = true;
@@ -98,13 +99,14 @@ export default function Overview() {
           q('v_project_organizations', 'project_id, role, name'),
           q('v_project_area_councils', 'project_id, province_code, area_council_name, coverage_status, feasibility_status'),
           q('v_project_portfolio_status', 'project_id, progress_pct, performance_status, schedule_status, reporting_completion_pct, area_councils_covered, feasibility_confirmed, at_risk_results, delayed_results'),
+          q('v_project_period_progress', 'project_id, reporting_period_id, period_label, period_type, period_start, period_end, submission_status, progress_pct, result_rows, at_risk_results, delayed_results, approved_results, narrative_rows'),
         ]);
 
         const failed = responses.find((r) => r?.error);
         if (failed?.error) throw failed.error;
         if (!mounted) return;
 
-        const [proj, fin, risk, ben, act, ind, prog, rep, org, ac, ps] = responses;
+        const [proj, fin, risk, ben, act, ind, prog, rep, org, ac, ps, pp] = responses;
         setData({
           projects: proj.data ?? [],
           financial: fin.data ?? [],
@@ -117,6 +119,7 @@ export default function Overview() {
           organizations: org.data ?? [],
           areaCouncils: ac.data ?? [],
           portfolioStatus: ps.data ?? [],
+          periodProgress: pp.data ?? [],
         });
       } catch (err) {
         if (mounted) setLoadError(err);
@@ -187,6 +190,19 @@ export default function Overview() {
 
   const portfolioStatus = inScope(data.portfolioStatus || []);
   const areaCouncils = inScope(data.areaCouncils || []);
+  const periodProgress = inScope(data.periodProgress || []);
+  const matchingPeriodRows = periodProgress.filter((r) => r.period_type === progressPeriodType);
+  const latestPeriodEnd = matchingPeriodRows.map((r) => r.period_end).filter(Boolean).sort().at(-1) || null;
+  const currentPeriodRows = latestPeriodEnd ? matchingPeriodRows.filter((r) => r.period_end === latestPeriodEnd) : [];
+  const currentPeriodLabel = currentPeriodRows[0]?.period_label || 'No reporting period';
+  const periodProgressValues = currentPeriodRows.map((r) => Number(r.progress_pct)).filter(Number.isFinite);
+  const periodPortfolioProgress = periodProgressValues.length
+    ? Math.round(periodProgressValues.reduce((a,b) => a+b,0) / periodProgressValues.length)
+    : null;
+  const periodApproved = currentPeriodRows.filter((r) => r.submission_status === 'approved').length;
+  const periodReportingCompletion = pct(periodApproved, currentPeriodRows.length);
+  const periodAtRisk = currentPeriodRows.reduce((n,r) => n + Number(r.at_risk_results || 0),0);
+  const periodDelayed = currentPeriodRows.reduce((n,r) => n + Number(r.delayed_results || 0),0);
   const total = projects.length;
   const byBucket = { on_track: 0, attention: 0, at_risk: 0, delayed: 0, not_started: 0, completed: 0 };
   for (const p of projects) {
@@ -439,6 +455,23 @@ export default function Overview() {
           linkLabel="View delayed"
           onClick={() => setFilter('status', 'delayed')}
         />
+      </section>
+
+      <section className="ovx-card ovx-period-card">
+        <div className="ovx-period-head">
+          <div>
+            <h2>Progress by Reporting Period</h2>
+            <p>Portfolio roll-up for the latest selected reporting frequency. Project filters above remain in effect.</p>
+          </div>
+          <label className="ovx-period-select"><span>Frequency</span><select value={progressPeriodType} onChange={(e)=>setProgressPeriodType(e.target.value)}><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="six_monthly">Six-monthly</option><option value="annual">Annual</option></select></label>
+        </div>
+        <div className="ovx-period-label">{currentPeriodLabel}{latestPeriodEnd ? ` · ending ${fmtDate(latestPeriodEnd)}` : ''}</div>
+        <div className="ovx-period-kpis">
+          <div><span>Overall progress</span><b>{periodPortfolioProgress == null ? '—' : `${periodPortfolioProgress}%`}</b><small>MERL average across reporting projects</small></div>
+          <div><span>Reporting completion</span><b>{currentPeriodRows.length ? `${periodReportingCompletion}%` : '—'}</b><small>{fmtNum(periodApproved)} / {fmtNum(currentPeriodRows.length)} project periods approved</small></div>
+          <div><span>At-risk results</span><b>{fmtNum(periodAtRisk)}</b><small>Performance status</small></div>
+          <div><span>Delayed results</span><b>{fmtNum(periodDelayed)}</b><small>Schedule status</small></div>
+        </div>
       </section>
 
       <section className="ovx-priority-grid">
@@ -790,6 +823,7 @@ function OverviewStyles() {
       .ovx-status-row:last-child{border-bottom:0}.ovx-status-row:hover{background:#faf8fd}
       .ovx-status-dot{width:9px;height:9px;border-radius:3px}.ovx-status-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ovx-status-row b{color:#31274d;font-size:.78rem}.ovx-status-row>span:last-child{text-align:right;color:#91899f}
 
+.ovx-period-card{margin-bottom:.85rem}.ovx-period-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap}.ovx-period-head h2{margin:0;color:#3a3050;font-size:.92rem}.ovx-period-head p{margin:.2rem 0 0;color:#8e8699;font-size:.68rem}.ovx-period-select{display:grid;gap:.2rem;font-size:.62rem;color:#8e8699;text-transform:uppercase;font-weight:750}.ovx-period-select select{min-width:150px;border:1px solid #e6e2ec;border-radius:8px;background:#fff;padding:.45rem .55rem;color:#4b4357}.ovx-period-label{margin:.65rem 0;color:#756d81;font-size:.7rem;font-weight:700}.ovx-period-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem}.ovx-period-kpis>div{border:1px solid #ece8f2;border-radius:10px;padding:.72rem;background:#faf9fc;display:grid;gap:.16rem}.ovx-period-kpis span{font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:#8c8499;font-weight:750}.ovx-period-kpis b{font-family:var(--font-display);font-size:1.25rem;color:#3a3050}.ovx-period-kpis small{font-size:.62rem;color:#9a92a5;line-height:1.35}
       .ovx-performance-list{display:flex;flex-direction:column;gap:.9rem;padding:.25rem 0 .35rem}
       .ovx-performance-row{display:grid;grid-template-columns:1fr auto;grid-template-areas:'meta meta' 'track detail';gap:.35rem .7rem}
       .ovx-performance-meta{grid-area:meta;display:flex;align-items:center;justify-content:space-between;gap:.8rem;color:#62596f;font-size:.74rem;font-weight:650}
@@ -820,8 +854,8 @@ function OverviewStyles() {
 
       @media(max-width:1180px){.ovx-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.ovx-reset{align-self:end}.ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}}
       @media(max-width:980px){.ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}.ovx-location-layout{grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr)}}
-      @media(max-width:760px){.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
-      @media(max-width:560px){.ovx-heading{flex-direction:column}.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
+      @media(max-width:760px){.ovx-period-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
+      @media(max-width:560px){.ovx-period-kpis{grid-template-columns:1fr}.ovx-heading{flex-direction:column}.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
       @media print{.ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export{display:none!important}.ovx-card,.ovx-kpi{box-shadow:none!important}}
     `}</style>
   );
