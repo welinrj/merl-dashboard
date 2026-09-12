@@ -40,10 +40,9 @@ import StatTile from '../components/ui/StatTile';
 import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
-import VanuatuMap from '../components/VanuatuMap';
 import { fmtDate, fmtNum } from '../lib/locale';
 import { fmtAmount, fmtPct } from '../lib/docc/reporting';
-import { analyseProject, geographicSummary, UNKNOWN } from '../lib/docc/projectAnalysis';
+import { analyseProject, UNKNOWN } from '../lib/docc/projectAnalysis';
 
 // Semantic only — green on track, amber wants attention, red is critical, grey
 // is "we don't know". No colour on this page means anything else.
@@ -347,93 +346,75 @@ function Framework({ d, results, onIndicator }) {
   const toggle = (id) => setOpen((s) => {
     const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n;
   });
+  const byParent = useMemo(() => {
+    const m = new Map();
+    for (const node of d.frameworkNodes) {
+      const k = node.parent_node_id || '__root__';
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(node);
+    }
+    for (const arr of m.values()) arr.sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0) || String(a.node_code || '').localeCompare(String(b.node_code || '')));
+    return m;
+  }, [d.frameworkNodes]);
 
-  const byIndicatorId = useMemo(
-    () => new Map(results.rows.map((r) => [r.indicator.id, r])), [results],
-  );
-
-  // An indicator can be attached at any level, so it is listed under the level
-  // it names rather than being forced down to the output.
-  const indicatorsFor = (level, id) => results.rows.filter(({ indicator: ind }) =>
-    (level === 'objective' && ind.objective_id === id)
-    || (level === 'outcome' && ind.outcome_id === id)
-    || (level === 'output' && ind.output_id === id)
-    || (ind.linked_level === level && ind.linked_id === id));
-
+  const indicatorsFor = (id) => results.rows.filter(({ indicator }) => indicator.framework_node_id === id || indicator.linked_id === id);
   const attached = new Set();
-  for (const lvl of [['objective', d.objectives], ['outcome', d.outcomes], ['output', d.outputs]]) {
-    for (const row of lvl[1]) for (const r of indicatorsFor(lvl[0], row.id)) attached.add(r.indicator.id);
-  }
+  for (const node of d.frameworkNodes) for (const r of indicatorsFor(node.id)) attached.add(r.indicator.id);
   const orphans = results.rows.filter((r) => !attached.has(r.indicator.id));
 
   const IndicatorRow = ({ r }) => (
     <button type="button" onClick={() => onIndicator(r)}
-      style={{ display: 'flex', width: '100%', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0.45rem 0.6rem', background: 'transparent', border: 0, borderTop: '1px solid var(--border)',
-        cursor: 'pointer', textAlign: 'left', minHeight: 40 }}>
-      <span style={{ minWidth: 0 }}>
-        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-3)' }}>{r.indicator.code}</span>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-1)', marginLeft: '0.45rem' }}>{r.indicator.name}</span>
+      style={{ display:'flex',width:'100%',gap:'.6rem',alignItems:'center',justifyContent:'space-between',
+        padding:'.45rem .6rem',background:'transparent',border:0,borderTop:'1px solid var(--border)',
+        cursor:'pointer',textAlign:'left',minHeight:40 }}>
+      <span style={{ minWidth:0 }}>
+        <span style={{ fontSize:'.75rem',fontWeight:700,color:'var(--text-3)' }}>{r.indicator.code}</span>
+        <span style={{ fontSize:'.8rem',color:'var(--text-1)',marginLeft:'.45rem' }}>{r.indicator.name}</span>
       </span>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-        {typeof r.pct === 'number' && (
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: TONE[IND_TONE[r.status]].fg }}>{fmtPct(r.pct)}</span>
-        )}
-        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: TONE[IND_TONE[r.status]].fg,
-          background: TONE[IND_TONE[r.status]].bg, padding: '0.15rem 0.45rem', borderRadius: 999, whiteSpace: 'nowrap' }}>
+      <span style={{ display:'inline-flex',alignItems:'center',gap:'.5rem',flexShrink:0 }}>
+        {typeof r.pct === 'number' && <span style={{ fontSize:'.78rem',fontWeight:700,color:TONE[IND_TONE[r.status]].fg }}>{fmtPct(r.pct)}</span>}
+        <span style={{ fontSize:'.7rem',fontWeight:700,color:TONE[IND_TONE[r.status]].fg,
+          background:TONE[IND_TONE[r.status]].bg,padding:'.15rem .45rem',borderRadius:999,whiteSpace:'nowrap' }}>
           {t(`ppa.ind_${r.status}`)}
         </span>
       </span>
     </button>
   );
 
-  const Node = ({ row, level, children, depth }) => {
-    const isOpen = open.has(row.id);
-    const inds = indicatorsFor(level, row.id);
+  const Node = ({ node, depth }) => {
+    const isOpen = open.has(node.id);
+    const children = byParent.get(node.id) || [];
+    const inds = indicatorsFor(node.id);
     return (
-      <div style={{ borderTop: '1px solid var(--border)' }}>
-        <button type="button" onClick={() => toggle(row.id)} aria-expanded={isOpen}
-          style={{ display: 'flex', width: '100%', gap: '0.5rem', alignItems: 'baseline', padding: '0.55rem 0.6rem',
-            paddingLeft: `${0.6 + depth * 0.85}rem`, background: depth === 0 ? 'var(--surface-1)' : 'transparent',
-            border: 0, cursor: 'pointer', textAlign: 'left', minHeight: 40 }}>
-          <span aria-hidden="true" style={{ color: 'var(--text-3)', fontSize: '0.7rem', width: 10, flexShrink: 0 }}>{isOpen ? '▾' : '▸'}</span>
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)', flexShrink: 0 }}>{row.code}</span>
-          <span style={{ fontSize: '0.81rem', color: 'var(--text-1)', fontWeight: depth === 0 ? 700 : 400, minWidth: 0 }}>{row.statement}</span>
+      <div style={{ borderTop:'1px solid var(--border)' }}>
+        <button type="button" onClick={() => toggle(node.id)} aria-expanded={isOpen}
+          style={{ display:'flex',width:'100%',gap:'.5rem',alignItems:'baseline',padding:'.55rem .6rem',
+            paddingLeft:`${0.6 + depth * 0.85}rem`,background:depth===0?'var(--surface-1)':'transparent',
+            border:0,cursor:'pointer',textAlign:'left',minHeight:40 }}>
+          <span aria-hidden="true" style={{ color:'var(--text-3)',fontSize:'.7rem',width:10,flexShrink:0 }}>{isOpen?'▾':'▸'}</span>
+          <span style={{ fontSize:'.67rem',fontWeight:800,color:'var(--green-700)',textTransform:'uppercase',minWidth:82 }}>
+            {String(node.node_type || '').replaceAll('_',' ')}
+          </span>
+          <span style={{ fontSize:'.72rem',fontWeight:700,color:'var(--text-3)',flexShrink:0 }}>{node.node_code || ''}</span>
+          <span style={{ fontSize:'.81rem',color:'var(--text-1)',fontWeight:depth===0?700:400,minWidth:0 }}>{node.title}</span>
         </button>
-        {isOpen && (
-          <div>
-            {inds.map((r) => <IndicatorRow key={r.indicator.id} r={r} />)}
-            {children}
-          </div>
-        )}
+        {isOpen && <div>
+          {inds.map((r) => <IndicatorRow key={r.indicator.id} r={r} />)}
+          {children.map((child) => <Node key={child.id} node={child} depth={depth+1} />)}
+        </div>}
       </div>
     );
   };
 
+  const roots=byParent.get('__root__') || [];
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', overflow: 'hidden' }}>
-      {d.objectives.map((obj) => (
-        <Node key={obj.id} row={obj} level="objective" depth={0}>
-          {d.outcomes.filter((oc) => oc.objective_id === obj.id).map((oc) => (
-            <Node key={oc.id} row={oc} level="outcome" depth={1}>
-              {d.outputs.filter((op) => op.outcome_id === oc.id).map((op) => (
-                <Node key={op.id} row={op} level="output" depth={2} />
-              ))}
-            </Node>
-          ))}
-        </Node>
-      ))}
-      {orphans.length > 0 && (
-        <div style={{ borderTop: '1px solid var(--border)' }}>
-          <div style={{ padding: '0.5rem 0.6rem', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)', background: 'var(--surface-1)' }}>
-            {t('ppa.unlinkedIndicators')}
-          </div>
-          {orphans.map((r) => <IndicatorRow key={r.indicator.id} r={r} />)}
-        </div>
-      )}
-      {byIndicatorId.size === 0 && d.objectives.length === 0 && (
-        <p style={{ padding: '1rem', margin: 0, fontSize: '0.83rem', color: 'var(--text-3)' }}>{t('ppa.noFramework')}</p>
-      )}
+    <div style={{ border:'1px solid var(--border)',borderRadius:'var(--radius-card)',overflow:'hidden' }}>
+      {roots.map((node) => <Node key={node.id} node={node} depth={0} />)}
+      {orphans.length>0 && <div style={{ borderTop:'1px solid var(--border)' }}>
+        <div style={{ padding:'.5rem .6rem',fontSize:'.72rem',fontWeight:700,color:'var(--text-3)',background:'var(--surface-1)' }}>{t('ppa.unlinkedIndicators')}</div>
+        {orphans.map((r) => <IndicatorRow key={r.indicator.id} r={r} />)}
+      </div>}
+      {!roots.length && !results.rows.length && <p style={{ padding:'1rem',margin:0,fontSize:'.83rem',color:'var(--text-3)' }}>{t('ppa.noFramework')}</p>}
     </div>
   );
 }
@@ -518,9 +499,8 @@ function IndicatorPanel({ entry, history, onClose }) {
 // ── The page ─────────────────────────────────────────────────────────────────
 
 const EMPTY = {
-  project: null, objectives: [], outcomes: [], outputs: [], activities: [],
-  indicators: [], progress: [], financial: [], beneficiaries: [], locations: [],
-  risks: [], periods: [],
+  project: null, frameworkNodes: [], activities: [], indicators: [], progress: [], financial: [],
+  beneficiaries: [], locations: [], risks: [], periods: [],
 };
 
 export default function ProjectPortfolioAnalysis() {
@@ -546,7 +526,6 @@ export default function ProjectPortfolioAnalysis() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [indicator, setIndicator] = useState(null);
-  const [mapProvince, setMapProvince] = useState(null);
 
   const setContext = useCallback((next) => {
     setParams((prev) => {
@@ -597,23 +576,20 @@ export default function ProjectPortfolioAnalysis() {
     setD(EMPTY);
     setErrors({});
     setIndicator(null);
-    setMapProvince(null);
 
     const scoped = (view, cols) => () =>
       supabase.from(view).select(i18nCols(cols)).eq('project_id', id);
 
     const jobs = {
       project: () => supabase.from('v_projects').select(i18nCols('*')).eq('id', id).maybeSingle(),
-      objectives: scoped('v_objectives', 'id, code, statement'),
-      outcomes: scoped('v_outcomes', 'id, objective_id, code, statement'),
-      outputs: scoped('v_outputs', 'id, outcome_id, code, statement'),
+      frameworkNodes: scoped('v_framework_nodes', 'id, parent_node_id, node_code, node_type, title, sort_order'),
       activities: scoped('v_project_activities',
         'id, code, name, status, output_id, output_code, province, island, area_council, community, '
         + 'planned_start_date, planned_end_date, actual_start_date, actual_end_date, '
         + 'planned_budget, actual_expenditure, physical_progress_pct, issue_delay, next_action, next_action_due'),
       indicators: scoped('v_project_indicators',
         'id, code, name, unit, baseline_value, target_value, indicator_level, definition, frequency, '
-        + 'data_source, target_date, objective_id, outcome_id, output_id, linked_level, linked_id, '
+        + 'data_source, target_date, framework_node_id, linked_level, linked_id, '
         + 'is_qualitative, higher_is_better'),
       progress: scoped('v_indicator_progress',
         'id, indicator_id, reporting_period, period_target, actual_this_period, cumulative_actual, '
@@ -624,8 +600,8 @@ export default function ProjectPortfolioAnalysis() {
       beneficiaries: scoped('v_beneficiaries',
         'id, reporting_period, total_direct, female, male, other_gender, youth, '
         + 'persons_with_disability, indirect, double_counting_check'),
-      locations: scoped('v_project_locations',
-        'id, province, island, area_council, community, latitude, longitude, intervention, status, beneficiaries'),
+      locations: scoped('v_project_area_councils',
+        'id, province_code, area_council_name, coverage_status, feasibility_status'),
       risks: scoped('v_risks_issues',
         'id, code, type, description, category, likelihood, impact, risk_rating, mitigation, '
         + 'responsible_person, due_date, status, date_resolved'),
@@ -645,7 +621,12 @@ export default function ProjectPortfolioAnalysis() {
     const errs = {};
     for (const [key, res] of settled) {
       if (res?.error) { errs[key] = dbErrorMessage(res.error, t('ppa.sectionFailed')); continue; }
-      next[key] = key === 'project' ? (res.data ?? null) : (res.data ?? []);
+      if (key === 'project') next[key] = res.data ?? null;
+      else if (key === 'locations') next[key] = (res.data ?? []).map((r) => ({
+        ...r, province: r.province_code, area_council: r.area_council_name,
+        status: r.coverage_status,
+      }));
+      else next[key] = res.data ?? [];
     }
     setD(next);
     setErrors(errs);
@@ -656,7 +637,15 @@ export default function ProjectPortfolioAnalysis() {
 
   // ── The analysis ───────────────────────────────────────────────────────────
   const a = useMemo(() => analyseProject(d, period), [d, period]);
-  const geo = useMemo(() => geographicSummary(d.locations, d.activities), [d]);
+  const geo = useMemo(() => {
+    const rows=d.locations.filter((x) => x.coverage_status !== 'not_covered');
+    return {
+      provinceCount:new Set(rows.map((x)=>x.province_code).filter(Boolean)).size,
+      areaCouncilCount:new Set(rows.map((x)=>x.area_council_name).filter(Boolean)).size,
+      confirmed:new Set(rows.filter((x)=>x.feasibility_status==='confirmed').map((x)=>x.area_council_name)).size,
+      rows,
+    };
+  }, [d.locations]);
 
   // Global search opens the owning project and the relevant record/section.
   // Keep the URL context so Back and refresh remain meaningful.
@@ -670,7 +659,7 @@ export default function ProjectPortfolioAnalysis() {
       if (entry) setIndicator(entry);
       else jump('ppa-results');
     } else {
-      const section = ['objective', 'outcome', 'output'].includes(focus) ? 'ppa-results' : focus === 'activity' ? 'ppa-implementation' : null;
+      const section = ['objective','outcome','output','component','impact','framework'].includes(focus) ? 'ppa-results' : focus === 'activity' ? 'ppa-implementation' : null;
       if (section) requestAnimationFrame(() => document.getElementById(section)?.scrollIntoView({ block: 'start' }));
     }
   }, [projectId, focus, focusRecord, period, loading, d.project, a.results.rows]);
@@ -1070,38 +1059,26 @@ export default function ProjectPortfolioAnalysis() {
               onRetry={() => load(projectId)}
               empty={!errors.locations && d.locations.length === 0}
               emptyTitle={t('ppa.noLocations')}
-              emptyText={t('ppa.noLocationsText')}
-              actions={mapProvince && (
-                <button type="button" className="btn-secondary rp-noprint" onClick={() => setMapProvince(null)}
-                  style={{ padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-control)', fontWeight: 700, fontSize: '0.74rem', cursor: 'pointer' }}>
-                  {t('ppa.clearLocation')}
-                </button>
-              )}
+              emptyText="No Area Council coverage has been recorded for this project."
             >
-              <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+              <div style={{ display:'flex',gap:'1.2rem',flexWrap:'wrap',marginBottom:'.8rem' }}>
                 <Field label={t('ppa.provinces')} value={fmtNum(geo.provinceCount)} />
-                <Field label={t('ppa.islands')} value={fmtNum(geo.islandCount)} />
-                <Field label={t('ppa.communities')} value={fmtNum(geo.communityCount)} />
-                <Field label={t('ppa.sites')} value={fmtNum(geo.siteCount)} />
+                <Field label="Area Councils" value={fmtNum(geo.areaCouncilCount)} />
+                <Field label="Confirmed feasible" value={fmtNum(geo.confirmed)} />
               </div>
-              <VanuatuMap counts={geo.counts} selected={mapProvince}
-                onSelect={(p) => setMapProvince((cur) => (cur === p ? null : p))} />
-              {(mapProvince ? geo.provinces.filter((p) => p.province === mapProvince) : geo.provinces).map((p) => (
-                <div key={p.province} style={{ marginTop: '0.7rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-1)' }}>
-                    {p.province}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: 2 }}>
-                    {t('ppa.provinceDetail', {
-                      sites: p.sites, activities: p.activities,
-                      beneficiaries: p.beneficiaries != null ? fmtNum(p.beneficiaries) : t('ppa.notReported'),
-                    })}
-                  </div>
-                  {p.communities.length > 0 && (
-                    <div style={{ fontSize: '0.73rem', color: 'var(--text-3)', marginTop: 2 }}>{p.communities.join(' · ')}</div>
-                  )}
-                </div>
-              ))}
+              <Scroller>
+                <table className="data-table" style={{ width:'100%',minWidth:620 }}>
+                  <thead><tr><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th></tr></thead>
+                  <tbody>
+                    {geo.rows.map((r) => <tr key={r.id}>
+                      <td>{r.province_code || '—'}</td>
+                      <td>{r.area_council_name || '—'}</td>
+                      <td>{String(r.coverage_status || '—').replaceAll('_',' ')}</td>
+                      <td>{String(r.feasibility_status || 'not_assessed').replaceAll('_',' ')}</td>
+                    </tr>)}
+                  </tbody>
+                </table>
+              </Scroller>
             </Section>
           </div>
 
