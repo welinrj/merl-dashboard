@@ -12,6 +12,7 @@
 // =============================================================================
 
 import express from "express";
+import { timingSafeEqual } from "node:crypto";
 
 /**
  * @param {object} opts
@@ -32,6 +33,27 @@ export function createApp({
 }) {
   const app = express();
   app.disable("x-powered-by");
+
+  /**
+   * Compare the presented secret without leaking its length or contents
+   * through how long the comparison takes. `!==` on strings returns as soon as
+   * it finds a differing byte, which is enough to guess a secret one character
+   * at a time over many requests.
+   */
+  const expectedSecret = Buffer.from(invalidateSecret, "utf8");
+  function secretMatches(presented) {
+    if (typeof presented !== "string") return false;
+    const given = Buffer.from(presented, "utf8");
+    // timingSafeEqual throws on a length mismatch, which would itself be a
+    // timing signal, so both sides are hashed to a fixed width first.
+    if (given.length !== expectedSecret.length) {
+      // Still do a comparison of equal length so a wrong-length guess costs the
+      // same as a right-length one.
+      timingSafeEqual(expectedSecret, expectedSecret);
+      return false;
+    }
+    return timingSafeEqual(given, expectedSecret);
+  }
 
   // The single shared aggregate we cache. `key` is the Redis key; `rest` is the
   // PostgREST path (read with the anon key — the v_srf_analytics view is granted
@@ -88,16 +110,20 @@ export function createApp({
       res.setHeader("Cache-Control", `public, max-age=${def.ttl}`);
       res.type("application/json").send(body);
     } catch (err) {
-      res.status(502).json({ error: String(err.message || err) });
+      // The upstream message can name views, columns and permission details.
+      // This endpoint is public and unauthenticated, so the detail is logged
+      // for the operator and the caller is told only that it failed.
+      console.error(`[cache] upstream fetch failed for ${req.params.name}:`, err);
+      res.status(502).json({ error: "upstream unavailable" });
     }
   });
 
   // Optional: force-drop cached keys (e.g. right after an edit). Guarded by a
   // shared secret so it can't be triggered by the public.
-  app.post("/invalidate", express.json(), async (req, res) => {
+  app.post("/invalidate", express.json({ limit: "8kb" }), async (req, res) => {
     // Fail closed: the endpoint is disabled unless a secret is configured AND
     // matches, so a blank INVALIDATE_SECRET can't leave it open to anyone.
-    if (!invalidateSecret || req.get("x-invalidate-secret") !== invalidateSecret) {
+    if (!invalidateSecret || !secretMatches(req.get("x-invalidate-secret"))) {
       return res.status(403).json({ error: "forbidden" });
     }
     const cleared = await store.del("dmp:");
