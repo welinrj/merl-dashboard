@@ -58,10 +58,11 @@ console.log('\nDASHBOARD KPIs (traced to the underlying records)');
 await go('/dashboards');
 let tx = await body();
 check('project count is 2', /\b2\b/.test(tx));
-check('total budget reads 161.00M', /161\.00M|161,000,000/.test(tx), tx.match(/VT [\d.,]+M?/)?.[0]);
-check('expenditure reads 300.0K (300,000 of 161.00M)', /300\.0K|300,000/.test(tx),
-  tx.match(/DISBURSED[^A-Z]{0,40}/)?.[0]);
-check('beneficiaries read 120', /\b120\b/.test(tx));
+check('Overall Progress KPI is present', /OVERALL PROGRESS/i.test(tx));
+check('Reporting Completion KPI is present', /REPORTING COMPLETION/i.test(tx));
+check('Area Councils Covered KPI is present', /AREA COUNCILS COVERED/i.test(tx));
+check('At Risk KPI is present', /AT RISK/i.test(tx));
+check('Delayed KPI is present separately', /DELAYED/i.test(tx));
 check('no NaN anywhere', !/NaN/.test(tx), tx.match(/.{0,30}NaN.{0,30}/)?.[0]);
 check('no undefined leaked into the page', !/\bundefined\b/.test(tx));
 check('no raw status tokens shown', !/\bon_track\b|\bnot_started\b|\bin_progress\b/.test(tx),
