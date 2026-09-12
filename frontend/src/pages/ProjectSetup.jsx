@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { dbErrorMessage, isMissingRpcArgument } from '../lib/dbError';
@@ -171,6 +171,24 @@ export default function ProjectSetup({ user }) {
   const [saving, setSaving] = useState(false);
   const [registered, setRegistered] = useState(null);
   const [resetKey, setResetKey] = useState(0);
+  const [areaCouncils, setAreaCouncils] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    supabase.from('v_ref_area_councils').select('id, province_code, name').order('province_code').order('name')
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) toast.error(dbErrorMessage(error));
+        else setAreaCouncils(data || []);
+      });
+    return () => { alive = false; };
+  }, []);
+
+  const filteredAreaCouncils = useMemo(() => {
+    if (!v.provinces.length) return areaCouncils;
+    const selected = new Set(v.provinces.map((x) => String(x).trim().toUpperCase()));
+    return areaCouncils.filter((x) => selected.has(String(x.province_code || '').trim().toUpperCase()));
+  }, [areaCouncils, v.provinces]);
+
   const title = 'Project Registration';
   const subtitle = 'Register a new project and see the complete MERL reporting forms required after project setup.';
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
@@ -259,6 +277,7 @@ export default function ProjectSetup({ user }) {
             <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Institutions</h3>
             <label style={field}><span className="field-label">Lead Department / Agency</span><input className="field-input" value={v.lead_agency} onChange={set('lead_agency')} /></label>
             <label style={field}><span className="field-label">Executing Agency</span><input className="field-input" value={v.executing_agency} onChange={set('executing_agency')} /></label>
+            <label style={{ ...field, gridColumn: '1 / -1' }}><span className="field-label">Implementing Partners</span><input className="field-input" value={v.implementing_partners.join(', ')} onChange={(e) => setV((s) => ({ ...s, implementing_partners: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) }))} placeholder="Separate multiple partners with commas" /><small style={{ color: 'var(--text-3)' }}>Partners are stored separately from donors and can be filtered independently on the Overview.</small></label>
             <label style={field}><span className="field-label">Project Manager</span><input className="field-input" value={v.project_manager} onChange={set('project_manager')} /></label>
             <label style={field}><span className="field-label">DoCC M&E Officer</span><input className="field-input" value={v.me_officer} onChange={set('me_officer')} /></label>
             <label style={field}><span className="field-label">Finance Officer</span><input className="field-input" value={v.finance_officer} onChange={set('finance_officer')} /></label>
@@ -275,6 +294,7 @@ export default function ProjectSetup({ user }) {
             <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Geographic Coverage</h3>
             <label style={field}><span className="field-label">Coverage Type</span><select className="field-input" value={v.coverage_type} onChange={set('coverage_type')}><option value="">Select</option>{OPT.COVERAGE_TYPE.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
             <label style={field}><span className="field-label">Provinces</span><select multiple className="field-input" style={{ minHeight: 105 }} value={v.provinces} onChange={setMulti('provinces')}>{PROVINCE_LIST.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+            <label style={{ ...field, gridColumn: '1 / -1' }}><span className="field-label">Area Council Coverage</span><select multiple className="field-input" style={{ minHeight: 150 }} value={v.area_councils} onChange={setMulti('area_councils')}>{filteredAreaCouncils.map((ac) => <option key={ac.id} value={ac.name}>{ac.name} — {ac.province_code}</option>)}</select><small style={{ color: 'var(--text-3)' }}>Coverage and feasibility reporting stops at Area Council level. Select one or more Area Councils; community/site coverage is not used by the portfolio dashboard.</small></label>
 
             <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Expected Beneficiaries</h3>
             <label style={field}><span className="field-label">Direct Beneficiaries</span><input className="field-input" type="number" min="0" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></label>
