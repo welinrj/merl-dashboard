@@ -1,0 +1,99 @@
+name: Audit remediation UI patch
+
+on:
+  push:
+    branches: [fix/audit-remediation-20260913]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[audit-ui-applied]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/audit-remediation-20260913
+      - name: Apply UI remediations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # Project Setup: restore Form 5 route and align reference wording/options.
+          p = Path('frontend/src/pages/ProjectSetup.jsx')
+          s = p.read_text()
+          s = s.replace("import PageHeader from '../components/ui/PageHeader';\n", "import PageHeader from '../components/ui/PageHeader';\nimport ActivityManager from '../components/ActivityManager';\n", 1)
+          s = s.replace("{ label: 'Performance Status', type: 'select', options: ['On track', 'At risk', 'Off track', 'Completed'] },", "{ label: 'Performance Status', type: 'select', options: ['On Track', 'Attention Required', 'Off Track', 'Target Achieved', 'No Data'], help: 'Use the same controlled status available in the live reporting form; do not infer a positive status when no data has been reported.' },", 1)
+          s = s.replace("{ label: 'Cumulative Achievement', type: 'number' },", "{ label: 'Cumulative Achievement', type: 'number', help: 'Enter the cumulative value to the end of this reporting period. Leave blank when it has not been reported; enter 0 only when zero was explicitly measured.' },", 1)
+          s = s.replace("{ label: 'Cumulative Expenditure', type: 'number' },", "{ label: 'Cumulative Expenditure', type: 'number', help: 'Total expenditure to date in the project currency. Leave blank when unreported; a recorded zero is different from missing financial information.' },", 1)
+          s = s.replace("{ label: 'Double-counting Check Completed', type: 'checkbox' },", "{ label: 'Double-counting Check Completed', type: 'checkbox', help: 'Confirm whether beneficiary records were checked for overlap before totals are aggregated. Youth and disability categories can overlap with sex-disaggregated totals.' },", 1)
+          s = s.replace("{ label: 'Category', type: 'select', options: ['Technical', 'Financial', 'Operational', 'Safeguards', 'Governance', 'Other'] },", "{ label: 'Category', type: 'select', options: ['Financial', 'Technical', 'Operational', 'Environmental', 'Social / GEDSI', 'Governance', 'Procurement', 'Safeguards', 'Other'] },", 1)
+          s = s.replace("{ label: 'Likelihood', type: 'select', options: ['Low', 'Medium', 'High'] },", "{ label: 'Likelihood', type: 'select', options: ['1', '2', '3', '4', '5'], help: 'Use the standard 1–5 likelihood scale used by the live risk form.' },", 1)
+          s = s.replace("{ label: 'Impact', type: 'select', options: ['Low', 'Medium', 'High'] },", "{ label: 'Impact', type: 'select', options: ['1', '2', '3', '4', '5'], help: 'Use the standard 1–5 impact scale used by the live risk form.' },", 1)
+          s = s.replace("{ label: 'Current Status', type: 'select', options: ['Open', 'Monitoring', 'Resolved', 'Closed'] },", "{ label: 'Current Status', type: 'select', options: ['Open', 'Monitoring', 'Escalated', 'Resolved', 'Closed'] },", 1)
+          s = s.replace("{ label: 'Reporting Period Type', type: 'select', options: ['Monthly', 'Quarterly', 'Semi-annual', 'Annual', 'Other'] },", "{ label: 'Reporting Period Type', type: 'select', options: ['Monthly', 'Quarterly', 'Six-monthly', 'Annual', 'Final', 'Ad hoc'] },", 1)
+          s = s.replace("{ label: 'Document Type', type: 'select', options: ['Report', 'Photo', 'Attendance Sheet', 'Dataset', 'Map', 'Invoice', 'Other'] },", "{ label: 'Document Type', type: 'select', options: ['Attendance List', 'Photograph', 'Monitoring Report', 'Survey / Data', 'Financial Report', 'Contract', 'Completion Report', 'Evaluation', 'Map', 'Other'] },", 1)
+          s = s.replace("{ label: 'Verification Status', type: 'select', options: ['Pending', 'Verified', 'Rejected'] },", "{ label: 'Verification Status', type: 'select', options: ['Pending', 'Verified', 'Rejected', 'Superseded'] },", 1)
+          s = s.replace("<p>Reference only. This page explains what each reporting form collects. Actual data entry, editing, saving and submission happens in MERL Reporting.</p>", "<p>Field examples are read-only. This page explains what each reporting form collects. Actual reporting data is entered, edited, saved and submitted in MERL Reporting; Activities & Workplan (Form 5) is entered under Manage projects.</p>", 1)
+          s = s.replace("<strong>No controls on this page are interactive.</strong>", "<strong>Field examples are read-only.</strong>", 1)
+
+          # Prefer a project explicitly carried in the route so cross-page tasks
+          # cannot silently switch to another project.
+          marker = "function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {\n"
+          repl = "function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {\n  const routeProjectId = (() => {\n    try {\n      const query = window.location.hash.split('?')[1] || '';\n      return new URLSearchParams(query).get('project') || '';\n    } catch { return ''; }\n  })();\n"
+          if marker not in s: raise SystemExit('ProjectConfiguration marker not found')
+          s = s.replace(marker, repl, 1)
+          s = s.replace("const preferred = (ps || []).some((p) => p.id === preferredProjectId) ? preferredProjectId : '';", "const requested = preferredProjectId || routeProjectId;\n      const preferred = (ps || []).some((p) => p.id === requested) ? requested : '';", 1)
+          # Render Form 5 with the same selected project used by the configuration cards.
+          end_marker = "      </div>\n    </div>}\n  </section>;\n}"
+          if end_marker not in s: raise SystemExit('ProjectConfiguration end marker not found')
+          s = s.replace(end_marker, "      </div>\n      <ActivityManager projectId={projectId} canEdit={canEdit} />\n    </div>}\n  </section>;\n}", 1)
+          p.write_text(s)
+
+          # Review queue: distinguish an unconfigured system from a genuinely empty queue.
+          p = Path('frontend/src/pages/ReviewApproval.jsx')
+          s = p.read_text()
+          old = """        empty={{
+          title: t(filter === 'queue' ? 'merl.emptyQueueTitle' : 'merl.emptyAllTitle'),
+          description: t(filter === 'queue' ? 'merl.emptyQueueBody' : 'merl.emptyAllBody'),
+        }}"""
+          new = """        empty={{
+          title: filter === 'queue'
+            ? (rows.length === 0 ? 'No reporting periods configured' : 'No submissions awaiting review')
+            : t('merl.emptyAllTitle'),
+          description: filter === 'queue'
+            ? (rows.length === 0
+              ? 'Create a reporting period in MERL Reporting before expecting submissions in this queue.'
+              : 'There are currently no submitted, reviewed or returned periods requiring action.')
+            : t('merl.emptyAllBody'),
+        }}"""
+          if old not in s: raise SystemExit('Review empty block not found')
+          p.write_text(s.replace(old, new, 1))
+
+          # MERL modal accessibility: give the dialog and every generated control
+          # a meaningful accessible name. Existing scrolling/stacking behaviour is retained.
+          p = Path('frontend/src/pages/MerlReporting.jsx')
+          s = p.read_text()
+          s = s.replace("<div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}\n      onClick={closeKeepingDraft}>", "<div role=\"dialog\" aria-modal=\"true\" aria-label={`${initial?.id ? t('merl.edit') : t('merl.add')} — ${t(module.label)}`} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}\n      onClick={closeKeepingDraft}>", 1)
+          s = s.replace("<textarea className=\"field-input\" rows={2} value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />", "<textarea aria-label={t(f.label)} className=\"field-input\" rows={2} value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />", 1)
+          s = s.replace("<select className=\"field-input\" value={v[f.name] ?? ''} onChange={set(f.name, f.type)}>", "<select aria-label={t(f.label)} className=\"field-input\" value={v[f.name] ?? ''} onChange={set(f.name, f.type)}>", 1)
+          s = s.replace("<input type=\"checkbox\" checked={!!v[f.name]} onChange={set(f.name, f.type)} style={{ width: 18, height: 18 }} />", "<input aria-label={t(f.label)} type=\"checkbox\" checked={!!v[f.name]} onChange={set(f.name, f.type)} style={{ width: 18, height: 18 }} />", 1)
+          s = s.replace("<input type={f.type} className=\"field-input\" value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />", "<input aria-label={t(f.label)} type={f.type} className=\"field-input\" value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />", 1)
+          p.write_text(s)
+          PY
+      - name: Verify frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm test
+          npm run build
+      - name: Commit patch and remove one-shot workflow
+        run: |
+          rm .github/workflows/audit-remediation-ui-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Restore activity workflow and audit UX states [audit-ui-applied]"
+          git push origin HEAD:fix/audit-remediation-20260913
