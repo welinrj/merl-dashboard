@@ -686,27 +686,31 @@ function SystemTab() {
   const load = useCallback(async () => {
     setLoading(true); setErr('');
     const { data, error } = await supabase.rpc('system_status');
-    if (error) setErr(dbErrorMessage(error));
-    else setStatus(data);
+    if (error) {
+      setStatus(null);
+      setErr('System status could not be loaded. Check your connection or administrator permissions and try again.');
+    } else {
+      setStatus(data && typeof data === 'object' ? data : null);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const fmt = fmtDateTime;
-  const rlsTables = status?.rls_tables ?? [];
-  const rlsCovered = rlsTables.filter(t => t.rls_enabled).length;
+  const rlsTables = Array.isArray(status?.rls_tables) ? status.rls_tables : [];
+  const rlsCovered = rlsTables.filter(table => table?.rls_enabled === true).length;
 
   if (loading) return <div className="px-4 py-10 text-center text-gray-400 text-sm">{t('adm.loadingSystem')}</div>;
-  if (err) return <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{err}</div>;
-
   return (
     <div className="space-y-6">
+      {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-3 flex flex-wrap items-center justify-between gap-3" role="alert"><span>{err}</span><button type="button" onClick={load} className="font-semibold underline">Retry</button></div>}
+      {!err && !status && <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3">System health information is not available. No health value has been assumed.</div>}
       <div>
         <h2 className="text-base font-bold text-gray-800 mb-3">{t('adm.system')}</h2>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 bg-white border border-gray-100 rounded-lg px-4 py-3">
           <span className="inline-flex items-baseline gap-1.5">
-            <span className="text-lg font-bold text-gray-900">{status?.audit_row_count ?? 0}</span>
+            <span className="text-lg font-bold text-gray-900">{status?.audit_row_count ?? '—'}</span>
             <span className="text-xs text-gray-400">Audit events · last {fmt(status?.last_audit_at)}</span>
           </span>
           <span className="text-gray-200" aria-hidden="true">·</span>
@@ -725,11 +729,13 @@ function SystemTab() {
       <div>
         <h2 className="text-base font-bold text-gray-800 mb-3">{t('adm.rowLevelSecurity')}</h2>
         <div className="grid gap-2 sm:grid-cols-3">
-          {rlsTables.map(t => (
-            <div key={t.table} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-2">
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${t.rls_enabled ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className="text-xs text-gray-600 font-mono truncate">{t.table}</span>
-              {!t.rls_enabled && <span className="ml-auto text-[10px] text-red-600 font-semibold">{t('adm.off')}</span>}
+          {rlsTables.length === 0 ? (
+            <div className="sm:col-span-3 text-sm text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-3">Row-level security status has not been reported.</div>
+          ) : rlsTables.map(table => (
+            <div key={table.table} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-2">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${table.rls_enabled ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-xs text-gray-600 font-mono truncate">{table.table}</span>
+              {!table.rls_enabled && <span className="ml-auto text-[10px] text-red-600 font-semibold">{t('adm.off')}</span>}
             </div>
           ))}
         </div>
