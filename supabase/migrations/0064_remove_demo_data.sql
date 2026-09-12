@@ -5,8 +5,6 @@ DO $$
 DECLARE
   v_ids uuid[];
 BEGIN
-  -- Migration cleanup runs without an end-user JWT. Set the local claim so the
-  -- existing project-scope triggers recognise this migration as service-role work.
   PERFORM set_config('request.jwt.claim.role','service_role',true);
 
   SELECT array_agg(id) INTO v_ids
@@ -17,12 +15,22 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Demo periods may have been marked approved by test fixtures. Unlock them
+  -- before cascading deletion so the normal locked-period protection does not
+  -- block deliberate removal of seeded data.
+  UPDATE merl.reporting_periods
+  SET submission_status='draft',
+      approved_at=NULL,
+      locked_at=NULL,
+      reviewer_id=NULL,
+      review_comments=NULL,
+      updated_at=now()
+  WHERE project_id = ANY(v_ids);
+
   DELETE FROM merl.project_budget_allocations WHERE project_id = ANY(v_ids);
   DELETE FROM merl.project_source_register WHERE project_id = ANY(v_ids);
 
-  -- All remaining project-scoped child records cascade from merl.projects.
   DELETE FROM merl.projects WHERE id = ANY(v_ids);
 END $$;
 
--- Rebuild the public snapshot so no previously published demo project remains.
 SELECT merl.refresh_public_portal();
