@@ -83,7 +83,7 @@ try {
       const aligned = groups.every((row) => row.every((record) => Math.abs(record.titleTop - row[0].titleTop) <= 1));
       return { count: cards.length, records, aligned, gaugeCount: records.filter((r) => r.hasGauge).length };
     });
-    if (result.count !== 4 || !result.aligned || result.gaugeCount !== 2 || result.records.some((r) => !r.hierarchy || !r.withinCard || !r.gaugeValid || r.duplicateValue)) {
+    if (result.count !== 6 || !result.aligned || result.gaugeCount !== 2 || result.records.some((r) => !r.hierarchy || !r.withinCard || !r.gaugeValid || r.duplicateValue)) {
       throw new Error(`${width}px KPI hierarchy failure: ${JSON.stringify(result)}`);
     }
     console.log(`✓ ${width}px: title → visual/number → context → action; two visible score gauges`);
