@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { dbErrorMessage, isMissingRpcArgument } from '../lib/dbError';
@@ -165,6 +165,123 @@ function ActualMerlForms() {
   );
 }
 
+
+function ProjectConfiguration({ preferredProjectId }) {
+  const [projects, setProjects] = useState([]);
+  const [projectId, setProjectId] = useState('');
+  const [refs, setRefs] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [indicators, setIndicators] = useState([]);
+  const [kpis, setKpis] = useState([]);
+  const [areaEdit, setAreaEdit] = useState({ id: null, area_council_name: '', coverage_status: 'active', feasibility_status: 'not_assessed', feasibility_note: '' });
+  const [kpiEdit, setKpiEdit] = useState({ id: null, indicator_id: '', short_label: '', display_order: 0, show_target: true, show_progress: true, is_public: false, active: true });
+  const [busy, setBusy] = useState(false);
+
+  const loadProjects = useCallback(async () => {
+    const [{ data: ps, error: pe }, { data: rs, error: re }] = await Promise.all([
+      supabase.from('v_projects').select('id,code,name').order('code'),
+      supabase.from('v_ref_area_councils').select('*').order('province_code').order('name'),
+    ]);
+    if (pe || re) { toast.error(dbErrorMessage(pe || re)); return; }
+    setProjects(ps || []);
+    setRefs(rs || []);
+    setProjectId((old) => preferredProjectId || old || ps?.[0]?.id || '');
+  }, [preferredProjectId]);
+
+  const loadConfig = useCallback(async (pid) => {
+    if (!pid) { setAreas([]); setIndicators([]); setKpis([]); return; }
+    const [a,i,k] = await Promise.all([
+      supabase.from('v_project_area_councils').select('*').eq('project_id',pid).order('province_code').order('area_council_name'),
+      supabase.from('v_project_indicators').select('id,code,name,unit').eq('project_id',pid).order('code'),
+      supabase.from('v_dashboard_kpi_config').select('*').eq('project_id',pid).eq('dashboard_scope','project').order('display_order'),
+    ]);
+    const err=a.error||i.error||k.error;
+    if (err) { toast.error(dbErrorMessage(err)); return; }
+    setAreas(a.data||[]); setIndicators(i.data||[]); setKpis(k.data||[]);
+  }, []);
+
+  useEffect(() => { loadProjects(); }, [loadProjects]);
+  useEffect(() => { loadConfig(projectId); }, [projectId, loadConfig]);
+
+  const saveArea = async () => {
+    if (!projectId || !areaEdit.area_council_name) { toast.error('Select an Area Council.'); return; }
+    setBusy(true);
+    const { error } = await supabase.rpc('upsert_project_area_council', {
+      p_id: areaEdit.id, p_project_id: projectId, p_area_council_name: areaEdit.area_council_name,
+      p_coverage_status: areaEdit.coverage_status, p_feasibility_status: areaEdit.feasibility_status,
+      p_feasibility_note: toNull(areaEdit.feasibility_note?.trim()),
+    });
+    setBusy(false);
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success('Area Council coverage saved.');
+    setAreaEdit({ id:null, area_council_name:'', coverage_status:'active', feasibility_status:'not_assessed', feasibility_note:'' });
+    loadConfig(projectId);
+  };
+  const deleteArea = async (id) => {
+    const { error } = await supabase.rpc('delete_project_area_council',{ p_id:id });
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    loadConfig(projectId);
+  };
+  const saveKpi = async () => {
+    if (!projectId || !kpiEdit.indicator_id) { toast.error('Select an indicator.'); return; }
+    setBusy(true);
+    const ind=indicators.find(x=>x.id===kpiEdit.indicator_id);
+    const { error } = await supabase.rpc('upsert_dashboard_kpi_config', {
+      p_id:kpiEdit.id,p_project_id:projectId,p_indicator_id:kpiEdit.indicator_id,p_dashboard_scope:'project',
+      p_short_label:toNull(kpiEdit.short_label?.trim()) || ind?.name || 'Indicator',
+      p_display_order:Number(kpiEdit.display_order)||0,p_show_target:!!kpiEdit.show_target,
+      p_show_progress:!!kpiEdit.show_progress,p_is_public:!!kpiEdit.is_public,p_active:!!kpiEdit.active,
+    });
+    setBusy(false);
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success('Project KPI saved.');
+    setKpiEdit({ id:null, indicator_id:'', short_label:'', display_order:0, show_target:true, show_progress:true, is_public:false, active:true });
+    loadConfig(projectId);
+  };
+  const deleteKpi = async (id) => {
+    const { error } = await supabase.rpc('delete_dashboard_kpi_config',{ p_id:id });
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    loadConfig(projectId);
+  };
+
+  return <section className="ps-config">
+    <div className="ps-config-head">
+      <div><h2>Coverage & Dashboard Configuration</h2><p>Manage the selected project's Area Council coverage/feasibility and choose which official indicators appear as project KPI cards.</p></div>
+      <select className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
+        <option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
+      </select>
+    </div>
+    {projectId && <div className="ps-config-grid">
+      <div className="ps-config-card">
+        <h3>Area Council Coverage & Feasibility</h3>
+        <div className="ps-config-form">
+          <label><span className="field-label">Area Council</span><select className="field-input" value={areaEdit.area_council_name} onChange={(e)=>setAreaEdit(s=>({...s,area_council_name:e.target.value}))}><option value="">Select</option>{refs.map(r=><option key={`${r.province_code}-${r.name}`} value={r.name}>{r.province_code} — {r.name}</option>)}</select></label>
+          <label><span className="field-label">Coverage</span><select className="field-input" value={areaEdit.coverage_status} onChange={(e)=>setAreaEdit(s=>({...s,coverage_status:e.target.value}))}><option value="planned">Planned</option><option value="active">Active</option><option value="completed">Completed</option><option value="not_covered">Not covered</option></select></label>
+          <label><span className="field-label">Feasibility</span><select className="field-input" value={areaEdit.feasibility_status} onChange={(e)=>setAreaEdit(s=>({...s,feasibility_status:e.target.value}))}><option value="not_assessed">Not assessed</option><option value="under_assessment">Under assessment</option><option value="confirmed">Confirmed</option><option value="conditional">Conditional</option><option value="not_feasible">Not feasible</option></select></label>
+          <label className="full"><span className="field-label">Feasibility note</span><textarea className="field-input" rows={2} value={areaEdit.feasibility_note} onChange={(e)=>setAreaEdit(s=>({...s,feasibility_note:e.target.value}))}/></label>
+        </div>
+        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setAreaEdit({ id:null, area_council_name:'', coverage_status:'active', feasibility_status:'not_assessed', feasibility_note:'' })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy} onClick={saveArea}>Save coverage</button></div>
+        <div className="ps-mini-table"><table><thead><tr><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th></th></tr></thead><tbody>{areas.map(r=><tr key={r.id}><td><b>{r.area_council_name}</b><small>{r.province_code||''}</small></td><td>{r.coverage_status.replaceAll('_',' ')}</td><td>{r.feasibility_status.replaceAll('_',' ')}</td><td><button type="button" onClick={()=>setAreaEdit({...r,feasibility_note:r.feasibility_note||''})}>Edit</button><button type="button" className="danger" onClick={()=>deleteArea(r.id)}>Delete</button></td></tr>)}</tbody></table></div>
+      </div>
+
+      <div className="ps-config-card">
+        <h3>Project KPI Cards</h3>
+        <div className="ps-config-form">
+          <label className="full"><span className="field-label">Official indicator</span><select className="field-input" value={kpiEdit.indicator_id} onChange={(e)=>{const ind=indicators.find(x=>x.id===e.target.value);setKpiEdit(s=>({...s,indicator_id:e.target.value,short_label:s.short_label||ind?.name||''}));}}><option value="">Select indicator</option>{indicators.map(i=><option key={i.id} value={i.id}>{i.code} — {i.name}</option>)}</select></label>
+          <label><span className="field-label">Card label</span><input className="field-input" value={kpiEdit.short_label} onChange={(e)=>setKpiEdit(s=>({...s,short_label:e.target.value}))}/></label>
+          <label><span className="field-label">Display order</span><input className="field-input" type="number" value={kpiEdit.display_order} onChange={(e)=>setKpiEdit(s=>({...s,display_order:e.target.value}))}/></label>
+          <label className="ps-check"><input type="checkbox" checked={kpiEdit.show_target} onChange={(e)=>setKpiEdit(s=>({...s,show_target:e.target.checked}))}/> Show target</label>
+          <label className="ps-check"><input type="checkbox" checked={kpiEdit.show_progress} onChange={(e)=>setKpiEdit(s=>({...s,show_progress:e.target.checked}))}/> Show progress</label>
+          <label className="ps-check"><input type="checkbox" checked={kpiEdit.is_public} onChange={(e)=>setKpiEdit(s=>({...s,is_public:e.target.checked}))}/> Allow on public dashboard</label>
+          <label className="ps-check"><input type="checkbox" checked={kpiEdit.active} onChange={(e)=>setKpiEdit(s=>({...s,active:e.target.checked}))}/> Active</label>
+        </div>
+        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setKpiEdit({ id:null, indicator_id:'', short_label:'', display_order:0, show_target:true, show_progress:true, is_public:false, active:true })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy} onClick={saveKpi}>Save KPI</button></div>
+        <div className="ps-mini-table"><table><thead><tr><th>Order</th><th>KPI</th><th>Target</th><th>Progress</th><th></th></tr></thead><tbody>{kpis.map(k=><tr key={k.id}><td>{k.display_order}</td><td><b>{k.short_label}</b></td><td>{k.show_target?'Yes':'No'}</td><td>{k.show_progress?'Yes':'No'}</td><td><button type="button" onClick={()=>setKpiEdit({...k})}>Edit</button><button type="button" className="danger" onClick={()=>deleteKpi(k.id)}>Delete</button></td></tr>)}</tbody></table></div>
+      </div>
+    </div>}
+  </section>;
+}
+
 export default function ProjectSetup({ user }) {
   const canEdit = EDITOR_ROLES.includes(user?.role);
   const [v, setV] = useState(blankProfile);
@@ -287,14 +404,17 @@ export default function ProjectSetup({ user }) {
         </div>
       </form>
 
+      <ProjectConfiguration preferredProjectId={registered?.id} />
+
       <ActualMerlForms />
 
       <style>{`
+        .ps-config{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}.ps-config-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap}.ps-config-head h2{margin:0;font-size:1.08rem}.ps-config-head p{margin:.25rem 0 0;color:var(--text-3);font-size:.78rem;max-width:700px}.ps-config-head select{min-width:300px}.ps-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}.ps-config-card{border:1px solid var(--border);border-radius:10px;padding:.9rem}.ps-config-card h3{margin:0 0 .7rem;font-size:.9rem}.ps-config-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.ps-config-form label{display:flex;flex-direction:column;gap:.25rem}.ps-config-form .full{grid-column:1/-1}.ps-check{flex-direction:row!important;align-items:center;font-size:.72rem;color:var(--text-2)}.ps-config-actions{display:flex;justify-content:flex-end;gap:.5rem;margin:.65rem 0}.ps-mini-table{overflow:auto;max-height:320px}.ps-mini-table table{width:100%;border-collapse:collapse;font-size:.72rem}.ps-mini-table th,.ps-mini-table td{padding:.45rem;border-top:1px solid var(--border);text-align:left}.ps-mini-table th{font-size:.62rem;text-transform:uppercase;color:var(--text-3)}.ps-mini-table td small{display:block;color:var(--text-3)}.ps-mini-table button{border:0;background:none;color:var(--green-700);font:inherit;cursor:pointer;margin-right:.35rem}.ps-mini-table button.danger{color:#b91c1c}
         .ps-actual{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}
         .ps-actual-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}.ps-actual-head h2{margin:0;font-size:1.08rem}.ps-actual-head p{margin:.3rem 0 0;color:var(--text-3);font-size:.8rem;max-width:790px;line-height:1.5}.ps-live-link{white-space:nowrap;text-decoration:none;font-size:.75rem;font-weight:700;color:var(--green-700);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;background:#fff}
         .ps-form-stack{display:grid;gap:1rem}.ps-form-preview{border:1px solid var(--border);border-radius:12px;background:#fff;padding:1rem}.ps-form-title{display:flex;gap:.75rem;align-items:flex-start;padding-bottom:.8rem;margin-bottom:.8rem;border-bottom:1px solid var(--border)}.ps-form-number{flex:0 0 auto;background:var(--green-50);color:var(--green-700);border:1px solid var(--border);border-radius:999px;padding:.28rem .55rem;font-size:.68rem;font-weight:800}.ps-form-title h3{margin:0;font-size:.95rem}.ps-form-title p{margin:.2rem 0 0;color:var(--text-3);font-size:.72rem;line-height:1.4}
         .ps-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.ps-preview-field{display:flex;flex-direction:column;gap:.3rem}.ps-preview-wide{grid-column:1/-1}.ps-preview-control:disabled{opacity:1;color:var(--text-2);background:#f8fafc;cursor:default}.ps-preview-control:disabled::placeholder{color:#94a3b8}.ps-preview-check{display:flex;align-items:center;gap:.5rem;min-height:42px;padding:.55rem .7rem;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:var(--text-3);font-size:.75rem}.ps-preview-note{margin:.9rem 0 0;padding:.7rem .8rem;border-radius:8px;background:#f8fafc;color:var(--text-3);font-size:.72rem;line-height:1.45}
-        @media(max-width:800px){.ps-preview-grid{grid-template-columns:1fr}.ps-preview-wide{grid-column:1}.ps-actual-head{flex-direction:column}.ps-live-link{white-space:normal}}
+        @media(max-width:800px){.ps-config-grid{grid-template-columns:1fr}.ps-config-head select{min-width:0;width:100%}.ps-preview-grid{grid-template-columns:1fr}.ps-preview-wide{grid-column:1}.ps-actual-head{flex-direction:column}.ps-live-link{white-space:normal}}
         @media(max-width:700px){.ps-grid{grid-template-columns:1fr!important}.ps-grid>*{grid-column:1!important}}
       `}</style>
     </div>
