@@ -48,7 +48,19 @@ const monitoredFetch: typeof fetch = async (input, init) => {
     // 406 is commonly used by PostgREST for an intentionally empty .single()
     // result, so it must not put the whole portal into data-unavailable mode.
     if (isDataRead && !response.ok && response.status !== 406) {
-      publishReadFailure({ status: response.status, method });
+      // contentLocale intentionally probes for an optional i18n column, then
+      // retries without it when a rebuilt view does not expose translations.
+      // Do not turn that expected schema-probe response into a portal-wide
+      // "data unavailable" modal.
+      let optionalI18nProbe = false;
+      if (response.status === 400) {
+        try {
+          const body = await response.clone().text();
+          optionalI18nProbe = /i18n/i.test(body)
+            && (/42703/.test(body) || /does not exist/i.test(body) || /column/i.test(body));
+        } catch { /* if inspection fails, treat it as a real failed read */ }
+      }
+      if (!optionalI18nProbe) publishReadFailure({ status: response.status, method });
     }
     return response;
   } catch (error) {
