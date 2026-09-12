@@ -148,7 +148,7 @@ function ActualMerlForms() {
           <h2 id="ps-actual-title">Actual MERL Reporting Forms</h2>
           <p>These are the same fields users complete in the live MERL Reporting workspace. They are displayed here so project teams can see the full forms and prepare the required information before reporting.</p>
         </div>
-        <a className="ps-live-link" href="#/analytics/reporting">Open live MERL Reporting →</a>
+        <a className="ps-live-link" href="#/merl-reporting">Open live MERL Reporting →</a>
       </div>
       <div className="ps-form-stack">
         {FORM_PREVIEWS.map((form) => (
@@ -329,7 +329,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
           <label className="ps-check full"><input type="checkbox" checked={!!orgEdit.is_primary} onChange={(e)=>setOrgEdit(s=>({...s,is_primary:e.target.checked}))}/> Primary organization for this role</label>
         </div>
         <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setOrgEdit({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveOrganization}>Save organization</button></div>
-        <div className="ps-mini-table"><table><thead><tr><th>Role</th><th>Organization</th><th>Primary</th><th></th></tr></thead><tbody>{organizations.map(o=><tr key={o.id}><td>{String(o.role||'').replaceAll('_',' ')}</td><td><b>{o.name}</b><small>{o.short_name||o.organization_type||''}</small></td><td>{o.is_primary?'Yes':'No'}</td><td><button type="button" onClick={()=>setOrgEdit({ id:o.id, name:o.name||'', short_name:o.short_name||'', organization_type:o.organization_type||'', role:o.role||'implementing_partner', is_primary:!!o.is_primary })}>Edit</button><button type="button" className="danger" onClick={()=>deleteOrganization(o.id)}>Delete</button></td></tr>)}</tbody></table></div>
+        <div className="ps-mini-table"><table><thead><tr><th>Role</th><th>Organization</th><th>Primary</th><th></th></tr></thead><tbody>{organizations.map(o=><tr key={o.id}><td>{String(o.role||'').replaceAll('_',' ')}</td><td><b>{o.name}</b><small>{o.short_name||o.organization_type||''}</small></td><td>{o.is_primary?'Yes':'No'}</td><td>{canEdit && <><button type="button" onClick={()=>setOrgEdit({ id:o.id, name:o.name||'', short_name:o.short_name||'', organization_type:o.organization_type||'', role:o.role||'implementing_partner', is_primary:!!o.is_primary })}>Edit</button><button type="button" className="danger" onClick={()=>deleteOrganization(o.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
       </div>
 
       <div className="ps-config-card">
@@ -341,7 +341,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
           <label className="full"><span className="field-label">Feasibility note</span><textarea className="field-input" rows={2} value={areaEdit.feasibility_note} onChange={(e)=>setAreaEdit(s=>({...s,feasibility_note:e.target.value}))}/></label>
         </div>
         <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setAreaEdit({ id:null, area_council_name:'', coverage_status:'active', feasibility_status:'not_assessed', feasibility_note:'' })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveArea}>Save coverage</button></div>
-        <div className="ps-mini-table"><table><thead><tr><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th></th></tr></thead><tbody>{areas.map(r=><tr key={r.id}><td><b>{r.area_council_name}</b><small>{r.province_code||''}</small></td><td>{r.coverage_status.replaceAll('_',' ')}</td><td>{r.feasibility_status.replaceAll('_',' ')}</td><td><button type="button" onClick={()=>setAreaEdit({...r,feasibility_note:r.feasibility_note||''})}>Edit</button><button type="button" className="danger" onClick={()=>deleteArea(r.id)}>Delete</button></td></tr>)}</tbody></table></div>
+        <div className="ps-mini-table"><table><thead><tr><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th></th></tr></thead><tbody>{areas.map(r=><tr key={r.id}><td><b>{r.area_council_name}</b><small>{r.province_code||''}</small></td><td>{r.coverage_status.replaceAll('_',' ')}</td><td>{r.feasibility_status.replaceAll('_',' ')}</td><td>{canEdit && <><button type="button" onClick={()=>setAreaEdit({...r,feasibility_note:r.feasibility_note||''})}>Edit</button><button type="button" className="danger" onClick={()=>deleteArea(r.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
       </div>
 
       <div className="ps-config-card">
@@ -356,7 +356,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
           <label className="ps-check"><input type="checkbox" checked={kpiEdit.active} onChange={(e)=>setKpiEdit(s=>({...s,active:e.target.checked}))}/> Active</label>
         </div>
         <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setKpiEdit({ id:null, indicator_id:'', short_label:'', display_order:0, show_target:true, show_progress:true, is_public:false, active:true })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveKpi}>Save KPI</button></div>
-        <div className="ps-mini-table"><table><thead><tr><th>Order</th><th>KPI</th><th>Target</th><th>Progress</th><th></th></tr></thead><tbody>{kpis.map(k=><tr key={k.id}><td>{k.display_order}</td><td><b>{k.short_label}</b></td><td>{k.show_target?'Yes':'No'}</td><td>{k.show_progress?'Yes':'No'}</td><td><button type="button" onClick={()=>setKpiEdit({...k})}>Edit</button><button type="button" className="danger" onClick={()=>deleteKpi(k.id)}>Delete</button></td></tr>)}</tbody></table></div>
+        <div className="ps-mini-table"><table><thead><tr><th>Order</th><th>KPI</th><th>Target</th><th>Progress</th><th></th></tr></thead><tbody>{kpis.map(k=><tr key={k.id}><td>{k.display_order}</td><td><b>{k.short_label}</b></td><td>{k.show_target?'Yes':'No'}</td><td>{k.show_progress?'Yes':'No'}</td><td>{canEdit && <><button type="button" onClick={()=>setKpiEdit({...k})}>Edit</button><button type="button" className="danger" onClick={()=>deleteKpi(k.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
       </div>
     </div>}
   </section>;
@@ -368,8 +368,9 @@ export default function ProjectSetup({ user }) {
   const [saving, setSaving] = useState(false);
   const [registered, setRegistered] = useState(null);
   const [resetKey, setResetKey] = useState(0);
-  const title = 'Project Registration';
-  const subtitle = 'Register a new project and see the complete MERL reporting forms required after project setup.';
+  const [mode, setMode] = useState('manage');
+  const title = 'Project Setup';
+  const subtitle = 'Manage project profiles, Area Council coverage, donors and partners, and dashboard KPI configuration.';
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setMulti = (k) => (e) => setV((s) => ({ ...s, [k]: Array.from(e.target.selectedOptions).map((o) => o.value) }));
   const dirty = useMemo(() => Object.entries(v).some(([k, value]) => {
@@ -378,7 +379,23 @@ export default function ProjectSetup({ user }) {
   }), [v]);
 
   if (!canEdit) {
-    return <div className="page-pad" style={{ maxWidth: 1100, margin: '0 auto' }}><h1>{title}</h1><p>You do not have permission to register projects. You can still review the actual MERL reporting forms below.</p><ActualMerlForms /></div>;
+    return (
+      <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }}>
+        <PageHeader title={title} subtitle="Read-only project setup and reporting reference." />
+        <div className="ps-mode-tabs" role="tablist" aria-label="Project setup sections">
+          <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => setMode('manage')}>Projects</button>
+          <button type="button" className={mode === 'forms' ? 'active' : ''} onClick={() => setMode('forms')}>MERL form reference</button>
+        </div>
+        {mode === 'manage'
+          ? <ProjectConfiguration preferredProjectId={null} canEdit={false} isAdmin={false} />
+          : <ActualMerlForms />}
+        <style>{`
+          .ps-mode-tabs{display:flex;gap:.45rem;flex-wrap:wrap;margin:0 0 1rem;padding:.35rem;background:var(--surface-1);border:1px solid var(--border);border-radius:10px;width:max-content;max-width:100%}
+          .ps-mode-tabs button{border:0;background:transparent;color:var(--text-2);font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .8rem;border-radius:7px;cursor:pointer}
+          .ps-mode-tabs button.active{background:var(--white);color:var(--green-700);box-shadow:0 1px 2px rgba(15,23,42,.08)}
+        `}</style>
+      </div>
+    );
   }
 
   const save = async (e) => {
@@ -433,13 +450,21 @@ export default function ProjectSetup({ user }) {
     setV(blankProfile());
     setResetKey((n) => n + 1);
     toast.success('Project registered successfully.');
+    setMode('manage');
   };
 
   return (
     <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }} key={resetKey}>
       <PageHeader title={title} subtitle={subtitle} />
-      {registered && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was registered. The form has been cleared for the next project.</div>}
-      <form onSubmit={save} id="project-profile">
+      <div className="ps-mode-tabs" role="tablist" aria-label="Project setup sections">
+        <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => setMode('manage')}>Manage projects</button>
+        <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>Register new project</button>
+        <button type="button" className={mode === 'forms' ? 'active' : ''} onClick={() => setMode('forms')}>MERL form reference</button>
+      </div>
+
+      {registered && mode === 'manage' && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was registered and is selected below.</div>}
+
+      {mode === 'register' && <form onSubmit={save} id="project-profile">
         <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
           <h2 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Project Profile</h2>
           <div className="ps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '.8rem' }}>
@@ -482,14 +507,15 @@ export default function ProjectSetup({ user }) {
           <button type="button" className="btn btn-secondary" disabled={!dirty || saving} onClick={() => setV(blankProfile())}>Clear form</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Registering…' : 'Register project'}</button>
         </div>
-      </form>
+      </form>}
 
-      <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} />
+      {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} />}
 
-      <ActualMerlForms />
+      {mode === 'forms' && <ActualMerlForms />}
 
       <style>{`
-        .ps-config{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}.ps-config-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap}.ps-config-head h2{margin:0;font-size:1.08rem}.ps-config-head p{margin:.25rem 0 0;color:var(--text-3);font-size:.78rem;max-width:700px}.ps-config-head select{min-width:300px}.ps-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}.ps-config-card{border:1px solid var(--border);border-radius:10px;padding:.9rem}.ps-config-card h3{margin:0 0 .35rem;font-size:.9rem}.ps-config-note{margin:0 0 .7rem;color:var(--text-3);font-size:.7rem;line-height:1.45}.ps-config-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.ps-config-form label{display:flex;flex-direction:column;gap:.25rem}.ps-config-form .full{grid-column:1/-1}.ps-check{flex-direction:row!important;align-items:center;font-size:.72rem;color:var(--text-2)}.ps-config-actions{display:flex;justify-content:flex-end;gap:.5rem;margin:.65rem 0}.ps-mini-table{overflow:auto;max-height:320px}.ps-mini-table table{width:100%;border-collapse:collapse;font-size:.72rem}.ps-mini-table th,.ps-mini-table td{padding:.45rem;border-top:1px solid var(--border);text-align:left}.ps-mini-table th{font-size:.62rem;text-transform:uppercase;color:var(--text-3)}.ps-mini-table td small{display:block;color:var(--text-3)}.ps-mini-table button{border:0;background:none;color:var(--green-700);font:inherit;cursor:pointer;margin-right:.35rem}.ps-mini-table button.danger{color:#b91c1c}
+        .ps-mode-tabs{display:flex;gap:.45rem;flex-wrap:wrap;margin:0 0 1rem;padding:.35rem;background:var(--surface-1);border:1px solid var(--border);border-radius:10px;width:max-content;max-width:100%}.ps-mode-tabs button{border:0;background:transparent;color:var(--text-2);font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .8rem;border-radius:7px;cursor:pointer}.ps-mode-tabs button.active{background:var(--white);color:var(--green-700);box-shadow:0 1px 2px rgba(15,23,42,.08)}
+        .ps-config{margin:0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}.ps-config-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap}.ps-config-head h2{margin:0;font-size:1.08rem}.ps-config-head p{margin:.25rem 0 0;color:var(--text-3);font-size:.78rem;max-width:700px}.ps-config-head select{min-width:300px}.ps-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}.ps-config-card{border:1px solid var(--border);border-radius:10px;padding:.9rem}.ps-config-card h3{margin:0 0 .35rem;font-size:.9rem}.ps-config-note{margin:0 0 .7rem;color:var(--text-3);font-size:.7rem;line-height:1.45}.ps-config-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.ps-config-form label{display:flex;flex-direction:column;gap:.25rem}.ps-config-form .full{grid-column:1/-1}.ps-check{flex-direction:row!important;align-items:center;font-size:.72rem;color:var(--text-2)}.ps-config-actions{display:flex;justify-content:flex-end;gap:.5rem;margin:.65rem 0}.ps-mini-table{overflow:auto;max-height:320px}.ps-mini-table table{width:100%;border-collapse:collapse;font-size:.72rem}.ps-mini-table th,.ps-mini-table td{padding:.45rem;border-top:1px solid var(--border);text-align:left}.ps-mini-table th{font-size:.62rem;text-transform:uppercase;color:var(--text-3)}.ps-mini-table td small{display:block;color:var(--text-3)}.ps-mini-table button{border:0;background:none;color:var(--green-700);font:inherit;cursor:pointer;margin-right:.35rem}.ps-mini-table button.danger{color:#b91c1c}
         .ps-actual{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}
         .ps-actual-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}.ps-actual-head h2{margin:0;font-size:1.08rem}.ps-actual-head p{margin:.3rem 0 0;color:var(--text-3);font-size:.8rem;max-width:790px;line-height:1.5}.ps-live-link{white-space:nowrap;text-decoration:none;font-size:.75rem;font-weight:700;color:var(--green-700);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;background:#fff}
         .ps-form-stack{display:grid;gap:1rem}.ps-form-preview{border:1px solid var(--border);border-radius:12px;background:#fff;padding:1rem}.ps-form-title{display:flex;gap:.75rem;align-items:flex-start;padding-bottom:.8rem;margin-bottom:.8rem;border-bottom:1px solid var(--border)}.ps-form-number{flex:0 0 auto;background:var(--green-50);color:var(--green-700);border:1px solid var(--border);border-radius:999px;padding:.28rem .55rem;font-size:.68rem;font-weight:800}.ps-form-title h3{margin:0;font-size:.95rem}.ps-form-title p{margin:.2rem 0 0;color:var(--text-3);font-size:.72rem;line-height:1.4}
