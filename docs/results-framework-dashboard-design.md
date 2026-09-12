@@ -12,6 +12,13 @@ other DoCC projects in one dashboard, without a second system per donor.
 A visual version of this proposal — including the four screen mockups — is
 published separately as a Claude artifact; this file is the technical record.
 
+**Superseded in part:** [`results-framework-consolidation.md`](results-framework-consolidation.md)
+extends this design after reading VCCRP's GCF framework. It widens G1, G2 and
+G3, adds G6 (currency) and G7 (baseline qualifiers), reorders the rollout, and
+reverses one rule below — "missing is shown as missing" becomes "missing only
+where a value was due," because GCF outcome indicators are collected at
+mid-term and end-term only.
+
 ---
 
 ## 1. What the workbook contains
