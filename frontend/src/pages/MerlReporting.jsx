@@ -412,6 +412,10 @@ export default function MerlReporting({ user }) {
   };
 
   const deleteRecord = async (row) => {
+    if (currentPeriodRow?.submission_status === 'approved' && activeModule.periodScoped) {
+      toast.error('This reporting period is approved and locked. Reopen it before deleting records.');
+      return;
+    }
     if (!(await confirmDialog({ title:t('merl.deleteRecord'), message:t('merl.deleteConfirm'), confirmLabel:t('merl.deleteLbl') }))) return;
     const { error } = await supabase.rpc(activeModule.del, { p_id: row.id });
     if (error) { toast.error(dbErrorMessage(error)); return; }
@@ -482,6 +486,26 @@ export default function MerlReporting({ user }) {
   };
 
   const currentPeriodRow = periods.find((p) => p.period_label === activePeriod);
+  const periodLocked = currentPeriodRow?.submission_status === 'approved';
+  const canDeleteCurrentPeriod = !!currentPeriodRow && canEdit
+    && (!periodLocked || user?.role === 'ROLE_ADMIN');
+
+  const deleteCurrentPeriod = async () => {
+    if (!currentPeriodRow || !canDeleteCurrentPeriod) return;
+    const ok = await confirmDialog({
+      title: 'Delete reporting period',
+      message: `Delete ${currentPeriodRow.period_label} and all records reported in this period? This cannot be undone.`,
+      confirmLabel: 'Delete period',
+    });
+    if (!ok) return;
+    const { error } = await supabase.rpc('delete_reporting_period', { p_id: currentPeriodRow.id });
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    toast.success('Reporting period deleted.');
+    setActivePeriod('');
+    await loadContext(projectId);
+    await loadRecords();
+    setRefreshKey((k) => k + 1);
+  };
 
   // Period completion (§40): which period-scoped modules have at least one record
   // for the active period, and an overall completion % for the header.
@@ -619,6 +643,15 @@ export default function MerlReporting({ user }) {
                 <Unlock size={14} /> {t('merl.reopen')}
               </button>
             )}
+            {canDeleteCurrentPeriod && (
+              <button
+                style={btnSecondary({ color: 'var(--red-600)', borderColor: 'var(--red-200)' })}
+                onClick={deleteCurrentPeriod}
+                title={periodLocked ? 'Administrator delete: removes the approved period and its reported records.' : 'Delete this period and its reported records.'}
+              >
+                <Trash2 size={14} /> Delete period
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -741,8 +774,8 @@ export default function MerlReporting({ user }) {
                       {activeModule.columns.map((c) => <td key={c.label}>{c.get(r) ?? '—'}</td>)}
                       {canEdit && (
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button onClick={() => setEditing(r)} aria-label={t('merl.editRecord')} title={t('merl.edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
-                          <button onClick={() => deleteRecord(r)} aria-label={t('merl.deleteRecord')} title={t('merl.deleteLbl')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
+                          <button disabled={periodLocked && activeModule.periodScoped} onClick={() => setEditing(r)} aria-label={t('merl.editRecord')} title={periodLocked && activeModule.periodScoped ? 'Reopen the approved period before editing.' : t('merl.edit')} style={{ background: 'none', border: 'none', cursor: periodLocked && activeModule.periodScoped ? 'not-allowed' : 'pointer', opacity: periodLocked && activeModule.periodScoped ? .4 : 1, color: 'var(--text-3)' }}><Pencil size={14} aria-hidden="true" /></button>
+                          <button disabled={periodLocked && activeModule.periodScoped} onClick={() => deleteRecord(r)} aria-label={t('merl.deleteRecord')} title={periodLocked && activeModule.periodScoped ? 'Reopen the approved period before deleting.' : t('merl.deleteLbl')} style={{ background: 'none', border: 'none', cursor: periodLocked && activeModule.periodScoped ? 'not-allowed' : 'pointer', opacity: periodLocked && activeModule.periodScoped ? .4 : 1, color: 'var(--red-600)' }}><Trash2 size={14} aria-hidden="true" /></button>
                         </td>
                       )}
                     </tr>
