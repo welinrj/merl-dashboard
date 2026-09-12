@@ -7,6 +7,7 @@ BEGIN;
 ALTER TABLE merl.project_activities
   ADD COLUMN IF NOT EXISTS framework_node_id uuid REFERENCES merl.framework_nodes(id) ON DELETE SET NULL;
 
+ALTER TABLE merl.project_activities DISABLE TRIGGER USER;
 UPDATE merl.project_activities pa
 SET framework_node_id = fn.id
 FROM merl.framework_nodes fn
@@ -15,6 +16,7 @@ WHERE pa.framework_node_id IS NULL
     (pa.output_id IS NOT NULL AND fn.source_table='outputs' AND fn.source_id=pa.output_id)
     OR (pa.output_id IS NULL AND pa.outcome_id IS NOT NULL AND fn.source_table='outcomes' AND fn.source_id=pa.outcome_id)
   );
+ALTER TABLE merl.project_activities ENABLE TRIGGER USER;
 
 CREATE TABLE IF NOT EXISTS merl.result_review_history (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -90,9 +92,11 @@ ALTER TABLE merl.project_activities
   DROP COLUMN IF EXISTS outcome_id,
   DROP COLUMN IF EXISTS output_id;
 
+ALTER TABLE merl.framework_nodes DISABLE TRIGGER USER;
 UPDATE merl.framework_nodes
 SET source_table=NULL,source_id=NULL
 WHERE source_table IN ('objectives','outcomes','outputs');
+ALTER TABLE merl.framework_nodes ENABLE TRIGGER USER;
 
 DROP TABLE IF EXISTS merl.outputs;
 DROP TABLE IF EXISTS merl.outcomes;
