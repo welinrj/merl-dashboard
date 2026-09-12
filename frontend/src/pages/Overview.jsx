@@ -227,7 +227,7 @@ export default function Overview() {
     ? Math.round(latestAchievement.reduce((a, b) => a + b, 0) / latestAchievement.length)
     : null;
 
-  const indicatorStatus = { on_track: 0, attention_required: 0, off_track: 0, no_data: 0 };
+  const indicatorStatus = { on_track: 0, attention_required: 0, at_risk: 0, no_data: 0 };
   for (const ind of indicators) {
     const key = latestProgress.get(ind.id)?.performance_status || 'no_data';
     indicatorStatus[key in indicatorStatus ? key : 'no_data'] += 1;
