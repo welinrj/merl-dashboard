@@ -21,7 +21,6 @@ import { AlertTriangle, Printer, ArrowRight } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
-import { VanuatuMapMini } from '../components/VanuatuMap';
 import {
   useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
 } from '../lib/dashboardFilters';
@@ -88,7 +87,7 @@ export default function Overview() {
         ));
 
         const responses = await Promise.all([
-          q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date, updated_at'),
+          q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
           q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at'),
           q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
           q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
@@ -97,13 +96,16 @@ export default function Overview() {
           q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
           q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
           q('v_project_locations', 'project_id, province'),
+          q('v_project_organizations', 'project_id, role, name'),
+          q('v_project_area_councils', 'project_id, province_code, area_council_name, coverage_status, feasibility_status'),
+          q('v_project_portfolio_status', 'project_id, progress_pct, performance_status, schedule_status, reporting_completion_pct, area_councils_covered, feasibility_confirmed, at_risk_results, delayed_results'),
         ]);
 
         const failed = responses.find((r) => r?.error);
         if (failed?.error) throw failed.error;
         if (!mounted) return;
 
-        const [proj, fin, risk, ben, act, ind, prog, rep, loc] = responses;
+        const [proj, fin, risk, ben, act, ind, prog, rep, loc, org, ac, ps] = responses;
         setData({
           projects: proj.data ?? [],
           financial: fin.data ?? [],
@@ -114,6 +116,9 @@ export default function Overview() {
           progress: prog.data ?? [],
           reporting: rep.data ?? [],
           locations: loc.data ?? [],
+          organizations: org.data ?? [],
+          areaCouncils: ac.data ?? [],
+          portfolioStatus: ps.data ?? [],
         });
       } catch (err) {
         if (mounted) setLoadError(err);
@@ -134,10 +139,43 @@ export default function Overview() {
       .filter(Boolean)
       .map((x) => new Date(x).getFullYear())),
   )].sort((a, b) => b - a);
-  const donors = [...new Set(data.projects.map((p) => p.donor).filter(Boolean))].sort();
-  const themes = [...new Set(data.projects.map((p) => p.category).filter(Boolean))].sort();
+  const orgsByProject = new Map();
+  for (const row of data.organizations || []) {
+    if (!orgsByProject.has(row.project_id)) orgsByProject.set(row.project_id, { donors: [], partners: [] });
+    const bag = orgsByProject.get(row.project_id);
+    if (['donor', 'co_financier'].includes(row.role)) bag.donors.push(row.name);
+    if (['implementing_partner', 'technical_partner', 'government_partner', 'executing_entity', 'accredited_entity'].includes(row.role)) bag.partners.push(row.name);
+  }
+  const areasByProject = new Map();
+  for (const row of data.areaCouncils || []) {
+    if (!areasByProject.has(row.project_id)) areasByProject.set(row.project_id, []);
+    areasByProject.get(row.project_id).push(row.area_council_name);
+  }
+  const statusByProject = new Map((data.portfolioStatus || []).map((row) => [row.project_id, row]));
+  const allProjects = data.projects.map((p) => {
+    const org = orgsByProject.get(p.id) || { donors: [], partners: p.implementing_partners || [] };
+    const rollup = statusByProject.get(p.id);
+    const rawBucket = bucketOf(p.status);
+    const status = rawBucket === 'completed' ? 'completed'
+      : rollup?.schedule_status === 'delayed' ? 'delayed'
+      : rollup?.performance_status === 'at_risk' ? 'at_risk'
+      : rollup?.performance_status === 'attention' ? 'attention'
+      : p.status;
+    return {
+      ...p,
+      status,
+      donors: org.donors,
+      donor: p.donor || org.donors[0] || '',
+      partners: org.partners,
+      areaCouncils: areasByProject.get(p.id) || [],
+    };
+  });
+  const donors = [...new Set(allProjects.flatMap((p) => p.donors || []).filter(Boolean))].sort();
+  const partners = [...new Set(allProjects.flatMap((p) => p.partners || []).filter(Boolean))].sort();
+  const areaCouncilOptions = [...new Set((data.areaCouncils || []).map((r) => r.area_council_name).filter(Boolean))].sort();
+  const themes = [...new Set(allProjects.map((p) => p.category).filter(Boolean))].sort();
 
-  const projects = data.projects.filter((p) => projectMatches(p, filters));
+  const projects = allProjects.filter((p) => projectMatches(p, filters));
   const ids = new Set(projects.map((p) => p.id));
   const inScope = (rows) => rows.filter((r) => ids.has(r.project_id));
 
@@ -149,8 +187,10 @@ export default function Overview() {
   const progress = inScope(data.progress);
   const reporting = inScope(data.reporting);
 
+  const portfolioStatus = inScope(data.portfolioStatus || []);
+  const areaCouncils = inScope(data.areaCouncils || []);
   const total = projects.length;
-  const byBucket = { on_track: 0, at_risk: 0, not_started: 0, completed: 0 };
+  const byBucket = { on_track: 0, attention: 0, at_risk: 0, delayed: 0, not_started: 0, completed: 0 };
   for (const p of projects) {
     const key = bucketOf(p.status);
     if (key in byBucket) byBucket[key] += 1;
@@ -208,6 +248,13 @@ export default function Overview() {
     ? `${female != null ? fmtNum(female) : '—'} ${t('overview.beneFemale')} · ${male != null ? fmtNum(male) : '—'} ${t('overview.beneMale')}`
     : null;
 
+  const reportsApproved = reporting.filter((r) => r.submission_status === 'approved').length;
+  const reportingCompletion = pct(reportsApproved, reporting.length);
+  const areaCouncilNames = [...new Set(areaCouncils.filter((r) => r.coverage_status !== 'not_covered').map((r) => r.area_council_name).filter(Boolean))].sort();
+  const feasibilityConfirmed = areaCouncils.filter((r) => r.feasibility_status === 'confirmed').length;
+  const atRiskProjects = portfolioStatus.filter((r) => r.performance_status === 'at_risk').length;
+  const delayedProjects = portfolioStatus.filter((r) => r.schedule_status === 'delayed').length;
+
   const approvedDates = data.reporting
     .filter((r) => r.submission_status === 'approved')
     .map((r) => r.approved_at || r.period_end)
@@ -259,7 +306,6 @@ export default function Overview() {
   }));
 
   const activitiesDone = activities.filter((a) => a.status === 'completed').length;
-  const reportsApproved = reporting.filter((r) => r.submission_status === 'approved').length;
   const performanceRows = [
     {
       key: 'indicators',
@@ -333,47 +379,67 @@ export default function Overview() {
           onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
         <FilterSelect label={t('overview.filterProvince')} value={filters.province}
           onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((province) => ({ value: province, label: province }))} />
+        <FilterSelect label="Area Council" value={filters.areaCouncil}
+          onChange={(v) => setFilter('areaCouncil', v)} options={areaCouncilOptions.map((name) => ({ value: name, label: name }))} />
+        <FilterSelect label="Donor" value={filters.donor}
+          onChange={(v) => setFilter('donor', v)} options={donors.map((donor) => ({ value: donor, label: donor }))} />
         <FilterSelect label={t('overview.filterPartner')} value={filters.partner}
-          onChange={(v) => setFilter('partner', v)} options={donors.map((donor) => ({ value: donor, label: donor }))} />
+          onChange={(v) => setFilter('partner', v)} options={partners.map((partner) => ({ value: partner, label: partner }))} />
         <button type="button" className="ovx-reset" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
       </section>
 
       <section className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
+          className="ovx-kpi ovx-kpi-projects"
+          label="Active Projects"
+          value={fmtNum(activeProjects)}
+          sub={`${fmtNum(completed)} completed · ${fmtNum(total)} in scope`}
+          linkLabel={t('overview.viewProjects')}
+          onClick={() => nav('/analytics/portfolio')}
+        />
+        <KpiCard
           className="ovx-kpi ovx-kpi-progress"
           label={t('overview.overallProgress')}
           value={overallProgress == null ? '—' : `${overallProgress}%`}
-          sub={`${fmtNum(indicatorStatus.on_track)} / ${fmtNum(indicators.length)} · ${t('overview.indicatorsOnTrack')}`}
+          sub="MERL calculated from latest indicator results"
           progress={overallProgress}
           progressColor={C.violet}
           linkLabel={t('overview.viewPerformance')}
           onClick={() => nav('/analytics/results')}
         />
         <KpiCard
-          className="ovx-kpi ovx-kpi-projects"
-          label={t('overview.kpiProjects')}
-          value={fmtNum(total)}
-          sub={t('overview.activeCompleted', { active: activeProjects, completed })}
-          linkLabel={t('overview.viewProjects')}
-          onClick={() => nav('/analytics/portfolio')}
+          className="ovx-kpi"
+          label="Reporting Completion"
+          value={`${reportingCompletion}%`}
+          sub={`${fmtNum(reportsApproved)} / ${fmtNum(reporting.length)} approved periods`}
+          progress={reportingCompletion}
+          progressColor={C.green}
+          linkLabel="View reporting"
+          onClick={() => nav('/merl-reporting')}
         />
         <KpiCard
-          className="ovx-kpi ovx-kpi-budget"
-          label={t('overview.budgetUtilisation')}
-          value={`${budgetUtilisation}%`}
-          sub={`${fmtVUV(totalExpenditure)} / ${fmtVUV(totalBudget)}`}
-          progress={budgetUtilisation}
-          progressColor={C.amber}
-          linkLabel={t('overview.viewFinancials')}
-          onClick={() => nav('/analytics/financial')}
-        />
-        <KpiCard
-          className="ovx-kpi ovx-kpi-beneficiaries"
-          label={t('overview.kpiBeneficiaries')}
-          value={fmtNum(totalBeneficiaries)}
-          sub={genderSummary || undefined}
-          linkLabel={t('overview.viewBeneficiaries')}
+          className="ovx-kpi"
+          label="Area Councils Covered"
+          value={fmtNum(areaCouncilNames.length)}
+          sub={`${fmtNum(feasibilityConfirmed)} feasibility confirmed`}
+          linkLabel="View Area Councils"
           onClick={() => nav('/analytics/geographic')}
+        />
+        <KpiCard
+          className="ovx-kpi"
+          label="At Risk"
+          value={fmtNum(atRiskProjects)}
+          sub={`${fmtNum(portfolioStatus.reduce((n, r) => n + Number(r.at_risk_results || 0), 0))} results at risk`}
+          linkLabel={t('overview.viewPerformance')}
+          onClick={() => setFilter('status', 'at_risk')}
+        />
+        <KpiCard
+          className="ovx-kpi"
+          label="Delayed"
+          value={fmtNum(delayedProjects)}
+          sub={`${fmtNum(portfolioStatus.reduce((n, r) => n + Number(r.delayed_results || 0), 0))} delayed results / activities`}
+          linkLabel="View delayed"
+          onClick={() => setFilter('status', 'delayed')}
         />
       </section>
 
@@ -430,12 +496,10 @@ export default function Overview() {
           <CardLink onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')}</CardLink>
         </article>
 
-        <ProjectLocations
-          counts={provinceCounts}
-          beneficiaries={provinceBeneficiaries}
-          nationalCount={nationalCount}
-          selected={filters.province}
-          onSelect={(province) => setFilter('province', province)}
+        <AreaCouncilCoverage
+          rows={areaCouncils}
+          selected={filters.areaCouncil}
+          onSelect={(name) => setFilter('areaCouncil', name)}
           onView={() => nav('/analytics/geographic')}
         />
       </section>
@@ -536,6 +600,35 @@ function Donut({ data, total, onSlice }) {
         <span>Total</span>
       </div>
     </div>
+  );
+}
+
+function AreaCouncilCoverage({ rows, selected, onSelect, onView }) {
+  const items = [...new Map(
+    (rows || [])
+      .filter((r) => r.coverage_status !== 'not_covered' && r.area_council_name)
+      .map((r) => [r.area_council_name, r]),
+  ).values()].sort((a, b) => a.area_council_name.localeCompare(b.area_council_name));
+  return (
+    <article className="ovx-card">
+      <CardHeading title="Area Council Coverage" />
+      <div className="ovx-status-list">
+        {items.length ? items.slice(0, 12).map((row) => (
+          <button
+            key={row.area_council_name}
+            type="button"
+            className="ovx-status-row"
+            onClick={() => onSelect(row.area_council_name)}
+            aria-pressed={selected === row.area_council_name}
+          >
+            <span className="ovx-status-name">{row.area_council_name}</span>
+            <span>{String(row.feasibility_status || 'not_assessed').replaceAll('_', ' ')}</span>
+          </button>
+        )) : <p className="ovx-empty">No Area Council coverage recorded.</p>}
+      </div>
+      {items.length > 12 && <p className="ovx-performance-detail">+{items.length - 12} more Area Councils</p>}
+      <CardLink onClick={onView}>View all Area Councils</CardLink>
+    </article>
   );
 }
 
