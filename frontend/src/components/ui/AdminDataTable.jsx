@@ -27,6 +27,16 @@ export default function AdminDataTable({
   const someSelected = pageIds.some(id => selected.has(id));
   const changePage = next => server ? pagination.onPageChange(next) : setPage(next);
   const resetPage = () => changePage(0);
+  const searchValue = server ? (pagination.search || '') : query;
+  const hasActiveFilters = Object.values(filterValues).some(Boolean);
+  const hasActiveSearch = Boolean(searchValue.trim());
+  const hasNarrowing = hasActiveSearch || hasActiveFilters;
+  const resetNarrowing = () => {
+    if (server) pagination.onSearchChange?.(''); else setQuery('');
+    setFilterValues({});
+    filters.forEach(filter => filter.onChange?.(''));
+    resetPage();
+  };
   const toggleSelection = (id, checked) => setSelected(previous => {const next = new Set(previous); if(checked) next.add(id); else next.delete(id); return next;});
   const togglePage = checked => setSelected(previous => {const next = new Set(previous); pageIds.forEach(id => checked ? next.add(id) : next.delete(id)); return next;});
   useEffect(() => { if (!server && page >= model.pages) setPage(model.pages - 1); }, [server, page, model.pages]);
@@ -49,7 +59,7 @@ export default function AdminDataTable({
   };
   return <section className="adt" aria-label={title}>
     <div className="adt-toolbar">
-      <label className="adt-search"><AdminTableIcon name="search" size={16}/><input aria-label={searchPlaceholder} type="search" placeholder={searchPlaceholder} value={server ? pagination.search : query} onChange={e => {if(server)pagination.onSearchChange(e.target.value);else setQuery(e.target.value);resetPage();}}/></label>
+      <label className="adt-search"><AdminTableIcon name="search" size={16}/><input aria-label={searchPlaceholder} type="search" placeholder={searchPlaceholder} value={searchValue} onChange={e => {if(server)pagination.onSearchChange(e.target.value);else setQuery(e.target.value);resetPage();}}/></label>
       {filters.map(filter => <label key={filter.key} className="adt-filter"><span>{filter.label}</span><select value={filterValues[filter.key] || ''} onChange={e => {setFilterValues(v => ({...v,[filter.key]:e.target.value}));filter.onChange?.(e.target.value);resetPage();}}><option value="">All {filter.label.toLowerCase()}</option>{filter.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
       <div className="adt-toolbar-end"><details className="adt-columns"><summary>Columns <AdminTableIcon name="chevronDown" size={14}/></summary><div className="adt-columns-menu">{columns.filter(c => !c.required).map(column => <label key={column.key}><input type="checkbox" checked={!hidden.includes(column.key)} onChange={e => setHidden(v => e.target.checked ? v.filter(k => k !== column.key) : [...v,column.key])}/>{column.label}</label>)}</div></details>{onRefresh && <button type="button" className="adt-secondary" disabled={loading} onClick={onRefresh}>Refresh</button>}{actions}</div>
     </div>
@@ -58,7 +68,7 @@ export default function AdminDataTable({
       const direction = sort?.key === column.key ? (sort.desc ? 'descending' : 'ascending') : undefined;
       return <th key={column.key} scope="col" className={column.align === 'right' ? 'adt-right' : ''} aria-sort={direction}>{column.sortable === false ? column.label : <button type="button" className="adt-sort" aria-label={`Sort ${column.label}${direction ? `, ${direction}` : ''}`} onClick={() => {setSort(s => s?.key === column.key ? {key:column.key,desc:!s.desc} : {key:column.key,desc:false});resetPage();}}><span>{column.label}</span><AdminSortIcon direction={direction}/></button>}</th>;
     })}{rowActions && <th scope="col" className="adt-right">Actions</th>}</tr></thead>
-      {loading && !rows.length ? <tbody><tr><td colSpan={colSpan} className="adt-empty" role="status">Loading records…</td></tr></tbody> : !model.rows.length ? <tbody><tr><td colSpan={colSpan} className="adt-empty">{empty}</td></tr></tbody> : model.rows.map(renderRow)}
+      {loading && !rows.length ? <tbody><tr><td colSpan={colSpan} className="adt-empty" role="status">Loading records…</td></tr></tbody> : !model.rows.length ? <tbody><tr><td colSpan={colSpan} className="adt-empty">{hasNarrowing ? <span>No records match this search or filter. <button type="button" className="adt-secondary" onClick={resetNarrowing}>Reset filters</button></span> : empty}</td></tr></tbody> : model.rows.map(renderRow)}
     </table></div>
     <footer className="adt-footer"><span>{model.total ? `${model.page * (server ? pagination.pageSize : size) + 1}–${Math.min((model.page + 1) * (server ? pagination.pageSize : size),model.total)} of ${model.total}` : '0 records'}{selection ? ` · ${selected.size} selected` : ''}</span><div>{!server && <label>Rows per page <select value={size} onChange={e => {setSize(Number(e.target.value));setPage(0);}}>{[10,25,50].map(n => <option key={n}>{n}</option>)}</select></label>}<button type="button" aria-label="First page" disabled={model.page === 0 || loading} onClick={() => changePage(0)}><AdminTableIcon name="chevronsLeft" size={16}/></button><button type="button" aria-label="Previous page" disabled={model.page === 0 || loading} onClick={() => changePage(model.page - 1)}><AdminTableIcon name="chevronLeft" size={16}/></button><span>Page {model.page + 1} of {model.pages}</span><button type="button" aria-label="Next page" disabled={model.page + 1 >= model.pages || loading} onClick={() => changePage(model.page + 1)}><AdminTableIcon name="chevronRight" size={16}/></button><button type="button" aria-label="Last page" disabled={model.page + 1 >= model.pages || loading} onClick={() => changePage(model.pages - 1)}><AdminTableIcon name="chevronsRight" size={16}/></button></div></footer>
   </section>;
