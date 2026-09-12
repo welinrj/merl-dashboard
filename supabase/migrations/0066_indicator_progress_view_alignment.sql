@@ -1,6 +1,6 @@
 -- Keep the public indicator-progress view aligned with the rebuilt results engine.
--- The table gained schedule/review/publication fields after the original i18n view
--- was created; analytics pages need those fields without querying merl.* directly.
+-- Preserve the original column order and append rebuilt-engine fields so
+-- CREATE OR REPLACE VIEW remains compatible with existing clients.
 
 CREATE OR REPLACE VIEW public.v_indicator_progress
 WITH (security_invoker=true) AS
@@ -16,17 +16,9 @@ SELECT
   ip.achievement_pct,
   ip.variance,
   ip.performance_status,
-  ip.schedule_status,
   ip.narrative,
   ip.variance_reason,
   ip.corrective_action,
-  ip.key_achievements,
-  ip.next_period_priorities,
-  ip.area_council_name,
-  ip.review_status,
-  ip.approved_by,
-  ip.approved_at,
-  ip.published_at,
   ip.reported_by,
   ip.date_reported,
   ip.created_by,
@@ -40,7 +32,15 @@ SELECT
   i.is_qualitative,
   i.higher_is_better,
   ru.full_name AS reported_by_name,
-  coalesce(ip.i18n,'{}'::jsonb) AS i18n
+  coalesce(ip.i18n,'{}'::jsonb) AS i18n,
+  ip.schedule_status,
+  ip.key_achievements,
+  ip.next_period_priorities,
+  ip.area_council_name,
+  ip.review_status,
+  ip.approved_by,
+  ip.approved_at,
+  ip.published_at
 FROM merl.indicator_progress ip
 JOIN merl.project_indicators i ON i.id=ip.indicator_id
 LEFT JOIN merl.users ru ON ru.id=ip.reported_by;
