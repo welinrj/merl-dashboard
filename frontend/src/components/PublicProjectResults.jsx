@@ -24,6 +24,7 @@ const COPY = {
 };
 const number = (value, lang) => new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US').format(Number(value));
 const percent = value => value == null || !Number.isFinite(Number(value)) ? '—' : `${Math.round(Number(value))}%`;
+const metric = (value, unit, lang) => value == null || !Number.isFinite(Number(value)) ? '—' : `${number(value,lang)}${unit ? ` ${unit}` : ''}`;
 
 export default function PublicProjectResults({ projects = [], lang = 'en', onProject }) {
   const c = COPY[lang] || COPY.en;
@@ -34,7 +35,8 @@ export default function PublicProjectResults({ projects = [], lang = 'en', onPro
     <div className="ppr-list">{projects.map(project => {
       const open = expanded === String(project.id);
       const known = project.progress_pct != null && Number.isFinite(Number(project.progress_pct));
-      const hasResults = known || Number(project.published_indicator_count) > 0 || Number(project.published_beneficiaries) > 0;
+      const publicKpis = Array.isArray(project.public_kpis) ? project.public_kpis : [];
+      const hasResults = known || Number(project.published_indicator_count) > 0 || Number(project.published_beneficiaries) > 0 || publicKpis.length > 0;
       return <article key={project.id} className="ppr-item" style={projectColor(project)}>
         <ProjectIdentity project={project} className="ppr-project-button" selected={open} onClick={() => setExpanded(open ? null : String(project.id))}>
           <span className="ppr-project-copy"><strong>{project.name}</strong><small>{project.code || project.acronym || ''}</small></span>
@@ -48,6 +50,13 @@ export default function PublicProjectResults({ projects = [], lang = 'en', onPro
             <div><span>{c.progress}</span><strong>{percent(project.progress_pct)}</strong><div className="ppr-track"><span style={{width:`${known ? Math.max(0,Math.min(100,Number(project.progress_pct))) : 0}%`}}/></div></div>
             <div><span>{c.indicators}</span><strong>{number(project.published_indicator_count || 0,lang)}</strong></div>
             <div><span>{c.beneficiaries}</span><strong>{number(project.published_beneficiaries || 0,lang)}</strong></div>
+          </div>
+          {publicKpis.length > 0 && <div className="ppr-public-kpis" aria-label="Published project KPIs">
+            {publicKpis.map(kpi => <div key={kpi.indicator_id}>
+              <span>{kpi.label}</span>
+              <strong>{metric(kpi.actual_value,kpi.unit,lang)}</strong>
+              <small>{kpi.target_value != null ? 'Target ' + metric(kpi.target_value,kpi.unit,lang) : ''}{kpi.progress_pct != null ? (kpi.target_value != null ? ' · ' : '') + percent(kpi.progress_pct) + ' progress' : ''}</small>
+            </div>)}
           </div>}
           <p className="ppr-note">{c.period}: {project.last_published_period || c.unknown}</p>
           {onProject && <button type="button" className="ppr-detail-link" onClick={() => onProject(project)}>{c.detail} →</button>}
@@ -55,6 +64,6 @@ export default function PublicProjectResults({ projects = [], lang = 'en', onPro
       </article>;
     })}</div>
     {!projects.length && <p className="ppr-note">{c.none}</p>}
-    <style>{`.ppr-root{min-width:0}.ppr-head{display:flex;justify-content:space-between;align-items:center;gap:1rem}.ppr-head h2{font-size:1rem;margin:0}.ppr-head span,.ppr-note{font-size:.8rem;color:var(--text-2);line-height:1.5}.ppr-list{display:grid;gap:.65rem;margin-top:1rem}.ppr-item{min-width:0;border:1px solid var(--border);border-radius:10px;overflow:hidden}.ppr-identity{--project-ink:#1d4ed8;--project-bg:#eff6ff;display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--project-ink);border-radius:8px;background:var(--project-bg);color:var(--project-ink);font:inherit;font-weight:650;padding:.4rem .7rem;text-align:left}.ppr-project-button{display:flex;width:100%;min-height:65px;border:0;border-left:5px solid var(--project-ink);border-radius:0;gap:1rem;cursor:pointer;padding:.8rem 1rem}.ppr-project-button:focus-visible,.ppr-identity:focus-visible{outline:3px solid var(--project-ink);outline-offset:2px}.ppr-project-copy{flex:1;min-width:0;display:grid;gap:.2rem}.ppr-project-copy strong{font-size:.9rem;line-height:1.4}.ppr-project-copy small,.ppr-project-progress small{font-size:.72rem;opacity:.85}.ppr-project-progress{display:grid;text-align:right;gap:.1rem}.ppr-project-progress strong{font-size:1.1rem}.ppr-detail{padding:1rem;border-top:1px solid var(--border)}.ppr-detail h3{font-size:.8rem;margin:0 0 .4rem}.ppr-detail p{font-size:.84rem;line-height:1.6;margin:.3rem 0 1rem}.ppr-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:.65rem;margin:.7rem 0 1rem}.ppr-metrics>div{display:grid;gap:.4rem;border:1px solid var(--border);border-radius:8px;padding:.7rem}.ppr-metrics span{font-size:.72rem;color:var(--text-2)}.ppr-metrics strong{font-size:1.1rem}.ppr-track{height:6px;border-radius:8px;background:var(--surface-2);overflow:hidden}.ppr-track span{display:block;height:100%;background:var(--project-ink)}.ppr-detail-link{border:0;background:none;color:var(--project-ink);font:inherit;font-weight:650;cursor:pointer;padding:.3rem 0}@media(max-width:400px){.ppr-project-button{gap:.5rem;padding:.6rem}.ppr-project-copy strong{font-size:.82rem}}`}</style>
+    <style>{`.ppr-root{min-width:0}.ppr-head{display:flex;justify-content:space-between;align-items:center;gap:1rem}.ppr-head h2{font-size:1rem;margin:0}.ppr-head span,.ppr-note{font-size:.8rem;color:var(--text-2);line-height:1.5}.ppr-list{display:grid;gap:.65rem;margin-top:1rem}.ppr-item{min-width:0;border:1px solid var(--border);border-radius:10px;overflow:hidden}.ppr-identity{--project-ink:#1d4ed8;--project-bg:#eff6ff;display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--project-ink);border-radius:8px;background:var(--project-bg);color:var(--project-ink);font:inherit;font-weight:650;padding:.4rem .7rem;text-align:left}.ppr-project-button{display:flex;width:100%;min-height:65px;border:0;border-left:5px solid var(--project-ink);border-radius:0;gap:1rem;cursor:pointer;padding:.8rem 1rem}.ppr-project-button:focus-visible,.ppr-identity:focus-visible{outline:3px solid var(--project-ink);outline-offset:2px}.ppr-project-copy{flex:1;min-width:0;display:grid;gap:.2rem}.ppr-project-copy strong{font-size:.9rem;line-height:1.4}.ppr-project-copy small,.ppr-project-progress small{font-size:.72rem;opacity:.85}.ppr-project-progress{display:grid;text-align:right;gap:.1rem}.ppr-project-progress strong{font-size:1.1rem}.ppr-detail{padding:1rem;border-top:1px solid var(--border)}.ppr-detail h3{font-size:.8rem;margin:0 0 .4rem}.ppr-detail p{font-size:.84rem;line-height:1.6;margin:.3rem 0 1rem}.ppr-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:.65rem;margin:.7rem 0 1rem}.ppr-public-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin:.7rem 0 1rem}.ppr-public-kpis>div{display:grid;gap:.25rem;border:1px solid var(--border);border-radius:8px;padding:.7rem;background:var(--surface-1)}.ppr-public-kpis span{font-size:.7rem;color:var(--text-2)}.ppr-public-kpis strong{font-size:1rem;color:var(--text-1)}.ppr-public-kpis small{font-size:.66rem;color:var(--text-3);line-height:1.35}.ppr-metrics>div{display:grid;gap:.4rem;border:1px solid var(--border);border-radius:8px;padding:.7rem}.ppr-metrics span{font-size:.72rem;color:var(--text-2)}.ppr-metrics strong{font-size:1.1rem}.ppr-track{height:6px;border-radius:8px;background:var(--surface-2);overflow:hidden}.ppr-track span{display:block;height:100%;background:var(--project-ink)}.ppr-detail-link{border:0;background:none;color:var(--project-ink);font:inherit;font-weight:650;cursor:pointer;padding:.3rem 0}@media(max-width:400px){.ppr-project-button{gap:.5rem;padding:.6rem}.ppr-project-copy strong{font-size:.82rem}}`}</style>
   </section>;
 }
