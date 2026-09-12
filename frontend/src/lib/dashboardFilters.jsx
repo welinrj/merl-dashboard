@@ -1,20 +1,24 @@
 // Shared filters and operational status classification for the MERL dashboard.
 import { createContext, useContext, useMemo, useState, useCallback } from 'react';
 
-const EMPTY = { fy: '', status: '', theme: '', province: '', partner: '' };
+const EMPTY = { fy: '', status: '', theme: '', province: '', donor: '', partner: '' };
 
 // Include both the current Form 1 vocabulary and legacy operational values.
 // Registration approval is a separate workflow and is not an operational status.
 export const STATUS_BUCKETS = {
   on_track: ['active', 'on_track', 'ongoing', 'in_progress'],
-  at_risk: ['at_risk', 'delayed', 'suspended', 'on_hold'],
+  attention: ['attention', 'attention_required', 'on_hold'],
+  at_risk: ['at_risk', 'off_track', 'suspended'],
+  delayed: ['delayed'],
   not_started: ['planning', 'not_started', 'pipeline', 'approved'],
   completed: ['completed', 'closed'],
   cancelled: ['cancelled'],
 };
 export const STATUS_BUCKET_LABEL = {
   on_track: 'Ongoing / On Track',
-  at_risk: 'At Risk / Delayed / On Hold',
+  attention: 'Attention Required',
+  at_risk: 'At Risk',
+  delayed: 'Delayed',
   not_started: 'Planning / Not Started',
   completed: 'Completed',
   cancelled: 'Cancelled',
@@ -45,7 +49,8 @@ export function useDashboardFilters() {
 export function projectMatches(p, filters) {
   if (filters.status && bucketOf(p.status) !== filters.status) return false;
   if (filters.theme && p.category !== filters.theme) return false;
-  if (filters.partner && p.donor !== filters.partner) return false;
+  if (filters.donor && p.donor !== filters.donor && !(p.donors || []).includes(filters.donor)) return false;
+  if (filters.partner && !(p.partners || p.implementing_partners || []).includes(filters.partner)) return false;
   if (filters.province && !(p.provinces || []).includes(filters.province)) return false;
   if (filters.fy) {
     const y = Number(filters.fy);
