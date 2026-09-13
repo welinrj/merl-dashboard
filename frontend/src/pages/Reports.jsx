@@ -46,6 +46,14 @@ const humanToken = (value) => value
   ? String(value).replaceAll('_', ' ').replace(/\b\w/g, (m) => m.toUpperCase())
   : '—';
 const periodMatches = (row, period) => !period || row?.reporting_period === period || row?.period_label === period;
+const rowMatchesPeriodScope = (row, reporting, period, periodType) => {
+  if (period) return periodMatches(row, period);
+  if (!periodType) return true;
+  const label = row?.reporting_period ?? row?.period_label;
+  if (!label) return true;
+  return reporting.some((candidate) => candidate.project_id === row?.project_id
+    && candidate.period_label === label && candidate.period_type === periodType);
+};
 const projectBudgetValue = (project, financial) => {
   if (hasValue(financial?.approved_budget)) return financial.approved_budget;
   if (Number(project?.budget_vuv) > 0 || project?.approved_budget_confirmed === true) return project?.budget_vuv;
@@ -134,6 +142,7 @@ export default function Reports() {
   const generatedAt = new Date();
   const approvalScope = d.reporting.filter((row) =>
     periodMatches(row, period)
+    && (!periodType || row.period_type === periodType)
     && (type !== 'project' || !projectId || row.project_id === projectId));
   const approvedCount = approvalScope.filter((row) => row.submission_status === 'approved').length;
   const approvalComplete = approvalScope.length > 0 && approvedCount === approvalScope.length;
@@ -226,22 +235,19 @@ export default function Reports() {
             <label className="field-label">{t('rpt.donorOptional')}</label>
             <select className="field-input" value={donor} onChange={(e) => setDonor(e.target.value)}>
               <option value="">{t('rpt.allDonors')}</option>
-              {donors.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+              {donors.map((p) => <option key={p} value={p}>{p}</option>)}</select>
           </div>
         )}
         <div style={{ flex: '0 1 165px' }}>
           <label className="field-label">Report frequency</label>
           <select className="field-input" value={periodType} onChange={(e) => { setPeriodType(e.target.value); setPeriod(''); }}>
-            {PERIOD_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
+            {PERIOD_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select>
         </div>
         <div style={{ flex: '0 1 190px' }}>
           <label className="field-label">{t('rpt.reportingPeriod')}</label>
           <select className="field-input" value={period} onChange={(e) => setPeriod(e.target.value)}>
             <option value="">All {PERIOD_TYPES.find((p) => p.value === periodType)?.label.toLowerCase()} periods</option>
-            {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}
-          </select>
+            {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}</select>
         </div>
         <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> {t('rpt.printPdf')}
@@ -256,12 +262,12 @@ export default function Reports() {
         <div className={`rp-assurance${approvalComplete ? ' ok' : ''}`}>
           <b>{approvalComplete ? 'Approved reporting basis.' : 'Reporting status.'}</b> {approvalBasis}
         </div>
-        {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} />}
-        {type === 'portfolio' && <Portfolio d={d} period={period} />}
-        {type === 'indicator' && <IndicatorReport d={d} period={period} />}
-        {type === 'financial' && <FinancialReport d={d} period={period} />}
-        {type === 'geographic' && <GeographicReport d={d} province={province} period={period} />}
-        {type === 'donor' && <DonorReport d={d} donor={donor} period={period} />}
+        {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} periodType={periodType} />}
+        {type === 'portfolio' && <Portfolio d={d} period={period} periodType={periodType} />}
+        {type === 'indicator' && <IndicatorReport d={d} period={period} periodType={periodType} />}
+        {type === 'financial' && <FinancialReport d={d} period={period} periodType={periodType} />}
+        {type === 'geographic' && <GeographicReport d={d} province={province} period={period} periodType={periodType} />}
+        {type === 'donor' && <DonorReport d={d} donor={donor} period={period} periodType={periodType} />}
       </div>
 
       {/* Report Library (§48-51): audit trail of official reports generated */}
@@ -276,21 +282,13 @@ export default function Reports() {
           </div>
         ) : (
           <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-            <table className="rl-t">
-              <thead>
-                <tr><th>{t('rpt.report')}</th><th>{t('rpt.scope')}</th><th>{t('rpt.period')}</th><th>{t('rpt.generatedBy')}</th><th>{t('rpt.when')}</th></tr>
-              </thead>
-              <tbody>
-                {runs.map((r) => (
-                  <tr key={r.id}>
-                    <td><b>{r.report_label || r.report_type}</b></td>
-                    <td>{r.project_code ? `${r.project_code}` : (r.params?.province || r.params?.donor || 'Portfolio')}</td>
-                    <td>{r.reporting_period || '—'}</td>
-                    <td>{r.generated_by_name || '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(r.generated_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
+            <table className="rl-t"><thead><tr><th>{t('rpt.report')}</th><th>{t('rpt.scope')}</th><th>{t('rpt.period')}</th><th>{t('rpt.generatedBy')}</th><th>{t('rpt.when')}</th></tr></thead>
+              <tbody>{runs.map((r) => <tr key={r.id}>
+                <td><b>{r.report_label || r.report_type}</b></td>
+                <td>{r.project_code ? `${r.project_code}` : (r.params?.province || r.params?.donor || 'Portfolio')}</td>
+                <td>{r.reporting_period || '—'}</td><td>{r.generated_by_name || '—'}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(r.generated_at)}</td>
+              </tr>)}</tbody>
             </table>
           </div>
         )}
@@ -299,229 +297,119 @@ export default function Reports() {
   );
 }
 
-const Section = ({ n, title, children }) => (
-  <div><h3>{n}. {title}</h3>{children}</div>
-);
+const Section = ({ n, title, children }) => <div><h3>{n}. {title}</h3>{children}</div>;
 function Narr({ text }) {
   const { t } = useTranslation();
   return text ? <p className="rp-narr">{text}</p> : <p className="rp-muted">{t('rpt.notReported')}</p>;
 }
 
-// ── 1. Project Progress Report (14-section standard structure) ────────────────
-function ProjectProgress({ d, projectId, period }) {
+function ProjectProgress({ d, projectId, period, periodType }) {
   const { t } = useTranslation();
   const p = d.projects.find((x) => x.id === projectId);
   if (!p) return <p className="rp-muted">{t('rpt.selectProject')}</p>;
-  const fin = latestByProject(d.financial.filter((f) => f.project_id === projectId && periodMatches(f, period))).get(projectId);
+  const inScope = (row) => rowMatchesPeriodScope(row, d.reporting, period, periodType);
+  const fin = latestByProject(d.financial.filter((f) => f.project_id === projectId && inScope(f))).get(projectId);
   const inds = d.indicators.filter((i) => i.project_id === projectId);
-  const prog = d.progress.filter((x) => x.project_id === projectId && periodMatches(x, period));
+  const prog = d.progress.filter((x) => x.project_id === projectId && inScope(x));
   const acts = d.activities.filter((a) => a.project_id === projectId);
   const risks = d.risks.filter((r) => r.project_id === projectId);
   const locs = d.areaCouncils.filter((l) => l.project_id === projectId);
-  const bens = d.beneficiaries.filter((b) => b.project_id === projectId && periodMatches(b, period));
-  const learn = d.learning.filter((l) => l.project_id === projectId && periodMatches(l, period)).sort((a, b) => (b.reporting_period ?? '').localeCompare(a.reporting_period ?? ''))[0] || {};
+  const bens = d.beneficiaries.filter((b) => b.project_id === projectId && inScope(b));
+  const learn = d.learning.filter((l) => l.project_id === projectId && inScope(l)).sort((a, b) => (b.reporting_period ?? '').localeCompare(a.reporting_period ?? ''))[0] || {};
   const budget = projectBudgetValue(p, fin);
   const exp = projectExpenditureValue(p, fin);
   const physAvg = acts.filter((a) => a.physical_progress_pct != null);
   const phys = physAvg.length ? Math.round(physAvg.reduce((a, x) => a + Number(x.physical_progress_pct), 0) / physAvg.length) : null;
   const indLast = (i) => prog.filter((x) => x.indicator_id === i.id).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0];
 
-  return (
-    <div>
-      <h2>{t('rpt.projectProgressReport')}</h2>
-      <div className="rp-muted">{p.code} — {p.name}{period ? ` · ${period}` : ''}</div>
-
-      <Section n="1" title={t('rpt.projectInformation')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.projectId')}</b> {p.code}</div>
-          <div><b>{t('rpt.titleLbl')}</b> {p.name}</div>
-          <div><b>{t('rpt.donorLbl')}</b> {p.donor || '—'}</div>
-          <div><b>{t('rpt.implementingLbl')}</b> {p.executing_agency || p.lead_agency || '—'}</div>
-          <div><b>{t('rpt.durationLbl')}</b> {p.start_date || '—'} → {p.end_date || '—'}</div>
-          <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)} {p.currency || 'VUV'}</div>
-          <div><b>{t('rpt.locationsLbl')}</b> {(p.provinces || []).join(', ') || 'National'}</div>
-          <div><b>{t('rpt.reportingPeriodLbl')}</b> {period || '—'}</div>
-        </div>
-      </Section>
-
-      <Section n="2" title={t('rpt.executiveSummary')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.overallStatusLbl')}</b> {OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</div>
-          <div><b>{t('rpt.physicalProgressLbl')}</b> {phys != null ? `${phys}%` : '—'}</div>
-          <div><b>{t('rpt.financialUtilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.openRisksLbl')}</b> {risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
-        </div>
-        <Narr text={learn.key_achievements} />
-      </Section>
-
-      <Section n="3" title={t('rpt.progressAgainst')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.level')}</th><th>{t('rpt.statement')}</th></tr></thead>
-          <tbody>
-            {d.frameworkNodes.filter((o) => o.project_id === projectId)
-              .sort((a,b) => (Number(a.sort_order)||0)-(Number(b.sort_order)||0) || String(a.node_code||'').localeCompare(String(b.node_code||'')))
-              .map((o) => <tr key={o.id}><td>{o.node_code || '—'}</td><td>{String(o.node_type || 'result').replaceAll('_',' ')}</td><td>{o.title}</td></tr>)}
-          </tbody>
-        </table>
-      </Section>
-
-      <Section n="4" title={t('rpt.indicatorPerformance')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.indicator')}</th><th>{t('rpt.baseline')}</th><th>{t('rpt.periodTarget')}</th><th>{t('rpt.current')}</th><th>{t('rpt.finalTarget')}</th><th>{t('rpt.achievementPct')}</th><th>{t('rpt.status')}</th></tr></thead>
-          <tbody>
-            {inds.map((i) => { const l = indLast(i); return (
-              <tr key={i.code}><td>{i.code} {i.name}</td><td>{i.baseline_value ?? '—'}</td><td>{l?.period_target ?? '—'}</td>
-                <td>{l?.cumulative_actual ?? '—'}</td><td>{i.target_value ?? '—'}</td><td>{fmtPct(l?.achievement_pct)}</td>
-                <td>{OPT.labelOf(OPT.PERFORMANCE_STATUS, l?.performance_status) || '—'}</td></tr>); })}
-            {inds.length === 0 && <tr><td colSpan={7} className="rp-muted">{t('rpt.noIndicators')}</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-
-      <Section n="5" title={t('rpt.activityImplementation')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.activity')}</th><th>{t('rpt.status')}</th><th>{t('rpt.progress')}</th><th>{t('rpt.plannedBudget')}</th><th>{t('rpt.actualExp')}</th></tr></thead>
-          <tbody>
-            {acts.map((a) => <tr key={a.code}><td>{a.code}</td><td>{a.name}</td><td>{OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</td>
-              <td>{a.physical_progress_pct != null ? `${a.physical_progress_pct}%` : '—'}</td><td>{fmtAmount(a.planned_budget)}</td><td>{fmtAmount(a.actual_expenditure)}</td></tr>)}
-            {acts.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noActivities')}</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-
-      <Section n="6" title={t('rpt.financialPerformance')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div>
-          <div><b>{t('rpt.periodBudgetLbl')}</b> {fmtAmount(fin?.period_budget)}</div>
-          <div><b>{t('rpt.expenditureThisPeriodLbl')}</b> {fmtAmount(fin?.expenditure_period)}</div>
-          <div><b>{t('rpt.cumulativeExpenditureLbl')}</b> {fmtAmount(exp)}</div>
-          <div><b>{t('rpt.remainingBalanceLbl')}</b> {fmtAmount(fin?.remaining_balance ?? remainingBalance(budget, exp))}</div>
-          <div><b>{t('rpt.utilisationPctLbl')}</b> {fmtPct(fin?.utilisation_pct ?? utilisationPct(budget, exp))}</div>
-        </div>
-        {(!hasValue(budget) || !hasValue(exp)) && <p className="rp-muted">Financial values are incomplete. Blank values are not treated as zero.</p>}
-        <Narr text={fin?.narrative} />
-      </Section>
-
-      <Section n="7" title="Area Council Coverage & Feasibility">
-        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.areaCouncil')}</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead>
-          <tbody>
-            {locs.map((l) => <tr key={l.id}><td>{l.province_code || '—'}</td><td>{l.area_council_name || '—'}</td><td>{humanToken(l.coverage_status)}</td><td>{humanToken(l.feasibility_status)}</td><td>{l.feasibility_note || '—'}</td></tr>)}
-            {locs.length === 0 && <tr><td colSpan={5} className="rp-muted">No Area Council coverage record has been entered. This is missing coverage data, not zero coverage.</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-
-      <Section n="8" title={t('rpt.beneficiariesGedsi')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.period')}</th><th>{t('rpt.totalDirect')}</th><th>{t('rpt.female')}</th><th>{t('rpt.male')}</th><th>{t('rpt.youth')}</th><th>{t('rpt.pwd')}</th></tr></thead>
-          <tbody>
-            {bens.map((b) => <tr key={b.id}><td>{b.reporting_period || '—'}</td><td>{b.total_direct ?? '—'}</td><td>{b.female ?? '—'}</td><td>{b.male ?? '—'}</td><td>{b.youth ?? '—'}</td><td>{b.persons_with_disability ?? '—'}</td></tr>)}
-            {bens.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noBeneficiaryData')}</td></tr>}
-          </tbody>
-        </table>
-        <p className="rp-muted">{t('rpt.blankCells')}</p>
-      </Section>
-
-      <Section n="9" title={t('rpt.keyAchievements')}><Narr text={[learn.key_achievements, learn.major_results].filter(Boolean).join('\n\n')} /></Section>
-      <Section n="10" title={t('rpt.challengesRisks')}>
-        <Narr text={learn.challenges} />
-        <table className="rp-t"><thead><tr><th>{t('rpt.id')}</th><th>{t('rpt.type')}</th><th>{t('rpt.description')}</th><th>{t('rpt.rating')}</th><th>{t('rpt.status')}</th><th>{t('rpt.mitigation')}</th></tr></thead>
-          <tbody>
-            {risks.map((r) => <tr key={r.code}><td>{r.code}</td><td>{OPT.labelOf(OPT.RISK_TYPE, r.type)}</td><td>{r.description}</td><td>{r.risk_rating || '—'}</td><td>{OPT.labelOf(OPT.RISK_STATUS, r.status)}</td><td>{r.mitigation || '—'}</td></tr>)}
-            {risks.length === 0 && <tr><td colSpan={6} className="rp-muted">No risks or issues have been recorded. Risk status is unassessed rather than automatically low.</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-      <Section n="11" title={t('rpt.lessonsLearned')}><Narr text={learn.lessons_learned} /></Section>
-      <Section n="12" title={t('rpt.nextPeriodPriorities')}><Narr text={learn.next_period_priorities} /></Section>
-      <Section n="13" title={t('rpt.recommendations')}><Narr text={learn.recommendations} /></Section>
-      <Section n="14" title={t('rpt.supportingEvidence')}><p className="rp-muted">{t('rpt.evidenceNote')}</p></Section>
-    </div>
-  );
+  return <div>
+    <h2>{t('rpt.projectProgressReport')}</h2><div className="rp-muted">{p.code} — {p.name}{period ? ` · ${period}` : ''}</div>
+    <Section n="1" title={t('rpt.projectInformation')}><div className="rp-meta">
+      <div><b>{t('rpt.projectId')}</b> {p.code}</div><div><b>{t('rpt.titleLbl')}</b> {p.name}</div>
+      <div><b>{t('rpt.donorLbl')}</b> {p.donor || '—'}</div><div><b>{t('rpt.implementingLbl')}</b> {p.executing_agency || p.lead_agency || '—'}</div>
+      <div><b>{t('rpt.durationLbl')}</b> {p.start_date || '—'} → {p.end_date || '—'}</div><div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)} {p.currency || 'VUV'}</div>
+      <div><b>{t('rpt.locationsLbl')}</b> {(p.provinces || []).join(', ') || 'National'}</div><div><b>{t('rpt.reportingPeriodLbl')}</b> {period || `All ${PERIOD_TYPES.find((x)=>x.value===periodType)?.label.toLowerCase() || ''} periods`}</div>
+    </div></Section>
+    <Section n="2" title={t('rpt.executiveSummary')}><div className="rp-meta">
+      <div><b>{t('rpt.overallStatusLbl')}</b> {OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</div>
+      <div><b>{t('rpt.physicalProgressLbl')}</b> {phys != null ? `${phys}%` : '—'}</div>
+      <div><b>{t('rpt.financialUtilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
+      <div><b>{t('rpt.openRisksLbl')}</b> {risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
+    </div><Narr text={learn.key_achievements} /></Section>
+    <Section n="3" title={t('rpt.progressAgainst')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.level')}</th><th>{t('rpt.statement')}</th></tr></thead><tbody>
+      {d.frameworkNodes.filter((o) => o.project_id === projectId).sort((a,b) => (Number(a.sort_order)||0)-(Number(b.sort_order)||0) || String(a.node_code||'').localeCompare(String(b.node_code||''))).map((o) => <tr key={o.id}><td>{o.node_code || '—'}</td><td>{String(o.node_type || 'result').replaceAll('_',' ')}</td><td>{o.title}</td></tr>)}
+    </tbody></table></Section>
+    <Section n="4" title={t('rpt.indicatorPerformance')}><table className="rp-t"><thead><tr><th>{t('rpt.indicator')}</th><th>{t('rpt.baseline')}</th><th>{t('rpt.periodTarget')}</th><th>{t('rpt.current')}</th><th>{t('rpt.finalTarget')}</th><th>{t('rpt.achievementPct')}</th><th>{t('rpt.status')}</th></tr></thead><tbody>
+      {inds.map((i) => { const l = indLast(i); return <tr key={i.code}><td>{i.code} {i.name}</td><td>{i.baseline_value ?? '—'}</td><td>{l?.period_target ?? '—'}</td><td>{l?.cumulative_actual ?? '—'}</td><td>{i.target_value ?? '—'}</td><td>{fmtPct(l?.achievement_pct)}</td><td>{OPT.labelOf(OPT.PERFORMANCE_STATUS, l?.performance_status) || '—'}</td></tr>; })}
+      {inds.length === 0 && <tr><td colSpan={7} className="rp-muted">{t('rpt.noIndicators')}</td></tr>}
+    </tbody></table></Section>
+    <Section n="5" title={t('rpt.activityImplementation')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.activity')}</th><th>{t('rpt.status')}</th><th>{t('rpt.progress')}</th><th>{t('rpt.plannedBudget')}</th><th>{t('rpt.actualExp')}</th></tr></thead><tbody>
+      {acts.map((a) => <tr key={a.code}><td>{a.code}</td><td>{a.name}</td><td>{OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</td><td>{a.physical_progress_pct != null ? `${a.physical_progress_pct}%` : '—'}</td><td>{fmtAmount(a.planned_budget)}</td><td>{fmtAmount(a.actual_expenditure)}</td></tr>)}
+      {acts.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noActivities')}</td></tr>}
+    </tbody></table></Section>
+    <Section n="6" title={t('rpt.financialPerformance')}><div className="rp-meta">
+      <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div><div><b>{t('rpt.periodBudgetLbl')}</b> {fmtAmount(fin?.period_budget)}</div>
+      <div><b>{t('rpt.expenditureThisPeriodLbl')}</b> {fmtAmount(fin?.expenditure_period)}</div><div><b>{t('rpt.cumulativeExpenditureLbl')}</b> {fmtAmount(exp)}</div>
+      <div><b>{t('rpt.remainingBalanceLbl')}</b> {fmtAmount(fin?.remaining_balance ?? remainingBalance(budget, exp))}</div><div><b>{t('rpt.utilisationPctLbl')}</b> {fmtPct(fin?.utilisation_pct ?? utilisationPct(budget, exp))}</div>
+    </div>{(!hasValue(budget) || !hasValue(exp)) && <p className="rp-muted">Financial values are incomplete. Blank values are not treated as zero.</p>}<Narr text={fin?.narrative} /></Section>
+    <Section n="7" title="Area Council Coverage & Feasibility"><table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.areaCouncil')}</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead><tbody>
+      {locs.map((l) => <tr key={l.id}><td>{l.province_code || '—'}</td><td>{l.area_council_name || '—'}</td><td>{humanToken(l.coverage_status)}</td><td>{humanToken(l.feasibility_status)}</td><td>{l.feasibility_note || '—'}</td></tr>)}
+      {locs.length === 0 && <tr><td colSpan={5} className="rp-muted">No Area Council coverage record has been entered. This is missing coverage data, not zero coverage.</td></tr>}
+    </tbody></table></Section>
+    <Section n="8" title={t('rpt.beneficiariesGedsi')}><table className="rp-t"><thead><tr><th>{t('rpt.period')}</th><th>{t('rpt.totalDirect')}</th><th>{t('rpt.female')}</th><th>{t('rpt.male')}</th><th>{t('rpt.youth')}</th><th>{t('rpt.pwd')}</th></tr></thead><tbody>
+      {bens.map((b) => <tr key={b.id}><td>{b.reporting_period || '—'}</td><td>{b.total_direct ?? '—'}</td><td>{b.female ?? '—'}</td><td>{b.male ?? '—'}</td><td>{b.youth ?? '—'}</td><td>{b.persons_with_disability ?? '—'}</td></tr>)}
+      {bens.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noBeneficiaryData')}</td></tr>}
+    </tbody></table><p className="rp-muted">{t('rpt.blankCells')}</p></Section>
+    <Section n="9" title={t('rpt.keyAchievements')}><Narr text={[learn.key_achievements, learn.major_results].filter(Boolean).join('\n\n')} /></Section>
+    <Section n="10" title={t('rpt.challengesRisks')}><Narr text={learn.challenges} /><table className="rp-t"><thead><tr><th>{t('rpt.id')}</th><th>{t('rpt.type')}</th><th>{t('rpt.description')}</th><th>{t('rpt.rating')}</th><th>{t('rpt.status')}</th><th>{t('rpt.mitigation')}</th></tr></thead><tbody>
+      {risks.map((r) => <tr key={r.code}><td>{r.code}</td><td>{OPT.labelOf(OPT.RISK_TYPE, r.type)}</td><td>{r.description}</td><td>{r.risk_rating || '—'}</td><td>{OPT.labelOf(OPT.RISK_STATUS, r.status)}</td><td>{r.mitigation || '—'}</td></tr>)}
+      {risks.length === 0 && <tr><td colSpan={6} className="rp-muted">No risks or issues have been recorded. Risk status is unassessed rather than automatically low.</td></tr>}
+    </tbody></table></Section>
+    <Section n="11" title={t('rpt.lessonsLearned')}><Narr text={learn.lessons_learned} /></Section><Section n="12" title={t('rpt.nextPeriodPriorities')}><Narr text={learn.next_period_priorities} /></Section><Section n="13" title={t('rpt.recommendations')}><Narr text={learn.recommendations} /></Section><Section n="14" title={t('rpt.supportingEvidence')}><p className="rp-muted">{t('rpt.evidenceNote')}</p></Section>
+  </div>;
 }
 
-// ── Portfolio Performance ─────────────────────────────────────────────────────
-function Portfolio({ d, period }) {
+function Portfolio({ d, period, periodType }) {
   const { t } = useTranslation();
-  const fin = latestByProject(d.financial.filter((row) => periodMatches(row, period)));
+  const inScope = (row) => rowMatchesPeriodScope(row, d.reporting, period, periodType);
+  const fin = latestByProject(d.financial.filter(inScope));
   const budgets = d.projects.map((p) => projectBudgetValue(p, fin.get(p.id)));
   const expenditures = d.projects.map((p) => projectExpenditureValue(p, fin.get(p.id)));
   const budget = sumKnown(budgets);
   const exp = sumKnown(expenditures);
-  const beneficiaries = portfolioBeneficiaries(d.beneficiaries.filter((row) => periodMatches(row, period)));
-  return (
-    <div>
-      <h2>{t('rpt.portfolioPerformanceReport')}</h2>
-      <div className="rp-muted">All projects{period ? ` · ${period}` : ''}</div>
-      <Section n="1" title={t('rpt.portfolioSummary')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.projectsLbl')}</b> {d.projects.length}</div>
-          <div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div>
-          <div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div>
-          <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.totalBeneficiariesLbl')}</b> {fmtNum(beneficiaries)}</div>
-          <div><b>{t('rpt.openRisksLbl')}</b> {d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
-        </div>
-        {(!hasValue(budget) || !hasValue(exp)) && <p className="rp-muted">Portfolio financial totals are withheld when one or more included projects have not reported the required value. Missing values are not treated as zero.</p>}
-      </Section>
-      <Section n="2" title={t('rpt.projects')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.donor')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th><th>{t('rpt.utilisation')}</th></tr></thead>
-          <tbody>
-            {d.projects.map((p) => { const f = fin.get(p.id); const b = projectBudgetValue(p, f); const e = projectExpenditureValue(p, f);
-              return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{p.donor || '—'}</td><td>{fmtAmount(b)}</td><td>{fmtAmount(e)}</td><td>{fmtPct(utilisationPct(b, e))}</td></tr>; })}
-          </tbody>
-        </table>
-      </Section>
-    </div>
-  );
+  const beneficiaries = portfolioBeneficiaries(d.beneficiaries.filter(inScope));
+  return <div><h2>{t('rpt.portfolioPerformanceReport')}</h2><div className="rp-muted">All projects{period ? ` · ${period}` : ''}</div>
+    <Section n="1" title={t('rpt.portfolioSummary')}><div className="rp-meta">
+      <div><b>{t('rpt.projectsLbl')}</b> {d.projects.length}</div><div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div><div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div><div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div><div><b>{t('rpt.totalBeneficiariesLbl')}</b> {fmtNum(beneficiaries)}</div><div><b>{t('rpt.openRisksLbl')}</b> {d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
+    </div>{(!hasValue(budget) || !hasValue(exp)) && <p className="rp-muted">Portfolio financial totals are withheld when one or more included projects have not reported the required value. Missing values are not treated as zero.</p>}</Section>
+    <Section n="2" title={t('rpt.projects')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.donor')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th><th>{t('rpt.utilisation')}</th></tr></thead><tbody>
+      {d.projects.map((p) => { const f = fin.get(p.id); const b = projectBudgetValue(p, f); const e = projectExpenditureValue(p, f); return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{p.donor || '—'}</td><td>{fmtAmount(b)}</td><td>{fmtAmount(e)}</td><td>{fmtPct(utilisationPct(b, e))}</td></tr>; })}
+    </tbody></table></Section></div>;
 }
 
-// ── Indicator Performance ─────────────────────────────────────────────────────
-function IndicatorReport({ d, period }) {
+function IndicatorReport({ d, period, periodType }) {
   const { t } = useTranslation();
-  const rows = period ? d.progress.filter((r) => periodMatches(r, period)) : d.progress;
-  return (
-    <div>
-      <h2>{t('rpt.indicatorPerformanceReport')}</h2>
-      <div className="rp-muted">{period || 'All periods'}</div>
-      <table className="rp-t"><thead><tr><th>{t('rpt.indicator')}</th><th>{t('rpt.period')}</th><th>{t('rpt.periodTarget')}</th><th>{t('rpt.current')}</th><th>{t('rpt.finalTarget')}</th><th>{t('rpt.achievementPct')}</th><th>{t('rpt.status')}</th></tr></thead>
-        <tbody>
-          {rows.map((r, i) => <tr key={i}><td>{r.indicator_code} {r.indicator_name}</td><td>{r.reporting_period}</td><td>{r.period_target ?? '—'}</td><td>{r.cumulative_actual ?? '—'}</td><td>{r.final_target ?? '—'}</td><td>{fmtPct(r.achievement_pct)}</td><td>{OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status) || '—'}</td></tr>)}
-          {rows.length === 0 && <tr><td colSpan={7} className="rp-muted">{t('rpt.noIndicatorProgress')}</td></tr>}
-        </tbody>
-      </table>
-    </div>
-  );
+  const rows = d.progress.filter((r) => rowMatchesPeriodScope(r, d.reporting, period, periodType));
+  return <div><h2>{t('rpt.indicatorPerformanceReport')}</h2><div className="rp-muted">{period || `All ${PERIOD_TYPES.find((x)=>x.value===periodType)?.label.toLowerCase() || ''} periods`}</div><table className="rp-t"><thead><tr><th>{t('rpt.indicator')}</th><th>{t('rpt.period')}</th><th>{t('rpt.periodTarget')}</th><th>{t('rpt.current')}</th><th>{t('rpt.finalTarget')}</th><th>{t('rpt.achievementPct')}</th><th>{t('rpt.status')}</th></tr></thead><tbody>
+    {rows.map((r, i) => <tr key={i}><td>{r.indicator_code} {r.indicator_name}</td><td>{r.reporting_period}</td><td>{r.period_target ?? '—'}</td><td>{r.cumulative_actual ?? '—'}</td><td>{r.final_target ?? '—'}</td><td>{fmtPct(r.achievement_pct)}</td><td>{OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status) || '—'}</td></tr>)}
+    {rows.length === 0 && <tr><td colSpan={7} className="rp-muted">{t('rpt.noIndicatorProgress')}</td></tr>}
+  </tbody></table></div>;
 }
 
-// ── Financial Performance ─────────────────────────────────────────────────────
-function FinancialReport({ d, period }) {
+function FinancialReport({ d, period, periodType }) {
   const { t } = useTranslation();
-  const fin = latestByProject(d.financial.filter((row) => periodMatches(row, period)));
-  const rows = d.projects.map((p) => {
-    const f = fin.get(p.id);
-    const b = projectBudgetValue(p, f);
-    const e = projectExpenditureValue(p, f);
-    return { p, b, e, avail: f?.funds_available };
-  });
+  const inScope = (row) => rowMatchesPeriodScope(row, d.reporting, period, periodType);
+  const fin = latestByProject(d.financial.filter(inScope));
+  const rows = d.projects.map((p) => { const f = fin.get(p.id); const b = projectBudgetValue(p, f); const e = projectExpenditureValue(p, f); return { p, b, e, avail: f?.funds_available }; });
   const tb = sumKnown(rows.map((row) => row.b));
   const te = sumKnown(rows.map((row) => row.e));
-  return (
-    <div>
-      <h2>{t('rpt.financialPerformanceReport')}</h2>
-      <div className="rp-meta">
-        <div><b>{t('rpt.totalApprovedLbl')}</b> {fmtAmount(tb)}</div>
-        <div><b>{t('rpt.totalExpenditureLbl')}</b> {fmtAmount(te)}</div>
-        <div><b>{t('rpt.remainingLbl')}</b> {fmtAmount(remainingBalance(tb, te))}</div>
-        <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(tb, te))}</div>
-      </div>
-      {(!hasValue(tb) || !hasValue(te)) && <p className="rp-muted">Portfolio financial totals are unavailable until all included projects report the required values. Missing values are not treated as zero.</p>}
-      <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.approved')}</th><th>{t('rpt.expenditure')}</th><th>{t('rpt.remaining')}</th><th>{t('rpt.utilisation')}</th><th>{t('rpt.fundsAvailable')}</th></tr></thead>
-        <tbody>
-          {rows.map(({ p, b, e, avail }) => <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{fmtAmount(b)}</td><td>{fmtAmount(e)}</td><td>{fmtAmount(remainingBalance(b, e))}</td><td>{fmtPct(utilisationPct(b, e))}</td><td>{fmtAmount(avail)}</td></tr>)}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <div><h2>{t('rpt.financialPerformanceReport')}</h2><div className="rp-meta"><div><b>{t('rpt.totalApprovedLbl')}</b> {fmtAmount(tb)}</div><div><b>{t('rpt.totalExpenditureLbl')}</b> {fmtAmount(te)}</div><div><b>{t('rpt.remainingLbl')}</b> {fmtAmount(remainingBalance(tb, te))}</div><div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(tb, te))}</div></div>
+    {(!hasValue(tb) || !hasValue(te)) && <p className="rp-muted">Portfolio financial totals are unavailable until all included projects report the required values. Missing values are not treated as zero.</p>}
+    <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.approved')}</th><th>{t('rpt.expenditure')}</th><th>{t('rpt.remaining')}</th><th>{t('rpt.utilisation')}</th><th>{t('rpt.fundsAvailable')}</th></tr></thead><tbody>
+      {rows.map(({ p, b, e, avail }) => <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{fmtAmount(b)}</td><td>{fmtAmount(e)}</td><td>{fmtAmount(remainingBalance(b, e))}</td><td>{fmtPct(utilisationPct(b, e))}</td><td>{fmtAmount(avail)}</td></tr>)}
+    </tbody></table></div>;
 }
 
-// ── Geographic / Provincial ───────────────────────────────────────────────────
 function GeographicReport({ d, province }) {
   const { t } = useTranslation();
   const areas = province ? d.areaCouncils.filter((l) => l.province_code === province) : d.areaCouncils;
@@ -530,60 +418,21 @@ function GeographicReport({ d, province }) {
   const covered = areas.filter((a) => a.coverage_status !== 'not_covered');
   const confirmed = areas.filter((a) => a.feasibility_status === 'confirmed');
   const projectsWithCoverage = new Set(areas.map((a) => a.project_id)).size;
-  return (
-    <div>
-      <h2>{province ? `${province} Province` : 'Area Council Coverage'} Report</h2>
-      <Section n="1" title={t('rpt.coverageSummary')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div>
-          <div><b>Projects with coverage records</b> {projectsWithCoverage}</div>
-          <div><b>Area Councils covered</b> {new Set(covered.map((a) => a.area_council_name)).size}</div>
-          <div><b>Feasibility confirmed</b> {confirmed.length}</div>
-        </div>
-        {projs.length > projectsWithCoverage && <p className="rp-muted">{projs.length - projectsWithCoverage} project{projs.length - projectsWithCoverage === 1 ? '' : 's'} in this scope have no Area Council coverage record. That is missing geographic data, not zero coverage.</p>}
-      </Section>
-      <Section n="2" title="Area Councils">
-        <table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.areaCouncil')}</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead>
-          <tbody>
-            {areas.map((a) => <tr key={a.id}><td>{a.province_code || '—'}</td><td>{a.area_council_name || '—'}</td><td>{humanToken(a.coverage_status)}</td><td>{humanToken(a.feasibility_status)}</td><td>{a.feasibility_note || '—'}</td></tr>)}
-            {areas.length === 0 && <tr><td colSpan={5} className="rp-muted">No Area Council coverage records have been entered for this scope.</td></tr>}
-          </tbody>
-        </table>
-      </Section>
-    </div>
-  );
+  return <div><h2>{province ? `${province} Province` : 'Area Council Coverage'} Report</h2><Section n="1" title={t('rpt.coverageSummary')}><div className="rp-meta"><div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div><div><b>Projects with coverage records</b> {projectsWithCoverage}</div><div><b>Area Councils covered</b> {new Set(covered.map((a) => a.area_council_name)).size}</div><div><b>Feasibility confirmed</b> {confirmed.length}</div></div>
+    {projs.length > projectsWithCoverage && <p className="rp-muted">{projs.length - projectsWithCoverage} project{projs.length - projectsWithCoverage === 1 ? '' : 's'} in this scope have no Area Council coverage record. That is missing geographic data, not zero coverage.</p>}</Section>
+    <Section n="2" title="Area Councils"><table className="rp-t"><thead><tr><th>{t('rpt.province')}</th><th>{t('rpt.areaCouncil')}</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead><tbody>{areas.map((a) => <tr key={a.id}><td>{a.province_code || '—'}</td><td>{a.area_council_name || '—'}</td><td>{humanToken(a.coverage_status)}</td><td>{humanToken(a.feasibility_status)}</td><td>{a.feasibility_note || '—'}</td></tr>)}{areas.length === 0 && <tr><td colSpan={5} className="rp-muted">No Area Council coverage records have been entered for this scope.</td></tr>}</tbody></table></Section></div>;
 }
 
-// ── Funding Partner / Donor ───────────────────────────────────────────────────
-function DonorReport({ d, donor, period }) {
+function DonorReport({ d, donor, period, periodType }) {
   const { t } = useTranslation();
   const donorProjectIds = donor ? new Set(d.organizations.filter((o) => o.name === donor && ['donor','co_financier'].includes(o.role)).map((o) => o.project_id)) : null;
   const projs = donor ? d.projects.filter((p) => p.donor === donor || donorProjectIds.has(p.id)) : d.projects;
-  const fin = latestByProject(d.financial.filter((row) => periodMatches(row, period)));
+  const inScope = (row) => rowMatchesPeriodScope(row, d.reporting, period, periodType);
+  const fin = latestByProject(d.financial.filter(inScope));
   const ids = new Set(projs.map((p) => p.id));
   const budget = sumKnown(projs.map((p) => projectBudgetValue(p, fin.get(p.id))));
   const exp = sumKnown(projs.map((p) => projectExpenditureValue(p, fin.get(p.id))));
-  const bens = portfolioBeneficiaries(d.beneficiaries.filter((b) => ids.has(b.project_id) && periodMatches(b, period)));
-  return (
-    <div>
-      <h2>{donor || 'All Donors'} — Funding Partner Report</h2>
-      <Section n="1" title={t('rpt.investmentSummary')}>
-        <div className="rp-meta">
-          <div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div>
-          <div><b>{t('rpt.investmentLbl')}</b> {fmtAmount(budget)}</div>
-          <div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div>
-          <div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div>
-          <div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(bens)}</div>
-        </div>
-        {(!hasValue(budget) || !hasValue(exp)) && <p className="rp-muted">Funding-partner totals are withheld when one or more included projects have not reported the required financial value.</p>}
-      </Section>
-      <Section n="2" title={t('rpt.projects')}>
-        <table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th></tr></thead>
-          <tbody>
-            {projs.map((p) => { const f = fin.get(p.id); return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{fmtAmount(projectBudgetValue(p, f))}</td><td>{fmtAmount(projectExpenditureValue(p, f))}</td></tr>; })}
-          </tbody>
-        </table>
-      </Section>
-    </div>
-  );
+  const bens = portfolioBeneficiaries(d.beneficiaries.filter((b) => ids.has(b.project_id) && inScope(b)));
+  return <div><h2>{donor || 'All Donors'} — Funding Partner Report</h2><Section n="1" title={t('rpt.investmentSummary')}><div className="rp-meta"><div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div><div><b>{t('rpt.investmentLbl')}</b> {fmtAmount(budget)}</div><div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div><div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div><div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(bens)}</div></div>{(!hasValue(budget) || !hasValue(exp)) && <p className="rp-muted">Funding-partner totals are withheld when one or more included projects have not reported the required financial value.</p>}</Section>
+    <Section n="2" title={t('rpt.projects')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th></tr></thead><tbody>{projs.map((p) => { const f = fin.get(p.id); return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{fmtAmount(projectBudgetValue(p, f))}</td><td>{fmtAmount(projectExpenditureValue(p, f))}</td></tr>; })}</tbody></table></Section></div>;
 }
