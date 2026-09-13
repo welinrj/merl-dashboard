@@ -57,11 +57,11 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     },onEachFeature:(f,l)=>{
       const name=f.properties?.ADM2_EN||'',province=f.properties?.ADM1_EN||'';
       const rec=lookup.get(key(province,name));const n=rec?.project_count||0,names=rec?.project_names||[];
-      l.bindTooltip(`${esc(name)} · ${n} ${n===1?'project':'projects'}`,{sticky:true});
-      l.bindPopup(`<strong>${esc(name)}</strong><br><span style="color:#6b7280">${esc(province)}</span><div style="margin-top:6px"><b>${n}</b> ${n===1?'project':'projects'}</div>${names.length?`<ul style="padding-left:16px;margin:6px 0 0">${names.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`);
+      l.bindTooltip(rec ? `${esc(name)} · ${n} ${n===1?'project':'projects'}` : `${esc(name)} · no approved coverage record`,{sticky:true});
+      l.bindPopup(`<strong>${esc(name)}</strong><br><span style="color:#6b7280">${esc(province)}</span>${rec?`<div style="margin-top:6px"><b>${n}</b> ${n===1?'project':'projects'}</div>${names.length?`<ul style="padding-left:16px;margin:6px 0 0">${names.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`:'<div style="margin-top:6px">No approved Area Council coverage record is available. This does not mean zero project activity.</div>'}`);
       l.on('click',()=>stateRef.current.onAreaSelect?.({province,area_council:name}));
     }}).addTo(map);
     layerRef.current=geo;
   },[areas,selectedArea,ready]);
-  return <div className="pub-leaflet-wrap"><div ref={ref} className="pub-leaflet" aria-label="Public project coverage map"/>{err&&<div className="pub-map-error">{err}</div>}<div className="pub-map-key"><strong>Area Council project coverage</strong><span>Coloured areas have approved projects. Select an area to view its projects.</span></div></div>;
+  return <div className="pub-leaflet-wrap"><div ref={ref} className="pub-leaflet" aria-label="Public project coverage map"/>{err&&<div className="pub-map-error">{err}</div>}<div className="pub-map-key"><strong>Recorded Area Council coverage</strong><span>Strongly shaded areas have approved project coverage records. Pale areas mean no approved coverage record is available; they do not mean zero project activity.</span></div></div>;
 }
