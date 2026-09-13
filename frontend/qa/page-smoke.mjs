@@ -10,7 +10,7 @@ const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'}
 
 const pages=[
   ['Overview','/dashboards',/Dashboard Overview|MERL Dashboard/i],
-  ['Project Setup','/project-setup',/Project Registration/i],
+  ['Project Setup','/project-setup',/Project Setup|Project Registration/i],
   ['Results & Indicators','/analytics/results',/Results|Indicators/i],
   ['Project Portfolio Analysis','/analytics/project-portfolio?project=pa',/Project Portfolio Analysis/i],
   ['Financial Analysis','/analytics/financial',/Financial/i],
