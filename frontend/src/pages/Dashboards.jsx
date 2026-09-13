@@ -18,6 +18,7 @@ import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
 import FilterBar from '../components/ui/FilterBar';
+import GeographicCoverageMap from '../components/GeographicCoverageMap';
 import * as OPT from '../constants/formOptions';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { beneficiaryReach, portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
@@ -665,6 +666,8 @@ function Geographic({ d }) {
         { label: 'Conditional', value: activeAreas.filter((a) => a.feasibility_status === 'conditional').length },
         { label: 'Not feasible', value: activeAreas.filter((a) => a.feasibility_status === 'not_feasible').length },
       ]} />
+
+      <GeographicCoverageMap areas={activeAreas} projects={d.projects} province={province} />
 
       <div className="db-2">
         <div className="db-card"><h3 className="db-h">Coverage status</h3><BarList rows={coverage} total={activeAreas.length} accent="#2563eb" /></div>
