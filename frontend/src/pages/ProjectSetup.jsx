@@ -193,7 +193,7 @@ function ActualMerlForms() {
   );
 }
 
-function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
+function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProject }) {
   const routeProjectId = (() => {
     try {
       const query = window.location.hash.split('?')[1] || '';
@@ -214,7 +214,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
 
   const loadProjects = useCallback(async () => {
     const [{ data: ps, error: pe }, { data: rs, error: re }] = await Promise.all([
-      supabase.from('v_projects').select('id,code,name').order('code'),
+      supabase.from('v_projects').select('id,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome').order('code'),
       supabase.from('v_ref_area_councils').select('*').order('province_code').order('name'),
     ]);
     if (pe || re) { toast.error(dbErrorMessage(pe || re)); return; }
@@ -313,7 +313,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
     if (!(await confirmDialog({ title:'Delete donor / partner link', message:`Remove ${row?.name || 'this organization'} from this project? The organization master record will remain available for other projects.`, confirmLabel:'Delete' }))) return;
     const { error } = await supabase.rpc('delete_project_organization',{ p_id:id });
     if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success('Donor / partner link deleted.');
+    toast.success('Donor / partner relationship deleted.');
     loadConfig(projectId);
   };
 
@@ -337,11 +337,12 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin }) {
 
   return <section className="ps-config">
     <div className="ps-config-head">
-      <div><h2>Coverage & Dashboard Configuration</h2><p>Manage the selected project's Area Council coverage/feasibility and choose which official indicators appear as project KPI cards.</p>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access: deletion and editing are available to authorised project editors.</p>}</div>
+      <div><h2>Project Configuration</h2><p>Manage the selected project's profile, Area Council coverage/feasibility, donors and partners, KPI cards, and activity workplan.</p>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access: editing is available to authorised project editors.</p>}</div>
       <div style={{display:'flex',gap:'.5rem',alignItems:'end',flexWrap:'wrap'}}>
         <select className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
           <option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
         </select>
+        {canEdit && projectId && <button type="button" className="btn btn-secondary" onClick={()=>onEditProject?.(projects.find((p)=>p.id===projectId))} disabled={busy}>Edit profile</button>}
         {isAdmin && projectId && <button type="button" className="btn btn-secondary" onClick={deleteProject} disabled={busy} style={{color:'var(--red-600)',borderColor:'var(--red-200)'}}>Delete project</button>}
       </div>
     </div>
@@ -401,6 +402,7 @@ export default function ProjectSetup({ user }) {
   const [v, setV] = useState(blankProfile);
   const [saving, setSaving] = useState(false);
   const [registered, setRegistered] = useState(null);
+  const [editId, setEditId] = useState(null);
   const [resetKey, setResetKey] = useState(0);
   const [mode, setMode] = useState('manage');
   const title = 'Project Setup';
@@ -411,6 +413,24 @@ export default function ProjectSetup({ user }) {
     const base = blankProfile()[k];
     return Array.isArray(value) ? value.length > 0 : String(value ?? '') !== String(base ?? '');
   }), [v]);
+
+  const beginEditProfile = (project) => {
+    if (!project) return;
+    const next = blankProfile();
+    Object.keys(next).forEach((key) => {
+      if (project[key] !== null && project[key] !== undefined) next[key] = project[key];
+    });
+    next.implementing_partners = toArr(project.implementing_partners);
+    next.provinces = toArr(project.provinces);
+    next.islands = toArr(project.islands);
+    next.area_councils = toArr(project.area_councils);
+    next.communities = toArr(project.communities);
+    setV(next);
+    setEditId(project.id);
+    setRegistered(null);
+    setMode('register');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (!canEdit) {
     return (
@@ -440,7 +460,7 @@ export default function ProjectSetup({ user }) {
     if (v.start_date && v.end_date && v.end_date < v.start_date) { toast.error('End date cannot be earlier than start date.'); return; }
     setSaving(true);
     const args = {
-      p_id: null,
+      p_id: editId,
       p_name: v.name.trim(),
       p_acronym: toNull(v.acronym?.trim()),
       p_description: toNull(v.description?.trim()),
@@ -480,10 +500,12 @@ export default function ProjectSetup({ user }) {
     }
     setSaving(false);
     if (error) { toast.error(dbErrorMessage(error)); return; }
-    setRegistered({ id: data, name: v.name.trim(), acronym: v.acronym?.trim() });
+    const action = editId ? 'updated' : 'registered';
+    setRegistered({ id: data, name: v.name.trim(), acronym: v.acronym?.trim(), action });
     setV(blankProfile());
+    setEditId(null);
     setResetKey((n) => n + 1);
-    toast.success('Project registered successfully.');
+    toast.success(action === 'updated' ? 'Project profile updated successfully.' : 'Project registered successfully.');
     setMode('manage');
   };
 
@@ -491,16 +513,16 @@ export default function ProjectSetup({ user }) {
     <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }} key={resetKey}>
       <PageHeader title={title} subtitle={subtitle} />
       <div className="ps-mode-tabs" role="tablist" aria-label="Project setup sections">
-        <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => setMode('manage')}>Manage projects</button>
-        <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>Register new project</button>
+        <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => { setEditId(null); setMode('manage'); }}>Manage projects</button>
+        <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setEditId(null); setV(blankProfile()); setMode('register'); }}>Register new project</button>
         <button type="button" className={mode === 'forms' ? 'active' : ''} onClick={() => setMode('forms')}>MERL form reference</button>
       </div>
 
-      {registered && mode === 'manage' && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was registered and is selected below.</div>}
+      {registered && mode === 'manage' && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was {registered.action || 'registered'} and is selected below.</div>}
 
       {mode === 'register' && <form onSubmit={save} id="project-profile">
         <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
-          <h2 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Project Profile</h2>
+          <h2 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>{editId ? 'Edit Project Profile' : 'Project Profile'}</h2>
           <div className="ps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '.8rem' }}>
             <label style={{ ...field, gridColumn: '1 / -1' }}><span className="field-label">Project Title *</span><input className="field-input" value={v.name} onChange={set('name')} required /></label>
             <label style={field}><span className="field-label">Acronym</span><input className="field-input" value={v.acronym} onChange={set('acronym')} /></label>
@@ -538,12 +560,12 @@ export default function ProjectSetup({ user }) {
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem', marginTop: '1rem' }}>
-          <button type="button" className="btn btn-secondary" disabled={!dirty || saving} onClick={() => setV(blankProfile())}>Clear form</button>
-          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Registering…' : 'Register project'}</button>
+          <button type="button" className="btn btn-secondary" disabled={saving} onClick={() => { setV(blankProfile()); if (editId) { setEditId(null); setMode('manage'); } }}>{editId ? 'Cancel edit' : 'Clear form'}</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? (editId ? 'Saving…' : 'Registering…') : (editId ? 'Save profile changes' : 'Register project')}</button>
         </div>
       </form>}
 
-      {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} />}
+      {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} onEditProject={beginEditProfile} />}
 
       {mode === 'forms' && <ActualMerlForms />}
 
