@@ -104,7 +104,7 @@ function projectName(project) {
   return project.code ? `${project.code} — ${project.name}` : project.name;
 }
 
-const activityStarted = (activity) => !['not_started', 'cancelled'].includes(String(activity?.status || '').toLowerCase());
+const activityStarted = (activity) => ['in_progress', 'completed', 'delayed', 'on_hold'].includes(String(activity?.status || '').toLowerCase());
 const activityLabel = (activity) => {
   const status = String(activity?.status || 'not reported').replaceAll('_', ' ');
   const progress = activity?.physical_progress_pct == null ? '' : ` · ${activity.physical_progress_pct}%`;
@@ -176,7 +176,7 @@ function checkboxControl(L, map, stateRef) {
     onAdd() {
       const div = L.DomUtil.create('div', 'geo-layer-control leaflet-bar');
       div.innerHTML = `
-        <label><input type="checkbox" data-layer="sites" checked> <span class="geo-dot"></span> Project sites</label>
+        <label><input type="checkbox" data-layer="sites" checked> <span class="geo-dot"></span> Area Council coverage centres</label>
         <label><input type="checkbox" data-layer="choropleth" checked> <span class="geo-square"></span> Choropleth</label>
         <label><input type="checkbox" data-layer="labels"> Area Council labels</label>`;
       L.DomEvent.disableClickPropagation(div);
