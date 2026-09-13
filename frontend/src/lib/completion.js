@@ -47,6 +47,10 @@ export function sectionState(section) {
  * sections, because a ring that jumps 20% at a time tells you nothing about a
  * form with fourteen fields in it. They answer different questions and are
  * deliberately not the same number.
+ *
+ * If there is nothing configured to assess, the percentage is `null`, not 0.
+ * A 0% result means something was assessed and nothing was complete; `null`
+ * means the denominator is zero and the result is genuinely unknown.
  */
 export function summarise(sections = []) {
   const list = Array.isArray(sections) ? sections : [];
@@ -65,13 +69,13 @@ export function summarise(sections = []) {
   return {
     done,
     total,
-    pct: total ? Math.round((done / total) * 100) : 0,
+    pct: total ? Math.round((done / total) * 100) : null,
     requiredDone: required.length - missingRequired.length,
     requiredTotal: required.length,
     missingRequired,
     checksFilled,
     checksTotal,
-    requiredPct: checksTotal ? Math.round((checksFilled / checksTotal) * 100) : 0,
+    requiredPct: checksTotal ? Math.round((checksFilled / checksTotal) * 100) : null,
   };
 }
 
