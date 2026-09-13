@@ -18,6 +18,7 @@ const blankProfile = () => ({
   executing_agency: '', implementing_partners: [], donor: '', funding_window: '', currency: 'VUV',
   budget_vuv: '', start_date: '', end_date: '', approval_date: '', project_type: '',
   primary_climate_theme: '', coverage_type: '', provinces: [], islands: [], area_councils: [], communities: [],
+  project_manager_id: '', me_officer_id: '', finance_officer_id: '',
   project_manager: '', me_officer: '', finance_officer: '',
   est_direct_beneficiaries: '', est_indirect_beneficiaries: '', expected_primary_outcome: '',
 });
@@ -214,7 +215,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
 
   const loadProjects = useCallback(async () => {
     const [{ data: ps, error: pe }, { data: rs, error: re }] = await Promise.all([
-      supabase.from('v_projects').select('id,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome').order('code'),
+      supabase.from('v_projects').select('id,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome').order('code'),
       supabase.from('v_ref_area_councils').select('*').order('province_code').order('name'),
     ]);
     if (pe || re) { toast.error(dbErrorMessage(pe || re)); return; }
@@ -472,7 +473,7 @@ export default function ProjectSetup({ user }) {
       p_donor: toNull(v.donor),
       p_funding_window: toNull(v.funding_window?.trim()),
       p_currency: v.currency || 'VUV',
-      p_budget_vuv: budget ?? 0,
+      p_budget_vuv: budget,
       p_start_date: toNull(v.start_date),
       p_end_date: toNull(v.end_date),
       p_approval_date: toNull(v.approval_date),
@@ -483,9 +484,9 @@ export default function ProjectSetup({ user }) {
       p_islands: toArr(v.islands),
       p_area_councils: toArr(v.area_councils),
       p_communities: toArr(v.communities),
-      p_project_manager_id: null,
-      p_me_officer_id: null,
-      p_finance_officer_id: null,
+      p_project_manager_id: toNull(v.project_manager_id),
+      p_me_officer_id: toNull(v.me_officer_id),
+      p_finance_officer_id: toNull(v.finance_officer_id),
       p_est_direct_beneficiaries: toNum(v.est_direct_beneficiaries),
       p_est_indirect_beneficiaries: toNum(v.est_indirect_beneficiaries),
       p_expected_primary_outcome: toNull(v.expected_primary_outcome?.trim()),
