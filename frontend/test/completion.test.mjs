@@ -73,12 +73,18 @@ test('a filled count above its total cannot push the ring past 100', () => {
   assert.equal(s.checksFilled, 3);
 });
 
-test('an empty list is 0%, not a division by zero', () => {
+test('an empty list is unknown, not a false 0 percent result', () => {
   const s = summarise([]);
-  assert.equal(s.pct, 0);
-  assert.equal(s.requiredPct, 0);
+  assert.equal(s.pct, null);
+  assert.equal(s.requiredPct, null);
   assert.deepEqual(s.missingRequired, []);
   assert.deepEqual(summarise().missingRequired, []);
+});
+
+test('a configured but empty required section is a real 0 percent result', () => {
+  const s = summarise([{ key: 'a', filled: 0, total: 2, required: true }]);
+  assert.equal(s.pct, 0);
+  assert.equal(s.requiredPct, 0);
 });
 
 // ── The binary case (MERL Reporting) ─────────────────────────────────────────
