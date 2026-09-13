@@ -77,7 +77,7 @@ export default function Dashboards({ initialTab }) {
         q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at'),
         q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
         q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, other_vulnerable, indirect, reporting_period'),
-        q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code'),
+        q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code, province, island, area_council, community'),
         q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level, framework_node_id'),
         q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, schedule_status, reporting_period, final_target, created_at'),
         q('v_reporting_periods', 'project_id, period_label, period_type, submission_status, period_end'),
@@ -667,7 +667,7 @@ function Geographic({ d }) {
         { label: 'Not feasible', value: activeAreas.filter((a) => a.feasibility_status === 'not_feasible').length },
       ]} />
 
-      <GeographicCoverageMap areas={activeAreas} projects={d.projects} province={province} />
+      <GeographicCoverageMap areas={activeAreas} projects={d.projects} activities={d.activities} province={province} />
 
       <div className="db-2">
         <div className="db-card"><h3 className="db-h">Coverage status</h3><BarList rows={coverage} total={activeAreas.length} accent="#2563eb" /></div>
