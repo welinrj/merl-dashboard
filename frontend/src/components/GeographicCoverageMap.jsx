@@ -277,7 +277,7 @@ export default function GeographicCoverageMap({ areas = [], projects = [], activ
             color: '#ffffff',
             weight: count ? 1.4 : 0.8,
             fillColor: stateRef.current.choropleth ? colourFor(count) : '#dbe4ea',
-            fillOpacity: stateRef.current.choropleth ? (count ? 0.82 : 0.34) : 0.2,
+            fillOpacity: stateRef.current.choropleth ? 1 : 0.2,
           };
         },
         onEachFeature: (feature, layer) => {
