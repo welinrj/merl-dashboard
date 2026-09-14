@@ -118,6 +118,9 @@ check('Area Council coverage heading is present', /AREA COUNCIL COVERAGE/i.test(
 check('coverage is reported at Area Council level', /AREA COUNCIL/i.test(tx));
 check('community/site drill-down is not required', !/Sites by Island/i.test(tx));
 check('geographic page does not error', !/This section could not be loaded/i.test(tx));
+const coverageMapCount = await page.locator('.geo-map-print').count();
+check('geographic page renders one coverage map', coverageMapCount === 1);
+if (coverageMapCount !== 1) console.log(`  map count diagnostic: ${coverageMapCount}`);
 
 console.log('\nEXPORT / PRINT');
 await go('/reports');
