@@ -667,6 +667,7 @@ function Geographic({ d }) {
         { label: 'Not feasible', value: activeAreas.filter((a) => a.feasibility_status === 'not_feasible').length },
       ]} />
 
+      <GeographicCoverageMap areas={activeAreas} projects={d.projects} province={province} />
       <GeographicCoverageMap areas={activeAreas} projects={d.projects} activities={d.activities} province={province} />
 
       <div className="db-2">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const LEAFLET_JS='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 const LEAFLET_CSS='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
@@ -26,9 +27,25 @@ function boundaries(){
 }
 
 export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSelect}){
+  const { i18n } = useTranslation();
+  const fr = i18n.resolvedLanguage?.startsWith('fr');
+  const copy = fr ? {
+    one:'projet', many:'projets', none:'aucun enregistrement de couverture approuvé',
+    noneDetail:'Aucun enregistrement approuvé de couverture au niveau du conseil de zone n’est disponible. Cela ne signifie pas qu’il n’y a aucune activité de projet.',
+    unavailable:'Carte temporairement indisponible.', keyTitle:'Couverture enregistrée au niveau du conseil de zone',
+    keyBody:'Les zones fortement ombrées disposent d’enregistrements de couverture de projet approuvés. Les zones pâles signifient qu’aucun enregistrement de couverture approuvé n’est disponible; elles ne signifient pas une activité de projet nulle.',
+    aria:'Carte publique de la couverture des projets',
+  } : {
+    one:'project', many:'projects', none:'no approved coverage record',
+    noneDetail:'No approved Area Council coverage record is available. This does not mean zero project activity.',
+    unavailable:'Map temporarily unavailable.', keyTitle:'Recorded Area Council coverage',
+    keyBody:'Strongly shaded areas have approved project coverage records. Pale areas mean no approved coverage record is available; they do not mean zero project activity.',
+    aria:'Public project coverage map',
+  };
   const ref=useRef(null), mapRef=useRef(null), layerRef=useRef(null), dataRef=useRef(null);
   const stateRef=useRef({areas,selectedArea,onAreaSelect});
   stateRef.current={areas,selectedArea,onAreaSelect};
+  const copyRef=useRef(copy); copyRef.current=copy;
   const [err,setErr]=useState('');
   const [ready,setReady]=useState(false);
   useEffect(()=>{let alive=true;Promise.all([leaflet(),boundaries()]).then(([L,data])=>{
@@ -41,12 +58,12 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     L.control.scale({imperial:false,position:'bottomright'}).addTo(map);
     mapRef.current=map;setErr('');setReady(true);
     const b=L.geoJSON(data).getBounds();if(b.isValid())map.fitBounds(b,{padding:[12,12]});
-  }).catch(()=>alive&&setErr('Map temporarily unavailable.'));
+  }).catch(()=>alive&&setErr(copyRef.current.unavailable));
   return()=>{alive=false;if(mapRef.current){mapRef.current.remove();mapRef.current=null;}layerRef.current=null;dataRef.current=null;};
   },[]);
   useEffect(()=>{
     if(!ready||!mapRef.current||!dataRef.current||!window.L)return;
-    const L=window.L,map=mapRef.current;
+    const L=window.L,map=mapRef.current,c=copyRef.current;
     if(layerRef.current)map.removeLayer(layerRef.current);
     const lookup=new Map(areas.map(a=>[key(a.province,a.area_council),a]));
     const selectedKey=selectedArea?key(selectedArea.province,selectedArea.area_council):'';
@@ -57,11 +74,11 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     },onEachFeature:(f,l)=>{
       const name=f.properties?.ADM2_EN||'',province=f.properties?.ADM1_EN||'';
       const rec=lookup.get(key(province,name));const n=rec?.project_count||0,names=rec?.project_names||[];
-      l.bindTooltip(`${esc(name)} · ${n} ${n===1?'project':'projects'}`,{sticky:true});
-      l.bindPopup(`<strong>${esc(name)}</strong><br><span style="color:#6b7280">${esc(province)}</span><div style="margin-top:6px"><b>${n}</b> ${n===1?'project':'projects'}</div>${names.length?`<ul style="padding-left:16px;margin:6px 0 0">${names.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`);
+      l.bindTooltip(rec ? `${esc(name)} · ${n} ${n===1?c.one:c.many}` : `${esc(name)} · ${c.none}`,{sticky:true});
+      l.bindPopup(`<strong>${esc(name)}</strong><br><span style="color:#6b7280">${esc(province)}</span>${rec?`<div style="margin-top:6px"><b>${n}</b> ${n===1?c.one:c.many}</div>${names.length?`<ul style="padding-left:16px;margin:6px 0 0">${names.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`:`<div style="margin-top:6px">${esc(c.noneDetail)}</div>`}`);
       l.on('click',()=>stateRef.current.onAreaSelect?.({province,area_council:name}));
     }}).addTo(map);
     layerRef.current=geo;
-  },[areas,selectedArea,ready]);
-  return <div className="pub-leaflet-wrap"><div ref={ref} className="pub-leaflet" aria-label="Public project coverage map"/>{err&&<div className="pub-map-error">{err}</div>}<div className="pub-map-key"><strong>Area Council project coverage</strong><span>Coloured areas have approved projects. Select an area to view its projects.</span></div></div>;
+  },[areas,selectedArea,ready,fr]);
+  return <div className="pub-leaflet-wrap"><div ref={ref} className="pub-leaflet" aria-label={copy.aria}/>{err&&<div className="pub-map-error">{err}</div>}<div className="pub-map-key"><strong>{copy.keyTitle}</strong><span>{copy.keyBody}</span></div></div>;
 }

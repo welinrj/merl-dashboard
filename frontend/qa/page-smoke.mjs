@@ -8,6 +8,8 @@ const jwt=`${b64({alg:'HS256',typ:'JWT'})}.${b64({sub:'u1',role:'authenticated',
 const T=JSON.parse(readFileSync(process.env.STUB_FILE || 'qa/fixture.json','utf8'));
 const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 
+// "Project Setup" is the current audited page title; retain the former title as
+// a compatibility match so the smoke test detects a broken page, not wording drift.
 const pages=[
   ['Overview','/dashboards',/Dashboard Overview|MERL Dashboard/i],
   ['Project Setup','/project-setup',/Project Setup|Project Registration/i],
