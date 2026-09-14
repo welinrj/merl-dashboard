@@ -19,7 +19,7 @@ export const ISLANDS_BY_PROVINCE = {
 
 export const AREA_COUNCILS_BY_PROVINCE = {
   TORBA: ['Torres', 'Ureparapara', 'Mota Lava', 'Gaua', 'Vanua Lava'],
-  SANMA: ['West Santo', 'East Santo', 'South Santo', 'North Santo', 'Canal-Fanafo', 'Big Bay Coast', 'Big Bay Inland', 'Malo'],
+  SANMA: ['Big Bay Coast', 'Big Bay Inland', 'Canal Fanafo', 'East Malo', 'East Santo', 'North West Santo', 'South East Santo', 'South Santo 1', 'South Santo 2', 'West Malo', 'West Coast Santo'],
   PENAMA: ['North Ambae', 'West Ambae', 'East Ambae', 'Maewo', 'North Pentecost', 'Central Pentecost', 'South Pentecost'],
   MALAMPA: ['North West Malakula', 'North East Malakula', 'Central Malakula', 'South West Malakula', 'South East Malakula', 'North Ambrym', 'West Ambrym', 'South East Ambrym', 'Paama'],
   SHEFA: ['North Efate', 'Central Efate', 'South Efate', 'Port Vila', 'Epi', 'Tongoa-Shepherds', 'Emae'],
