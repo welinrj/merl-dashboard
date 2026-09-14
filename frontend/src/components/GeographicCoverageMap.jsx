@@ -36,7 +36,6 @@ const BREAKS = [
 const ALIASES = new Map([
   ['yarsu', ['south epi', 'epi']],
   ['west coast santo', ['west santo', 'west coast']],
-  ['big bay inland', ['big bay', 'big bay coast']],
   ['south maewo', ['maewo']],
   ['south tanna', ['south west tanna']],
   ['west ambrym', ['west ambrym']],
@@ -112,7 +111,7 @@ const activityLabel = (activity) => {
   return `${activity?.code ? `${activity.code} — ` : ''}${activity?.name || 'Activity'} · ${status}${progress}${where ? ` · ${where}` : ''}`;
 };
 
-function sameArea(left, right) {
+export function sameArea(left, right) {
   const a = norm(left);
   const b = norm(right);
   if (!a || !b) return false;

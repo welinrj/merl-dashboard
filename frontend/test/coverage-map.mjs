@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { coordinate, areaColor, areaKey, deriveCoverage, featureContains } from '../src/lib/coverageMapCore.js';
+import { sameArea } from '../src/components/GeographicCoverageMap.jsx';
 
 const square = (name, province, west, south, east, north) => ({
   type: 'Feature', properties: { name, province },
@@ -10,6 +11,11 @@ const north = square('North Test', 'Shefa', 167, -18, 168, -17);
 const south = square('South Test', 'Tafea', 169, -20, 170, -19);
 const ambiguous = square('North Test', 'Sanma', 166, -16, 167, -15);
 const areas = { type: 'FeatureCollection', features: [north, south, ambiguous] };
+
+test('Big Bay Inland remains distinct from Big Bay Coast', () => {
+  assert.equal(sameArea('Big Bay Inland', 'big bay inland area council'), true);
+  assert.equal(sameArea('Big Bay Inland', 'Big Bay Coast'), false);
+});
 
 test('missing and invalid coordinates are not converted into real map points', () => {
   assert.equal(coordinate(null, 'lat'), null);

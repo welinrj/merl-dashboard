@@ -645,7 +645,7 @@ function Geographic({ d }) {
   const activeAreas = areas.filter((a) => a.coverage_status !== 'not_covered');
   const provinceCounts = countBy(d.areaCouncils.filter((a) => a.coverage_status !== 'not_covered'), (a) => a.province_code);
   const feasibility = countBy(activeAreas, (a) => String(a.feasibility_status || 'not_assessed').replaceAll('_',' '));
-  const coverage = countBy(activeAreas, (a) => String(a.coverage_status || 'planned').replaceAll('_',' '));
+  const coverage = countBy(areas, (a) => String(a.coverage_status || 'planned').replaceAll('_',' '));
   const provinces = [...new Set(d.areaCouncils.map((a) => a.province_code).filter(Boolean))].sort();
 
   return (
@@ -667,23 +667,22 @@ function Geographic({ d }) {
         { label: 'Not feasible', value: activeAreas.filter((a) => a.feasibility_status === 'not_feasible').length },
       ]} />
 
-      <GeographicCoverageMap areas={activeAreas} projects={d.projects} province={province} />
       <GeographicCoverageMap areas={activeAreas} projects={d.projects} activities={d.activities} province={province} />
 
       <div className="db-2">
-        <div className="db-card"><h3 className="db-h">Coverage status</h3><BarList rows={coverage} total={activeAreas.length} accent="#2563eb" /></div>
+        <div className="db-card"><h3 className="db-h">Coverage status</h3><BarList rows={coverage} total={areas.length} accent="#2563eb" /></div>
         <div className="db-card"><h3 className="db-h">Feasibility status</h3><BarList rows={feasibility} total={activeAreas.length} accent="#7c3aed" /></div>
       </div>
 
       <div className="db-card" style={{ marginTop: '1rem' }}>
         <h3 className="db-h">Area Councils{province ? ` · ${province}` : ''}</h3>
-        {activeAreas.length === 0 ? (
+        {areas.length === 0 ? (
           <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>No Area Council coverage has been recorded for this selection.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}><table className="db-table">
             <thead><tr><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead>
             <tbody>
-              {[...activeAreas].sort((a,b) => String(a.province_code||'').localeCompare(String(b.province_code||'')) || String(a.area_council_name||'').localeCompare(String(b.area_council_name||''))).map((a) => (
+              {[...areas].sort((a,b) => String(a.province_code||'').localeCompare(String(b.province_code||'')) || String(a.area_council_name||'').localeCompare(String(b.area_council_name||''))).map((a) => (
                 <tr key={a.id}>
                   <td>{a.province_code || '—'}</td>
                   <td style={{ fontWeight: 700 }}>{a.area_council_name || '—'}</td>
