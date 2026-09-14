@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-const BOUNDARY_URL = 'https://services.arcgis.com/Zoi8xtp32kQcxoKu/arcgis/rest/services/vut_admbnda_adm2_spc_20180824/FeatureServer/0/query?where=1%3D1&outFields=ADM2_EN%2CADM2_PCODE%2CADM1_EN&returnGeometry=true&outSR=4326&f=geojson';
+// Local WGS84 GeoJSON derived from the AC Boundaries 2025 feature layer.
+// Keeping the reviewed boundary snapshot with the portal prevents upstream
+// service changes or outages from silently changing the dashboard map.
+const BOUNDARY_URL = `${import.meta.env.BASE_URL}data/vanuatu-area-councils-2025.geojson`;
 
 const BASEMAPS = {
   streets: {
@@ -30,12 +33,13 @@ const BREAKS = [
   { min: 6, max: Infinity, label: '6+', color: '#7b2cbf' },
 ];
 
-// Published project names are canonical. The boundary service uses an older
-// administrative naming set, so only explicit, audited aliases are allowed.
+// Published project names are canonical. Some operational names differ from
+// the 2025 boundary labels, so only explicit, audited aliases are allowed.
 // Do not use fuzzy cross-island matching: it can place a project in the wrong AC.
 const ALIASES = new Map([
   ['yarsu', ['south epi', 'epi']],
   ['west coast santo', ['west santo', 'west coast']],
+  ['north west santo', ['north west']],
   ['south maewo', ['maewo']],
   ['south tanna', ['south west tanna']],
   ['west ambrym', ['west ambrym']],
@@ -364,7 +368,7 @@ export default function GeographicCoverageMap({ areas = [], projects = [], activ
       <div className="geo-map-head">
         <div>
           <h3>Vanuatu Area Council Project & Activity Coverage{province ? ` · ${province}` : ''}</h3>
-          <p>Area Council polygons use verified coverage records. Point markers show polygon centres for navigation only, not GPS project locations.</p>
+          <p>Area Council polygons use the 2025 boundary update and verified coverage records. Point markers show polygon centres for navigation only, not GPS project locations.</p>
           <div className="geo-metric" aria-label="Choropleth metric">
             <button type="button" className={metric === 'projects' ? 'active' : ''} onClick={() => setMetric('projects')} aria-pressed={metric === 'projects'}>Projects</button>
             <button type="button" className={metric === 'activities' ? 'active' : ''} onClick={() => setMetric('activities')} aria-pressed={metric === 'activities'}>Implemented activities</button>
