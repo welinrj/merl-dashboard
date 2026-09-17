@@ -7,7 +7,8 @@
 // Financial Performance, Geographic/Provincial, Funding Partner/Donor.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
-// One icon on this page: Printer, which labels the export control.
+import { Document, HeadingLevel, Packer, PageBreak, Paragraph, Table, TableCell, TableRow, WidthType } from 'docx';
+import { jsPDF } from 'jspdf';
 import { Download, FileText, Printer } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
@@ -17,7 +18,6 @@ import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
-
 
 const PERIOD_TYPES = [
   { value: 'monthly', label: 'Monthly' },
@@ -81,28 +81,32 @@ const downloadBlob = (blob, filename) => {
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
+  link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Safari/iPad can still be consuming the object URL after link.click().
+  // Revoking synchronously can interrupt the download or destabilise the page.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 };
 const reportBlocks = () => {
-  const root = document.querySelector('.rp-print');
+  const root = document.getElementById('report-preview');
   if (!root) throw new Error('The report preview is not available.');
+  const textOf = (element) => (element?.textContent || '').trim();
   const blocks = [];
   const walk = (parent) => {
     for (const element of parent.children) {
       if (element.classList.contains('rp-page-break')) { blocks.push({ type: 'pageBreak' }); continue; }
-      if (element.matches('h2')) { blocks.push({ type: 'title', text: element.innerText.trim() }); continue; }
-      if (element.matches('h3')) { blocks.push({ type: 'heading1', text: element.innerText.trim() }); continue; }
-      if (element.matches('h4')) { blocks.push({ type: 'heading2', text: element.innerText.trim() }); continue; }
-      if (element.matches('p')) { blocks.push({ type: 'paragraph', text: element.innerText.trim() }); continue; }
+      if (element.matches('h2')) { blocks.push({ type: 'title', text: textOf(element) }); continue; }
+      if (element.matches('h3')) { blocks.push({ type: 'heading1', text: textOf(element) }); continue; }
+      if (element.matches('h4')) { blocks.push({ type: 'heading2', text: textOf(element) }); continue; }
+      if (element.matches('p')) { blocks.push({ type: 'paragraph', text: textOf(element) }); continue; }
       if (element.matches('table')) {
-        blocks.push({ type: 'table', rows: [...element.rows].map((row) => [...row.cells].map((cell) => cell.innerText.trim())) });
+        blocks.push({ type: 'table', rows: [...element.rows].map((row) => [...row.cells].map((cell) => textOf(cell))) });
         continue;
       }
       if (element.classList.contains('rp-meta') || element.classList.contains('rp-kpis') || element.classList.contains('rp-stamp')) {
-        [...element.children].forEach((child) => blocks.push({ type: 'paragraph', text: child.innerText.trim() }));
+        [...element.children].forEach((child) => blocks.push({ type: 'paragraph', text: textOf(child) }));
         continue;
       }
       walk(element);
@@ -126,14 +130,19 @@ export default function Reports() {
   const [dataError, setDataError] = useState('');
   const [exporting, setExporting] = useState('');
   const [exportError, setExportError] = useState('');
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Report Library (§48-51): recent official report generations, portfolio-wide.
   const loadRuns = useCallback(async () => {
-    const { data } = await supabase.from('v_report_runs').select('*')
-      .order('generated_at', { ascending: false }).limit(20);
-    setRuns(data ?? []);
+    try {
+      const { data, error } = await supabase.from('v_report_runs').select('*')
+        .order('generated_at', { ascending: false }).limit(20);
+      if (!error) setRuns(Array.isArray(data) ? data : []);
+    } catch {
+      // The audit trail must never take down the report page or a completed export.
+    }
   }, []);
-  useEffect(() => { loadRuns(); }, [loadRuns]);
+  useEffect(() => { void loadRuns(); }, [loadRuns]);
 
   useEffect(() => {
     (async () => {
@@ -224,27 +233,37 @@ export default function Reports() {
       : `${approvedCount} of ${approvalScope.length} matching reporting period${approvalScope.length === 1 ? '' : 's'} approved. This report may include draft, submitted, returned or reviewed information.`;
 
   const logGeneration = async (format) => {
-    const labelKey = REPORT_TYPES.find((r) => r.key === type)?.label;
-    const label = labelKey ? t(labelKey) : type;
-    const { error } = await supabase.rpc('log_report_run', {
-      p_report_type: type,
-      p_report_label: label,
-      p_project_id: type === 'project' ? (projectId || null) : null,
-      p_reporting_period: period || null,
-      p_params: { format, period_type: periodType, province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
-    });
-    if (!error) loadRuns();
+    try {
+      const labelKey = REPORT_TYPES.find((r) => r.key === type)?.label;
+      const label = labelKey ? t(labelKey) : type;
+      const { error } = await supabase.rpc('log_report_run', {
+        p_report_type: type,
+        p_report_label: label,
+        p_project_id: type === 'project' ? (projectId || null) : null,
+        p_reporting_period: period || null,
+        p_params: { format, period_type: periodType, province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
+      });
+      if (!error) void loadRuns();
+    } catch {
+      // Export success must not depend on the optional audit log request.
+    }
   };
 
-  const generate = async () => {
-    await logGeneration('pdf');
+  const showPreview = () => {
+    setPreviewOpen(true);
+    window.requestAnimationFrame(() => {
+      document.getElementById('report-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const generate = () => {
+    void logGeneration('pdf');
     window.print();
   };
 
   const exportWord = async () => {
     setExporting('word'); setExportError('');
     try {
-      const { Document, HeadingLevel, Packer, PageBreak, Paragraph, Table, TableCell, TableRow, WidthType } = await import('docx');
       const children = reportBlocks().map((block) => {
         if (block.type === 'pageBreak') return new Paragraph({ children: [new PageBreak()] });
         if (block.type === 'table') return new Table({
@@ -256,7 +275,7 @@ export default function Reports() {
       });
       const documentFile = new Document({ sections: [{ properties: {}, children }] });
       downloadBlob(await Packer.toBlob(documentFile), reportFilename('docx'));
-      await logGeneration('docx');
+      void logGeneration('docx');
     } catch (error) {
       setExportError(error?.message || 'The Word report could not be generated.');
     } finally { setExporting(''); }
@@ -265,7 +284,6 @@ export default function Reports() {
   const exportPdf = async () => {
     setExporting('pdf'); setExportError('');
     try {
-      const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
       const margin = 42; const width = pdf.internal.pageSize.getWidth() - margin * 2; const bottom = pdf.internal.pageSize.getHeight() - margin;
       let y = margin;
@@ -285,7 +303,7 @@ export default function Reports() {
         else write(block.text, 9, false, 6);
       }
       pdf.save(reportFilename('pdf'));
-      await logGeneration('pdf');
+      void logGeneration('pdf');
     } catch (error) {
       setExportError(error?.message || 'The PDF report could not be generated.');
     } finally { setExporting(''); }
@@ -294,7 +312,7 @@ export default function Reports() {
   return (
     <div className="page-pad" style={{ maxWidth: 960, margin: '0 auto' }}>
       <style>{`
-        .rp-doc{background:#fff;border:1px solid var(--border);border-radius:12px;padding:2rem;margin-top:1rem;color:#1a1a1a}
+        .rp-doc{background:#fff;border:1px solid var(--border);border-radius:12px;padding:2rem;margin-top:1rem;color:#1a1a1a;transition:max-height .25s ease}
         .rp-doc h2{font-family:var(--font-display);font-size:1.4rem;margin:0 0 .2rem}
         .rp-doc h3{font-size:1rem;margin:1.3rem 0 .5rem;padding-bottom:.25rem;border-bottom:2px solid var(--green-600);color:var(--green-800)}
         .rp-doc h4{font-size:.9rem;margin:.9rem 0 .3rem}
@@ -315,15 +333,22 @@ export default function Reports() {
         .rp-kpi span{font-size:.7rem;color:#607086;text-transform:uppercase;letter-spacing:.03em}
         .rp-note{padding:.65rem .75rem;background:#f5f7f9;border-left:4px solid #1f5fbf;font-size:.8rem;line-height:1.45;margin:.6rem 0}
         .rp-project-block{break-inside:avoid;margin-bottom:1rem}
+        .rp-preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-top:1rem;padding:.7rem .85rem;border:1px solid var(--border);border-radius:10px;background:var(--surface-1,#fff)}
+        .rp-preview-toolbar strong{font-size:.9rem}
+        .rp-preview-toolbar span{display:block;font-size:.76rem;color:var(--text-3);margin-top:.15rem}
+        .rp-preview-collapsed{max-height:430px;overflow:hidden;position:relative}
+        .rp-preview-collapsed::after{content:'';position:absolute;left:0;right:0;bottom:0;height:110px;pointer-events:none;background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 78%)}
+        .rp-preview-open{max-height:none;overflow:visible}
         .rl-t{width:100%;border-collapse:collapse;font-size:.82rem}
         .rl-t th,.rl-t td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
         .rl-t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);background:var(--green-50)}
         .rl-t tbody tr:last-child td{border-bottom:none}
-        @media (max-width:640px){.rp-meta{grid-template-columns:1fr}.rp-doc{padding:1.1rem}}
+        @media (max-width:640px){.rp-meta{grid-template-columns:1fr}.rp-doc{padding:1.1rem}.rp-kpis{grid-template-columns:repeat(2,1fr)}.rp-preview-toolbar{align-items:flex-start;flex-direction:column}}
         @media print{
           body *{visibility:hidden !important}
           .rp-print,.rp-print *{visibility:visible !important}
-          .rp-print{position:absolute;left:0;top:0;width:100%;border:none;border-radius:0;padding:0}
+          .rp-print{position:absolute;left:0;top:0;width:100%;border:none;border-radius:0;padding:0;max-height:none!important;overflow:visible!important}
+          .rp-print::after{display:none!important}
           .rp-noprint{display:none !important}
           .rp-page-break{break-before:page;page-break-before:always}
           .rp-project-block{break-inside:avoid;page-break-inside:avoid}
@@ -341,14 +366,14 @@ export default function Reports() {
       <div className="rp-noprint" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ flex: '1 1 220px' }}>
           <label className="field-label">{t('rpt.reportType')}</label>
-          <select className="field-input" value={type} onChange={(e) => setType(e.target.value)}>
+          <select className="field-input" value={type} onChange={(e) => { setType(e.target.value); setPreviewOpen(false); }}>
             {REPORT_TYPES.map((r) => <option key={r.key} value={r.key}>{t(r.label)}</option>)}
           </select>
         </div>
         {type === 'project' && (
           <div style={{ flex: '1 1 240px' }}>
             <label className="field-label">{t('rpt.project')}</label>
-            <select className="field-input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <select className="field-input" value={projectId} onChange={(e) => { setProjectId(e.target.value); setPreviewOpen(false); }}>
               {d.projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
             </select>
           </div>
@@ -356,7 +381,7 @@ export default function Reports() {
         {type === 'geographic' && (
           <div style={{ flex: '1 1 180px' }}>
             <label className="field-label">{t('rpt.provinceOptional')}</label>
-            <select className="field-input" value={province} onChange={(e) => setProvince(e.target.value)}>
+            <select className="field-input" value={province} onChange={(e) => { setProvince(e.target.value); setPreviewOpen(false); }}>
               <option value="">{t('rpt.allProvinces')}</option>
               {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -365,25 +390,28 @@ export default function Reports() {
         {type === 'donor' && (
           <div style={{ flex: '1 1 200px' }}>
             <label className="field-label">{t('rpt.donorOptional')}</label>
-            <select className="field-input" value={donor} onChange={(e) => setDonor(e.target.value)}>
+            <select className="field-input" value={donor} onChange={(e) => { setDonor(e.target.value); setPreviewOpen(false); }}>
               <option value="">{t('rpt.allDonors')}</option>
               {donors.map((p) => <option key={p} value={p}>{p}</option>)}</select>
           </div>
         )}
         <div style={{ flex: '0 1 165px' }}>
           <label className="field-label">Report frequency</label>
-          <select className="field-input" value={periodType} onChange={(e) => { setPeriodType(e.target.value); setPeriod(''); }}>
+          <select className="field-input" value={periodType} onChange={(e) => { setPeriodType(e.target.value); setPeriod(''); setPreviewOpen(false); }}>
             {PERIOD_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select>
         </div>
         <div style={{ flex: '0 1 190px' }}>
           <label className="field-label">{t('rpt.reportingPeriod')}</label>
-          <select className="field-input" value={period} onChange={(e) => setPeriod(e.target.value)}>
+          <select className="field-input" value={period} onChange={(e) => { setPeriod(e.target.value); setPreviewOpen(false); }}>
             <option value="">All {PERIOD_TYPES.find((p) => p.value === periodType)?.label.toLowerCase()} periods</option>
             {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}</select>
         </div>
+        <button onClick={showPreview} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
+          <FileText size={16} /> Preview report
+        </button>
         {type === 'full_me' ? <>
           <button onClick={exportWord} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
-            <FileText size={16} /> {exporting === 'word' ? 'Generating Word…' : 'Download Word'}
+            <Download size={16} /> {exporting === 'word' ? 'Generating Word…' : 'Download Word'}
           </button>
           <button onClick={exportPdf} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: exporting ? 'wait' : 'pointer', color: '#fff', background: 'var(--green-700)' }}>
             <Download size={16} /> {exporting === 'pdf' ? 'Generating PDF…' : 'Download PDF'}
@@ -394,7 +422,14 @@ export default function Reports() {
       </div>
       {exportError && <div className="rp-noprint" role="alert" style={{ color: 'var(--red-700)', marginTop: '.6rem', fontSize: '.85rem' }}>{exportError}</div>}
 
-      <div className="rp-doc rp-print">
+      <div className="rp-preview-toolbar rp-noprint">
+        <div><strong>Generated report preview</strong><span>Review the live report below before downloading Word or PDF.</span></div>
+        <button onClick={() => setPreviewOpen((open) => !open)} style={{ padding: '.45rem .75rem', borderRadius: 'var(--radius-control)', border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+          {previewOpen ? 'Collapse preview' : 'View full report'}
+        </button>
+      </div>
+
+      <div id="report-preview" className={`rp-doc rp-print ${previewOpen ? 'rp-preview-open' : 'rp-preview-collapsed'}`}>
         <div className="rp-stamp">
           <span>{t('rpt.generated')} <b>{fmtDateTime(generatedAt)}</b></span>
           <span>{t('rpt.dataAsAt')} <b>{dataAsAt ? fmtDateTime(dataAsAt) : '—'}</b></span>
