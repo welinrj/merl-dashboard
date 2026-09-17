@@ -27,6 +27,7 @@ const PERIOD_TYPES = [
 ];
 
 const REPORT_TYPES = [
+  { key: 'full_me',    label: 'rpt.fullMeReport' },
   { key: 'project',    label: 'rpt.projectProgressReport' },
   { key: 'portfolio',  label: 'rpt.portfolioPerformanceReport' },
   { key: 'indicator',  label: 'rpt.indicatorPerformanceReport' },
@@ -70,17 +71,23 @@ function latestByProject(rows) {
   return m;
 }
 
+const isOfficialProject = (project) => project?.code !== 'AUDIT-2026'
+  && !/non-production staging|do not use for official reporting/i.test(project?.description || '');
+const pctOf = (value, total) => total > 0 ? `${Math.round((value / total) * 100)}%` : '—';
+const knownOrMissing = (value, suffix = '') => hasValue(value) ? `${fmtAmount(value)}${suffix}` : 'Not reported';
+
 export default function Reports() {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const [d, setD] = useState(null);
-  const [type, setType] = useState('project');
+  const [type, setType] = useState('full_me');
   const [projectId, setProjectId] = useState('');
   const [province, setProvince] = useState('');
   const [donor, setDonor] = useState('');
   const [periodType, setPeriodType] = useState('quarterly');
   const [period, setPeriod] = useState('');
   const [runs, setRuns] = useState([]);
+  const [dataError, setDataError] = useState('');
 
   // Report Library (§48-51): recent official report generations, portfolio-wide.
   const loadRuns = useCallback(async () => {
@@ -92,9 +99,10 @@ export default function Reports() {
 
   useEffect(() => {
     (async () => {
+      setDataError('');
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
-      const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn] = await Promise.all([
+      const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn, evidence] = await Promise.all([
         q('v_projects', '*'),
         q('v_financial_progress', '*'),
         q('v_risks_issues', '*'),
@@ -109,19 +117,29 @@ export default function Reports() {
         q('v_result_narratives', '*'),
         q('v_project_portfolio_status', '*'),
         q('v_learning_updates', '*'),
+        q('v_evidence', '*'),
       ]);
+      const results = [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn, evidence];
+      const names = ['projects', 'financial progress', 'risks and issues', 'beneficiaries', 'activities', 'indicators', 'indicator progress', 'reporting periods', 'framework nodes', 'Area Council coverage', 'organizations', 'result narratives', 'portfolio status', 'learning updates', 'evidence'];
+      const failures = results.map((result, index) => result.error ? names[index] : null).filter(Boolean);
+      if (failures.length) {
+        setD(null);
+        setDataError(`The report could not load live data for: ${failures.join(', ')}. No report has been generated. Please retry after the data service is available.`);
+        return;
+      }
       setD({
         projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
         progress: prog.data ?? [], reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [], narratives: narr.data ?? [],
-        portfolioStatus: status.data ?? [], learning: learn.data ?? [],
+        portfolioStatus: status.data ?? [], learning: learn.data ?? [], evidence: evidence.data ?? [],
       });
       if ((proj.data ?? []).length) setProjectId(proj.data[0].id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
+  if (dataError) return <div className="page-pad"><div role="alert" className="card" style={{ padding: '1rem', color: 'var(--red-700)' }}>{dataError}</div></div>;
   if (!d) return <div className="page-pad"><p style={{ color: 'var(--text-3)' }}>{t('rpt.loading')}</p></div>;
 
   const donors = [...new Set([
@@ -136,14 +154,29 @@ export default function Reports() {
   ).values()].sort((a,b) => String(a.period_start || a.period_label).localeCompare(String(b.period_start || b.period_label)));
 
   // "Data as at" (§76): latest timestamp across the datasets this report reads.
-  const times = [d.reporting, d.progress, d.financial, d.beneficiaries, d.risks, d.learning, d.activities]
+  const times = [d.reporting, d.progress, d.financial, d.beneficiaries, d.risks, d.learning, d.activities, d.evidence]
     .flat().flatMap((r) => [r?.updated_at, r?.created_at]).filter(Boolean).map((ts) => new Date(ts).getTime());
   const dataAsAt = times.length ? new Date(Math.max(...times)) : null;
   const generatedAt = new Date();
+  const reportProjectIds = (() => {
+    if (type === 'project') return new Set(projectId ? [projectId] : []);
+    if (type === 'full_me') return new Set(d.projects.filter(isOfficialProject).map((project) => project.id));
+    if (type === 'geographic' && province) {
+      const ids = new Set(d.areaCouncils.filter((row) => row.province_code === province).map((row) => row.project_id));
+      d.projects.filter((project) => (project.provinces || []).includes(province)).forEach((project) => ids.add(project.id));
+      return ids;
+    }
+    if (type === 'donor' && donor) {
+      const ids = new Set(d.organizations.filter((row) => row.name === donor && ['donor', 'co_financier'].includes(row.role)).map((row) => row.project_id));
+      d.projects.filter((project) => project.donor === donor).forEach((project) => ids.add(project.id));
+      return ids;
+    }
+    return new Set(d.projects.map((project) => project.id));
+  })();
   const approvalScope = d.reporting.filter((row) =>
     periodMatches(row, period)
     && (!periodType || row.period_type === periodType)
-    && (type !== 'project' || !projectId || row.project_id === projectId));
+    && reportProjectIds.has(row.project_id));
   const approvedCount = approvalScope.filter((row) => row.submission_status === 'approved').length;
   const approvalComplete = approvalScope.length > 0 && approvedCount === approvalScope.length;
   const approvalBasis = approvalScope.length === 0
@@ -155,7 +188,8 @@ export default function Reports() {
   // Log the generation to the Report Library, then print. Logging is best-effort
   // and never blocks the report from printing.
   const generate = async () => {
-    const label = REPORT_TYPES.find((r) => r.key === type)?.label;
+    const labelKey = REPORT_TYPES.find((r) => r.key === type)?.label;
+    const label = labelKey ? t(labelKey) : type;
     const { error } = await supabase.rpc('log_report_run', {
       p_report_type: type,
       p_report_label: label,
@@ -185,6 +219,12 @@ export default function Reports() {
         .rp-stamp b{color:#333}
         .rp-assurance{font-size:.78rem;line-height:1.45;padding:.65rem .75rem;margin:0 0 .9rem;border:1px solid #f0c36b;background:#fff8e7;color:#6b4f12;border-radius:8px}
         .rp-assurance.ok{border-color:#9ac7aa;background:#edf7f0;color:#245b35}
+        .rp-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.55rem;margin:.75rem 0 1rem}
+        .rp-kpi{padding:.75rem;border-radius:8px;background:#eef4fb;border:1px solid #d6e3f2;text-align:center}
+        .rp-kpi strong{display:block;font-size:1.35rem;color:#174d91}
+        .rp-kpi span{font-size:.7rem;color:#607086;text-transform:uppercase;letter-spacing:.03em}
+        .rp-note{padding:.65rem .75rem;background:#f5f7f9;border-left:4px solid #1f5fbf;font-size:.8rem;line-height:1.45;margin:.6rem 0}
+        .rp-project-block{break-inside:avoid;margin-bottom:1rem}
         .rl-t{width:100%;border-collapse:collapse;font-size:.82rem}
         .rl-t th,.rl-t td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
         .rl-t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);background:var(--green-50)}
@@ -195,6 +235,8 @@ export default function Reports() {
           .rp-print,.rp-print *{visibility:visible !important}
           .rp-print{position:absolute;left:0;top:0;width:100%;border:none;border-radius:0;padding:0}
           .rp-noprint{display:none !important}
+          .rp-page-break{break-before:page;page-break-before:always}
+          .rp-project-block{break-inside:avoid;page-break-inside:avoid}
         }
       `}</style>
 
@@ -250,7 +292,7 @@ export default function Reports() {
             {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}</select>
         </div>
         <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
-          <Printer size={16} /> {t('rpt.printPdf')}
+          <Printer size={16} /> {type === 'full_me' ? t('rpt.generateFullMe') : t('rpt.generateReport')}
         </button>
       </div>
 
@@ -262,6 +304,7 @@ export default function Reports() {
         <div className={`rp-assurance${approvalComplete ? ' ok' : ''}`}>
           <b>{approvalComplete ? 'Approved reporting basis.' : 'Reporting status.'}</b> {approvalBasis}
         </div>
+        {type === 'full_me' && <FullMEReport d={d} period={period} periodType={periodType} dataAsAt={dataAsAt} />}
         {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} periodType={periodType} />}
         {type === 'portfolio' && <Portfolio d={d} period={period} periodType={periodType} />}
         {type === 'indicator' && <IndicatorReport d={d} period={period} periodType={periodType} />}
@@ -278,7 +321,7 @@ export default function Reports() {
         </div>
         {runs.length === 0 ? (
           <div className="card" style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-3)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            No reports generated yet. Use Print / PDF above to produce one — it will be logged here.
+            No reports generated yet. Use Generate report above to produce one — it will be logged here.
           </div>
         ) : (
           <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
@@ -301,6 +344,177 @@ const Section = ({ n, title, children }) => <div><h3>{n}. {title}</h3>{children}
 function Narr({ text }) {
   const { t } = useTranslation();
   return text ? <p className="rp-narr">{text}</p> : <p className="rp-muted">{t('rpt.notReported')}</p>;
+}
+
+function FullMEReport({ d, period, periodType, dataAsAt }) {
+  const officialProjects = d.projects.filter(isOfficialProject);
+  const officialIds = new Set(officialProjects.map((project) => project.id));
+  const isOfficialRow = (row) => officialIds.has(row.project_id);
+  const inOfficialScope = (row) => officialIds.has(row.project_id)
+    && rowMatchesPeriodScope(row, d.reporting, period, periodType);
+  const reporting = d.reporting.filter(inOfficialScope);
+  const financial = latestByProject(d.financial.filter(inOfficialScope));
+  const indicators = d.indicators.filter((row) => officialIds.has(row.project_id));
+  const progress = d.progress.filter(inOfficialScope);
+  const activities = d.activities.filter(isOfficialRow);
+  const risks = d.risks.filter(isOfficialRow);
+  const beneficiaries = d.beneficiaries.filter(inOfficialScope);
+  const evidence = d.evidence.filter(inOfficialScope);
+  const areas = d.areaCouncils.filter((row) => officialIds.has(row.project_id));
+  const nodes = d.frameworkNodes.filter((row) => officialIds.has(row.project_id));
+
+  const statusCounts = officialProjects.reduce((acc, project) => {
+    const key = project.status || 'not_reported';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const approvedPeriods = reporting.filter((row) => row.submission_status === 'approved').length;
+  const projectsWithFramework = new Set(nodes.map((row) => row.project_id)).size;
+  const projectsWithIndicators = new Set(indicators.map((row) => row.project_id)).size;
+  const projectsWithAreas = new Set(areas.map((row) => row.project_id)).size;
+  const projectsWithDates = officialProjects.filter((project) => project.start_date && project.end_date).length;
+  const projectsWithDonor = officialProjects.filter((project) => project.donor).length;
+  const projectsWithTheme = officialProjects.filter((project) => project.primary_climate_theme).length;
+  const actualBeneficiaries = portfolioBeneficiaries(beneficiaries);
+
+  const byCurrency = new Map();
+  for (const project of officialProjects) {
+    const fin = financial.get(project.id);
+    const budget = projectBudgetValue(project, fin);
+    const expenditure = projectExpenditureValue(project, fin);
+    if (!hasValue(budget)) continue;
+    const currency = project.currency || 'VUV';
+    const group = byCurrency.get(currency) || { budgets: [], expenditures: [], projects: 0 };
+    group.budgets.push(budget);
+    group.expenditures.push(expenditure);
+    group.projects += 1;
+    byCurrency.set(currency, group);
+  }
+
+  const periodLabel = period || `All ${PERIOD_TYPES.find((item) => item.value === periodType)?.label.toLowerCase() || ''} periods`;
+  const registrationApproved = officialProjects.filter((project) => project.registration_status === 'approved').length;
+
+  return <div>
+    <h2>Portfolio Monitoring &amp; Evaluation Report</h2>
+    <div className="rp-muted">All official projects · {periodLabel}</div>
+    <div className="rp-note"><b>Classification:</b> Internal Draft Working Information. Figures remain subject to project validation and DoCC M&amp;E approval.</div>
+
+    <Section n="1" title="Executive Summary">
+      <div className="rp-kpis">
+        <div className="rp-kpi"><strong>{officialProjects.length}</strong><span>Official projects</span></div>
+        <div className="rp-kpi"><strong>{statusCounts.active || 0}</strong><span>Active projects</span></div>
+        <div className="rp-kpi"><strong>{indicators.length}</strong><span>Defined indicators</span></div>
+        <div className="rp-kpi"><strong>{progress.length}</strong><span>Reported actuals</span></div>
+      </div>
+      <p className="rp-narr">The portfolio contains {officialProjects.length} official projects: {statusCounts.completed || 0} completed, {statusCounts.active || 0} active and {statusCounts.planning || 0} planning. {projectsWithFramework} projects have a results framework and {projectsWithIndicators} have indicator definitions. {progress.length === 0 ? 'No indicator actuals are reported for the selected scope, so outcome achievement cannot yet be assessed.' : `${progress.length} indicator-progress records are available for the selected scope.`}</p>
+      <p className="rp-narr">{reporting.length === 0 ? 'No matching official reporting periods are configured. This report is working information rather than approved reporting.' : `${approvedPeriods} of ${reporting.length} matching reporting periods are approved.`}</p>
+    </Section>
+
+    <Section n="2" title="Portfolio Status and Registration">
+      <table className="rp-t"><thead><tr><th>Status</th><th>Projects</th><th>Share</th></tr></thead><tbody>
+        {['active','completed','planning','pipeline','on_hold','cancelled'].filter((key) => statusCounts[key]).map((key) => <tr key={key}><td>{humanToken(key)}</td><td>{statusCounts[key]}</td><td>{pctOf(statusCounts[key], officialProjects.length)}</td></tr>)}
+      </tbody></table>
+      <p className="rp-muted">Registration approval: {registrationApproved} of {officialProjects.length} official project profiles approved. Draft registration is not an approval to publish performance claims.</p>
+    </Section>
+
+    <Section n="3" title="M&E Data Readiness">
+      <table className="rp-t"><thead><tr><th>Reporting domain</th><th>Projects / records</th><th>Coverage</th><th>Interpretation</th></tr></thead><tbody>
+        <tr><td>Complete start and end dates</td><td>{projectsWithDates} of {officialProjects.length}</td><td>{pctOf(projectsWithDates, officialProjects.length)}</td><td>Schedule baseline available</td></tr>
+        <tr><td>Donor recorded</td><td>{projectsWithDonor} of {officialProjects.length}</td><td>{pctOf(projectsWithDonor, officialProjects.length)}</td><td>Funding partner identified</td></tr>
+        <tr><td>Climate theme classified</td><td>{projectsWithTheme} of {officialProjects.length}</td><td>{pctOf(projectsWithTheme, officialProjects.length)}</td><td>Portfolio classification available</td></tr>
+        <tr><td>Results framework</td><td>{projectsWithFramework} of {officialProjects.length}</td><td>{pctOf(projectsWithFramework, officialProjects.length)}</td><td>{nodes.length} framework nodes</td></tr>
+        <tr><td>Indicator definitions</td><td>{projectsWithIndicators} of {officialProjects.length}</td><td>{pctOf(projectsWithIndicators, officialProjects.length)}</td><td>{indicators.length} indicators</td></tr>
+        <tr><td>Indicator actuals</td><td>{progress.length} records</td><td>{progress.length ? 'Reported' : 'Not reported'}</td><td>Missing values are not zero</td></tr>
+        <tr><td>Area Council records</td><td>{projectsWithAreas} of {officialProjects.length}</td><td>{pctOf(projectsWithAreas, officialProjects.length)}</td><td>{areas.length} project-area records</td></tr>
+        <tr><td>Evidence</td><td>{evidence.length} records</td><td>{evidence.length ? 'Reported' : 'Not reported'}</td><td>Required to verify result claims</td></tr>
+      </tbody></table>
+    </Section>
+
+    <div className="rp-page-break" />
+    <Section n="4" title="Project Portfolio Register">
+      <table className="rp-t"><thead><tr><th>Code</th><th>Project</th><th>Status</th><th>Donor</th><th>Period</th><th>Framework / indicators</th></tr></thead><tbody>
+        {officialProjects.map((project) => {
+          const frameworkCount = nodes.filter((row) => row.project_id === project.id).length;
+          const indicatorCount = indicators.filter((row) => row.project_id === project.id).length;
+          return <tr key={project.id}><td>{project.code}</td><td>{project.name}</td><td>{humanToken(project.status)}</td><td>{project.donor || 'Not reported'}</td><td>{project.start_date || '—'} → {project.end_date || '—'}</td><td>{frameworkCount} / {indicatorCount}</td></tr>;
+        })}
+      </tbody></table>
+    </Section>
+
+    <Section n="5" title="Results and Implementation Performance">
+      <div className="rp-meta"><div><b>Framework nodes</b> {nodes.length}</div><div><b>Indicators</b> {indicators.length}</div><div><b>Indicator actuals</b> {progress.length || 'Not reported'}</div><div><b>Activities</b> {activities.length || 'Not reported'}</div></div>
+      {progress.length === 0 && <p className="rp-muted">Performance is not assessable for the selected scope. Indicator targets are planned results and are not treated as achievements.</p>}
+      <table className="rp-t"><thead><tr><th>Project</th><th>Indicators</th><th>Actual records</th><th>Activity records</th><th>Assessment</th></tr></thead><tbody>
+        {officialProjects.map((project) => {
+          const indicatorCount = indicators.filter((row) => row.project_id === project.id).length;
+          const actualCount = progress.filter((row) => row.project_id === project.id).length;
+          const activityCount = activities.filter((row) => row.project_id === project.id).length;
+          return <tr key={project.id}><td>{project.code} — {project.name}</td><td>{indicatorCount || 'Not configured'}</td><td>{actualCount || 'Not reported'}</td><td>{activityCount || 'Not reported'}</td><td>{actualCount ? 'Reported; subject to approval' : 'Not assessable'}</td></tr>;
+        })}
+      </tbody></table>
+    </Section>
+
+    <div className="rp-page-break" />
+    <Section n="6" title="Financial Performance">
+      {byCurrency.size === 0 ? <p className="rp-muted">No validated budget and financial-progress data are available for the selected scope.</p> : <table className="rp-t"><thead><tr><th>Currency</th><th>Known approved budget</th><th>Projects represented</th><th>Expenditure</th><th>Utilisation</th></tr></thead><tbody>
+        {[...byCurrency.entries()].map(([currency, group]) => {
+          const budget = sumKnown(group.budgets);
+          const expenditure = sumKnown(group.expenditures);
+          return <tr key={currency}><td>{currency}</td><td>{knownOrMissing(budget)}</td><td>{group.projects}</td><td>{knownOrMissing(expenditure)}</td><td>{fmtPct(utilisationPct(budget, expenditure))}</td></tr>;
+        })}
+      </tbody></table>}
+      <p className="rp-muted">Financial totals are presented by currency and withheld when required values are incomplete. Blank or unconfirmed values are not treated as zero.</p>
+    </Section>
+
+    <Section n="7" title="Beneficiaries and GEDSI">
+      <div className="rp-meta"><div><b>Actual direct beneficiaries</b> {actualBeneficiaries == null ? 'Not reported' : fmtNum(actualBeneficiaries)}</div><div><b>Beneficiary records</b> {beneficiaries.length}</div></div>
+      <p className="rp-muted">Planned beneficiary targets are not reported as people reached. Actuals require disaggregation, source documentation and double-counting checks.</p>
+    </Section>
+
+    <Section n="8" title="Geographic Coverage">
+      <div className="rp-meta"><div><b>Projects with Area Council records</b> {projectsWithAreas} of {officialProjects.length}</div><div><b>Area Council records</b> {areas.length}</div><div><b>Active coverage</b> {areas.filter((row) => row.coverage_status === 'active').length}</div><div><b>Not covered</b> {areas.filter((row) => row.coverage_status === 'not_covered').length}</div></div>
+      <table className="rp-t"><thead><tr><th>Project</th><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead><tbody>
+        {areas.map((area) => { const project = officialProjects.find((item) => item.id === area.project_id); return <tr key={area.id}><td>{project?.code || '—'}</td><td>{area.province_code || '—'}</td><td>{area.area_council_name || '—'}</td><td>{humanToken(area.coverage_status)}</td><td>{humanToken(area.feasibility_status)}</td><td>{area.feasibility_note || '—'}</td></tr>; })}
+        {areas.length === 0 && <tr><td colSpan={6} className="rp-muted">No Area Council coverage records are available. This is missing geographic data, not zero coverage.</td></tr>}
+      </tbody></table>
+    </Section>
+
+    <div className="rp-page-break" />
+    <Section n="9" title="Risks, Issues, Learning and Evidence">
+      <div className="rp-meta"><div><b>Risk and issue records</b> {risks.length}</div><div><b>Open / monitored / escalated</b> {risks.filter((row) => ['open','monitoring','escalated'].includes(row.status)).length}</div><div><b>Evidence records</b> {evidence.length}</div><div><b>Learning updates</b> {d.learning.filter(inOfficialScope).length}</div></div>
+      {risks.length === 0 && <p className="rp-muted">Risk status is unassessed, not automatically low. Projects should record risk ownership, mitigation, due dates and updates.</p>}
+    </Section>
+
+    <Section n="10" title="Project-level M&E Actions">
+      {officialProjects.map((project) => {
+        const indicatorCount = indicators.filter((row) => row.project_id === project.id).length;
+        const actualCount = progress.filter((row) => row.project_id === project.id).length;
+        const financeRecord = financial.get(project.id);
+        const areaCount = areas.filter((row) => row.project_id === project.id).length;
+        return <div className="rp-project-block" key={project.id}><h4>{project.code} — {project.name}</h4><div className="rp-meta">
+          <div><b>Status</b> {humanToken(project.status)}</div><div><b>Registration</b> {humanToken(project.registration_status)}</div>
+          <div><b>Indicators</b> {indicatorCount || 'Not configured'}</div><div><b>Actuals</b> {actualCount || 'Not reported'}</div>
+          <div><b>Financial return</b> {financeRecord ? 'Reported' : 'Not reported'}</div><div><b>Area Council records</b> {areaCount || 'Not reported'}</div>
+        </div><p className="rp-muted">Recommended action: {project.status === 'completed' ? 'validate completion, enter endline results, final expenditure, beneficiary totals, lessons and evidence.' : indicatorCount ? 'open the required reporting period and enter approved actuals, finances, beneficiaries, risks and evidence.' : 'approve the project profile, configure its results framework and indicators, assign reporting owners and open a reporting period.'}</p></div>;
+      })}
+    </Section>
+
+    <Section n="11" title="Priority Recommendations">
+      <ol className="rp-narr">
+        <li>Validate and approve official project profiles; resolve legacy and archive records before external reporting.</li>
+        <li>Open standard reporting periods for active projects and assign reporting, M&amp;E and finance responsibilities.</li>
+        <li>Complete results frameworks and indicators for projects without them.</li>
+        <li>Confirm budgets and currencies, then enter period and cumulative expenditure.</li>
+        <li>Enter indicator actuals, beneficiary data, risks, learning and evidence, and route each period through review and approval.</li>
+        <li>Validate Area Council names, boundaries and project relationships before publishing geographic results.</li>
+      </ol>
+    </Section>
+
+    <Section n="12" title="Data Source and Assurance">
+      <p className="rp-narr">Source: DoCC standardised MERL dataset. Data as at {dataAsAt ? fmtDateTime(dataAsAt) : 'not available'}. Generated from the live reporting page.</p>
+      <p className="rp-muted">Zero, Not reported, Not assessed and Not applicable are distinct reporting states. A 0/0 result is never presented as 0% achievement. This report should be reviewed and approved by the DoCC M&amp;E Officer before external use.</p>
+    </Section>
+  </div>;
 }
 
 function ProjectProgress({ d, projectId, period, periodType }) {
