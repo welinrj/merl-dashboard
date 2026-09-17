@@ -11,9 +11,10 @@ test('the reporting page defaults to the full portfolio M&E report', () => {
   assert.match(reports, /Generate report above/);
 });
 
-test('the former print control is labelled as full M&E report generation', () => {
-  assert.match(reports, /type === 'full_me' \? t\('rpt\.generateFullMe'\)/);
-  assert.match(i18n, /generateFullMe: 'Generate Full M&E Report'/);
+test('the former print control is replaced by Word and PDF downloads', () => {
+  assert.match(reports, /type === 'full_me' \? <>/);
+  assert.match(reports, /Download Word/);
+  assert.match(reports, /Download PDF/);
 });
 
 test('the full report excludes the non-production audit project and includes evidence', () => {
@@ -44,4 +45,13 @@ test('the full report is project-focused rather than a dashboard or data-readine
   assert.match(reports, /Activity implementation/);
   assert.match(reports, /Achievements and major results/);
   assert.match(reports, /Next-period priorities and recommendations/);
+});
+
+test('the full report downloads genuine Word and PDF files', () => {
+  assert.match(reports, /Packer\.toBlob\(documentFile\)/);
+  assert.match(reports, /reportFilename\('docx'\)/);
+  assert.match(reports, /new jsPDF/);
+  assert.match(reports, /reportFilename\('pdf'\)/);
+  assert.match(reports, /Download Word/);
+  assert.match(reports, /Download PDF/);
 });
