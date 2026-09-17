@@ -19,7 +19,7 @@ test('the former print control is labelled as full M&E report generation', () =>
 test('the full report excludes the non-production audit project and includes evidence', () => {
   assert.match(reports, /project\?\.code !== 'AUDIT-2026'/);
   assert.match(reports, /q\('v_evidence', '\*'\)/);
-  assert.match(reports, /Evidence records/);
+  assert.match(reports, /Supporting evidence/);
 });
 
 test('failed live-data requests block report generation instead of becoming empty data', () => {
@@ -33,4 +33,15 @@ test('approval checks use the selected report project and period scope', () => {
   assert.match(reports, /reportProjectIds\.has\(row\.project_id\)/);
   assert.match(reports, /periodMatches\(row, period\)/);
   assert.match(reports, /row\.period_type === periodType/);
+});
+
+test('the full report is project-focused rather than a dashboard or data-readiness audit', () => {
+  assert.doesNotMatch(reports, /title="M&E Data Readiness"/);
+  assert.doesNotMatch(reports, /title="Data Source and Assurance"/);
+  assert.doesNotMatch(reports, /title="Portfolio Status and Registration"/);
+  assert.match(reports, /title="Complete Project Reports"/);
+  assert.match(reports, /Project objective and expected results/);
+  assert.match(reports, /Activity implementation/);
+  assert.match(reports, /Achievements and major results/);
+  assert.match(reports, /Next-period priorities and recommendations/);
 });
