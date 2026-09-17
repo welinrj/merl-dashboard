@@ -301,9 +301,9 @@ export default function Reports() {
           <span>{t('rpt.generated')} <b>{fmtDateTime(generatedAt)}</b></span>
           <span>{t('rpt.dataAsAt')} <b>{dataAsAt ? fmtDateTime(dataAsAt) : '—'}</b></span>
         </div>
-        <div className={`rp-assurance${approvalComplete ? ' ok' : ''}`}>
+        {type !== 'full_me' && <div className={`rp-assurance${approvalComplete ? ' ok' : ''}`}>
           <b>{approvalComplete ? 'Approved reporting basis.' : 'Reporting status.'}</b> {approvalBasis}
-        </div>
+        </div>}
         {type === 'full_me' && <FullMEReport d={d} period={period} periodType={periodType} dataAsAt={dataAsAt} />}
         {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} periodType={periodType} />}
         {type === 'portfolio' && <Portfolio d={d} period={period} periodType={periodType} />}
@@ -352,7 +352,6 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
   const isOfficialRow = (row) => officialIds.has(row.project_id);
   const inOfficialScope = (row) => officialIds.has(row.project_id)
     && rowMatchesPeriodScope(row, d.reporting, period, periodType);
-  const reporting = d.reporting.filter(inOfficialScope);
   const financial = latestByProject(d.financial.filter(inOfficialScope));
   const indicators = d.indicators.filter((row) => officialIds.has(row.project_id));
   const progress = d.progress.filter(inOfficialScope);
@@ -363,18 +362,11 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
   const areas = d.areaCouncils.filter((row) => officialIds.has(row.project_id));
   const nodes = d.frameworkNodes.filter((row) => officialIds.has(row.project_id));
 
-  const statusCounts = officialProjects.reduce((acc, project) => {
+  const projectStatusCounts = officialProjects.reduce((acc, project) => {
     const key = project.status || 'not_reported';
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
-  const approvedPeriods = reporting.filter((row) => row.submission_status === 'approved').length;
-  const projectsWithFramework = new Set(nodes.map((row) => row.project_id)).size;
-  const projectsWithIndicators = new Set(indicators.map((row) => row.project_id)).size;
-  const projectsWithAreas = new Set(areas.map((row) => row.project_id)).size;
-  const projectsWithDates = officialProjects.filter((project) => project.start_date && project.end_date).length;
-  const projectsWithDonor = officialProjects.filter((project) => project.donor).length;
-  const projectsWithTheme = officialProjects.filter((project) => project.primary_climate_theme).length;
   const actualBeneficiaries = portfolioBeneficiaries(beneficiaries);
 
   const byCurrency = new Map();
@@ -392,128 +384,88 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
   }
 
   const periodLabel = period || `All ${PERIOD_TYPES.find((item) => item.value === periodType)?.label.toLowerCase() || ''} periods`;
-  const registrationApproved = officialProjects.filter((project) => project.registration_status === 'approved').length;
 
   return <div>
     <h2>Portfolio Monitoring &amp; Evaluation Report</h2>
     <div className="rp-muted">All official projects · {periodLabel}</div>
-    <div className="rp-note"><b>Classification:</b> Internal Draft Working Information. Figures remain subject to project validation and DoCC M&amp;E approval.</div>
 
     <Section n="1" title="Executive Summary">
       <div className="rp-kpis">
-        <div className="rp-kpi"><strong>{officialProjects.length}</strong><span>Official projects</span></div>
-        <div className="rp-kpi"><strong>{statusCounts.active || 0}</strong><span>Active projects</span></div>
-        <div className="rp-kpi"><strong>{indicators.length}</strong><span>Defined indicators</span></div>
-        <div className="rp-kpi"><strong>{progress.length}</strong><span>Reported actuals</span></div>
+        <div className="rp-kpi"><strong>{officialProjects.length}</strong><span>Projects</span></div>
+        <div className="rp-kpi"><strong>{projectStatusCounts.active || 0}</strong><span>Active projects</span></div>
+        <div className="rp-kpi"><strong>{activities.length}</strong><span>Activities</span></div>
+        <div className="rp-kpi"><strong>{actualBeneficiaries == null ? '—' : fmtNum(actualBeneficiaries)}</strong><span>Direct beneficiaries</span></div>
       </div>
-      <p className="rp-narr">The portfolio contains {officialProjects.length} official projects: {statusCounts.completed || 0} completed, {statusCounts.active || 0} active and {statusCounts.planning || 0} planning. {projectsWithFramework} projects have a results framework and {projectsWithIndicators} have indicator definitions. {progress.length === 0 ? 'No indicator actuals are reported for the selected scope, so outcome achievement cannot yet be assessed.' : `${progress.length} indicator-progress records are available for the selected scope.`}</p>
-      <p className="rp-narr">{reporting.length === 0 ? 'No matching official reporting periods are configured. This report is working information rather than approved reporting.' : `${approvedPeriods} of ${reporting.length} matching reporting periods are approved.`}</p>
+      <p className="rp-narr">This report covers {officialProjects.length} projects for {periodLabel}: {projectStatusCounts.active || 0} active, {projectStatusCounts.completed || 0} completed, {projectStatusCounts.planning || 0} in planning and {projectStatusCounts.on_hold || 0} on hold. It summarises project objectives, implementation, results, finances, beneficiaries, geographic coverage, risks, achievements, lessons and next actions.</p>
     </Section>
 
-    <Section n="2" title="Portfolio Status and Registration">
-      <table className="rp-t"><thead><tr><th>Status</th><th>Projects</th><th>Share</th></tr></thead><tbody>
-        {['active','completed','planning','pipeline','on_hold','cancelled'].filter((key) => statusCounts[key]).map((key) => <tr key={key}><td>{humanToken(key)}</td><td>{statusCounts[key]}</td><td>{pctOf(statusCounts[key], officialProjects.length)}</td></tr>)}
-      </tbody></table>
-      <p className="rp-muted">Registration approval: {registrationApproved} of {officialProjects.length} official project profiles approved. Draft registration is not an approval to publish performance claims.</p>
-    </Section>
-
-    <Section n="3" title="M&E Data Readiness">
-      <table className="rp-t"><thead><tr><th>Reporting domain</th><th>Projects / records</th><th>Coverage</th><th>Interpretation</th></tr></thead><tbody>
-        <tr><td>Complete start and end dates</td><td>{projectsWithDates} of {officialProjects.length}</td><td>{pctOf(projectsWithDates, officialProjects.length)}</td><td>Schedule baseline available</td></tr>
-        <tr><td>Donor recorded</td><td>{projectsWithDonor} of {officialProjects.length}</td><td>{pctOf(projectsWithDonor, officialProjects.length)}</td><td>Funding partner identified</td></tr>
-        <tr><td>Climate theme classified</td><td>{projectsWithTheme} of {officialProjects.length}</td><td>{pctOf(projectsWithTheme, officialProjects.length)}</td><td>Portfolio classification available</td></tr>
-        <tr><td>Results framework</td><td>{projectsWithFramework} of {officialProjects.length}</td><td>{pctOf(projectsWithFramework, officialProjects.length)}</td><td>{nodes.length} framework nodes</td></tr>
-        <tr><td>Indicator definitions</td><td>{projectsWithIndicators} of {officialProjects.length}</td><td>{pctOf(projectsWithIndicators, officialProjects.length)}</td><td>{indicators.length} indicators</td></tr>
-        <tr><td>Indicator actuals</td><td>{progress.length} records</td><td>{progress.length ? 'Reported' : 'Not reported'}</td><td>Missing values are not zero</td></tr>
-        <tr><td>Area Council records</td><td>{projectsWithAreas} of {officialProjects.length}</td><td>{pctOf(projectsWithAreas, officialProjects.length)}</td><td>{areas.length} project-area records</td></tr>
-        <tr><td>Evidence</td><td>{evidence.length} records</td><td>{evidence.length ? 'Reported' : 'Not reported'}</td><td>Required to verify result claims</td></tr>
-      </tbody></table>
-    </Section>
-
-    <div className="rp-page-break" />
-    <Section n="4" title="Project Portfolio Register">
-      <table className="rp-t"><thead><tr><th>Code</th><th>Project</th><th>Status</th><th>Donor</th><th>Period</th><th>Framework / indicators</th></tr></thead><tbody>
+    <Section n="2" title="Project Portfolio Overview">
+      <table className="rp-t"><thead><tr><th>Code</th><th>Project</th><th>Project status</th><th>Funding partner</th><th>Implementing agency</th><th>Duration</th><th>Theme</th></tr></thead><tbody>
         {officialProjects.map((project) => {
-          const frameworkCount = nodes.filter((row) => row.project_id === project.id).length;
-          const indicatorCount = indicators.filter((row) => row.project_id === project.id).length;
-          return <tr key={project.id}><td>{project.code}</td><td>{project.name}</td><td>{humanToken(project.status)}</td><td>{project.donor || 'Not reported'}</td><td>{project.start_date || '—'} → {project.end_date || '—'}</td><td>{frameworkCount} / {indicatorCount}</td></tr>;
-        })}
-      </tbody></table>
-    </Section>
-
-    <Section n="5" title="Results and Implementation Performance">
-      <div className="rp-meta"><div><b>Framework nodes</b> {nodes.length}</div><div><b>Indicators</b> {indicators.length}</div><div><b>Indicator actuals</b> {progress.length || 'Not reported'}</div><div><b>Activities</b> {activities.length || 'Not reported'}</div></div>
-      {progress.length === 0 && <p className="rp-muted">Performance is not assessable for the selected scope. Indicator targets are planned results and are not treated as achievements.</p>}
-      <table className="rp-t"><thead><tr><th>Project</th><th>Indicators</th><th>Actual records</th><th>Activity records</th><th>Assessment</th></tr></thead><tbody>
-        {officialProjects.map((project) => {
-          const indicatorCount = indicators.filter((row) => row.project_id === project.id).length;
-          const actualCount = progress.filter((row) => row.project_id === project.id).length;
-          const activityCount = activities.filter((row) => row.project_id === project.id).length;
-          return <tr key={project.id}><td>{project.code} — {project.name}</td><td>{indicatorCount || 'Not configured'}</td><td>{actualCount || 'Not reported'}</td><td>{activityCount || 'Not reported'}</td><td>{actualCount ? 'Reported; subject to approval' : 'Not assessable'}</td></tr>;
+          return <tr key={project.id}><td>{project.code}</td><td>{project.name}</td><td>{humanToken(project.status)}</td><td>{project.donor || 'Not reported'}</td><td>{project.executing_agency || project.lead_agency || 'Not reported'}</td><td>{project.start_date || '—'} → {project.end_date || '—'}</td><td>{humanToken(project.primary_climate_theme)}</td></tr>;
         })}
       </tbody></table>
     </Section>
 
     <div className="rp-page-break" />
-    <Section n="6" title="Financial Performance">
-      {byCurrency.size === 0 ? <p className="rp-muted">No validated budget and financial-progress data are available for the selected scope.</p> : <table className="rp-t"><thead><tr><th>Currency</th><th>Known approved budget</th><th>Projects represented</th><th>Expenditure</th><th>Utilisation</th></tr></thead><tbody>
+    <Section n="3" title="Financial Performance by Currency">
+      {byCurrency.size === 0 ? <p className="rp-muted">No financial figures are reported for the selected projects and period.</p> : <table className="rp-t"><thead><tr><th>Currency</th><th>Approved budget</th><th>Projects</th><th>Cumulative expenditure</th><th>Utilisation</th></tr></thead><tbody>
         {[...byCurrency.entries()].map(([currency, group]) => {
           const budget = sumKnown(group.budgets);
           const expenditure = sumKnown(group.expenditures);
           return <tr key={currency}><td>{currency}</td><td>{knownOrMissing(budget)}</td><td>{group.projects}</td><td>{knownOrMissing(expenditure)}</td><td>{fmtPct(utilisationPct(budget, expenditure))}</td></tr>;
         })}
       </tbody></table>}
-      <p className="rp-muted">Financial totals are presented by currency and withheld when required values are incomplete. Blank or unconfirmed values are not treated as zero.</p>
     </Section>
 
-    <Section n="7" title="Beneficiaries and GEDSI">
-      <div className="rp-meta"><div><b>Actual direct beneficiaries</b> {actualBeneficiaries == null ? 'Not reported' : fmtNum(actualBeneficiaries)}</div><div><b>Beneficiary records</b> {beneficiaries.length}</div></div>
-      <p className="rp-muted">Planned beneficiary targets are not reported as people reached. Actuals require disaggregation, source documentation and double-counting checks.</p>
+    <Section n="4" title="Beneficiaries and GEDSI Results">
+      <div className="rp-meta"><div><b>Direct beneficiaries reached</b> {actualBeneficiaries == null ? 'Not reported' : fmtNum(actualBeneficiaries)}</div><div><b>Female</b> {knownOrMissing(sumKnown(beneficiaries.map((row) => row.female)))}</div><div><b>Male</b> {knownOrMissing(sumKnown(beneficiaries.map((row) => row.male)))}</div><div><b>Youth</b> {knownOrMissing(sumKnown(beneficiaries.map((row) => row.youth)))}</div><div><b>Persons with disability</b> {knownOrMissing(sumKnown(beneficiaries.map((row) => row.persons_with_disability)))}</div></div>
     </Section>
 
-    <Section n="8" title="Geographic Coverage">
-      <div className="rp-meta"><div><b>Projects with Area Council records</b> {projectsWithAreas} of {officialProjects.length}</div><div><b>Area Council records</b> {areas.length}</div><div><b>Active coverage</b> {areas.filter((row) => row.coverage_status === 'active').length}</div><div><b>Not covered</b> {areas.filter((row) => row.coverage_status === 'not_covered').length}</div></div>
+    <Section n="5" title="Geographic Coverage">
       <table className="rp-t"><thead><tr><th>Project</th><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead><tbody>
         {areas.map((area) => { const project = officialProjects.find((item) => item.id === area.project_id); return <tr key={area.id}><td>{project?.code || '—'}</td><td>{area.province_code || '—'}</td><td>{area.area_council_name || '—'}</td><td>{humanToken(area.coverage_status)}</td><td>{humanToken(area.feasibility_status)}</td><td>{area.feasibility_note || '—'}</td></tr>; })}
-        {areas.length === 0 && <tr><td colSpan={6} className="rp-muted">No Area Council coverage records are available. This is missing geographic data, not zero coverage.</td></tr>}
+        {areas.length === 0 && <tr><td colSpan={6} className="rp-muted">No geographic coverage has been reported for this period.</td></tr>}
       </tbody></table>
     </Section>
 
     <div className="rp-page-break" />
-    <Section n="9" title="Risks, Issues, Learning and Evidence">
-      <div className="rp-meta"><div><b>Risk and issue records</b> {risks.length}</div><div><b>Open / monitored / escalated</b> {risks.filter((row) => ['open','monitoring','escalated'].includes(row.status)).length}</div><div><b>Evidence records</b> {evidence.length}</div><div><b>Learning updates</b> {d.learning.filter(inOfficialScope).length}</div></div>
-      {risks.length === 0 && <p className="rp-muted">Risk status is unassessed, not automatically low. Projects should record risk ownership, mitigation, due dates and updates.</p>}
-    </Section>
-
-    <Section n="10" title="Project-level M&E Actions">
+    <Section n="6" title="Complete Project Reports">
       {officialProjects.map((project) => {
-        const indicatorCount = indicators.filter((row) => row.project_id === project.id).length;
-        const actualCount = progress.filter((row) => row.project_id === project.id).length;
+        const projectNodes = nodes.filter((row) => row.project_id === project.id);
+        const projectIndicators = indicators.filter((row) => row.project_id === project.id);
+        const projectProgress = progress.filter((row) => row.project_id === project.id);
+        const projectActivities = activities.filter((row) => row.project_id === project.id);
+        const projectRisks = risks.filter((row) => row.project_id === project.id);
+        const projectAreas = areas.filter((row) => row.project_id === project.id);
+        const projectEvidence = evidence.filter((row) => row.project_id === project.id);
+        const projectBeneficiaries = beneficiaries.filter((row) => row.project_id === project.id);
+        const learning = d.learning.filter((row) => row.project_id === project.id && inOfficialScope(row)).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0] || {};
         const financeRecord = financial.get(project.id);
-        const areaCount = areas.filter((row) => row.project_id === project.id).length;
-        return <div className="rp-project-block" key={project.id}><h4>{project.code} — {project.name}</h4><div className="rp-meta">
-          <div><b>Status</b> {humanToken(project.status)}</div><div><b>Registration</b> {humanToken(project.registration_status)}</div>
-          <div><b>Indicators</b> {indicatorCount || 'Not configured'}</div><div><b>Actuals</b> {actualCount || 'Not reported'}</div>
-          <div><b>Financial return</b> {financeRecord ? 'Reported' : 'Not reported'}</div><div><b>Area Council records</b> {areaCount || 'Not reported'}</div>
-        </div><p className="rp-muted">Recommended action: {project.status === 'completed' ? 'validate completion, enter endline results, final expenditure, beneficiary totals, lessons and evidence.' : indicatorCount ? 'open the required reporting period and enter approved actuals, finances, beneficiaries, risks and evidence.' : 'approve the project profile, configure its results framework and indicators, assign reporting owners and open a reporting period.'}</p></div>;
+        const budget = projectBudgetValue(project, financeRecord);
+        const expenditure = projectExpenditureValue(project, financeRecord);
+        return <div className="rp-project-block" key={project.id}>
+          <h4>{project.code} — {project.name}</h4>
+          <div className="rp-meta"><div><b>Project status</b> {humanToken(project.status)}</div><div><b>Funding partner</b> {project.donor || 'Not reported'}</div><div><b>Implementing agency</b> {project.executing_agency || project.lead_agency || 'Not reported'}</div><div><b>Duration</b> {project.start_date || '—'} → {project.end_date || '—'}</div><div><b>Budget</b> {knownOrMissing(budget)} {project.currency || 'VUV'}</div><div><b>Expenditure</b> {knownOrMissing(expenditure)} {project.currency || 'VUV'}</div><div><b>Utilisation</b> {fmtPct(utilisationPct(budget, expenditure))}</div><div><b>Direct beneficiaries</b> {portfolioBeneficiaries(projectBeneficiaries) == null ? 'Not reported' : fmtNum(portfolioBeneficiaries(projectBeneficiaries))}</div></div>
+          <h4>Project objective and expected results</h4>
+          <Narr text={project.description || project.objective} />
+          <table className="rp-t"><thead><tr><th>Code</th><th>Result level</th><th>Expected result</th></tr></thead><tbody>{projectNodes.map((row) => <tr key={row.id}><td>{row.node_code || '—'}</td><td>{humanToken(row.node_type)}</td><td>{row.title}</td></tr>)}{projectNodes.length === 0 && <tr><td colSpan={3}>Not reported</td></tr>}</tbody></table>
+          <h4>Indicator results</h4>
+          <table className="rp-t"><thead><tr><th>Indicator</th><th>Baseline</th><th>Target</th><th>Current result</th><th>Achievement</th></tr></thead><tbody>{projectIndicators.map((indicator) => { const latest = projectProgress.filter((row) => row.indicator_id === indicator.id).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]; return <tr key={indicator.id}><td>{indicator.code} — {indicator.name}</td><td>{indicator.baseline_value ?? 'Not reported'}</td><td>{indicator.target_value ?? 'Not reported'}</td><td>{latest?.cumulative_actual ?? 'Not reported'}</td><td>{fmtPct(latest?.achievement_pct)}</td></tr>; })}{projectIndicators.length === 0 && <tr><td colSpan={5}>Not reported</td></tr>}</tbody></table>
+          <h4>Activity implementation</h4>
+          <table className="rp-t"><thead><tr><th>Activity</th><th>Status</th><th>Progress</th><th>Planned budget</th><th>Expenditure</th></tr></thead><tbody>{projectActivities.map((row) => <tr key={row.id || row.code}><td>{row.code ? `${row.code} — ` : ''}{row.name}</td><td>{humanToken(row.status)}</td><td>{row.physical_progress_pct == null ? 'Not reported' : `${row.physical_progress_pct}%`}</td><td>{knownOrMissing(row.planned_budget)}</td><td>{knownOrMissing(row.actual_expenditure)}</td></tr>)}{projectActivities.length === 0 && <tr><td colSpan={5}>Not reported</td></tr>}</tbody></table>
+          <h4>Achievements and major results</h4><Narr text={[learning.key_achievements, learning.major_results].filter(Boolean).join('\n\n')} />
+          <h4>Challenges, risks and mitigation</h4><Narr text={learning.challenges} />
+          <table className="rp-t"><thead><tr><th>Risk / issue</th><th>Rating</th><th>Status</th><th>Mitigation</th></tr></thead><tbody>{projectRisks.map((row) => <tr key={row.id || row.code}><td>{row.description}</td><td>{row.risk_rating || 'Not reported'}</td><td>{humanToken(row.status)}</td><td>{row.mitigation || 'Not reported'}</td></tr>)}{projectRisks.length === 0 && <tr><td colSpan={4}>Not reported</td></tr>}</tbody></table>
+          <h4>Geographic implementation</h4><p className="rp-narr">{projectAreas.length ? projectAreas.map((row) => [row.province_code, row.area_council_name].filter(Boolean).join(' — ')).join('; ') : 'Not reported'}</p>
+          <h4>Lessons learned</h4><Narr text={learning.lessons_learned} />
+          <h4>Next-period priorities and recommendations</h4><Narr text={[learning.next_period_priorities, learning.recommendations].filter(Boolean).join('\n\n')} />
+          <h4>Supporting evidence</h4><p className="rp-narr">{projectEvidence.length ? `${projectEvidence.length} evidence record${projectEvidence.length === 1 ? '' : 's'} linked to this project.` : 'Not reported'}</p>
+        </div>;
       })}
     </Section>
 
-    <Section n="11" title="Priority Recommendations">
-      <ol className="rp-narr">
-        <li>Validate and approve official project profiles; resolve legacy and archive records before external reporting.</li>
-        <li>Open standard reporting periods for active projects and assign reporting, M&amp;E and finance responsibilities.</li>
-        <li>Complete results frameworks and indicators for projects without them.</li>
-        <li>Confirm budgets and currencies, then enter period and cumulative expenditure.</li>
-        <li>Enter indicator actuals, beneficiary data, risks, learning and evidence, and route each period through review and approval.</li>
-        <li>Validate Area Council names, boundaries and project relationships before publishing geographic results.</li>
-      </ol>
-    </Section>
-
-    <Section n="12" title="Data Source and Assurance">
-      <p className="rp-narr">Source: DoCC standardised MERL dataset. Data as at {dataAsAt ? fmtDateTime(dataAsAt) : 'not available'}. Generated from the live reporting page.</p>
-      <p className="rp-muted">Zero, Not reported, Not assessed and Not applicable are distinct reporting states. A 0/0 result is never presented as 0% achievement. This report should be reviewed and approved by the DoCC M&amp;E Officer before external use.</p>
-    </Section>
+    <p className="rp-muted">Report generated {fmtDateTime(new Date())}{dataAsAt ? ` · Project data current to ${fmtDateTime(dataAsAt)}` : ''}.</p>
   </div>;
 }
 
