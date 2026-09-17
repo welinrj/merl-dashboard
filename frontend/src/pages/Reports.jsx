@@ -8,7 +8,7 @@
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
 // One icon on this page: Printer, which labels the export control.
-import { Printer } from '../components/ui/icons';
+import { Download, FileText, Printer } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';
@@ -75,6 +75,42 @@ const isOfficialProject = (project) => project?.code !== 'AUDIT-2026'
   && !/non-production staging|do not use for official reporting/i.test(project?.description || '');
 const pctOf = (value, total) => total > 0 ? `${Math.round((value / total) * 100)}%` : '—';
 const knownOrMissing = (value, suffix = '') => hasValue(value) ? `${fmtAmount(value)}${suffix}` : 'Not reported';
+const reportFilename = (extension) => `DoCC-Full-ME-Report-${new Date().toISOString().slice(0, 10)}.${extension}`;
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+const reportBlocks = () => {
+  const root = document.querySelector('.rp-print');
+  if (!root) throw new Error('The report preview is not available.');
+  const blocks = [];
+  const walk = (parent) => {
+    for (const element of parent.children) {
+      if (element.classList.contains('rp-page-break')) { blocks.push({ type: 'pageBreak' }); continue; }
+      if (element.matches('h2')) { blocks.push({ type: 'title', text: element.innerText.trim() }); continue; }
+      if (element.matches('h3')) { blocks.push({ type: 'heading1', text: element.innerText.trim() }); continue; }
+      if (element.matches('h4')) { blocks.push({ type: 'heading2', text: element.innerText.trim() }); continue; }
+      if (element.matches('p')) { blocks.push({ type: 'paragraph', text: element.innerText.trim() }); continue; }
+      if (element.matches('table')) {
+        blocks.push({ type: 'table', rows: [...element.rows].map((row) => [...row.cells].map((cell) => cell.innerText.trim())) });
+        continue;
+      }
+      if (element.classList.contains('rp-meta') || element.classList.contains('rp-kpis') || element.classList.contains('rp-stamp')) {
+        [...element.children].forEach((child) => blocks.push({ type: 'paragraph', text: child.innerText.trim() }));
+        continue;
+      }
+      walk(element);
+    }
+  };
+  walk(root);
+  return blocks.filter((block) => block.type === 'pageBreak' || block.rows?.length || block.text);
+};
 
 export default function Reports() {
   const { t, i18n } = useTranslation();
@@ -88,6 +124,8 @@ export default function Reports() {
   const [period, setPeriod] = useState('');
   const [runs, setRuns] = useState([]);
   const [dataError, setDataError] = useState('');
+  const [exporting, setExporting] = useState('');
+  const [exportError, setExportError] = useState('');
 
   // Report Library (§48-51): recent official report generations, portfolio-wide.
   const loadRuns = useCallback(async () => {
@@ -185,9 +223,7 @@ export default function Reports() {
       ? `${approvedCount} of ${approvalScope.length} matching reporting period${approvalScope.length === 1 ? '' : 's'} approved.`
       : `${approvedCount} of ${approvalScope.length} matching reporting period${approvalScope.length === 1 ? '' : 's'} approved. This report may include draft, submitted, returned or reviewed information.`;
 
-  // Log the generation to the Report Library, then print. Logging is best-effort
-  // and never blocks the report from printing.
-  const generate = async () => {
+  const logGeneration = async (format) => {
     const labelKey = REPORT_TYPES.find((r) => r.key === type)?.label;
     const label = labelKey ? t(labelKey) : type;
     const { error } = await supabase.rpc('log_report_run', {
@@ -195,10 +231,64 @@ export default function Reports() {
       p_report_label: label,
       p_project_id: type === 'project' ? (projectId || null) : null,
       p_reporting_period: period || null,
-      p_params: { period_type: periodType, province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
+      p_params: { format, period_type: periodType, province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
     });
     if (!error) loadRuns();
+  };
+
+  const generate = async () => {
+    await logGeneration('pdf');
     window.print();
+  };
+
+  const exportWord = async () => {
+    setExporting('word'); setExportError('');
+    try {
+      const { Document, HeadingLevel, Packer, PageBreak, Paragraph, Table, TableCell, TableRow, WidthType } = await import('docx');
+      const children = reportBlocks().map((block) => {
+        if (block.type === 'pageBreak') return new Paragraph({ children: [new PageBreak()] });
+        if (block.type === 'table') return new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: block.rows.map((row) => new TableRow({ children: row.map((cell) => new TableCell({ children: [new Paragraph(cell || '—')] })) })),
+        });
+        const heading = block.type === 'title' ? HeadingLevel.TITLE : block.type === 'heading1' ? HeadingLevel.HEADING_1 : block.type === 'heading2' ? HeadingLevel.HEADING_2 : undefined;
+        return new Paragraph({ text: block.text, heading, spacing: { after: heading ? 160 : 100 } });
+      });
+      const documentFile = new Document({ sections: [{ properties: {}, children }] });
+      downloadBlob(await Packer.toBlob(documentFile), reportFilename('docx'));
+      await logGeneration('docx');
+    } catch (error) {
+      setExportError(error?.message || 'The Word report could not be generated.');
+    } finally { setExporting(''); }
+  };
+
+  const exportPdf = async () => {
+    setExporting('pdf'); setExportError('');
+    try {
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+      const margin = 42; const width = pdf.internal.pageSize.getWidth() - margin * 2; const bottom = pdf.internal.pageSize.getHeight() - margin;
+      let y = margin;
+      const ensureSpace = (height = 16) => { if (y + height > bottom) { pdf.addPage(); y = margin; } };
+      const write = (text, size = 9, bold = false, gap = 7) => {
+        pdf.setFont('helvetica', bold ? 'bold' : 'normal'); pdf.setFontSize(size);
+        const lines = pdf.splitTextToSize(String(text || '—'), width);
+        const height = lines.length * (size + 3); ensureSpace(height);
+        pdf.text(lines, margin, y); y += height + gap;
+      };
+      for (const block of reportBlocks()) {
+        if (block.type === 'pageBreak') { if (y > margin) pdf.addPage(); y = margin; continue; }
+        if (block.type === 'table') { for (const row of block.rows) write(row.join('  |  '), 7.5, row === block.rows[0], 3); y += 5; continue; }
+        if (block.type === 'title') write(block.text, 17, true, 12);
+        else if (block.type === 'heading1') write(block.text, 13, true, 8);
+        else if (block.type === 'heading2') write(block.text, 10.5, true, 5);
+        else write(block.text, 9, false, 6);
+      }
+      pdf.save(reportFilename('pdf'));
+      await logGeneration('pdf');
+    } catch (error) {
+      setExportError(error?.message || 'The PDF report could not be generated.');
+    } finally { setExporting(''); }
   };
 
   return (
@@ -291,10 +381,18 @@ export default function Reports() {
             <option value="">All {PERIOD_TYPES.find((p) => p.value === periodType)?.label.toLowerCase()} periods</option>
             {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}</select>
         </div>
-        <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
-          <Printer size={16} /> {type === 'full_me' ? t('rpt.generateFullMe') : t('rpt.generateReport')}
-        </button>
+        {type === 'full_me' ? <>
+          <button onClick={exportWord} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
+            <FileText size={16} /> {exporting === 'word' ? 'Generating Word…' : 'Download Word'}
+          </button>
+          <button onClick={exportPdf} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: exporting ? 'wait' : 'pointer', color: '#fff', background: 'var(--green-700)' }}>
+            <Download size={16} /> {exporting === 'pdf' ? 'Generating PDF…' : 'Download PDF'}
+          </button>
+        </> : <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
+          <Printer size={16} /> {t('rpt.generateReport')}
+        </button>}
       </div>
+      {exportError && <div className="rp-noprint" role="alert" style={{ color: 'var(--red-700)', marginTop: '.6rem', fontSize: '.85rem' }}>{exportError}</div>}
 
       <div className="rp-doc rp-print">
         <div className="rp-stamp">

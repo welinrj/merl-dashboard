@@ -12,6 +12,7 @@
     "i18next": "^23.10.0",
     "iconsax-reactjs": "^0.0.8",
     "idb": "^8.0.0",
+    "jspdf": "^3.0.4",
     "jszip": "^3.10.1",
     "papaparse": "^5.4.1",
     "pdfjs-dist": "^4.10.38",
