@@ -11,10 +11,13 @@ test('the reporting page defaults to the full portfolio M&E report', () => {
   assert.match(reports, /Generate report above/);
 });
 
-test('the former print control is replaced by Word and PDF downloads', () => {
-  assert.match(reports, /type === 'full_me' \? <>/);
+test('the full M&E report offers preview plus Word and PDF downloads', () => {
+  assert.match(reports, /Preview report/);
+  assert.match(reports, /Generated report preview/);
+  assert.match(reports, /View full report/);
   assert.match(reports, /Download Word/);
   assert.match(reports, /Download PDF/);
+  assert.match(reports, /id="report-preview"/);
 });
 
 test('the full report excludes the non-production audit project and includes evidence', () => {
@@ -52,6 +55,19 @@ test('the full report downloads genuine Word and PDF files', () => {
   assert.match(reports, /reportFilename\('docx'\)/);
   assert.match(reports, /new jsPDF/);
   assert.match(reports, /reportFilename\('pdf'\)/);
-  assert.match(reports, /Download Word/);
-  assert.match(reports, /Download PDF/);
+});
+
+test('exports avoid action-time chunks and Safari object URLs are revoked after a delay', () => {
+  assert.match(reports, /from 'docx'/);
+  assert.match(reports, /from 'jspdf'/);
+  assert.doesNotMatch(reports, /await import\('docx'\)/);
+  assert.doesNotMatch(reports, /await import\('jspdf'\)/);
+  assert.match(reports, /setTimeout\(\(\) => URL\.revokeObjectURL\(url\), 1500\)/);
+  assert.match(reports, /document\.getElementById\('report-preview'\)/);
+});
+
+test('report run logging failures cannot take down a successful export', () => {
+  assert.match(reports, /Export success must not depend on the optional audit log request/);
+  assert.match(reports, /void logGeneration\('docx'\)/);
+  assert.match(reports, /void logGeneration\('pdf'\)/);
 });
