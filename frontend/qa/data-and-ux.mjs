@@ -124,12 +124,21 @@ if (coverageMapCount !== 1) console.log(`  map count diagnostic: ${coverageMapCo
 
 console.log('\nEXPORT / PRINT');
 await go('/reports');
+// The full M&E report (the default type) writes Word and PDF files rather than
+// printing, so its controls are checked for presence, not for a print call.
+const downloads = page.getByRole('button', { name: /Download (Word|PDF)/i });
+check('full M&E report offers Word and PDF downloads', await downloads.count() === 2);
+
+// Every other report type still goes through the browser print path. Switch to
+// one and confirm print is what its control actually does.
+await page.locator('select.field-input').first().selectOption('project');
+await page.waitForTimeout(800);
 await page.evaluate(() => { window.__printed = false; window.print = () => { window.__printed = true; }; });
-const printBtn = page.getByRole('button', { name: /print|pdf|export/i }).first();
+const printBtn = page.getByRole('button', { name: /print|pdf|export|generate/i }).first();
 if (await printBtn.count()) {
   await printBtn.click(); await page.waitForTimeout(1200);
-  check('report export triggers print', await page.evaluate(() => window.__printed === true));
-} else check('an export control exists on Reports', false);
+  check('report generation triggers print', await page.evaluate(() => window.__printed === true));
+} else check('a print control exists on Reports', false);
 
 await go('/analytics/project-portfolio?project=pa');
 await page.evaluate(() => { window.__printed = false; window.print = () => { window.__printed = true; }; });

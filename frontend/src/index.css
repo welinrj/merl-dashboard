@@ -926,3 +926,52 @@
 .ps-addvillage strong { display: block; font-size: .85rem; color: var(--green-800); }
 .ps-addvillage p { margin: .25rem 0 .5rem; font-size: .76rem; line-height: 1.5; color: var(--text-2); }
 .ps-addvillage-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+/* ── Evidence intelligence ─────────────────────────────────────────────────
+   Badge tones double as the results-framework column, so they are classes
+   (not inline styles) and stay overridable at breakpoints. */
+.evi-badge { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:999px;
+  font-size:12px; font-weight:600; line-height:1.5; white-space:nowrap; border:1px solid transparent; }
+.evi-badge-count { font-style:normal; font-size:11px; opacity:.75; }
+.evi-muted   { background:#f1f3f5; color:#495057; border-color:#dee2e6; }
+.evi-info    { background:#e7f1fb; color:#1b5fad; border-color:#c3ddf7; }
+.evi-busy    { background:#eef0f2; color:#495057; border-color:#d6dade; }
+.evi-ok      { background:#e6f4ec; color:#0e7a55; border-color:#bfe3d0; }
+.evi-warn    { background:#fdf3e2; color:#8a5e00; border-color:#f3dfb4; }
+.evi-action  { background:#e8f0fd; color:#1b4fad; border-color:#c6d8f8; }
+.evi-danger  { background:#fdecee; color:#a51228; border-color:#f6ccd3; }
+.evi-cell { background:none; border:0; padding:2px; cursor:pointer; min-height:40px; display:flex; align-items:center; }
+
+.evi-panel { border:1px solid #e9ecef; border-radius:8px; background:#fff; padding:16px; margin-top:16px; }
+.evi-panel-head { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:flex-start; }
+.evi-panel-head h3 { margin:0 0 4px; font-size:16px; }
+.evi-panel-ind { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+  background:#f1f3f5; padding:3px 8px; border-radius:4px; }
+.evi-hint { margin:0; font-size:13px; color:#868e96; max-width:70ch; }
+.evi-empty { display:flex; flex-direction:column; gap:4px; padding:20px; text-align:center;
+  border:1px dashed #dee2e6; border-radius:6px; margin-top:12px; font-size:13px; }
+.evi-list { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:12px; }
+.evi-item { border:1px solid #e9ecef; border-radius:6px; padding:12px; }
+.evi-item-head { display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:flex-start; }
+.evi-doc { flex:1 1 260px; min-width:0; text-align:left; background:none; border:0; padding:0; cursor:pointer; min-height:40px; }
+.evi-doc strong { display:block; font-size:14px; overflow-wrap:anywhere; }
+.evi-doc small { display:block; color:#868e96; font-size:12px; }
+.evi-finding { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.evi-reason, .evi-reconcile { margin:0; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+.evi-reconcile { padding:8px 10px; background:#f8f9fa; border-radius:4px; border-left:3px solid #ced4da; }
+.evi-figure { margin:0; font-size:18px; }
+.evi-quote { margin:0; padding:8px 12px; border-left:3px solid #dee2e6;
+  font-size:13px; font-style:italic; color:#495057; overflow-wrap:anywhere; }
+.evi-quote-label { display:block; font-style:normal; font-size:11px; letter-spacing:.06em;
+  text-transform:uppercase; color:#adb5bd; margin-bottom:2px; }
+.evi-quote cite { display:block; font-style:normal; font-size:11px; margin-top:4px; color:#adb5bd; }
+.evi-meta { margin:0; display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#868e96; }
+.evi-warn-text { margin:0; font-size:13px; color:#a51228; }
+.evi-ok-text { margin:0; font-size:13px; color:#0e7a55; }
+.evi-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.evi-actions .btn { min-height:40px; }
+
+@media (max-width:640px) {
+  .evi-panel { padding:12px; }
+  .evi-actions .btn { flex:1 1 100%; }
+}
