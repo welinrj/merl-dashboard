@@ -6,6 +6,8 @@ import { localised, i18nCols } from '../lib/contentLocale';
 import { dbErrorMessage } from '../lib/dbError';
 import { projectColor } from '../components/PublicProjectResults';
 import * as OPT from '../constants/formOptions';
+import IndicatorEvidencePanel, { EvidenceBadge } from '../components/IndicatorEvidencePanel';
+import { fetchEvidenceStatus } from '../lib/evidenceIntelligence';
 
 const NODE_TYPES = [
   ['project_objective', 'Project objective'],
@@ -78,7 +80,7 @@ function targetLookup(targets) {
 }
 
 export default function ResultsWorkspace({ user }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState(empty);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -89,6 +91,9 @@ export default function ResultsWorkspace({ user }) {
   const [editor, setEditor] = useState(null);
   const [saving, setSaving] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [evidence, setEvidence] = useState(() => new Map());
+  const [evidenceIndicator, setEvidenceIndicator] = useState(null);
+  const refreshEvidence = () => { fetchEvidenceStatus().then(setEvidence).catch(() => {}); };
 
   const reload = () => setReloadKey((n) => n + 1);
 
@@ -113,6 +118,9 @@ export default function ResultsWorkspace({ user }) {
 
       const permission = responses[6];
       setEditableIds(new Set(permission.error ? [] : (permission.data || []).map((r) => r.project_id)));
+      // Evidence status is supplementary: a failure here must leave the
+      // framework itself rendering, so it is fetched separately and swallowed.
+      fetchEvidenceStatus().then((map) => { if (alive) setEvidence(map); }).catch(() => {});
       setPermissionError(permission.error
         ? 'Editing permissions could not be verified. The framework remains read-only.'
         : '');
@@ -373,7 +381,7 @@ export default function ResultsWorkspace({ user }) {
           <th>Project</th><th>Results pathway</th><th>Indicator</th>
           <th>Baseline</th><th>Mid-term</th><th>Final target</th>
           <th>Latest actual</th><th>Progress</th><th>Status</th>
-          <th>Narrative</th><th>Reporting</th>
+          <th>Narrative</th><th>Reporting</th><th>{t('evi.colEvidence')}</th>
         </tr></thead>
         <tbody>
           {filtered.map((row, idx) => {
@@ -420,12 +428,24 @@ export default function ResultsWorkspace({ user }) {
               <td className="rf2-small">{row.indicator?.official_reporting_frequency || row.indicator?.frequency
                 ? OPT.labelOf(OPT.REPORTING_FREQUENCY, row.indicator.official_reporting_frequency || row.indicator.frequency)
                 : '—'}</td>
+              <td className="rf2-small">{row.indicator ? (() => {
+                const st = evidence.get(row.indicator.id);
+                return <button type="button" className="evi-cell" title={st?.reconciliation_detail || ''}
+                  onClick={() => setEvidenceIndicator(row.indicator)}>
+                  <EvidenceBadge state={st?.evidence_state || 'no_evidence'} count={st?.evidence_count || 0} />
+                </button>;
+              })() : '—'}</td>
             </tr>;
           })}
         </tbody>
       </table>
       {!filtered.length && <div className="rf2-empty">No results-framework rows match the current filters.</div>}
     </div>}
+
+    {evidenceIndicator && <IndicatorEvidencePanel
+      indicator={evidenceIndicator}
+      canEdit={canEdit(evidenceIndicator.project_id)}
+      onProgressWritten={() => { setReloadKey((k) => k + 1); refreshEvidence(); }} />}
   </div>;
 }
 

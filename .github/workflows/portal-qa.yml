@@ -91,6 +91,12 @@ jobs:
           STUB_FILE: qa/fixture-multiperiod.json
         run: node qa/beneficiary-reconciliation.mjs
 
+      - name: Validate evidence intelligence states
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/evidence-intelligence.mjs
+
       - name: Validate role permission matrix
         working-directory: frontend
         env:
