@@ -305,5 +305,36 @@
   "v_dashboard_kpi_config": [],
   "v_framework_nodes": [],
   "v_indicator_targets": [],
-  "v_result_narratives": []
+  "v_result_narratives": [],
+  "v_indicator_evidence_status": [
+    {
+      "indicator_id": "i1",
+      "project_id": "pa",
+      "indicator_code": "IND-01",
+      "indicator_name": "Households protected",
+      "unit": "households",
+      "evidence_count": 0,
+      "last_uploaded_at": null,
+      "relevant_count": 0,
+      "unactioned_new": 0,
+      "unresolved_conflicts": 0,
+      "outdated_count": 0,
+      "pending_count": 0,
+      "failed_count": 0,
+      "latest_analysis_id": null,
+      "latest_status": null,
+      "latest_relevance": null,
+      "progress_found": null,
+      "extracted_value": null,
+      "extracted_unit": null,
+      "extracted_period": null,
+      "confidence": null,
+      "reconciliation": null,
+      "reconciliation_detail": null,
+      "review_state": null,
+      "analysed_at": null,
+      "evidence_state": "no_evidence"
+    }
+  ],
+  "v_evidence_analysis": []
 }
