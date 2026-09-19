@@ -333,7 +333,8 @@
       "reconciliation_detail": null,
       "review_state": null,
       "analysed_at": null,
-      "evidence_state": "no_evidence"
+      "evidence_state": "no_evidence",
+      "recent_documents": []
     }
   ],
   "v_evidence_analysis": []

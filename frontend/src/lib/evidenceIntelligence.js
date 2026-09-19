@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { localiseRow } from './contentLocale';
 
 /**
  * Evidence intelligence data access.
@@ -32,7 +33,12 @@ export async function fetchEvidenceStatus(projectId) {
   if (projectId) query = query.eq('project_id', projectId);
   const { data, error } = await query;
   if (error) throw error;
-  return new Map((data ?? []).map((row) => [row.indicator_id, row]));
+  return new Map((data ?? []).map((row) => [row.indicator_id, {
+    ...row,
+    // Each document carries its own i18n, so the titles localise like any
+    // other record text rather than staying in the entry language.
+    recent_documents: (row.recent_documents ?? []).map((doc) => localiseRow(doc)),
+  }]));
 }
 
 /** Every document filed against one indicator, with its latest finding. */

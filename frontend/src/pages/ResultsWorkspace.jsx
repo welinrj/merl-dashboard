@@ -428,11 +428,17 @@ export default function ResultsWorkspace({ user }) {
               <td className="rf2-small">{row.indicator?.official_reporting_frequency || row.indicator?.frequency
                 ? OPT.labelOf(OPT.REPORTING_FREQUENCY, row.indicator.official_reporting_frequency || row.indicator.frequency)
                 : '—'}</td>
-              <td className="rf2-small">{row.indicator ? (() => {
+              <td className="rf2-evidence">{row.indicator ? (() => {
                 const st = evidence.get(row.indicator.id);
+                const docs = st?.recent_documents ?? [];
+                const extra = (st?.evidence_count || 0) - docs.length;
                 return <button type="button" className="evi-cell" title={st?.reconciliation_detail || ''}
                   onClick={() => setEvidenceIndicator(row.indicator)}>
                   <EvidenceBadge state={st?.evidence_state || 'no_evidence'} count={st?.evidence_count || 0} />
+                  {docs.length > 0 && <span className="evi-cell-docs">
+                    {docs.map((doc) => <span key={doc.id} className="evi-cell-doc" title={doc.title}>{doc.title}</span>)}
+                    {extra > 0 && <span className="evi-cell-more">{t('evi.moreDocs', { count: extra })}</span>}
+                  </span>}
                 </button>;
               })() : '—'}</td>
             </tr>;
@@ -492,7 +498,7 @@ function ResultsStyles() {
     .rf2-project{min-width:225px}.rf2-project-mark{border-left:5px solid var(--project-ink);background:var(--project-bg);padding:.48rem .6rem;border-radius:6px;color:var(--project-ink)}.rf2-project-mark small,.rf2-indicator small{display:block;font-family:var(--font-mono);font-size:.65rem;font-weight:700}.rf2-project-mark b{display:block;margin-top:.15rem}
     .rf2-path{min-width:390px}.rf2-path-row{display:grid;grid-template-columns:95px auto 1fr;gap:.35rem;align-items:start;padding:.28rem 0;border-bottom:1px dashed var(--border)}.rf2-path-row:last-child{border-bottom:0}.rf2-path-row>span:first-child{font-size:.62rem;text-transform:uppercase;color:var(--text-2)}.rf2-path-row>b{font-family:var(--font-mono);font-size:.65rem;color:var(--green-700)}.rf2-path-row p{margin:0}.rf2-path-row .rf2-inline-actions{grid-column:3}
     .rf2-indicator{min-width:300px}.rf2-indicator b{display:block;margin:.1rem 0}.rf2-indicator>span:not(.rf2-inline-actions):not(.rf2-muted){display:block;color:var(--text-2);font-size:.68rem}.rf2-inline-actions{display:flex;gap:.3rem;margin-top:.35rem}
-    .rf2-num{min-width:90px;text-align:right;font-variant-numeric:tabular-nums}.rf2-small{min-width:120px}.rf2-narrative{min-width:300px;max-width:420px;white-space:normal}.rf2-narrative details{margin-top:.35rem}.rf2-narrative summary{cursor:pointer;font-weight:700;color:var(--text-2)}.rf2-narrative p{margin:.25rem 0 0}
+    .rf2-num{min-width:90px;text-align:right;font-variant-numeric:tabular-nums}.rf2-small{min-width:120px}.rf2-evidence{min-width:230px;max-width:260px}.rf2-narrative{min-width:300px;max-width:420px;white-space:normal}.rf2-narrative details{margin-top:.35rem}.rf2-narrative summary{cursor:pointer;font-weight:700;color:var(--text-2)}.rf2-narrative p{margin:.25rem 0 0}
     .rf2-status-stack{display:grid;gap:.25rem}.rf2-pill{display:inline-flex;width:max-content;border-radius:999px;padding:.2rem .45rem;font-size:.62rem;font-weight:800;text-transform:capitalize;background:#e5e7eb;color:#374151}.rf2-pill.on_track{background:#dcfce7;color:#166534}.rf2-pill.attention_required,.rf2-pill.attention{background:#fef3c7;color:#92400e}.rf2-pill.off_track,.rf2-pill.at_risk{background:#ffedd5;color:#9a3412}.rf2-pill.delayed{background:#fee2e2;color:#991b1b}.rf2-pill.completed,.rf2-pill.approved{background:#ede9fe;color:#5b21b6}.rf2-pill.neutral{background:#f3f4f6;color:#6b7280}
     .rf2-muted{color:var(--text-2);font-style:italic}.rf2-empty{padding:1.3rem;text-align:center;color:var(--text-2)}
     @media(max-width:800px){.rf2-tools,.rf2-form-grid{grid-template-columns:1fr}.rf2-form-grid .full{grid-column:1}.rf2-editor-head select{min-width:0;width:100%}.rf2-table-wrap{max-height:none}}
