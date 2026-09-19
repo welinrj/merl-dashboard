@@ -25,11 +25,25 @@ T.v_project_indicators = IND.map((r, n) => ({
   baseline_value: 0, target_value: 1000, outcome_id: 'oc1', indicator_level: 'outcome',
   frequency: 'Quarterly', is_qualitative: false, higher_is_better: true, i18n: {},
 }));
+// Deliberately long, real-shaped filenames: the cell has to clamp them rather
+// than let one report title set the height of the whole row.
+const docsFor = (r) => [
+  `Outcome 1.1_${r.code}_Terrestrial protected areas newly created_Q3 2026 Progress Report.docx`,
+  `Back to Office Report ${r.code} — East Vanua-Lava and Mota Island 2026.pdf`,
+  ...(r.id === 'i1' ? [`VCAPII 2026 Face Form — Progress PA ENV July 2026 ${r.code}.xlsx`] : []),
+].map((title, n) => ({
+  id: `d-${r.id}-${n}`, title, i18n: {}, document_type: 'monitoring_report',
+  document_date: '2026-09-30', file_url: `storage://merl-indicator-evidence/pa/${r.id}/${n}.pdf`,
+}));
+
 T.v_indicator_evidence_status = IND.map((r) => ({
   indicator_id: r.id, project_id: 'pa', indicator_code: r.code, indicator_name: r.code, unit: 'hectares',
-  evidence_count: r.state === 'no_evidence' ? 0 : 2, evidence_state: r.state,
+  // i1 holds more documents than the view returns, so the cell must say "+2 more".
+  evidence_count: r.state === 'no_evidence' ? 0 : (r.id === 'i1' ? 5 : 2),
+  evidence_state: r.state,
   reconciliation: r.state === 'no_evidence' ? null : r.state,
   reconciliation_detail: `detail for ${r.code}`, latest_analysis_id: `a-${r.id}`,
+  recent_documents: r.state === 'no_evidence' ? [] : docsFor(r),
 }));
 T.v_evidence = [{
   id: 'e1', project_id: 'pa', indicator_id: 'i1', title: 'Q3 Progress Report.docx',
@@ -103,7 +117,21 @@ for (const r of IND) {
   const badge = row.locator('.evi-badge').first();
   const text = (await badge.count()) ? (await badge.innerText()).trim() : '(none)';
   check(text.startsWith(r.expect), `${r.code} → "${r.expect}" (got "${text}")`);
+
+  // The names of the documents behind the badge, not just that there are some.
+  const names = await row.locator('.evi-cell-doc').allInnerTexts();
+  const want = r.state === 'no_evidence' ? 0 : docsFor(r).length;
+  check(names.length === want, `${r.code} names ${want} document(s) in the cell (got ${names.length})`);
+  if (want) {
+    check(names[0].trim() === docsFor(r)[0].title, `${r.code} shows the newest document's name (got ${JSON.stringify(names[0])})`);
+  }
 }
+
+// 5 documents on file, 3 named, so the cell has to account for the other 2.
+const i1 = page.locator('tr', { has: page.locator('td', { hasText: 'IND-01' }) }).first();
+check((await i1.locator('.evi-cell-more').innerText()).trim() === '+2 more', 'cell counts the documents it did not name');
+check(await page.locator('tr', { has: page.locator('td', { hasText: 'IND-06' }) })
+  .first().locator('.evi-cell-doc').count() === 0, 'no document names where there is no evidence');
 
 // The badge must open the panel and show the quoted sentence + reconciliation.
 await page.locator('tr', { has: page.locator('td', { hasText: 'IND-01' }) }).first().locator('.evi-cell').click();
