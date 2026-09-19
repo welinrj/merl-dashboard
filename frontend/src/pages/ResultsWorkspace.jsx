@@ -93,6 +93,14 @@ export default function ResultsWorkspace({ user }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [evidence, setEvidence] = useState(() => new Map());
   const [evidenceIndicator, setEvidenceIndicator] = useState(null);
+  // Narratives are clamped so every row is the same height; this holds the ones
+  // the reader has opened back up.
+  const [openNarratives, setOpenNarratives] = useState(() => new Set());
+  const toggleNarrative = (key) => setOpenNarratives((prev) => {
+    const next = new Set(prev);
+    if (!next.delete(key)) next.add(key);
+    return next;
+  });
   const refreshEvidence = () => { fetchEvidenceStatus().then(setEvidence).catch(() => {}); };
 
   const reload = () => setReloadKey((n) => n + 1);
@@ -390,7 +398,9 @@ export default function ResultsWorkspace({ user }) {
             const finalTarget = row.targets.final?.numeric_value ?? row.indicator?.target_value;
             const actual = row.progress?.cumulative_actual ?? row.progress?.actual_this_period;
             const narrative = row.narrative?.progress_summary || row.progress?.narrative || '';
-            return <tr key={row.indicator?.id || row.node?.id || idx}>
+            const rowKey = row.indicator?.id || row.node?.id || idx;
+            const narrativeOpen = openNarratives.has(rowKey);
+            return <tr key={rowKey} className={row.indicator ? undefined : 'rf2-row-node'}>
               <td className="rf2-project">
                 <div className="rf2-project-mark" style={projectColor(row.project)}>
                   <small>{row.project.code || row.project.acronym || 'NO CODE'}</small>
@@ -423,8 +433,14 @@ export default function ResultsWorkspace({ user }) {
               <td className="rf2-num">{row.indicator ? display(finalTarget) : '—'}</td>
               <td className="rf2-num">{row.indicator ? display(actual) : '—'}</td>
               <td className="rf2-num">{row.indicator ? pct(row.progress?.achievement_pct) : '—'}</td>
-              <td>{row.indicator ? status(row) : <span className="rf2-pill neutral">{row.node?.status || 'draft'}</span>}</td>
-              <td className="rf2-narrative">{narrative || '—'}{row.narrative?.challenges && <details><summary>Challenges</summary><p>{row.narrative.challenges}</p></details>}</td>
+              <td className="rf2-status">{row.indicator ? status(row) : <span className="rf2-pill neutral">{row.node?.status || 'draft'}</span>}</td>
+              <td className="rf2-narrative">
+                {narrative
+                  ? <button type="button" title={narrativeOpen ? undefined : narrative}
+                      className={narrativeOpen ? 'rf2-narrative-text open' : 'rf2-narrative-text'}
+                      onClick={() => toggleNarrative(rowKey)}>{narrative}</button>
+                  : '—'}
+                {row.narrative?.challenges && <details><summary>Challenges</summary><p>{row.narrative.challenges}</p></details>}</td>
               <td className="rf2-small">{row.indicator?.official_reporting_frequency || row.indicator?.frequency
                 ? OPT.labelOf(OPT.REPORTING_FREQUENCY, row.indicator.official_reporting_frequency || row.indicator.frequency)
                 : '—'}</td>
@@ -494,13 +510,35 @@ function ResultsStyles() {
     .rf2-tools{display:grid;grid-template-columns:minmax(220px,360px) minmax(260px,1fr) auto;gap:.65rem;align-items:end;border:1px solid var(--border);border-radius:12px;background:var(--white);padding:.85rem;margin-bottom:.85rem}.rf2-tools label,.rf2-form label{display:grid;gap:.25rem;font-size:.72rem;font-weight:700}
     .rf2-editor-shell{border:1px solid var(--border);border-radius:12px;background:var(--surface-1);padding:.85rem;margin-bottom:.85rem}.rf2-editor-head{display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}.rf2-editor-head>div{display:grid;gap:.2rem}.rf2-editor-head span{font-size:.7rem;color:var(--text-2)}.rf2-editor-head select{min-width:300px}.rf2-editor-actions{display:flex;gap:.45rem;margin-top:.65rem}.rf2-editor-actions button,.rf2-inline-actions button{border:1px solid var(--border);border-radius:6px;background:var(--white);padding:.3rem .5rem;font:inherit;font-size:.68rem;cursor:pointer}.rf2-inline-actions button.danger{color:#b91c1c}
     .rf2-form{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-top:.7rem}.rf2-form h3{margin:0 0 .65rem;font-size:.9rem}.rf2-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.rf2-form-grid .full{grid-column:1/-1}.rf2-form-actions{display:flex;justify-content:flex-end;gap:.45rem;margin-top:.7rem}
-    .rf2-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--white);max-height:calc(100vh - 260px)}.rf2-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1900px;font-size:.75rem}.rf2-table th{position:sticky;top:0;z-index:4;background:var(--surface-1);padding:.65rem;text-align:left;border-bottom:1px solid var(--border);font-size:.66rem;text-transform:uppercase;letter-spacing:.03em}.rf2-table td{vertical-align:top;padding:.65rem;border-bottom:1px solid var(--border);border-right:1px solid var(--border);line-height:1.38}.rf2-table td:last-child{border-right:0}
-    .rf2-project{min-width:225px}.rf2-project-mark{border-left:5px solid var(--project-ink);background:var(--project-bg);padding:.48rem .6rem;border-radius:6px;color:var(--project-ink)}.rf2-project-mark small,.rf2-indicator small{display:block;font-family:var(--font-mono);font-size:.65rem;font-weight:700}.rf2-project-mark b{display:block;margin-top:.15rem}
-    .rf2-path{min-width:390px}.rf2-path-row{display:grid;grid-template-columns:95px auto 1fr;gap:.35rem;align-items:start;padding:.28rem 0;border-bottom:1px dashed var(--border)}.rf2-path-row:last-child{border-bottom:0}.rf2-path-row>span:first-child{font-size:.62rem;text-transform:uppercase;color:var(--text-2)}.rf2-path-row>b{font-family:var(--font-mono);font-size:.65rem;color:var(--green-700)}.rf2-path-row p{margin:0}.rf2-path-row .rf2-inline-actions{grid-column:3}
-    .rf2-indicator{min-width:300px}.rf2-indicator b{display:block;margin:.1rem 0}.rf2-indicator>span:not(.rf2-inline-actions):not(.rf2-muted){display:block;color:var(--text-2);font-size:.68rem}.rf2-inline-actions{display:flex;gap:.3rem;margin-top:.35rem}
-    .rf2-num{min-width:90px;text-align:right;font-variant-numeric:tabular-nums}.rf2-small{min-width:120px}.rf2-evidence{min-width:230px;max-width:260px}.rf2-narrative{min-width:300px;max-width:420px;white-space:normal}.rf2-narrative details{margin-top:.35rem}.rf2-narrative summary{cursor:pointer;font-weight:700;color:var(--text-2)}.rf2-narrative p{margin:.25rem 0 0}
+    .rf2-table-wrap{overflow:auto;border:1px solid var(--border-strong);border-radius:12px;background:var(--white);max-height:calc(100vh - 260px)}
+    /* Every cell paints --rf2-row, so the frozen first column picks up its own
+       row's stripe and hover instead of showing the rows sliding underneath. */
+    .rf2-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1700px;font-size:.75rem;--rf2-row:var(--white);--rf2-stripe:#faf8f4}
+    .rf2-table th{position:sticky;top:0;z-index:4;background:var(--surface-1);padding:.5rem .6rem;text-align:left;border-bottom:1px solid var(--border-strong);border-right:1px solid var(--border);font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+    .rf2-table th:last-child{border-right:0}
+    .rf2-table th:first-child{left:0;z-index:6;border-right:1px solid var(--border-strong)}
+    .rf2-table td{vertical-align:top;padding:.5rem .6rem;border-bottom:1px solid var(--border);border-right:1px solid var(--border);line-height:1.4;background:var(--rf2-row)}
+    .rf2-table td:last-child{border-right:0}
+    .rf2-table tbody tr:nth-child(even){--rf2-row:var(--rf2-stripe)}
+    .rf2-table tbody tr.rf2-row-node{--rf2-row:#f7f5f0}
+    .rf2-table tbody tr.rf2-row-node:nth-child(even){--rf2-row:#f3f0ea}
+    /* Last, and matching the node rows too, so hover always wins. */
+    .rf2-table tbody tr:hover,.rf2-table tbody tr.rf2-row-node:nth-child(even):hover{--rf2-row:var(--surface-2)}
+    .rf2-num,.rf2-small,.rf2-status{vertical-align:middle}
+    .rf2-project{min-width:200px;max-width:210px;position:sticky;left:0;z-index:3;border-right:1px solid var(--border-strong)}
+    .rf2-project-mark{border-left:5px solid var(--project-ink);background:var(--project-bg);padding:.4rem .5rem;border-radius:6px;color:var(--project-ink)}
+    .rf2-project-mark b{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.rf2-project-mark small,.rf2-indicator small{display:block;font-family:var(--font-mono);font-size:.65rem;font-weight:700}.rf2-project-mark b{display:block;margin-top:.15rem}
+    .rf2-path{min-width:300px;max-width:330px}.rf2-path-row p{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.rf2-path-row{display:grid;grid-template-columns:95px auto 1fr;gap:.35rem;align-items:start;padding:.28rem 0;border-bottom:1px dashed var(--border)}.rf2-path-row:last-child{border-bottom:0}.rf2-path-row>span:first-child{font-size:.62rem;text-transform:uppercase;color:var(--text-2)}.rf2-path-row>b{font-family:var(--font-mono);font-size:.65rem;color:var(--green-700)}.rf2-path-row p{margin:0}.rf2-path-row .rf2-inline-actions{grid-column:3}
+    .rf2-indicator{min-width:240px;max-width:260px}.rf2-indicator b{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:.1rem 0}.rf2-indicator>span:not(.rf2-inline-actions):not(.rf2-muted){display:block;color:var(--text-2);font-size:.68rem}.rf2-inline-actions{display:flex;gap:.3rem;margin-top:.35rem}
+    .rf2-num{min-width:80px;text-align:right;font-variant-numeric:tabular-nums}.rf2-small{min-width:110px}.rf2-evidence{min-width:220px;max-width:240px}
+    .rf2-narrative{min-width:260px;max-width:300px;white-space:normal}
+    .rf2-narrative-text{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;width:100%;text-align:left;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer}
+    .rf2-narrative-text.open{display:block;overflow:visible}
+    .rf2-narrative details{margin-top:.35rem}.rf2-narrative summary{cursor:pointer;font-weight:700;color:var(--text-2)}.rf2-narrative p{margin:.25rem 0 0}
     .rf2-status-stack{display:grid;gap:.25rem}.rf2-pill{display:inline-flex;width:max-content;border-radius:999px;padding:.2rem .45rem;font-size:.62rem;font-weight:800;text-transform:capitalize;background:#e5e7eb;color:#374151}.rf2-pill.on_track{background:#dcfce7;color:#166534}.rf2-pill.attention_required,.rf2-pill.attention{background:#fef3c7;color:#92400e}.rf2-pill.off_track,.rf2-pill.at_risk{background:#ffedd5;color:#9a3412}.rf2-pill.delayed{background:#fee2e2;color:#991b1b}.rf2-pill.completed,.rf2-pill.approved{background:#ede9fe;color:#5b21b6}.rf2-pill.neutral{background:#f3f4f6;color:#6b7280}
     .rf2-muted{color:var(--text-2);font-style:italic}.rf2-empty{padding:1.3rem;text-align:center;color:var(--text-2)}
+    /* A frozen column costs half a phone screen, so it only pays on wide ones. */
+    @media(max-width:900px){.rf2-project{position:static;min-width:165px;max-width:180px}.rf2-table th:first-child{left:auto}}
     @media(max-width:800px){.rf2-tools,.rf2-form-grid{grid-template-columns:1fr}.rf2-form-grid .full{grid-column:1}.rf2-editor-head select{min-width:0;width:100%}.rf2-table-wrap{max-height:none}}
   `}</style>;
 }
