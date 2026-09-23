@@ -23,6 +23,7 @@ import HeaderPartnerLogos from './components/HeaderPartnerLogos';
 import NotificationBell from './components/NotificationBell';
 import ChangePasswordModal from './components/ui/ChangePasswordModal';
 import { DashboardFilterProvider } from './lib/dashboardFilters';
+import { loginErrorKey } from './lib/loginError';
 import { supabase, toAppRole } from './supabaseClient';
 import type { AppUser, UserRole, NavKey } from './types';
 
@@ -169,9 +170,9 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
     setLoading(true);
     setError('');
     try {
-      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
       if (authErr) {
-        setError(t('login.badCredentials'));
+        setError(t(loginErrorKey(authErr)));
         return;
       }
       const profile = await loadProfile();
@@ -186,6 +187,8 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
         else localStorage.removeItem('docc.email');
       } catch { /* storage unavailable — non-fatal */ }
       onLogin(profile);
+    } catch {
+      setError(t('login.authUnavailable'));
     } finally {
       setLoading(false);
     }
