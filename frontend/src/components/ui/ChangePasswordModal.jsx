@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { supabase } from '../../supabaseClient';
 import { dbErrorMessage } from '../../lib/dbError';
+import { adminAuth } from '../../lib/adminAuth';
 import { Eye, EyeOff, Lock, X } from './icons';
 
 const MIN_LENGTH = 10;
@@ -28,9 +29,20 @@ export default function ChangePasswordModal({ adminFor = null, onClose, onDone =
     if (next.length < MIN_LENGTH) { setErr(t('pw.tooShort', { count: MIN_LENGTH })); return; }
     if (next !== confirm) { setErr(t('pw.mismatch')); return; }
     setBusy(true);
-    const { error } = isAdmin
-      ? await supabase.rpc('admin_set_password', { p_id: adminFor.id, p_new: next })
-      : await supabase.rpc('change_my_password', { p_current: current, p_new: next });
+    let error = null;
+    if (isAdmin) {
+      ({ error } = await adminAuth('set-password', { profileId: adminFor.id, password: next }));
+    } else {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const email = sessionData.session?.user?.email;
+      if (!email) {
+        error = new Error('Your session is no longer valid. Please sign in again.');
+      } else {
+        const verified = await supabase.auth.signInWithPassword({ email, password: current });
+        error = verified.error;
+        if (!error) ({ error } = await supabase.auth.updateUser({ password: next }));
+      }
+    }
     setBusy(false);
     if (error) { setErr(dbErrorMessage(error)); return; }
     toast.success(isAdmin ? t('pw.setForToast', { name: adminFor.full_name }) : t('pw.changedToast'));
