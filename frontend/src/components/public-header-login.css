@@ -64,3 +64,5 @@
   .pbd-header-recovery-row{grid-template-columns:1fr}
   .pbd-header-recovery-row button{width:100%;min-height:44px}
 }
+
+.pbd-password-label-row{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
