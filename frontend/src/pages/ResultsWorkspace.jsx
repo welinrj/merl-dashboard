@@ -412,6 +412,9 @@ export default function ResultsWorkspace({ user }) {
                   <span>{nodeTypeLabel(node.node_type)}</span>
                   <b>{node.node_code || ''}</b>
                   <p>{node.title}</p>
+                  {node.id === row.node?.id && node.description && (
+                    <details className="rf2-path-details"><summary>Details</summary><p>{node.description}</p></details>
+                  )}
                   {canEdit(row.project.id) && node.id === row.node?.id && <span className="rf2-inline-actions">
                     <button type="button" onClick={() => editNode(node)}>Edit</button>
                     <button type="button" className="danger" onClick={() => removeNode(node)}>Delete</button>
@@ -529,6 +532,7 @@ function ResultsStyles() {
     .rf2-project-mark{border-left:5px solid var(--project-ink);background:var(--project-bg);padding:.4rem .5rem;border-radius:6px;color:var(--project-ink)}
     .rf2-project-mark b{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.rf2-project-mark small,.rf2-indicator small{display:block;font-family:var(--font-mono);font-size:.65rem;font-weight:700}.rf2-project-mark b{display:block;margin-top:.15rem}
     .rf2-path{min-width:300px;max-width:330px}.rf2-path-row p{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.rf2-path-row{display:grid;grid-template-columns:95px auto 1fr;gap:.35rem;align-items:start;padding:.28rem 0;border-bottom:1px dashed var(--border)}.rf2-path-row:last-child{border-bottom:0}.rf2-path-row>span:first-child{font-size:.62rem;text-transform:uppercase;color:var(--text-2)}.rf2-path-row>b{font-family:var(--font-mono);font-size:.65rem;color:var(--green-700)}.rf2-path-row p{margin:0}.rf2-path-row .rf2-inline-actions{grid-column:3}
+    .rf2-path-details{grid-column:3;color:var(--text-2);font-size:.7rem}.rf2-path-details summary{cursor:pointer}.rf2-path-details p{display:block;overflow:visible;line-clamp:unset;margin:.35rem 0 0;white-space:normal}
     .rf2-indicator{min-width:240px;max-width:260px}.rf2-indicator b{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:.1rem 0}.rf2-indicator>span:not(.rf2-inline-actions):not(.rf2-muted){display:block;color:var(--text-2);font-size:.68rem}.rf2-inline-actions{display:flex;gap:.3rem;margin-top:.35rem}
     .rf2-num{min-width:80px;text-align:right;font-variant-numeric:tabular-nums}.rf2-small{min-width:110px}.rf2-evidence{min-width:220px;max-width:240px}
     .rf2-narrative{min-width:260px;max-width:300px;white-space:normal}
