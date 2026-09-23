@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { fmtDateTime } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
 import AdminDataTable from '../components/ui/AdminDataTable';
+import { adminAuth } from '../lib/adminAuth';
 
 // The four official user types. `id` is the DB enum value (merl.user_role).
 // Data Entry / Project Officer was retired in migration 0041 — it is neither
@@ -151,13 +152,13 @@ function UsersTab() {
   const addUser = async () => {
     if (!form.email.trim() || !form.full_name.trim()) { setErr('Full name and email are required.'); return; }
     setBusy(true); setErr('');
-    const { data, error } = await supabase.rpc('admin_create_user', {
-      p_email: form.email.trim(), p_full_name: form.full_name.trim(),
-      p_role: form.role, p_organisation: form.organisation.trim() || null,
+    const { data, error } = await adminAuth('create-user', {
+      email: form.email.trim(), fullName: form.full_name.trim(),
+      role: form.role, organisation: form.organisation.trim() || null,
     });
     setBusy(false);
     if (error) { setErr(dbErrorMessage(error)); return; }
-    setCred({ email: form.email.trim().toLowerCase(), password: data });
+    setCred({ email: data.email, password: data.password });
     setForm({ email: '', full_name: '', role: 'project_manager', organisation: '' });
     setShowForm(false);
     load();
@@ -165,18 +166,18 @@ function UsersTab() {
 
   const resetPassword = async (u) => {
     setBusy(true); setErr('');
-    const { data, error } = await supabase.rpc('admin_reset_password', { p_id: u.id });
+    const { data, error } = await adminAuth('reset-password', { profileId: u.id });
     setBusy(false);
     if (error) { setErr(dbErrorMessage(error)); return; }
-    setCred({ email: u.email, password: data });
+    setCred({ email: data.email, password: data.password });
   };
 
   const provisionLogin = async (u) => {
     setBusy(true); setErr('');
-    const { data, error } = await supabase.rpc('admin_provision_login', { p_id: u.id });
+    const { data, error } = await adminAuth('provision-login', { profileId: u.id });
     setBusy(false);
     if (error) { setErr(dbErrorMessage(error)); return; }
-    setCred({ email: u.email, password: data });
+    setCred({ email: data.email, password: data.password });
     load();
   };
 
