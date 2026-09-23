@@ -66,5 +66,7 @@
 }
 
 .pbd-password-label-row{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+.pbd-password-actions{display:flex;align-items:center;gap:10px;min-width:0}
+.pbd-password-actions .pbd-header-login-link{width:auto;min-height:0;grid-column:auto}
 
 .dsh.pbd-root .pbd-header-login .pbd-header-login-link{height:auto;min-width:0;padding:0;border:0;background:transparent}

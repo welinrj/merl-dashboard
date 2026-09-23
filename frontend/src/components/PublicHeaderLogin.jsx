@@ -12,6 +12,7 @@ export default function PublicHeaderLogin() {
   const passwordId = useId();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [recovery, setRecovery] = useState(false);
@@ -58,7 +59,6 @@ export default function PublicHeaderLogin() {
       const { error: authError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
       if (authError) {
         setError(t(loginErrorKey(authError)));
-        setPassword('');
         return;
       }
       // A valid Supabase session is not sufficient to enter the MERL workspace.
@@ -70,7 +70,6 @@ export default function PublicHeaderLogin() {
       if (!profile) {
         await supabase.auth.signOut();
         setError(t('login.noProfile'));
-        setPassword('');
         return;
       }
       setEmail(normalizedEmail);
@@ -79,7 +78,6 @@ export default function PublicHeaderLogin() {
       // role-gated workspace at the shared /dashboards route.
     } catch {
       setError(fr ? 'Connexion impossible. Veuillez réessayer.' : 'Unable to sign in. Please try again.');
-      setPassword('');
     } finally {
       setLoading(false);
     }
@@ -117,21 +115,28 @@ export default function PublicHeaderLogin() {
     <div className="pbd-header-login-fields">
       <label htmlFor={emailId}>
         <span>{t('login.email')}</span>
-        <input id={emailId} type="email" autoComplete="username" inputMode="email" required
+        <input id={emailId} type="email" autoComplete="username" inputMode="email" autoCapitalize="none"
+          autoCorrect="off" spellCheck={false} required
           value={email} onChange={e => { setEmail(e.target.value); setError(''); }}
           placeholder={t('login.email')} disabled={loading}/>
       </label>
       <label htmlFor={passwordId}>
         <span className="pbd-password-label-row">
           <span>{t('login.password')}</span>
-          <button type="button" className="pbd-header-login-link" onClick={() => {
-            setRecovery(true); setRecoverySent(false); setError(''); setPassword('');
-          }}>
-            {fr ? 'Oublié ?' : 'Forgot?'}
-          </button>
+          <span className="pbd-password-actions">
+            <button type="button" className="pbd-header-login-link" onClick={() => setShowPassword(value => !value)}>
+              {showPassword ? (fr ? 'Masquer' : 'Hide') : (fr ? 'Afficher' : 'Show')}
+            </button>
+            <button type="button" className="pbd-header-login-link" onClick={() => {
+              setRecovery(true); setRecoverySent(false); setError(''); setPassword('');
+            }}>
+              {fr ? 'Oublié ?' : 'Forgot?'}
+            </button>
+          </span>
         </span>
-        <input id={passwordId} type="password" autoComplete="current-password" required
-          value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
+        <input id={passwordId} type={showPassword ? 'text' : 'password'} autoComplete="current-password"
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} required
+          value={password} onChange={e => { setPassword(e.target.value.replace(/[\r\n]/g, '')); setError(''); }}
           placeholder={t('login.password')} disabled={loading}/>
       </label>
       <button type="submit" disabled={loading}>{loading ? t('login.signingIn') : t('login.signIn')}</button>
