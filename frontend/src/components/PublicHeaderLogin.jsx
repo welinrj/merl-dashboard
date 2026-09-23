@@ -30,7 +30,7 @@ export default function PublicHeaderLogin() {
     setError('');
     setRecoverySent(false);
     try {
-      const redirectTo = `${window.location.origin}${window.location.pathname}`;
+      const redirectTo = 'https://welinrj.github.io/merl-dashboard/';
       const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
       if (recoveryError) {
         setError(fr
