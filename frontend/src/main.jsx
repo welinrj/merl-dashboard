@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import { ConfirmHost } from './lib/confirm';
 import DataAvailabilityGuard from './components/DataAvailabilityGuard';
 import EvidenceUploadPortal from './components/EvidenceUploadPortal';
+import PasswordRecoveryGate from './components/PasswordRecoveryGate';
 
 // i18n must be imported before the application entry so translations are ready
 import './i18n';
@@ -72,6 +73,7 @@ function PortalApp() {
           everyone else to the approved public dashboard. */}
       <Route path="*" element={(
         <>
+          <PasswordRecoveryGate />
           <PublicEntry />
           <EvidenceUploadPortal />
           <ConfirmHost />
