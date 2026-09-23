@@ -122,19 +122,19 @@ export default function PublicHeaderLogin() {
           placeholder={t('login.email')} disabled={loading}/>
       </label>
       <label htmlFor={passwordId}>
-        <span>{t('login.password')}</span>
+        <span className="pbd-password-label-row">
+          <span>{t('login.password')}</span>
+          <button type="button" className="pbd-header-login-link" onClick={() => {
+            setRecovery(true); setRecoverySent(false); setError(''); setPassword('');
+          }}>
+            {fr ? 'Oublié ?' : 'Forgot?'}
+          </button>
+        </span>
         <input id={passwordId} type="password" autoComplete="current-password" required
           value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
           placeholder={t('login.password')} disabled={loading}/>
       </label>
       <button type="submit" disabled={loading}>{loading ? t('login.signingIn') : t('login.signIn')}</button>
-    </div>
-    <div className="pbd-header-login-links">
-      <button type="button" className="pbd-header-login-link" onClick={() => {
-        setRecovery(true); setRecoverySent(false); setError(''); setPassword('');
-      }}>
-        {fr ? 'Mot de passe oublié ?' : 'Forgot password?'}
-      </button>
     </div>
     {error && <div className="pbd-header-login-error" role="alert">{error}</div>}
   </form>;
