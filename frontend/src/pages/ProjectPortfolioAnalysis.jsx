@@ -418,6 +418,8 @@ function Framework({ d, results, onIndicator }) {
         </button>
         {isOpen && (
           <div>
+            {node.description && <p style={{ margin: '0.25rem 0.7rem 0.55rem', paddingLeft: `${0.85 + depth * 0.85}rem`,
+              fontSize: '0.76rem', color: 'var(--text-2)', lineHeight: 1.5 }}>{node.description}</p>}
             {inds.map((r) => <IndicatorRow key={r.indicator.id} r={r} />)}
             {children.map((child) => <Node key={child.id} node={child} depth={depth + 1} />)}
           </div>
