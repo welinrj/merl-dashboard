@@ -22,7 +22,7 @@ import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
 import {
-  useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
+  useDashboardFilters, projectMatches, STATUS_BUCKETS, STATUS_BUCKET_LABEL, bucketOf,
 } from '../lib/dashboardFilters';
 import KpiCard from '../components/ui/KpiCard';
 import { useTranslation } from 'react-i18next';
@@ -210,8 +210,17 @@ export default function Overview() {
     if (key in byBucket) byBucket[key] += 1;
   }
 
-  const completed = byBucket.completed;
-  const activeProjects = total - completed;
+  // Planning and pipeline projects are in the register, but are not active.
+  const lifecycleCounts = projects.reduce((counts, project) => {
+    const status = bucketOf(project.status);
+    if (status === 'completed') counts.completed += 1;
+    else if (status === 'not_started') counts.planned += 1;
+    else if (status !== 'cancelled') counts.active += 1;
+    return counts;
+  }, { active: 0, completed: 0, planned: 0 });
+  const projectList = [...projects].sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '') || (a.code || '').localeCompare(b.code || '')
+  );
 
   const latestFinance = new Map();
   for (const row of financial) {
@@ -405,9 +414,9 @@ export default function Overview() {
       <section className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
           className="ovx-kpi ovx-kpi-projects"
-          label="Active Projects"
-          value={fmtNum(activeProjects)}
-          sub={`${fmtNum(completed)} completed · ${fmtNum(total)} in scope`}
+          label="Projects in Portfolio"
+          value={fmtNum(total)}
+          sub={`${fmtNum(lifecycleCounts.active)} active · ${fmtNum(lifecycleCounts.completed)} completed · ${fmtNum(lifecycleCounts.planned)} planned`}
           linkLabel={t('overview.viewProjects')}
           onClick={() => nav('/analytics/portfolio')}
         />
@@ -455,6 +464,24 @@ export default function Overview() {
           linkLabel="View delayed"
           onClick={() => setFilter('status', 'delayed')}
         />
+      </section>
+
+      <section className="ovx-card ovx-project-inventory" aria-label="Projects in portfolio">
+        <div className="ovx-card-heading">
+          <div className="ovx-card-title">Projects in Portfolio <span className="ovx-project-count">{fmtNum(total)}</span></div>
+        </div>
+        <p className="ovx-project-help">Registered projects matching the filters above.</p>
+        {projectList.length ? (
+          <ul className="ovx-project-list">
+            {projectList.map((project) => (
+              <li key={project.id} className="ovx-project-item">
+                <span className="ovx-project-name">{project.name || project.code}</span>
+                <span className="ovx-project-code">{project.code}</span>
+                <span className="ovx-project-status">{STATUS_BUCKET_LABEL[bucketOf(project.status)]}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="ovx-project-help">No projects match these filters.</p>}
       </section>
 
       <section className="ovx-card ovx-period-card">
@@ -798,6 +825,14 @@ function OverviewStyles() {
       .ovx-priority-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr);gap:.9rem;margin-bottom:.9rem}
       .ovx-secondary-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.45fr);gap:.9rem;margin-bottom:.9rem}
       .ovx-card{display:flex;min-width:0;flex-direction:column;border:1px solid #ebe7f2;border-radius:14px;background:#fff;padding:1rem;box-shadow:var(--shadow-sm)}
+      .ovx-project-inventory{margin-bottom:.9rem}
+      .ovx-project-count{display:inline-flex;align-items:center;justify-content:center;min-width:1.8rem;padding:.12rem .45rem;border-radius:999px;background:#eef3ff;color:#3158a0;font-size:.72rem}
+      .ovx-project-help{margin:0 0 .7rem;color:#756d81;font-size:.72rem}
+      .ovx-project-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;list-style:none;margin:0;padding:0}
+      .ovx-project-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.25rem .6rem;min-width:0;padding:.65rem .75rem;border:1px solid #eeeaf3;border-radius:9px;background:#fcfbfe}
+      .ovx-project-name{grid-column:1 / -1;color:#34284f;font-size:.76rem;font-weight:700;overflow-wrap:anywhere}
+      .ovx-project-code{color:#81778f;font-size:.65rem;overflow-wrap:anywhere}
+      .ovx-project-status{color:#544479;font-size:.65rem;text-align:right}
       .ovx-card-heading{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin-bottom:.8rem}
       .ovx-card-title{display:flex;align-items:center;gap:.48rem;color:#33284f;font-size:.91rem;font-weight:760;letter-spacing:-.015em}
       .ovx-card-title svg{color:#b16a43}
@@ -856,6 +891,7 @@ function OverviewStyles() {
       @media(max-width:980px){.ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}.ovx-location-layout{grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr)}}
       @media(max-width:760px){.ovx-period-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
       @media(max-width:560px){.ovx-period-kpis{grid-template-columns:1fr}.ovx-heading{flex-direction:column}.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
+      @media(max-width:760px){.ovx-project-list{grid-template-columns:1fr}}
       @media print{.ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export{display:none!important}.ovx-card,.ovx-kpi{box-shadow:none!important}}
     `}</style>
   );
