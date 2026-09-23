@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import { loadCurrentProfile } from '../lib/authProfile';
+import { loginErrorKey } from '../lib/loginError';
 import './public-header-login.css';
 
 /** Use the existing MERL authentication and profile checks, without a second login system. */
@@ -24,7 +25,7 @@ export default function PublicHeaderLogin() {
       const normalizedEmail = email.trim().toLowerCase();
       const { error: authError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
       if (authError) {
-        setError(t('login.badCredentials'));
+        setError(t(loginErrorKey(authError)));
         setPassword('');
         return;
       }

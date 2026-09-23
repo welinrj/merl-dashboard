@@ -171,6 +171,15 @@ function UsersTab() {
     setCred({ email: u.email, password: data });
   };
 
+  const provisionLogin = async (u) => {
+    setBusy(true); setErr('');
+    const { data, error } = await supabase.rpc('admin_provision_login', { p_id: u.id });
+    setBusy(false);
+    if (error) { setErr(dbErrorMessage(error)); return; }
+    setCred({ email: u.email, password: data });
+    load();
+  };
+
   const toggleActive = async (u) => {
     setBusy(true); setErr('');
     const { error } = await supabase.rpc('admin_set_active', { p_id: u.id, p_active: !u.active });
@@ -236,6 +245,7 @@ function UsersTab() {
           {key:'active',label:t('adm.status'),value:u=>u.active?1:0,render:u=><span className={`text-xs font-medium ${u.active?'text-green-700':'text-gray-500'}`}>● {u.active?'Active':'Inactive'}</span>},
         ]}
         rowActions={u=>[
+          ...(!u.has_login?[{label:'Create missing login',disabled:busy||!u.active,onClick:()=>provisionLogin(u)}]:[]),
           {label:t('pw.setPassword'),disabled:busy||!u.has_login,onClick:()=>setPasswordFor(u)},
           {label:t('adm.resetPassword'),disabled:busy||!u.has_login,onClick:()=>resetPassword(u)},
           {label:u.active?'Deactivate':'Activate',disabled:busy,onClick:()=>toggleActive(u)},
