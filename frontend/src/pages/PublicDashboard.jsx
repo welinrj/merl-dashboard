@@ -52,7 +52,11 @@ const num = (value, lang = 'en') => finite(value)
 const pct = value => finite(value) ? `${Math.round(Number(value))}%` : '—';
 const vuv = (value, lang, fallback = '—') => finite(value) ? `VT ${num(value, lang)}` : fallback;
 const list = value => Array.isArray(value) ? value : [];
-const themeOf = project => project.primary_climate_theme || '';
+const themesOf = project => {
+  const officialThemes = list(project.docc_themes).map(theme => String(theme || '').trim()).filter(Boolean);
+  return officialThemes.length ? [...new Set(officialThemes)] : [project.primary_climate_theme].filter(Boolean);
+};
+const themeOf = project => themesOf(project).join(', ');
 const statusOf = project => ['ongoing', 'completed', 'upcoming'].includes(project.lifecycle_status) ? project.lifecycle_status : 'other';
 const initialFilters = { search: '', status: '', theme: '', province: '' };
 
@@ -96,11 +100,11 @@ export default function PublicDashboard() {
     const text = [project.name, project.code, project.acronym, project.description, project.expected_primary_outcome, project.project_manager, themeOf(project), ...list(project.provinces)].join(' ').toLowerCase();
     return (!filters.search || text.includes(filters.search.trim().toLowerCase()))
       && (!filters.status || statusOf(project) === filters.status)
-      && (!filters.theme || themeOf(project) === filters.theme)
+      && (!filters.theme || themesOf(project).includes(filters.theme))
       && (!filters.province || list(project.provinces).includes(filters.province))
       && (!selectedAreaIds || selectedAreaIds.has(String(project.id)));
   }), [projects, filters, selectedAreaIds]);
-  const themes = useMemo(() => [...new Set(projects.map(themeOf).filter(Boolean))].sort(), [projects]);
+  const themes = useMemo(() => [...new Set(projects.flatMap(themesOf))].sort(), [projects]);
   const allScope = !filters.search && !filters.status && !filters.theme && !filters.province && !selectedArea;
   const totals = publicTotals(filtered, summary, allScope);
   const selectedIds = new Set(filtered.map(project => String(project.id)));
