@@ -76,6 +76,7 @@ const publicFixtures={
   public_portal_projects:[{id:'pub1',code:'PUB-1',name:'Published Project',provinces:['SANMA'],primary_climate_theme:'Adaptation',lifecycle_status:'ongoing',budget_vuv:1000000,progress_pct:50,published_beneficiaries:10}],
   public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:1,project_ids:['pub1'],project_names:['Published Project']}],
   public_portal_kpis:[],
+  public_portal_indicator_categories:[{project_id:'pub1',category_key:'ecosystems',indicator_count:2}],
   public_portal_project_inventory:[{total_projects:20,approved_projects:1,other_projects:19}],
 };
 await pub.route(`${HOST}/**`,async route=>{

@@ -10,6 +10,7 @@ const fixtures = {
   public_portal_projects:projects,
   public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:2,project_ids:['pa','pb'],project_names:['Coastal Resilience','Water Security']},{province:'TORBA',area_council:'Torres',project_count:1,project_ids:['pb'],project_names:['Water Security']}],
   public_portal_kpis:[],
+  public_portal_indicator_categories:[{project_id:'pa',category_key:'ecosystems',indicator_count:3},{project_id:'pa',category_key:'capacity',indicator_count:2},{project_id:'pb',category_key:'finance',indicator_count:4}],
 };
 let failures = 0;
 const check = (name, ok) => {console.log(`${ok?'✓':'✗'} ${name}`);if(!ok)failures++;};
@@ -53,8 +54,11 @@ check('project image is shown beside its matching name',await page.getByRole('he
 check('project managers are visible',await page.getByText('Lina Kalo',{exact:true}).count()===1 && await page.getByText('Tom Nalo',{exact:true}).count()===1);
 check('all official themes are shown for multi-theme projects',await page.getByText('Adaptation, Mitigation',{exact:true}).count()===1);
 check('implementation areas are visible',await page.getByRole('heading',{name:'Area Councils'}).count()===1 && await page.getByRole('button',{name:/Big Bay Coast/}).count()===1);
+check('map legend categorises recorded areas by official themes',await page.locator('.pub-map-key').getByText('Areas by official thematic area',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Adaptation & Mitigation',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Theme not recorded',{exact:true}).count()===1);
+check('all indicator activity categories and totals are shown',await page.getByText('What project indicators cover',{exact:true}).count()===1 && await page.locator('.pbd-activity-category').count()===3 && await page.locator('.pbd-activity-section').getByText('9 indicators',{exact:true}).count()===1);
 await page.locator('.pbd-filters select').nth(1).selectOption('Mitigation');
 check('theme filter includes a project under either official theme',await page.locator('.pbd-project-card').count()===1 && await page.getByRole('heading',{name:'Coastal Resilience'}).count()===1);
+check('indicator category totals follow the selected projects',await page.locator('.pbd-activity-category').count()===2 && await page.locator('.pbd-activity-section').getByText('5 indicators',{exact:true}).count()===1);
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 await page.locator('.pbd-filters select').nth(2).selectOption('Torba');
 check('province filter reduces the project list',await page.locator('.pbd-project-card').count()===1 && await page.getByRole('heading',{name:'Water Security'}).count()===1);

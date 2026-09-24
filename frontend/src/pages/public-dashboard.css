@@ -39,8 +39,10 @@
 .pbd-location-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(220px,.65fr);gap:16px;align-items:stretch}
 .pbd-root .pub-leaflet-wrap{position:relative;height:470px;min-width:0}
 .pbd-root .pub-leaflet{height:100%;border-radius:var(--radius-control);overflow:hidden}
-.pbd-root .pub-map-key{position:absolute;left:12px;bottom:12px;z-index:500;display:flex;flex-direction:column;max-width:70%;gap:3px;background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:var(--radius-control);padding:9px 11px;font-size:.7rem}
-.pbd-root .pub-map-key span{color:var(--text-3);font-size:.67rem}
+.pbd-root .pub-map-key{position:absolute;left:12px;bottom:12px;z-index:500;display:flex;flex-direction:column;width:min(310px,calc(100% - 24px));gap:7px;background:rgba(255,255,255,.97);border:1px solid var(--border);border-radius:var(--radius-control);padding:10px 11px;font-size:.7rem;box-shadow:0 5px 18px rgba(17,42,72,.12)}
+.pbd-root .pub-map-key>strong{font-size:.72rem;color:var(--text-1)}
+.pbd-root .pub-map-key>small{color:var(--text-3);font-size:.62rem;line-height:1.4}
+.pub-map-legend{display:grid;gap:5px}.pub-map-legend>div{display:grid;grid-template-columns:11px minmax(0,1fr) auto;align-items:center;gap:7px;min-width:0}.pub-map-legend i{width:11px;height:11px;border:1px solid rgba(18,43,70,.16);border-radius:3px}.pub-map-legend span{min-width:0;color:var(--text-2);font-size:.65rem;line-height:1.25}.pub-map-legend b{color:var(--text-3);font-size:.61rem;white-space:nowrap}
 .pbd-root .pub-map-error{position:absolute;inset:0;display:grid;place-items:center;background:var(--surface-1);color:var(--text-3);z-index:600}
 .pbd-area-directory{height:470px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-control);padding:10px}
 .pbd-area-directory h3{margin:3px 4px 8px;font-size:.8rem;color:var(--text-2)}
@@ -48,6 +50,8 @@
 .pbd-area-directory>button:last-of-type{border-bottom:0}.pbd-area-directory>button:hover,.pbd-area-directory>button.active{background:#edf5ff;border-radius:8px}
 .pbd-area-directory>button span{display:flex;flex-direction:column;gap:3px;min-width:0}.pbd-area-directory>button strong{font-size:.75rem}.pbd-area-directory>button small{font-size:.66rem;color:var(--text-3)}
 .pbd-area-directory>button b{display:grid;place-items:center;min-width:26px;height:26px;border-radius:99px;background:#e8f0fc;color:#2257a4;font-size:.7rem}.pbd-area-directory>p{padding:18px 8px;color:var(--text-3);font-size:.75rem;line-height:1.5}
+
+.pbd-activity-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.pbd-activity-category{--cat:#60748b;display:flex;flex-direction:column;gap:9px;min-width:0;padding:13px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,#fff,#f9fbfd)}.pbd-activity-category-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.pbd-activity-category-head span{color:var(--text-1);font-size:.75rem;font-weight:720;line-height:1.35}.pbd-activity-category-head strong{flex:none;color:var(--cat);font-size:1.18rem;line-height:1}.pbd-activity-bar{height:5px;border-radius:99px;background:#e8edf3;overflow:hidden}.pbd-activity-bar i{display:block;height:100%;border-radius:inherit;background:var(--cat)}.pbd-activity-category small{color:var(--text-3);font-size:.64rem;line-height:1.35}.pbd-activity-ecosystems{--cat:#19805d}.pbd-activity-livelihoods{--cat:#a46716}.pbd-activity-climate-risk{--cat:#2463c7}.pbd-activity-infrastructure{--cat:#397b93}.pbd-activity-governance{--cat:#7651b5}.pbd-activity-capacity{--cat:#b25378}.pbd-activity-finance{--cat:#1d6f8f}.pbd-activity-learning-delivery{--cat:#596b83}.pbd-activity-beneficiaries{--cat:#c5543d}.pbd-activity-other{--cat:#7a6d60}
 
 .pbd-project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .pbd-project-card{min-width:0;padding:16px;border:1px solid var(--border);border-radius:14px;background:#fff}
@@ -70,7 +74,8 @@
 .pbd-overlay{display:none}
 
 @media(max-width:1350px){.pbd-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.pbd-search{grid-column:1/-1}.pbd-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:1000px){.pbd-project-grid{grid-template-columns:1fr}.pbd-project-description{min-height:0}.pbd-location-grid{grid-template-columns:1fr}.pbd-area-directory{height:auto;max-height:330px}}
+@media(max-width:1000px){.pbd-project-grid{grid-template-columns:1fr}.pbd-project-description{min-height:0}.pbd-location-grid{grid-template-columns:1fr}.pbd-area-directory{height:auto;max-height:330px}.pbd-activity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.pbd-root .dsh-side{z-index:45}.pbd-overlay{display:block;position:fixed;inset:0;z-index:40;border:0;background:rgba(12,29,49,.55)}.pbd-root .dsh-head{gap:10px}.pbd-root .dsh-head .pbd-signin{font-size:.72rem;padding:8px 10px}.pbd-view{padding:14px}.pbd-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pbd-search{grid-column:1/-1}.pbd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pbd-root .pub-leaflet-wrap{height:400px}.pbd-project-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:480px){.pbd-root .dsh-head .pbd-signin{white-space:normal;text-align:center}.pbd-view{padding:12px}.pbd-filters{padding:12px}.pbd-metrics{grid-template-columns:1fr}.pbd-metric{min-height:120px}.pbd-section{padding:13px}.pbd-section-head{flex-wrap:wrap}.pbd-root .pub-leaflet-wrap{height:350px}.pbd-project-facts{grid-template-columns:1fr}.pbd-project-card>header{flex-wrap:wrap}.pbd-project-image{flex-basis:76px;width:76px;height:58px}}
+@media(max-width:600px){.pbd-activity-grid{grid-template-columns:1fr}}
+@media(max-width:480px){.pbd-root .dsh-head .pbd-signin{white-space:normal;text-align:center}.pbd-view{padding:12px}.pbd-filters{padding:12px}.pbd-metrics{grid-template-columns:1fr}.pbd-metric{min-height:120px}.pbd-section{padding:13px}.pbd-section-head{flex-wrap:wrap}.pbd-root .pub-leaflet-wrap{height:390px}.pbd-root .pub-map-key{left:8px;bottom:8px;width:calc(100% - 16px)}.pbd-project-facts{grid-template-columns:1fr}.pbd-project-card>header{flex-wrap:wrap}.pbd-project-image{flex-basis:76px;width:76px;height:58px}}
 @media(prefers-reduced-motion:reduce){.pbd-root *{scroll-behavior:auto!important}}
