@@ -1,13 +1,13 @@
 // ── Supabase client — DoCC MERL Dashboard ────────────────────────────────────
-// Project: MERL Dashboard production (ppffqjeuixxffoxfwezo)  |  Region: ap-southeast-2
+// Project: merl-dashboard-staging (ndntvncboeajanipafeq)  |  Region: ap-southeast-2
 // Override per environment with VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.
 import { createClient } from '@supabase/supabase-js';
 import type { UserRole } from './types';
 
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
-  ?? 'https://ppffqjeuixxffoxfwezo.supabase.co';
+  ?? 'https://ndntvncboeajanipafeq.supabase.co';
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
-  ?? 'sb_publishable_CfeKxoYjKqO3_GJf3-HtdQ_JGU6jF4S';
+  ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kbnR2bmNib2VhamFuaXBhZmVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyODA3ODEsImV4cCI6MjA5ODg1Njc4MX0.EPLQbtDvTPIVY57NCZEjsUJzxrbMhP-gngVyP1Vfpm4';
 
 export type SupabaseReadFailure = { status: number; method: string };
 let lastSupabaseReadFailure: SupabaseReadFailure | null = null;
