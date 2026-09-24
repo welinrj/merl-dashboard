@@ -146,17 +146,58 @@ END $$;
 REVOKE ALL ON FUNCTION merl.refresh_public_portal() FROM public,anon,authenticated;
 GRANT EXECUTE ON FUNCTION merl.refresh_public_portal() TO service_role;
 
-DO $$ DECLARE tbl text; BEGIN
+-- Public Overview is a controlled publication snapshot. User data can continue
+-- changing in MERL without changing the anonymous/public page. Only a System
+-- Administrator can publish the latest eligible information.
+CREATE OR REPLACE FUNCTION public.publish_public_overview()
+RETURNS TABLE(
+  updated_at timestamptz,
+  project_count integer,
+  published_beneficiaries bigint,
+  total_investment_vuv numeric,
+  total_utilised_vuv numeric
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=merl,public,pg_temp
+AS $
+DECLARE
+  v_user merl.users;
+BEGIN
+  v_user := merl.current_db_user();
+  IF v_user IS NULL OR v_user.role <> 'administrator' THEN
+    RAISE EXCEPTION 'System Administrator access required' USING ERRCODE='42501';
+  END IF;
+
+  PERFORM merl.refresh_public_portal();
+
+  RETURN QUERY
+  SELECT s.updated_at,s.project_count,s.published_beneficiaries,
+         s.total_investment_vuv,s.total_utilised_vuv
+  FROM public.public_portal_summary s
+  WHERE s.singleton=true;
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.publish_public_overview() FROM public,anon;
+GRANT EXECUTE ON FUNCTION public.publish_public_overview() TO authenticated,service_role;
+
+-- Retire automatic publication triggers. The system still gathers live MERL
+-- information in its internal views, but the public snapshot changes only when
+-- an administrator presses "Update Public Overview".
+DO $ DECLARE tbl text; BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'projects','indicator_progress','reporting_periods','beneficiaries',
-    'financial_progress','project_area_councils','dashboard_kpi_config','project_indicators',
-    'project_organizations','organizations','users','project_profiles'
+    'financial_progress','project_locations','project_area_councils',
+    'dashboard_kpi_config','project_indicators','project_organizations',
+    'organizations','users','project_profiles'
   ] LOOP
     IF to_regclass(format('merl.%I',tbl)) IS NOT NULL THEN
       EXECUTE format('DROP TRIGGER IF EXISTS refresh_public_portal_snapshot ON merl.%I',tbl);
-      EXECUTE format('CREATE TRIGGER refresh_public_portal_snapshot AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON merl.%I FOR EACH STATEMENT EXECUTE FUNCTION merl.trg_refresh_public_portal()',tbl);
     END IF;
   END LOOP;
-END $$;
+END $;
 
+-- Publish one initial snapshot when this migration is installed. Subsequent
+-- changes require the administrator button.
 SELECT merl.refresh_public_portal();
