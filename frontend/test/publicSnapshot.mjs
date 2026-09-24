@@ -16,12 +16,12 @@ test('missing results remain unavailable instead of becoming zero', () => {
 
 test('unfiltered totals use the approved publication summary', () => {
   const projects = [{ progress_pct: 40, budget_vuv: 100, published_beneficiaries: 50 }];
-  assert.deepEqual(publicTotals(projects, { overall_progress_pct: 70, total_investment_vuv: 300, published_beneficiaries: 120 }, true), { progress: 70, investment: 300, beneficiaries: 120 });
+  assert.deepEqual(publicTotals(projects, { overall_progress_pct: 70, total_investment_vuv: 300, published_beneficiaries: 120, total_utilised_vuv: 90, financial_utilisation_pct: 30 }, true), { progress: 70, investment: 300, beneficiaries: 120, utilised: 90, utilisation: 30 });
 });
 
 test('filtered totals reconcile to the selected published projects', () => {
-  assert.deepEqual(publicTotals([{ progress_pct: 40, budget_vuv: 100, published_beneficiaries: 50 }, { progress_pct: 100, budget_vuv: 200, published_beneficiaries: 70 }], null, false), { progress: 70, investment: 300, beneficiaries: 120 });
-  assert.deepEqual(publicTotals([{ progress_pct: null, budget_vuv: null, published_beneficiaries: null }], null, false), { progress: null, investment: null, beneficiaries: null });
+  assert.deepEqual(publicTotals([{ progress_pct: 40, budget_vuv: 100, cumulative_expenditure_vuv: 20, published_beneficiaries: 50 }, { progress_pct: 100, budget_vuv: 200, cumulative_expenditure_vuv: 70, published_beneficiaries: 70 }], null, false), { progress: 70, investment: 300, beneficiaries: 120, utilised: 90, utilisation: 30 });
+  assert.deepEqual(publicTotals([{ progress_pct: null, budget_vuv: null, cumulative_expenditure_vuv: null, published_beneficiaries: null }], null, false), { progress: null, investment: null, beneficiaries: null, utilised: null, utilisation: null });
 });
 
 test('all six published province names match regardless of case or whitespace', () => {

@@ -30,16 +30,16 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const { i18n } = useTranslation();
   const fr = i18n.resolvedLanguage?.startsWith('fr');
   const copy = fr ? {
-    one:'projet', many:'projets', none:'aucun enregistrement de couverture approuvé',
-    noneDetail:'Aucun enregistrement approuvé de couverture au niveau du conseil de zone n’est disponible. Cela ne signifie pas qu’il n’y a aucune activité de projet.',
-    unavailable:'Carte temporairement indisponible.', keyTitle:'Couverture enregistrée au niveau du conseil de zone',
-    keyBody:'Les zones fortement ombrées disposent d’enregistrements de couverture de projet approuvés. Les zones pâles signifient qu’aucun enregistrement de couverture approuvé n’est disponible; elles ne signifient pas une activité de projet nulle.',
+    one:'projet', many:'projets', none:'aucun lieu de mise en œuvre enregistré',
+    noneDetail:'Aucun lieu de mise en œuvre n’est enregistré pour ce conseil de zone. Cela ne signifie pas nécessairement qu’il n’y a aucune activité de projet.',
+    unavailable:'Carte temporairement indisponible.', keyTitle:'Lieux de mise en œuvre enregistrés',
+    keyBody:'Les zones fortement ombrées ont des projets enregistrés. Les zones pâles n’ont actuellement aucun lieu de mise en œuvre enregistré.',
     aria:'Carte publique de la couverture des projets',
   } : {
-    one:'project', many:'projects', none:'no approved coverage record',
-    noneDetail:'No approved Area Council coverage record is available. This does not mean zero project activity.',
-    unavailable:'Map temporarily unavailable.', keyTitle:'Recorded Area Council coverage',
-    keyBody:'Strongly shaded areas have approved project coverage records. Pale areas mean no approved coverage record is available; they do not mean zero project activity.',
+    one:'project', many:'projects', none:'no recorded implementation location',
+    noneDetail:'No implementation location is recorded for this Area Council. This does not necessarily mean there is no project activity.',
+    unavailable:'Map temporarily unavailable.', keyTitle:'Recorded implementation locations',
+    keyBody:'Strongly shaded areas have recorded projects. Pale areas currently have no recorded implementation location.',
     aria:'Public project coverage map',
   };
   const ref=useRef(null), mapRef=useRef(null), layerRef=useRef(null), dataRef=useRef(null);

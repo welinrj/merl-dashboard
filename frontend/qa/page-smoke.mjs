@@ -96,7 +96,7 @@ pp.on('pageerror',e=>publicErrors.push(String(e)));
 await pp.goto('http://localhost:5199/#/dashboards',{waitUntil:'domcontentloaded',timeout:20000});
 await pp.waitForTimeout(1400);
 const pbody=(await pp.locator('body').innerText()).replace(/\s+/g,' ');
-check('Public Dashboard',/Public Dashboard/i.test(pbody)&&!/This section could not be loaded/i.test(pbody)&&publicErrors.length===0,publicErrors[0]||'');
+check('Public Overview',/Public Overview/i.test(pbody)&&!/This section could not be loaded/i.test(pbody)&&publicErrors.length===0,publicErrors[0]||'');
 await pub.close();
 
 await browser.close();

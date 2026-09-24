@@ -4,18 +4,16 @@ import { normalizePublishedProjects, normalizeProvince } from './publicProvinces
 
 export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 
-// The inventory RPC exposes counts only. Never read internal v_* views or use
-// an elevated credential from this module. All reads must succeed before React
-// Query replaces the previously displayed data.
+// Never read internal v_* views or use an elevated credential from this module.
+// All reads must succeed before React Query replaces the previously displayed data.
 export async function fetchPublicSnapshot({ signal } = {}) {
-  const [summary, projects, areas, kpis, inventory] = await Promise.all([
+  const [summary, projects, areas, kpis] = await Promise.all([
     supabase.from('public_portal_summary').select('*').abortSignal(signal).single(),
     supabase.from('public_portal_projects').select('*').order('name').abortSignal(signal),
     supabase.from('public_portal_area_councils').select('*').order('project_count', { ascending: false }).abortSignal(signal),
     supabase.from('public_portal_kpis').select('*').order('display_order').abortSignal(signal),
-    supabase.rpc('public_portal_project_inventory').abortSignal(signal).single(),
   ]);
-  const failed = [summary, projects, areas, kpis, inventory].find(result => result.error);
+  const failed = [summary, projects, areas, kpis].find(result => result.error);
   if (failed) throw failed.error;
   const byProject = new Map();
   for (const row of kpis.data || []) {
@@ -29,7 +27,6 @@ export async function fetchPublicSnapshot({ signal } = {}) {
       public_kpis: byProject.get(String(project.id)) || [],
     })),
     areas: (areas.data || []).map(area => ({...area, province: normalizeProvince(area.province)})),
-    inventory: inventory.data,
   };
 }
 
@@ -60,11 +57,17 @@ export function publicTotals(projects, summary, allScope) {
     progress: summary?.overall_progress_pct ?? null,
     investment: summary?.total_investment_vuv ?? null,
     beneficiaries: summary?.published_beneficiaries ?? null,
+    utilised: summary?.total_utilised_vuv ?? null,
+    utilisation: summary?.financial_utilisation_pct ?? null,
   };
+  const investment = total(projects.map(project => project.budget_vuv));
+  const utilised = total(projects.map(project => project.cumulative_expenditure_vuv));
   return {
     progress: average(projects.map(project => project.progress_pct)),
-    investment: total(projects.map(project => project.budget_vuv)),
+    investment,
     beneficiaries: total(projects.map(project => project.published_beneficiaries)),
+    utilised,
+    utilisation: investment > 0 && utilised != null ? Math.round(utilised / investment * 1000) / 10 : null,
   };
 }
 
