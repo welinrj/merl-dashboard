@@ -37,9 +37,9 @@ try {
   await page.goto('http://localhost:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
   await page.locator('.pbd-root .pbd-metrics').waitFor({ timeout: 15000 });
   await assertHeaderLogin('Public overview');
-  for (const name of ['Projects', 'Results', 'Public Overview']) {
-    await page.locator('.pbd-root .dsh-nav').getByRole('button', { name, exact: true }).click();
-    await assertHeaderLogin(name);
+  const publicDestinations = page.locator('.pbd-root .dsh-nav button');
+  if (await publicDestinations.count() !== 1 || await publicDestinations.first().innerText() !== 'Public Overview') {
+    throw new Error('Expected Public Overview to be the only public destination');
   }
   const form = page.locator('.pbd-header-login');
   await form.getByLabel('Email').fill('invalid@example.test');
