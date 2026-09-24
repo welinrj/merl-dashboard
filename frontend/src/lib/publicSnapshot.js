@@ -7,13 +7,14 @@ export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 // Never read internal v_* views or use an elevated credential from this module.
 // All reads must succeed before React Query replaces the previously displayed data.
 export async function fetchPublicSnapshot({ signal } = {}) {
-  const [summary, projects, areas, kpis] = await Promise.all([
+  const [summary, projects, areas, kpis, indicatorCategories] = await Promise.all([
     supabase.from('public_portal_summary').select('*').abortSignal(signal).single(),
     supabase.from('public_portal_projects').select('*').order('name').abortSignal(signal),
     supabase.from('public_portal_area_councils').select('*').order('project_count', { ascending: false }).abortSignal(signal),
     supabase.from('public_portal_kpis').select('*').order('display_order').abortSignal(signal),
+    supabase.from('public_portal_indicator_categories').select('*').order('category_key').abortSignal(signal),
   ]);
-  const failed = [summary, projects, areas, kpis].find(result => result.error);
+  const failed = [summary, projects, areas, kpis, indicatorCategories].find(result => result.error);
   if (failed) throw failed.error;
   const byProject = new Map();
   for (const row of kpis.data || []) {
@@ -27,6 +28,7 @@ export async function fetchPublicSnapshot({ signal } = {}) {
       public_kpis: byProject.get(String(project.id)) || [],
     })),
     areas: (areas.data || []).map(area => ({...area, province: normalizeProvince(area.province)})),
+    indicatorCategories: indicatorCategories.data || [],
   };
 }
 

@@ -24,6 +24,7 @@ test('anonymous reads stay within public snapshot tables', () => {
   assert.doesNotMatch(snapshot, /v_financial_progress|v_projects|service_role/);
   assert.match(snapshot, /public_portal_projects/);
   assert.match(snapshot, /public_portal_summary/);
+  assert.match(snapshot, /public_portal_indicator_categories/);
 });
 
 test('financial and beneficiary publication requires approved reporting periods', () => {

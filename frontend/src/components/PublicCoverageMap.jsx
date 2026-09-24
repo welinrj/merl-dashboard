@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { THEME_AREA_COLOURS, THEME_AREA_ORDER } from '../lib/publicPortfolioCategories';
 
 const LEAFLET_JS='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 const LEAFLET_CSS='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-const BOUNDARY_URL='https://services.arcgis.com/Zoi8xtp32kQcxoKu/arcgis/rest/services/vut_admbnda_adm2_spc_20180824/FeatureServer/0/query?where=1%3D1&outFields=ADM2_EN%2CADM2_PCODE%2CADM1_EN&returnGeometry=true&outSR=4326&f=geojson';
-const PALETTE=['#4f86c6','#d97757','#5aa879','#9b6fc4','#d6a53f','#3d9fa3','#c8648a','#7b8f45','#6f78bd','#cf6e42','#4c9b83','#8a63ad'];
+// Use the reviewed 2025 WGS84 snapshot bundled with the portal. This keeps the
+// 71 Area Council names stable and avoids an upstream map service changing them.
+const BOUNDARY_URL=`${import.meta.env.BASE_URL}data/vanuatu-area-councils-2025.geojson`;
 let promise;
 function leaflet(){
   if(window.L) return Promise.resolve(window.L);
@@ -17,7 +19,6 @@ function leaflet(){
   return promise;
 }
 const norm=(v)=>String(v||'').toLowerCase().replace(/\b(area council|council)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim();
-const hash=(s)=>{let h=0;for(const c of s)h=((h<<5)-h)+c.charCodeAt(0);return Math.abs(h);};
 const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const key=(province,area)=>`${norm(province)}|${norm(area)}`;
 let boundaryPromise;
@@ -32,14 +33,18 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const copy = fr ? {
     one:'projet', many:'projets', none:'aucun lieu de mise en œuvre enregistré',
     noneDetail:'Aucun lieu de mise en œuvre n’est enregistré pour ce conseil de zone. Cela ne signifie pas nécessairement qu’il n’y a aucune activité de projet.',
-    unavailable:'Carte temporairement indisponible.', keyTitle:'Lieux de mise en œuvre enregistrés',
-    keyBody:'Les zones fortement ombrées ont des projets enregistrés. Les zones pâles n’ont actuellement aucun lieu de mise en œuvre enregistré.',
+    unavailable:'Carte temporairement indisponible.', keyTitle:'Zones par thème officiel',
+    keyBody:'Les zones non colorées n’ont pas de lieu de mise en œuvre enregistré.',
+    themes:{adaptation:'Adaptation',mitigation:'Atténuation',both:'Adaptation et atténuation','not-recorded':'Thème non renseigné'},
+    areaOne:'zone',areaMany:'zones',
     aria:'Carte publique de la couverture des projets',
   } : {
     one:'project', many:'projects', none:'no recorded implementation location',
     noneDetail:'No implementation location is recorded for this Area Council. This does not necessarily mean there is no project activity.',
-    unavailable:'Map temporarily unavailable.', keyTitle:'Recorded implementation locations',
-    keyBody:'Strongly shaded areas have recorded projects. Pale areas currently have no recorded implementation location.',
+    unavailable:'Map temporarily unavailable.', keyTitle:'Areas by official thematic area',
+    keyBody:'Uncoloured areas have no recorded implementation location.',
+    themes:{adaptation:'Adaptation',mitigation:'Mitigation',both:'Adaptation & Mitigation','not-recorded':'Theme not recorded'},
+    areaOne:'area',areaMany:'areas',
     aria:'Public project coverage map',
   };
   const ref=useRef(null), mapRef=useRef(null), layerRef=useRef(null), dataRef=useRef(null);
@@ -70,15 +75,21 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     const geo=L.geoJSON(dataRef.current,{style:f=>{
       const name=f.properties?.ADM2_EN||'',province=f.properties?.ADM1_EN||'';
       const rec=lookup.get(key(province,name));const selected=selectedKey===key(province,name);
-      return {color:selected?'#173f83':'#21465a',weight:selected?3:rec?.project_count?1.4:.7,fillColor:PALETTE[hash(name)%PALETTE.length],fillOpacity:rec?.project_count?0.72:0.08};
+      const theme=rec?.theme_category||'none';
+      return {color:selected?'#173f83':'#536575',weight:selected?3:rec?.project_count?1.4:.7,fillColor:THEME_AREA_COLOURS[theme]||THEME_AREA_COLOURS['not-recorded'],fillOpacity:rec?.project_count?0.76:0.12};
     },onEachFeature:(f,l)=>{
       const name=f.properties?.ADM2_EN||'',province=f.properties?.ADM1_EN||'';
-      const rec=lookup.get(key(province,name));const n=rec?.project_count||0,names=rec?.project_names||[];
-      l.bindTooltip(rec ? `${esc(name)} · ${n} ${n===1?c.one:c.many}` : `${esc(name)} · ${c.none}`,{sticky:true});
-      l.bindPopup(`<strong>${esc(name)}</strong><br><span style="color:#6b7280">${esc(province)}</span>${rec?`<div style="margin-top:6px"><b>${n}</b> ${n===1?c.one:c.many}</div>${names.length?`<ul style="padding-left:16px;margin:6px 0 0">${names.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`:`<div style="margin-top:6px">${esc(c.noneDetail)}</div>`}`);
-      l.on('click',()=>stateRef.current.onAreaSelect?.({province,area_council:name}));
+      const found=lookup.get(key(province,name));const rec=found?.project_count>0?found:null;const n=rec?.project_count||0,names=rec?.project_names||[];
+      const themeLabel=rec?c.themes[rec.theme_category]||c.themes['not-recorded']:'';
+      l.bindTooltip(rec ? `${esc(name)} · ${esc(themeLabel)} · ${n} ${n===1?c.one:c.many}` : `${esc(name)} · ${c.none}`,{sticky:true});
+      l.bindPopup(`<strong>${esc(name)}</strong><br><span style="color:#6b7280">${esc(province)}</span>${rec?`<div style="margin-top:6px"><b>${esc(themeLabel)}</b></div><div style="margin-top:4px"><b>${n}</b> ${n===1?c.one:c.many}</div>${names.length?`<ul style="padding-left:16px;margin:6px 0 0">${names.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`:`<div style="margin-top:6px">${esc(c.noneDetail)}</div>`}`);
+      if(rec) l.on('click',()=>stateRef.current.onAreaSelect?.({province,area_council:name}));
     }}).addTo(map);
     layerRef.current=geo;
   },[areas,selectedArea,ready,fr]);
-  return <div className="pub-leaflet-wrap"><div ref={ref} className="pub-leaflet" aria-label={copy.aria}/>{err&&<div className="pub-map-error">{err}</div>}<div className="pub-map-key"><strong>{copy.keyTitle}</strong><span>{copy.keyBody}</span></div></div>;
+  const themeCounts=areas.reduce((counts,area)=>{
+    if(area.project_count>0) counts[area.theme_category||'not-recorded']=(counts[area.theme_category||'not-recorded']||0)+1;
+    return counts;
+  },{});
+  return <div className="pub-leaflet-wrap"><div ref={ref} className="pub-leaflet" aria-label={copy.aria}/>{err&&<div className="pub-map-error">{err}</div>}<div className="pub-map-key"><strong>{copy.keyTitle}</strong><div className="pub-map-legend">{THEME_AREA_ORDER.map(theme=><div key={theme}><i style={{backgroundColor:THEME_AREA_COLOURS[theme]}} aria-hidden="true"/><span>{copy.themes[theme]}</span><b>{themeCounts[theme]||0} {(themeCounts[theme]||0)===1?copy.areaOne:copy.areaMany}</b></div>)}</div><small>{copy.keyBody}</small></div></div>;
 }
