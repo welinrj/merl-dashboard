@@ -19,8 +19,9 @@ const COPY = {
     beneficiaries: 'Total Beneficiaries', beneficiariesSub: 'Direct beneficiaries from approved reports', utilisation: 'Financial Utilisation',
     utilisationSub: 'Approved expenditure as a share of total funding', portfolio: 'Project portfolio', portfolioIntro: 'Projects coordinated by the Department of Climate Change and the information currently recorded for public view.',
     locations: 'Where projects are implementing activities', locationsIntro: 'Recorded provinces and Area Councils for projects in the selected view.',
-    activityAreas: 'What project indicators cover', activityAreasIntro: 'All recorded project indicators grouped by the activity or result area they measure.',
+    activityAreas: 'What project indicators cover', activityAreasIntro: 'Select a category to see its recorded activities, targets and implementing projects.',
     indicator: 'indicator', indicators: 'indicators', inProject: 'in 1 project', inProjects: 'across {count} projects', noIndicators: 'No indicators are recorded for this selection.',
+    activity: 'Activity / indicator', target: 'Target', implementingProject: 'Implementing project', noTarget: 'Not recorded', expandCategory: 'View activities and targets', collapseCategory: 'Hide activities and targets',
     activityCategoryLabels: {ecosystems:'Ecosystems & nature-based solutions',livelihoods:'Livelihoods, food & agriculture','climate-risk':'Climate information & disaster risk',infrastructure:'Infrastructure & technology',governance:'Governance, policy & planning',capacity:'Capacity, awareness & inclusion',finance:'Climate finance & fund systems','learning-delivery':'Learning, monitoring & project delivery',beneficiaries:'Beneficiaries & resilience outcomes',other:'Other recorded outcomes'},
     manager: 'Project Manager', implementation: 'Implementation locations', budget: 'Project funding', spent: 'Utilised',
     reached: 'Beneficiaries', outcome: 'Expected outcome', noDescription: 'Project information has not yet been recorded.', unknown: 'Not recorded',
@@ -39,8 +40,9 @@ const COPY = {
     beneficiaries: 'Total des bénéficiaires', beneficiariesSub: 'Bénéficiaires directs issus des rapports approuvés', utilisation: 'Utilisation financière',
     utilisationSub: 'Dépenses approuvées en proportion du financement total', portfolio: 'Portefeuille de projets', portfolioIntro: 'Projets coordonnés par le Département du changement climatique et informations actuellement enregistrées pour le public.',
     locations: 'Où les projets mettent en œuvre des activités', locationsIntro: 'Provinces et conseils de zone enregistrés pour les projets sélectionnés.',
-    activityAreas: 'Domaines couverts par les indicateurs', activityAreasIntro: 'Tous les indicateurs de projet enregistrés, regroupés selon le domaine d’activité ou de résultat mesuré.',
+    activityAreas: 'Domaines couverts par les indicateurs', activityAreasIntro: 'Sélectionnez une catégorie pour voir les activités, les cibles et les projets de mise en œuvre.',
     indicator: 'indicateur', indicators: 'indicateurs', inProject: 'dans 1 projet', inProjects: 'dans {count} projets', noIndicators: 'Aucun indicateur n’est enregistré pour cette sélection.',
+    activity: 'Activité / indicateur', target: 'Cible', implementingProject: 'Projet de mise en œuvre', noTarget: 'Non renseignée', expandCategory: 'Voir les activités et les cibles', collapseCategory: 'Masquer les activités et les cibles',
     activityCategoryLabels: {ecosystems:'Écosystèmes et solutions fondées sur la nature',livelihoods:'Moyens de subsistance, alimentation et agriculture','climate-risk':'Information climatique et risques de catastrophe',infrastructure:'Infrastructures et technologie',governance:'Gouvernance, politiques et planification',capacity:'Capacités, sensibilisation et inclusion',finance:'Finance climatique et systèmes de fonds','learning-delivery':'Apprentissage, suivi et mise en œuvre',beneficiaries:'Bénéficiaires et résultats de résilience',other:'Autres résultats enregistrés'},
     manager: 'Chef de projet', implementation: 'Lieux de mise en œuvre', budget: 'Financement du projet', spent: 'Utilisé',
     reached: 'Bénéficiaires', outcome: 'Résultat attendu', noDescription: 'Les informations du projet ne sont pas encore enregistrées.', unknown: 'Non renseigné',
@@ -96,10 +98,12 @@ export default function PublicDashboard() {
   const [filters, setFilters] = useState(initialFilters);
   const [selectedArea, setSelectedArea] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [openCategory, setOpenCategory] = useState(null);
   const projects = data?.projects || [];
   const summary = data?.summary;
   const sourceAreas = data?.areas || [];
   const sourceIndicatorCategories = data?.indicatorCategories || [];
+  const sourceIndicatorDetails = data?.indicatorDetails || [];
   const selectedAreaIds = selectedArea
     ? new Set(list(sourceAreas.find(area => area.province === selectedArea.province && area.area_council === selectedArea.area_council)?.project_ids).map(String))
     : null;
@@ -123,6 +127,9 @@ export default function PublicDashboard() {
   const visibleAreas = areas.filter(area => area.project_count > 0);
   const indicatorCategories = aggregateIndicatorCategories(sourceIndicatorCategories, selectedIds);
   const indicatorTotal = indicatorCategories.reduce((sum, category) => sum + category.indicatorCount, 0);
+  const visibleIndicatorDetails = sourceIndicatorDetails.filter(row => selectedIds.has(String(row.project_id)));
+  const activeCategory = indicatorCategories.find(category => category.key === openCategory);
+  const activeDetails = activeCategory ? visibleIndicatorDetails.filter(row => row.category_key === activeCategory.key) : [];
   const maxCategoryCount = Math.max(1, ...indicatorCategories.map(category => category.indicatorCount));
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
   const refresh = () => { void refetch(); };
@@ -167,11 +174,11 @@ export default function PublicDashboard() {
 
           <section className="pbd-section pbd-activity-section">
             <div className="pbd-section-head"><div><span><Activity size={16} aria-hidden="true" />{c.activityAreas}</span><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>
-            {indicatorCategories.length ? <div className="pbd-activity-grid">{indicatorCategories.map(category => <article className={`pbd-activity-category pbd-activity-${category.key}`} key={category.key}>
+            {indicatorCategories.length ? <><div className="pbd-activity-grid">{indicatorCategories.map(category => <button type="button" className={`pbd-activity-category pbd-activity-${category.key}${openCategory === category.key ? ' is-open' : ''}`} key={category.key} aria-expanded={openCategory === category.key} aria-controls="pbd-activity-details" onClick={() => setOpenCategory(current => current === category.key ? null : category.key)}>
               <div className="pbd-activity-category-head"><span>{c.activityCategoryLabels[category.key] || c.activityCategoryLabels.other}</span><strong>{num(category.indicatorCount, lang)}</strong></div>
               <div className="pbd-activity-bar" aria-hidden="true"><i style={{ width: `${category.indicatorCount / maxCategoryCount * 100}%` }} /></div>
-              <small>{category.indicatorCount === 1 ? c.indicator : c.indicators} · {category.projectCount === 1 ? c.inProject : c.inProjects.replace('{count}', num(category.projectCount, lang))}</small>
-            </article>)}</div> : <div className="pbd-empty">{c.noIndicators}</div>}
+              <small>{category.indicatorCount === 1 ? c.indicator : c.indicators} · {category.projectCount === 1 ? c.inProject : c.inProjects.replace('{count}', num(category.projectCount, lang))} · {openCategory === category.key ? c.collapseCategory : c.expandCategory}</small>
+            </button>)}</div>{activeCategory && <div className="pbd-activity-details" id="pbd-activity-details"><h3>{c.activityCategoryLabels[activeCategory.key] || c.activityCategoryLabels.other} <small>({num(activeDetails.length, lang)})</small></h3><div className="pbd-activity-list">{activeDetails.map(row => <article key={row.indicator_id} className="pbd-activity-item"><div><span className="pbd-activity-label">{c.activity}</span><strong>{row.indicator_name}</strong>{row.indicator_code && <small>{row.indicator_code}</small>}</div><div><span className="pbd-activity-label">{c.target}</span><span>{row.target_text || (finite(row.target_value) ? `${num(row.target_value, lang)}${row.unit ? ` ${row.unit}` : ''}` : c.noTarget)}</span></div><div><span className="pbd-activity-label">{c.implementingProject}</span><span>{row.project_name}</span></div></article>)}</div></div>}</> : <div className="pbd-empty">{c.noIndicators}</div>}
           </section>
 
           <section className="pbd-section pbd-portfolio">
