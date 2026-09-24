@@ -40,6 +40,9 @@ import './public-header-alignment.css';
 // Authenticated workspace only: keep the header and navigation stationary while
 // the page content scrolls independently.
 import './fixed-workspace-shell.css';
+// Phone-first authenticated workspace inspired by the approved mobile mock-ups.
+// Loaded after the desktop shell layers so its <=560px rules are authoritative.
+import './mobile-dashboard.css';
 // Project Setup: make the actual MERL form headings clearly bold.
 import './project-setup-form-headings.css';
 // MERL Reporting: improve form navigation, long project labels and disabled-state clarity.
