@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 const HOST = 'https://ndntvncboeajanipafeq.supabase.co';
 const projects = [
-  {id:'pa',code:'PUB-1',name:'Coastal Resilience',project_manager:'Lina Kalo',provinces:['SANMA'],primary_climate_theme:'Adaptation',docc_themes:['Adaptation','Mitigation'],lifecycle_status:'ongoing',budget_vuv:1000000,cumulative_expenditure_vuv:300000,utilisation_pct:30,progress_pct:40,published_beneficiaries:50,expected_primary_outcome:'Coastal communities are resilient'},
+  {id:'pa',code:'PUB-1',name:'Coastal Resilience',project_manager:'Lina Kalo',provinces:['SANMA'],primary_climate_theme:'Adaptation',docc_themes:['Adaptation','Mitigation'],lifecycle_status:'ongoing',budget_vuv:1000000,cumulative_expenditure_vuv:300000,utilisation_pct:30,progress_pct:40,published_beneficiaries:50,last_published_period:'2026 Q2',expected_primary_outcome:'Coastal communities are resilient',docc_image_url:'/project-images/vcap2.webp'},
   {id:'pb',code:'PUB-2',name:'Water Security',project_manager:'Tom Nalo',provinces:['TORBA','SANMA'],primary_climate_theme:'Water Security',lifecycle_status:'completed',budget_vuv:2000000,cumulative_expenditure_vuv:600000,utilisation_pct:30,progress_pct:100,published_beneficiaries:70,expected_primary_outcome:'Reliable water supply'},
 ];
 const fixtures = {
@@ -49,6 +49,7 @@ check('total project funding is shown',await hasMetric('VT 3,000,000'));
 check('approved utilisation is shown',await hasMetric('VT 900,000') && await hasMetric('30%'));
 check('approved beneficiaries are shown',await hasMetric('120'));
 check('all project cards are on the overview',await page.locator('.pbd-project-card').count()===2);
+check('project image is shown beside its matching name',await page.getByRole('heading',{name:'Coastal Resilience'}).locator('xpath=ancestor::header').locator('img[src$="/project-images/vcap2.webp"]').count()===1);
 check('project managers are visible',await page.getByText('Lina Kalo',{exact:true}).count()===1 && await page.getByText('Tom Nalo',{exact:true}).count()===1);
 check('all official themes are shown for multi-theme projects',await page.getByText('Adaptation, Mitigation',{exact:true}).count()===1);
 check('implementation areas are visible',await page.getByRole('heading',{name:'Area Councils'}).count()===1 && await page.getByRole('button',{name:/Big Bay Coast/}).count()===1);

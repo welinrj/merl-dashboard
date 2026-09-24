@@ -47,10 +47,12 @@ const COPY = {
 };
 
 const finite = value => value != null && value !== '' && Number.isFinite(Number(value));
+const positive = value => finite(value) && Number(value) > 0;
 const num = (value, lang = 'en') => finite(value)
   ? new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(Number(value)) : '—';
 const pct = value => finite(value) ? `${Math.round(Number(value))}%` : '—';
 const vuv = (value, lang, fallback = '—') => finite(value) ? `VT ${num(value, lang)}` : fallback;
+const recordedVuv = (value, lang, fallback = '—') => positive(value) ? vuv(value, lang) : fallback;
 const list = value => Array.isArray(value) ? value : [];
 const themesOf = project => {
   const officialThemes = list(project.docc_themes).map(theme => String(theme || '').trim()).filter(Boolean);
@@ -68,14 +70,14 @@ function ProjectCard({ project, areas, copy, lang }) {
   const projectAreas = areas.filter(area => list(area.project_ids).some(id => String(id) === String(project.id)));
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
   return <article className="pbd-project-card">
-    <header><div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div><span className={`pbd-status pbd-status-${statusOf(project)}`}>{copy[statusOf(project)]}</span></header>
+    <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><span className={`pbd-status pbd-status-${statusOf(project)}`}>{copy[statusOf(project)]}</span></header>
     <p className="pbd-project-description">{project.description || project.expected_primary_outcome || copy.noDescription}</p>
     <dl className="pbd-project-facts">
       <div><dt>{copy.manager}</dt><dd>{project.project_manager || copy.unknown}</dd></div>
       <div><dt>{copy.implementation}</dt><dd>{places.length ? places.join(', ') : copy.unknown}</dd></div>
-      <div><dt>{copy.budget}</dt><dd>{vuv(project.budget_vuv, lang, copy.unknown)}</dd></div>
+      <div><dt>{copy.budget}</dt><dd>{recordedVuv(project.budget_vuv, lang, copy.unknown)}</dd></div>
       <div><dt>{copy.spent}</dt><dd>{vuv(project.cumulative_expenditure_vuv, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
-      <div><dt>{copy.reached}</dt><dd>{num(project.published_beneficiaries, lang)}</dd></div>
+      <div><dt>{copy.reached}</dt><dd>{project.last_published_period ? num(project.published_beneficiaries, lang) : copy.noFinance}</dd></div>
       <div><dt>{copy.theme}</dt><dd>{themeOf(project) || copy.unknown}</dd></div>
     </dl>
     {project.expected_primary_outcome && <div className="pbd-project-outcome"><strong>{copy.outcome}</strong><p>{project.expected_primary_outcome}</p></div>}
