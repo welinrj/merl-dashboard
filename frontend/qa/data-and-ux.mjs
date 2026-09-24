@@ -60,7 +60,7 @@ let tx = await body();
 check('project count is 2', /\b2\b/.test(tx));
 check('Overall Progress KPI is present', /OVERALL PROGRESS/i.test(tx));
 check('Reporting Completion KPI is present', /REPORTING COMPLETION/i.test(tx));
-check('Area Councils Covered KPI is present', /AREA COUNCILS COVERED/i.test(tx));
+check('Budget Utilisation KPI is present', /BUDGET UTILISATION/i.test(tx));
 check('At Risk KPI is present', /AT RISK/i.test(tx));
 check('Delayed KPI is present separately', /DELAYED/i.test(tx));
 check('no NaN anywhere', !/NaN/.test(tx), tx.match(/.{0,30}NaN.{0,30}/)?.[0]);
