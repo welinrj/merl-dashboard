@@ -433,7 +433,7 @@ export default function App() {
   const activeItem = (location.pathname === '/merl-reporting' ? NAV_ITEMS.find(n => n.key === 'activities') : undefined)
     ?? NAV_ITEMS.find(n => n.path === location.pathname && (n.search ?? '') === location.search)
     ?? NAV_ITEMS.find(n => n.path === location.pathname && !n.search)
-    ?? (location.pathname === '/results-framework' ? NAV_ITEMS.find(n => n.key === 'projects') : undefined)
+    ?? (location.pathname === '/results-framework' ? NAV_ITEMS.find(n => n.key === 'results') : undefined)
     ?? (location.pathname.startsWith('/analytics') ? NAV_ITEMS.find(n => n.key === 'results') : undefined)
     ?? NAV_ITEMS.find(n => n.key === 'overview')!;
   const gate = (path: string) => allowed.includes(ROUTE_GATE[path]);
@@ -537,7 +537,7 @@ export default function App() {
               <Route path="/analytics/project-portfolio" element={allowed.includes('projectAnalysis') ? <ProjectPortfolioAnalysis /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analytics/:lens" element={<AnalyticsRoute allowed={allowed} fallback={defaultPath} />} />
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/results-framework" element={gate('/results-framework') ? <ResultsWorkspace user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/results-framework" element={<ResultsWorkspace user={user} />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/reports" element={gate('/reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
               <Route path="/review" element={gate('/review') ? <ReviewApproval user={user} /> : <Navigate to={defaultPath} replace />} />
