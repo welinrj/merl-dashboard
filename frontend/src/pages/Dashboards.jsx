@@ -55,7 +55,7 @@ const countBy = (rows, keyFn) => {
 };
 const sum = (rows, f) => rows.reduce((a, r) => a + (Number(f(r)) || 0), 0);
 
-export default function Dashboards({ initialTab }) {
+export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) => item.key) }) {
   const { t, i18n } = useTranslation();
   // Records are localised where they are fetched, so switching language
   // refetches rather than leaving the previous language's copy on screen.
@@ -64,6 +64,7 @@ export default function Dashboards({ initialTab }) {
   const [d, setD] = useState(null); // loaded datasets
   const [projectId, setProjectId] = useState('');
   const [loading, setLoading] = useState(true);
+  const visibleTabs = TABS.filter(({ key }) => allowedTabs.includes(key));
 
   useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
 
@@ -108,7 +109,7 @@ export default function Dashboards({ initialTab }) {
   if (loading || !d) {
     return (
       <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <PageHeader title={t('dash.pageTitle')} subtitle={t('dash.pageSubtitle')} />
+        <PageHeader title={t('dash.pageTitle')} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.7rem' }}>
           {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
@@ -139,7 +140,6 @@ export default function Dashboards({ initialTab }) {
 
       <PageHeader
         title={t('dash.pageTitle')}
-        subtitle={t('dash.pageSubtitle')}
         actions={dataAsAt ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{t('dash.dataAsAt')} <strong style={{ color: 'var(--text-2)' }}>{dataAsAt}</strong></span>
         ) : null}
@@ -151,7 +151,7 @@ export default function Dashboards({ initialTab }) {
       ) : (
       <>
       <div className="db-tabs" role="tablist" aria-label={t('dash.dashboardViews')}>
-        {TABS.map(({ key, label }) => (
+        {visibleTabs.map(({ key, label }) => (
           <button key={key} role="tab" aria-selected={tab === key}
             className={`db-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
             {t(label)}

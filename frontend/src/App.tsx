@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
-  LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin, ProjectAnalysis,
-  AlertTriangle, FolderOpen, FileBarChart, Settings, LogOut, Menu,
+  LayoutDashboard, FolderKanban, Target, ListChecks,
+  FileBarChart, Settings, LogOut, Menu,
   Eye, EyeOff, AlertCircle, ShieldCheck, Mail, Lock, ClipboardCheck,
 } from './components/ui/icons';
 import { useTranslation } from 'react-i18next';
@@ -78,40 +78,16 @@ async function loadProfile(): Promise<AppUser | null> {
 }
 
 // ── Sidebar navigation ────────────────────────────────────────────────────────
-// Every entry is named for what it actually opens, and each opens somewhere
-// distinct. Three used not to:
-//
-//   · "Indicators" and "Results Framework" both resolved to the same Dashboards
-//     tab (LENS_TO_TAB maps indicators -> results), so one is now the single
-//     "Results & Indicators" entry. /analytics/indicators still resolves, so
-//     existing bookmarks keep working.
-//   · "Activities & Workplan" opened the periodic reporting workspace, which
-//     has no activities module at all — activities are Form 5, in Project
-//     Setup. It is now "MERL Reporting", which is what it is.
-//   · "Documents" pointed at the same route as the entry above it and landed on
-//     Indicator Progress. It now deep-links to the Evidence module.
-//
-// The analytics entries are read-only lenses; the records behind them are
-// entered in Project Setup and MERL Reporting.
+// The sidebar is task-based. Detailed analytical views live together under
+// Analysis rather than competing with the Executive Overview as separate
+// destinations. Legacy deep links remain routable below.
 const NAV_ITEMS: SideItem[] = [
-  { key: 'overview', path: '/dashboards', Icon: LayoutDashboard, hasSub: true },
+  { key: 'overview', path: '/dashboards', Icon: LayoutDashboard },
   { key: 'projects', path: '/project-setup', Icon: FolderKanban },
-  // One analytics entry per Dashboards tab. These are read-only lenses on the
-  // portfolio — the data behind them is entered in Project Setup and MERL
-  // Reporting — so they are named for the analysis, not the record they show.
-  { key: 'results', path: '/analytics/results', Icon: Target },
-  { key: 'projectAnalysis', path: '/analytics/project-portfolio', Icon: ProjectAnalysis },
-  { key: 'finances', path: '/analytics/financial', Icon: Wallet },
-  // Financial Analysis reads the whole portfolio; this reads one project across
-  // every module. Neither replaces the other.
-  { key: 'locations', path: '/analytics/geographic', Icon: MapPin },
-  { key: 'risks', path: '/analytics/risks', Icon: AlertTriangle },
-  // The periodic reporting workspace: Forms 4, 6, 8, 9, 10 and 12 against a
-  // reporting period. Documents & Evidence is the same workspace opened on its
-  // Evidence module rather than a second, identical destination.
+  { key: 'results', path: '/analytics/portfolio', Icon: Target },
   { key: 'activities', path: '/merl-reporting', Icon: ListChecks },
-  { key: 'reports', path: '/reports', Icon: FileBarChart },
   { key: 'review', path: '/review', Icon: ClipboardCheck },
+  { key: 'reports', path: '/reports', Icon: FileBarChart },
   { key: 'admin', path: '/admin', Icon: Settings },
 ];
 
@@ -130,13 +106,13 @@ const TAB_ACCESS: Record<UserRole, NavKey[]> = {
 // Which access key gates each real route.
 const ROUTE_GATE: Record<string, NavKey> = {
   '/dashboards': 'overview', '/project-setup': 'projects', '/merl-reporting': 'activities',
-  '/reports': 'reports', '/review': 'review', '/admin': 'admin',
+  '/results-framework': 'projects', '/reports': 'reports', '/review': 'review', '/admin': 'admin',
 };
 
 // Map an /analytics/:lens segment to a Dashboards tab.
 const LENS_TO_TAB: Record<string, string> = {
-  results: 'results', indicators: 'results', financial: 'financial',
-  geographic: 'geographic', risks: 'risks', portfolio: 'portfolio', reporting: 'reporting',
+  portfolio: 'portfolio', project: 'project', results: 'results', indicators: 'results', financial: 'financial',
+  geographic: 'geographic', risks: 'risks', reporting: 'reporting',
 };
 
 // …and to the access key that owns it. Gating the whole /analytics/:lens route
@@ -144,10 +120,8 @@ const LENS_TO_TAB: Record<string, string> = {
 // role has 'overview', so a Viewer could open Financial Analysis by typing the
 // URL. A lens is now gated exactly as its sidebar entry is.
 const LENS_TO_ACCESS: Record<string, NavKey> = {
-  results: 'results', indicators: 'results', financial: 'finances',
-  geographic: 'locations', risks: 'risks',
-  // The portfolio and reporting tabs are the Overview material every role has.
-  portfolio: 'overview', reporting: 'overview',
+  portfolio: 'results', project: 'projectAnalysis', results: 'results', indicators: 'results',
+  financial: 'finances', geographic: 'locations', risks: 'risks', reporting: 'overview',
 };
 
 // ── Login screen ──────────────────────────────────────────────────────────────
@@ -456,12 +430,10 @@ export default function App() {
   const visibleNav = NAV_ITEMS.filter(n => allowed.includes(n.key));
   const defaultPath = visibleNav[0]?.path ?? '/dashboards';
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
-  // Match the query string too: Documents & Evidence and MERL Reporting share a
-  // pathname and are distinguished only by ?module=.
   const activeItem = (location.pathname === '/merl-reporting' ? NAV_ITEMS.find(n => n.key === 'activities') : undefined)
     ?? NAV_ITEMS.find(n => n.path === location.pathname && (n.search ?? '') === location.search)
     ?? NAV_ITEMS.find(n => n.path === location.pathname && !n.search)
-    ?? (location.pathname === '/analytics/project-portfolio' ? NAV_ITEMS.find(n => n.key === 'projectAnalysis') : undefined)
+    ?? (location.pathname === '/results-framework' ? NAV_ITEMS.find(n => n.key === 'projects') : undefined)
     ?? (location.pathname.startsWith('/analytics') ? NAV_ITEMS.find(n => n.key === 'results') : undefined)
     ?? NAV_ITEMS.find(n => n.key === 'overview')!;
   const gate = (path: string) => allowed.includes(ROUTE_GATE[path]);
@@ -563,8 +535,9 @@ export default function App() {
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboards" element={gate('/dashboards') ? <Overview user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analytics/project-portfolio" element={allowed.includes('projectAnalysis') ? <ProjectPortfolioAnalysis /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/analytics/:lens" element={<AnalyticsRoute allowed={allowed} fallback={defaultPath} user={user} />} />
+              <Route path="/analytics/:lens" element={<AnalyticsRoute allowed={allowed} fallback={defaultPath} />} />
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/results-framework" element={gate('/results-framework') ? <ResultsWorkspace user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/reports" element={gate('/reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
               <Route path="/review" element={gate('/review') ? <ReviewApproval user={user} /> : <Navigate to={defaultPath} replace />} />
@@ -581,13 +554,21 @@ export default function App() {
   );
 }
 
-// /analytics/:lens → the tabbed analytics dashboard with the tab preselected,
-// but only where the role may see that lens. An unknown lens falls back to the
-// portfolio tab, which every role can see.
-function AnalyticsRoute({ allowed, fallback, user }: { allowed: NavKey[]; fallback: string; user: AppUser }) {
+// /analytics/:lens → one Analysis workspace with the requested tab selected.
+// Old bookmarks keep working, but the sidebar exposes only the single Analysis
+// destination.
+function AnalyticsRoute({ allowed, fallback }: { allowed: NavKey[]; fallback: string }) {
   const { lens } = useParams();
   const key = LENS_TO_ACCESS[lens ?? ''] ?? 'overview';
   if (!allowed.includes(key)) return <Navigate to={fallback} replace />;
-  if (lens === 'results' || lens === 'indicators') return <ResultsWorkspace user={user} />;
-  return <Dashboards initialTab={LENS_TO_TAB[lens ?? ''] ?? 'portfolio'} />;
+  const allowedTabs = [
+    'portfolio',
+    ...(allowed.includes('projectAnalysis') ? ['project'] : []),
+    ...(allowed.includes('results') ? ['results'] : []),
+    ...(allowed.includes('finances') ? ['financial'] : []),
+    ...(allowed.includes('locations') ? ['geographic'] : []),
+    ...(allowed.includes('risks') ? ['risks'] : []),
+    ...(allowed.includes('overview') ? ['reporting'] : []),
+  ];
+  return <Dashboards initialTab={LENS_TO_TAB[lens ?? ''] ?? 'portfolio'} allowedTabs={allowedTabs} />;
 }

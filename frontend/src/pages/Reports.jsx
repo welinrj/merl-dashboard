@@ -358,7 +358,6 @@ export default function Reports() {
       <div className="rp-noprint">
         <PageHeader
           title={t('rpt.reports')}
-          subtitle={t('rpt.pageSubtitle')}
         />
       </div>
 

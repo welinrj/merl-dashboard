@@ -571,7 +571,6 @@ export default function MerlReporting({ user }) {
 
       <PageHeader
         title={t('merl.pageTitle')}
-        subtitle={t('merl.pageSubtitle')}
       />
 
       {/* Project + period bar */}

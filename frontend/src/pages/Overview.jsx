@@ -22,7 +22,7 @@ import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
 import {
-  useDashboardFilters, projectMatches, STATUS_BUCKETS, STATUS_BUCKET_LABEL, bucketOf,
+  useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
 } from '../lib/dashboardFilters';
 import KpiCard from '../components/ui/KpiCard';
 import { useTranslation } from 'react-i18next';
@@ -218,10 +218,6 @@ export default function Overview() {
     else if (status !== 'cancelled') counts.active += 1;
     return counts;
   }, { active: 0, completed: 0, planned: 0 });
-  const projectList = [...projects].sort((a, b) =>
-    (a.name || '').localeCompare(b.name || '') || (a.code || '').localeCompare(b.code || '')
-  );
-
   const latestFinance = new Map();
   for (const row of financial) {
     const prev = latestFinance.get(row.project_id);
@@ -273,8 +269,6 @@ export default function Overview() {
 
   const reportsApproved = reporting.filter((r) => r.submission_status === 'approved').length;
   const reportingCompletion = pct(reportsApproved, reporting.length);
-  const areaCouncilNames = [...new Set(areaCouncils.filter((r) => r.coverage_status !== 'not_covered').map((r) => r.area_council_name).filter(Boolean))].sort();
-  const feasibilityConfirmed = areaCouncils.filter((r) => r.feasibility_status === 'confirmed').length;
   const atRiskProjects = portfolioStatus.filter((r) => r.performance_status === 'at_risk').length;
   const delayedProjects = portfolioStatus.filter((r) => r.schedule_status === 'delayed').length;
 
@@ -286,23 +280,6 @@ export default function Overview() {
   const dataAsAt = approvedDates.length
     ? approvedDates[approvedDates.length - 1].slice(0, 10)
     : '—';
-
-  const provinceCounts = {};
-  for (const p of projects) {
-    for (const province of (p.provinces || [])) {
-      provinceCounts[province] = (provinceCounts[province] || 0) + 1;
-    }
-  }
-  const nationalCount = projects.filter((p) => !(p.provinces || []).length).length;
-
-  const provincesByProject = new Map(data.projects.map((p) => [p.id, p.provinces || []]));
-  const provinceBeneficiaries = {};
-  for (const row of beneficiaries) {
-    const value = Number(row.total_direct) || 0;
-    for (const province of (provincesByProject.get(row.project_id) || [])) {
-      provinceBeneficiaries[province] = (provinceBeneficiaries[province] || 0) + value;
-    }
-  }
 
   const now = todayIso();
   const overdueActivities = activities.filter((a) => (
@@ -327,34 +304,6 @@ export default function Overview() {
     value: byBucket[key],
     color: STATUS_COLOR[key],
   }));
-
-  const activitiesDone = activities.filter((a) => a.status === 'completed').length;
-  const performanceRows = [
-    {
-      key: 'indicators',
-      label: t('overview.perfIndicators'),
-      value: pct(indicatorStatus.on_track, indicators.length),
-      detail: `${fmtNum(indicatorStatus.on_track)} / ${fmtNum(indicators.length)}`,
-    },
-    {
-      key: 'activities',
-      label: t('overview.perfActivities'),
-      value: pct(activitiesDone, activities.length),
-      detail: `${fmtNum(activitiesDone)} / ${fmtNum(activities.length)}`,
-    },
-    {
-      key: 'budget',
-      label: t('overview.perfBudget'),
-      value: budgetUtilisation,
-      detail: fmtVUV(totalExpenditure),
-    },
-    {
-      key: 'reporting',
-      label: t('overview.perfReporting'),
-      value: pct(reportsApproved, reporting.length),
-      detail: `${fmtNum(reportsApproved)} / ${fmtNum(reporting.length)}`,
-    },
-  ];
 
   const projectName = (id) => data.projects.find((p) => p.id === id)?.name || '—';
   const daysUntil = (date) => Math.round((new Date(date.slice(0, 10)) - new Date(now)) / 864e5);
@@ -418,7 +367,7 @@ export default function Overview() {
           value={fmtNum(total)}
           sub={`${fmtNum(lifecycleCounts.active)} active · ${fmtNum(lifecycleCounts.completed)} completed · ${fmtNum(lifecycleCounts.planned)} planned`}
           linkLabel={t('overview.viewProjects')}
-          onClick={() => nav('/analytics/portfolio')}
+          onClick={() => nav('/project-setup')}
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-progress"
@@ -431,65 +380,46 @@ export default function Overview() {
           onClick={() => nav('/analytics/results')}
         />
         <KpiCard
+          className="ovx-kpi ovx-kpi-budget"
+          label="Budget Utilisation"
+          value={`${budgetUtilisation}%`}
+          sub={`${fmtVUV(totalExpenditure)} spent`}
+          progress={budgetUtilisation}
+          progressColor={C.amber}
+          linkLabel="View reports"
+          onClick={() => nav('/reports')}
+        />
+        <KpiCard
+          className="ovx-kpi ovx-kpi-beneficiaries"
+          label="Beneficiaries Reached"
+          value={fmtNum(totalBeneficiaries)}
+          sub={genderSummary || 'Latest approved beneficiary records'}
+          linkLabel="View project analysis"
+          onClick={() => nav('/analytics/project')}
+        />
+        <KpiCard
+          className="ovx-kpi"
+          label="Needs Attention"
+          value={fmtNum(atRiskProjects + delayedProjects)}
+          sub={`${fmtNum(atRiskProjects)} at risk · ${fmtNum(delayedProjects)} delayed`}
+          linkLabel={t('overview.viewPerformance')}
+          onClick={() => nav('/analytics/portfolio')}
+        />
+        <KpiCard
           className="ovx-kpi"
           label="Reporting Completion"
           value={`${reportingCompletion}%`}
           sub={`${fmtNum(reportsApproved)} / ${fmtNum(reporting.length)} approved periods`}
           progress={reportingCompletion}
           progressColor={C.green}
-          linkLabel="View reporting"
-          onClick={() => nav('/merl-reporting')}
+          linkLabel="View reporting analysis"
+          onClick={() => nav('/analytics/reporting')}
         />
-        <KpiCard
-          className="ovx-kpi"
-          label="Area Councils Covered"
-          value={fmtNum(areaCouncilNames.length)}
-          sub={`${fmtNum(feasibilityConfirmed)} feasibility confirmed`}
-          linkLabel="View Area Councils"
-          onClick={() => nav('/analytics/geographic')}
-        />
-        <KpiCard
-          className="ovx-kpi"
-          label="At Risk"
-          value={fmtNum(atRiskProjects)}
-          sub={`${fmtNum(portfolioStatus.reduce((n, r) => n + Number(r.at_risk_results || 0), 0))} results at risk`}
-          linkLabel={t('overview.viewPerformance')}
-          onClick={() => setFilter('status', 'at_risk')}
-        />
-        <KpiCard
-          className="ovx-kpi"
-          label="Delayed"
-          value={fmtNum(delayedProjects)}
-          sub={`${fmtNum(portfolioStatus.reduce((n, r) => n + Number(r.delayed_results || 0), 0))} delayed results / activities`}
-          linkLabel="View delayed"
-          onClick={() => setFilter('status', 'delayed')}
-        />
-      </section>
-
-      <section className="ovx-card ovx-project-inventory" aria-label="Projects in portfolio">
-        <div className="ovx-card-heading">
-          <div className="ovx-card-title">Projects in Portfolio <span className="ovx-project-count">{fmtNum(total)}</span></div>
-        </div>
-        <p className="ovx-project-help">Registered projects matching the filters above.</p>
-        {projectList.length ? (
-          <ul className="ovx-project-list">
-            {projectList.map((project) => (
-              <li key={project.id} className="ovx-project-item">
-                <span className="ovx-project-name">{project.name || project.code}</span>
-                <span className="ovx-project-code">{project.code}</span>
-                <span className="ovx-project-status">{STATUS_BUCKET_LABEL[bucketOf(project.status)]}</span>
-              </li>
-            ))}
-          </ul>
-        ) : <p className="ovx-project-help">No projects match these filters.</p>}
       </section>
 
       <section className="ovx-card ovx-period-card">
         <div className="ovx-period-head">
-          <div>
-            <h2>Progress by Reporting Period</h2>
-            <p>Portfolio roll-up for the latest selected reporting frequency. Project filters above remain in effect.</p>
-          </div>
+          <h2>Progress by Reporting Period</h2>
           <label className="ovx-period-select"><span>Frequency</span><select value={progressPeriodType} onChange={(e)=>setProgressPeriodType(e.target.value)}><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="six_monthly">Six-monthly</option><option value="annual">Annual</option></select></label>
         </div>
         <div className="ovx-period-label">{currentPeriodLabel}{latestPeriodEnd ? ` · ending ${fmtDate(latestPeriodEnd)}` : ''}</div>
@@ -532,34 +462,6 @@ export default function Overview() {
           </div>
           <CardLink onClick={() => nav('/analytics/portfolio')}>{t('overview.viewPerformance')}</CardLink>
         </article>
-      </section>
-
-      <section className="ovx-secondary-grid">
-        <article className="ovx-card">
-          <CardHeading title={t('overview.portfolio')} />
-          <div className="ovx-performance-list">
-            {performanceRows.map((row) => (
-              <div key={row.key} className="ovx-performance-row">
-                <div className="ovx-performance-meta">
-                  <span>{row.label}</span>
-                  <b>{row.value}%</b>
-                </div>
-                <div className="ovx-performance-track">
-                  <div style={{ width: `${Math.min(100, Math.max(0, row.value))}%` }} />
-                </div>
-                <span className="ovx-performance-detail">{row.detail}</span>
-              </div>
-            ))}
-          </div>
-          <CardLink onClick={() => nav('/analytics/results')}>{t('overview.viewPerformance')}</CardLink>
-        </article>
-
-        <AreaCouncilCoverage
-          rows={areaCouncils}
-          selected={filters.areaCouncil}
-          onSelect={(name) => setFilter('areaCouncil', name)}
-          onView={() => nav('/analytics/geographic')}
-        />
       </section>
 
       <section className="ovx-card ovx-reporting-card">
@@ -658,91 +560,6 @@ function Donut({ data, total, onSlice }) {
         <span>Total</span>
       </div>
     </div>
-  );
-}
-
-function AreaCouncilCoverage({ rows, selected, onSelect, onView }) {
-  const items = [...new Map(
-    (rows || [])
-      .filter((r) => r.coverage_status !== 'not_covered' && r.area_council_name)
-      .map((r) => [r.area_council_name, r]),
-  ).values()].sort((a, b) => a.area_council_name.localeCompare(b.area_council_name));
-  return (
-    <article className="ovx-card">
-      <CardHeading title="Area Council Coverage" />
-      <div className="ovx-status-list">
-        {items.length ? items.slice(0, 12).map((row) => (
-          <button
-            key={row.area_council_name}
-            type="button"
-            className="ovx-status-row"
-            onClick={() => onSelect(row.area_council_name)}
-            aria-pressed={selected === row.area_council_name}
-          >
-            <span className="ovx-status-name">{row.area_council_name}</span>
-            <span>{String(row.feasibility_status || 'not_assessed').replaceAll('_', ' ')}</span>
-          </button>
-        )) : <p className="ovx-empty">No Area Council coverage recorded.</p>}
-      </div>
-      {items.length > 12 && <p className="ovx-performance-detail">+{items.length - 12} more Area Councils</p>}
-      <CardLink onClick={onView}>View all Area Councils</CardLink>
-    </article>
-  );
-}
-
-function ProjectLocations({ counts, beneficiaries, nationalCount, selected, onSelect, onView }) {
-  const { t } = useTranslation();
-  const [hovered, setHovered] = useState(null);
-
-  return (
-    <article className="ovx-card ovx-location-card">
-      <CardHeading title={t('overview.locations')} />
-      <div className="ovx-location-layout">
-        <div className="ovx-map-panel">
-          <VanuatuMapMini
-            counts={counts}
-            selected={selected}
-            hovered={hovered}
-            onHover={setHovered}
-            onSelect={onSelect}
-          />
-        </div>
-        <div className="ovx-location-table-wrap">
-          <table className="ovx-location-table">
-            <thead>
-              <tr>
-                <th>{t('overview.colProvince')}</th>
-                <th>{t('overview.colProjects')}</th>
-                <th>{t('overview.colBeneficiaries')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PROVINCE_LIST.map((province) => (
-                <tr
-                  key={province}
-                  className={`${selected === province ? 'selected ' : ''}${hovered === province ? 'hovered' : ''}`}
-                  onClick={() => onSelect(province)}
-                  onMouseEnter={() => setHovered(province)}
-                  onMouseLeave={() => setHovered(null)}
-                >
-                  <td><span className="ovx-province-dot" style={{ opacity: counts[province] ? 1 : 0.28 }} />{province}</td>
-                  <td>{fmtNum(counts[province] || 0)}</td>
-                  <td>{fmtNum(beneficiaries[province] || 0)}</td>
-                </tr>
-              ))}
-              {nationalCount > 0 && (
-                <tr>
-                  <td><span className="ovx-province-dot is-muted" />{t('overview.nationalMulti')}</td>
-                  <td>{fmtNum(nationalCount)}</td>
-                  <td>—</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <CardLink onClick={onView}>{t('overview.viewCoverage')}</CardLink>
-    </article>
   );
 }
 
