@@ -84,7 +84,7 @@ async function loadProfile(): Promise<AppUser | null> {
 const NAV_ITEMS: SideItem[] = [
   { key: 'overview', path: '/dashboards', Icon: LayoutDashboard },
   { key: 'projects', path: '/project-setup', Icon: FolderKanban },
-  { key: 'results', path: '/analytics/portfolio', Icon: Target },
+  { key: 'results', path: '/results-framework', Icon: Target },
   { key: 'activities', path: '/merl-reporting', Icon: ListChecks },
   { key: 'review', path: '/review', Icon: ClipboardCheck },
   { key: 'reports', path: '/reports', Icon: FileBarChart },
@@ -106,7 +106,7 @@ const TAB_ACCESS: Record<UserRole, NavKey[]> = {
 // Which access key gates each real route.
 const ROUTE_GATE: Record<string, NavKey> = {
   '/dashboards': 'overview', '/project-setup': 'projects', '/merl-reporting': 'activities',
-  '/results-framework': 'projects', '/reports': 'reports', '/review': 'review', '/admin': 'admin',
+  '/results-framework': 'results', '/reports': 'reports', '/review': 'review', '/admin': 'admin',
 };
 
 // Map an /analytics/:lens segment to a Dashboards tab.
