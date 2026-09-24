@@ -11,7 +11,7 @@ import './pages/public-refresh.css';
 
 const DEFAULT_PATH = '/dashboards';
 const SPECIAL_AUTHORISED_PATHS = ['/docc-project-register'];
-const INTERNAL_PREFIXES = ['/login', '/dashboards', '/analytics', '/project-setup', '/merl-reporting', '/reports', '/review', '/admin', ...SPECIAL_AUTHORISED_PATHS];
+const INTERNAL_PREFIXES = ['/login', '/dashboards', '/analytics', '/project-setup', '/results-framework', '/merl-reporting', '/reports', '/review', '/admin', ...SPECIAL_AUTHORISED_PATHS];
 
 export default function PublicEntry() {
   const { pathname } = useLocation();
