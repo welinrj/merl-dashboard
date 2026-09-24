@@ -16,7 +16,7 @@ test('sidebar has one task-based entry per destination', () => {
   for (const duplicate of ['finances', 'projectAnalysis', 'locations', 'risks', 'documents']) {
     assert.doesNotMatch(navBlock, new RegExp(`key: '${duplicate}'`));
   }
-  assert.match(navBlock, /key: 'results', path: '\/analytics\/portfolio'/);
+  assert.match(navBlock, /key: 'results', path: '\/results-framework'/);
 });
 
 test('analysis keeps legacy deep links without expanding role access', () => {
@@ -30,7 +30,7 @@ test('analysis keeps legacy deep links without expanding role access', () => {
 });
 
 test('visible labels describe user tasks without purpose subtitles', () => {
-  for (const label of ['Executive Overview', 'Project Register', 'Analysis', 'Update Progress', 'Review Queue', 'Reports & Exports']) {
+  for (const label of ['Executive Overview', 'Project Register', 'Results Framework', 'Update Progress', 'Review Queue', 'Reports & Exports']) {
     assert.match(i18n, new RegExp(label.replace(/[&]/g, '\\&')));
   }
   assert.doesNotMatch(navBlock, /hasSub: true/);
