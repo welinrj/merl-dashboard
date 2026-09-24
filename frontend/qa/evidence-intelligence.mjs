@@ -107,7 +107,7 @@ const fails = [];
 const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails.push(label); };
 
 const PORT = process.env.QA_PORT ?? '5199';
-await page.goto(`http://127.0.0.1:${PORT}/#/analytics/results`, { waitUntil: 'networkidle' });
+await page.goto(`http://127.0.0.1:${PORT}/#/results-framework?project=pa`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1200);
 
 check(await page.locator('th', { hasText: 'Evidence' }).count() > 0, 'Evidence column header renders');
