@@ -125,7 +125,6 @@ export default function ReviewApproval({ user }) {
     <div className="page-pad" style={{ maxWidth: 1200 }}>
       <PageHeader
         title={t('merl.reviewTitle')}
-        subtitle={t('merl.reviewSubtitle')}
       />
 
       {!canReview && (

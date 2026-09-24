@@ -338,11 +338,12 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
 
   return <section className="ps-config">
     <div className="ps-config-head">
-      <div><h2>Project Configuration</h2><p>Manage the selected project's profile, Area Council coverage/feasibility, donors and partners, KPI cards, and activity workplan.</p>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access: editing is available to authorised project editors.</p>}</div>
+      <div><h2>Selected Project</h2>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access</p>}</div>
       <div style={{display:'flex',gap:'.5rem',alignItems:'end',flexWrap:'wrap'}}>
         <select className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
           <option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
         </select>
+        {projectId && <a className="btn btn-secondary" href={`#/results-framework?project=${encodeURIComponent(projectId)}`}>Results framework</a>}
         {canEdit && projectId && <button type="button" className="btn btn-secondary" onClick={()=>onEditProject?.(projects.find((p)=>p.id===projectId))} disabled={busy}>Edit profile</button>}
         {isAdmin && projectId && <button type="button" className="btn btn-secondary" onClick={deleteProject} disabled={busy} style={{color:'var(--red-600)',borderColor:'var(--red-200)'}}>Delete project</button>}
       </div>
@@ -406,8 +407,7 @@ export default function ProjectSetup({ user }) {
   const [editId, setEditId] = useState(null);
   const [resetKey, setResetKey] = useState(0);
   const [mode, setMode] = useState('manage');
-  const title = 'Project Setup';
-  const subtitle = 'Manage project profiles, Area Council coverage, donors and partners, and dashboard KPI configuration.';
+  const title = 'Project Register';
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const setMulti = (k) => (e) => setV((s) => ({ ...s, [k]: Array.from(e.target.selectedOptions).map((o) => o.value) }));
   const dirty = useMemo(() => Object.entries(v).some(([k, value]) => {
@@ -436,19 +436,8 @@ export default function ProjectSetup({ user }) {
   if (!canEdit) {
     return (
       <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }}>
-        <PageHeader title={title} subtitle="Read-only project setup and reporting reference." />
-        <div className="ps-mode-tabs" role="tablist" aria-label="Project setup sections">
-          <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => setMode('manage')}>Projects</button>
-          <button type="button" className={mode === 'forms' ? 'active' : ''} onClick={() => setMode('forms')}>MERL form reference</button>
-        </div>
-        {mode === 'manage'
-          ? <ProjectConfiguration preferredProjectId={null} canEdit={false} isAdmin={false} />
-          : <ActualMerlForms />}
-        <style>{`
-          .ps-mode-tabs{display:flex;gap:.45rem;flex-wrap:wrap;margin:0 0 1rem;padding:.35rem;background:var(--surface-1);border:1px solid var(--border);border-radius:10px;width:max-content;max-width:100%}
-          .ps-mode-tabs button{border:0;background:transparent;color:var(--text-2);font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .8rem;border-radius:7px;cursor:pointer}
-          .ps-mode-tabs button.active{background:var(--white);color:var(--green-700);box-shadow:0 1px 2px rgba(15,23,42,.08)}
-        `}</style>
+        <PageHeader title={title} />
+        <ProjectConfiguration preferredProjectId={null} canEdit={false} isAdmin={false} />
       </div>
     );
   }
@@ -512,11 +501,10 @@ export default function ProjectSetup({ user }) {
 
   return (
     <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }} key={resetKey}>
-      <PageHeader title={title} subtitle={subtitle} />
-      <div className="ps-mode-tabs" role="tablist" aria-label="Project setup sections">
-        <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => { setEditId(null); setMode('manage'); }}>Manage projects</button>
-        <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setEditId(null); setV(blankProfile()); setMode('register'); }}>Register new project</button>
-        <button type="button" className={mode === 'forms' ? 'active' : ''} onClick={() => setMode('forms')}>MERL form reference</button>
+      <PageHeader title={title} />
+      <div className="ps-mode-tabs" role="tablist" aria-label="Project register sections">
+        <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => { setEditId(null); setMode('manage'); }}>Projects</button>
+        <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setEditId(null); setV(blankProfile()); setMode('register'); }}>Add project</button>
       </div>
 
       {registered && mode === 'manage' && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was {registered.action || 'registered'} and is selected below.</div>}
@@ -567,8 +555,6 @@ export default function ProjectSetup({ user }) {
       </form>}
 
       {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} onEditProject={beginEditProfile} />}
-
-      {mode === 'forms' && <ActualMerlForms />}
 
       <style>{`
         .ps-mode-tabs{display:flex;gap:.45rem;flex-wrap:wrap;margin:0 0 1rem;padding:.35rem;background:var(--surface-1);border:1px solid var(--border);border-radius:10px;width:max-content;max-width:100%}.ps-mode-tabs button{border:0;background:transparent;color:var(--text-2);font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .8rem;border-radius:7px;cursor:pointer}.ps-mode-tabs button.active{background:var(--white);color:var(--green-700);box-shadow:0 1px 2px rgba(15,23,42,.08)}

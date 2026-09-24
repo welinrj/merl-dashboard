@@ -25,6 +25,12 @@ const empty = {
   projects: [], nodes: [], indicators: [], targets: [], progress: [], narratives: [],
 };
 
+const routeProject = () => {
+  try {
+    return new URLSearchParams(window.location.hash.split('?')[1] || '').get('project') || 'all';
+  } catch { return 'all'; }
+};
+
 const blankNode = () => ({
   mode: 'node', id: null, projectId: '', parentId: '', nodeType: 'outcome',
   title: '', description: '', status: 'draft', sortOrder: 0,
@@ -86,7 +92,7 @@ export default function ResultsWorkspace({ user }) {
   const [error, setError] = useState('');
   const [permissionError, setPermissionError] = useState('');
   const [editableIds, setEditableIds] = useState(new Set());
-  const [projectFilter, setProjectFilter] = useState('all');
+  const [projectFilter, setProjectFilter] = useState(routeProject);
   const [search, setSearch] = useState('');
   const [editor, setEditor] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -334,7 +340,6 @@ export default function ResultsWorkspace({ user }) {
     <header className="rf2-header">
       <div>
         <h1>Results Framework</h1>
-        <p>Official project frameworks are preserved while MERL standardises targets, actuals, progress, narratives and review status.</p>
       </div>
       <div className="rf2-summary">
         <div><b>{new Set(filtered.map((r) => r.project.id)).size}</b><span>Projects shown</span></div>

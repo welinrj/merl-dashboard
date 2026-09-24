@@ -754,7 +754,7 @@ export default function ProjectPortfolioAnalysis() {
   if (projectsError) {
     return (
       <div className="page-pad">
-        <PageHeader title={t('ppa.title')} subtitle={t('ppa.subtitle')} />
+        <PageHeader title={t('ppa.title')} />
         <SectionCard>
           <EmptyState title={t('ppa.projectsFailed')} description={projectsError}
             action={(
@@ -771,7 +771,7 @@ export default function ProjectPortfolioAnalysis() {
   if (!projectId) {
     return (
       <div className="page-pad">
-        <PageHeader title={t('ppa.title')} subtitle={t('ppa.subtitle')} />
+        <PageHeader title={t('ppa.title')} />
         {picker}
         <div style={{ marginTop: '1rem' }}>
           <SectionCard>
@@ -799,7 +799,7 @@ export default function ProjectPortfolioAnalysis() {
         </p>
       </div>
 
-      <PageHeader title={t('ppa.title')} subtitle={t('ppa.subtitle')} />
+      <PageHeader title={t('ppa.title')} />
       {picker}
 
       {busy ? (
