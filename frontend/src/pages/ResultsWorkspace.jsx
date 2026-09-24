@@ -209,14 +209,6 @@ export default function ResultsWorkspace({ user }) {
   const projectNodes = (projectId) => data.nodes.filter((n) => n.project_id === projectId);
   const canEdit = (projectId) => !loading && !saving && editableIds.has(projectId);
 
-  const openNewNode = (projectId) => {
-    if (!canEdit(projectId)) return;
-    setEditor({ ...blankNode(), projectId });
-  };
-  const openNewIndicator = (projectId) => {
-    if (!canEdit(projectId)) return;
-    setEditor({ ...blankIndicator(), projectId });
-  };
   const editNode = (node) => {
     if (!canEdit(node.project_id)) return;
     setEditor({
@@ -365,21 +357,6 @@ export default function ResultsWorkspace({ user }) {
 
     {permissionError && <div className="rf2-note" role="alert">{permissionError}</div>}
 
-    {editableIds.size > 0 && <section className="rf2-editor-shell">
-      <div className="rf2-editor-head">
-        <div><b>Framework editor</b><span>Use flexible result nodes for VCAP2, VCCRP and future project frameworks.</span></div>
-        <select className="field-input" value={editor?.projectId || ''} onChange={(e) => setEditor(e.target.value ? { ...blankNode(), projectId: e.target.value } : null)}>
-          <option value="">Select project to edit</option>
-          {data.projects.filter((p) => editableIds.has(p.id)).map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
-        </select>
-      </div>
-      {editor?.projectId && <div className="rf2-editor-actions">
-        <button type="button" onClick={() => openNewNode(editor.projectId)}>+ Result node</button>
-        <button type="button" onClick={() => openNewIndicator(editor.projectId)}>+ Indicator</button>
-      </div>}
-      {editor && <EditorForm editor={editor} setEditor={setEditor} nodes={projectNodes(editor.projectId)} saving={saving} onSubmit={saveEditor} onCancel={() => setEditor(null)} />}
-    </section>}
-
     {loading && <div className="rf2-empty" role="status">Loading results framework…</div>}
     {error && <div className="rf2-empty" role="alert">{error}</div>}
 
@@ -471,6 +448,14 @@ export default function ResultsWorkspace({ user }) {
       indicator={evidenceIndicator}
       canEdit={canEdit(evidenceIndicator.project_id)}
       onProgressWritten={() => { setReloadKey((k) => k + 1); refreshEvidence(); }} />}
+
+    {editor && <div className="rf2-edit-backdrop" role="presentation" onMouseDown={(e) => {
+      if (e.target === e.currentTarget && !saving) setEditor(null);
+    }}>
+      <div className="rf2-edit-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${editor.mode === 'node' ? 'result' : 'indicator'}`}>
+        <EditorForm editor={editor} setEditor={setEditor} nodes={projectNodes(editor.projectId)} saving={saving} onSubmit={saveEditor} onCancel={() => setEditor(null)} />
+      </div>
+    </div>}
   </div>;
 }
 
@@ -511,8 +496,9 @@ function ResultsStyles() {
     .rf2-header h1{margin:0;font-size:1.7rem}.rf2-header p,.rf2-note{color:var(--text-2);font-size:.78rem;line-height:1.5}
     .rf2-summary{display:flex;gap:.55rem}.rf2-summary div{border:1px solid var(--border);border-radius:10px;background:var(--white);padding:.55rem .85rem}.rf2-summary b{display:block;font-size:1rem}.rf2-summary span{font-size:.66rem;color:var(--text-2)}
     .rf2-tools{display:grid;grid-template-columns:minmax(220px,360px) minmax(260px,1fr) auto;gap:.65rem;align-items:end;border:1px solid var(--border);border-radius:12px;background:var(--white);padding:.85rem;margin-bottom:.85rem}.rf2-tools label,.rf2-form label{display:grid;gap:.25rem;font-size:.72rem;font-weight:700}
-    .rf2-editor-shell{border:1px solid var(--border);border-radius:12px;background:var(--surface-1);padding:.85rem;margin-bottom:.85rem}.rf2-editor-head{display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}.rf2-editor-head>div{display:grid;gap:.2rem}.rf2-editor-head span{font-size:.7rem;color:var(--text-2)}.rf2-editor-head select{min-width:300px}.rf2-editor-actions{display:flex;gap:.45rem;margin-top:.65rem}.rf2-editor-actions button,.rf2-inline-actions button{border:1px solid var(--border);border-radius:6px;background:var(--white);padding:.3rem .5rem;font:inherit;font-size:.68rem;cursor:pointer}.rf2-inline-actions button.danger{color:#b91c1c}
-    .rf2-form{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.8rem;margin-top:.7rem}.rf2-form h3{margin:0 0 .65rem;font-size:.9rem}.rf2-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.rf2-form-grid .full{grid-column:1/-1}.rf2-form-actions{display:flex;justify-content:flex-end;gap:.45rem;margin-top:.7rem}
+    .rf2-inline-actions button{border:1px solid var(--border);border-radius:6px;background:var(--white);padding:.3rem .5rem;font:inherit;font-size:.68rem;cursor:pointer}.rf2-inline-actions button.danger{color:#b91c1c}
+    .rf2-edit-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:1rem;background:rgb(15 23 42 / .55)}.rf2-edit-dialog{width:min(760px,100%);max-height:calc(100vh - 2rem);overflow:auto;border-radius:12px;box-shadow:0 20px 50px rgb(15 23 42 / .25)}
+    .rf2-form{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.8rem}.rf2-form h3{margin:0 0 .65rem;font-size:.9rem}.rf2-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.rf2-form-grid .full{grid-column:1/-1}.rf2-form-actions{display:flex;justify-content:flex-end;gap:.45rem;margin-top:.7rem}
     .rf2-table-wrap{overflow:auto;border:1px solid var(--border-strong);border-radius:12px;background:var(--white);max-height:calc(100vh - 260px)}
     /* Every cell paints --rf2-row, so the frozen first column picks up its own
        row's stripe and hover instead of showing the rows sliding underneath. */
@@ -543,6 +529,6 @@ function ResultsStyles() {
     .rf2-muted{color:var(--text-2);font-style:italic}.rf2-empty{padding:1.3rem;text-align:center;color:var(--text-2)}
     /* A frozen column costs half a phone screen, so it only pays on wide ones. */
     @media(max-width:900px){.rf2-project{position:static;min-width:165px;max-width:180px}.rf2-table th:first-child{left:auto}}
-    @media(max-width:800px){.rf2-tools,.rf2-form-grid{grid-template-columns:1fr}.rf2-form-grid .full{grid-column:1}.rf2-editor-head select{min-width:0;width:100%}.rf2-table-wrap{max-height:none}}
+    @media(max-width:800px){.rf2-tools,.rf2-form-grid{grid-template-columns:1fr}.rf2-form-grid .full{grid-column:1}.rf2-edit-backdrop{padding:.5rem;align-items:end}.rf2-edit-dialog{max-height:90vh}.rf2-table-wrap{max-height:none}}
   `}</style>;
 }
