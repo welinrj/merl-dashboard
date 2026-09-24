@@ -59,11 +59,13 @@ export function publicTotals(projects, summary, allScope) {
   if (allScope) return {
     progress: summary?.overall_progress_pct ?? null,
     investment: summary?.total_investment_vuv ?? null,
+    utilised: summary?.total_utilised_vuv ?? null,
     beneficiaries: summary?.published_beneficiaries ?? null,
   };
   return {
     progress: average(projects.map(project => project.progress_pct)),
     investment: total(projects.map(project => project.budget_vuv)),
+    utilised: total(projects.map(project => project.utilised_vuv)),
     beneficiaries: total(projects.map(project => project.published_beneficiaries)),
   };
 }

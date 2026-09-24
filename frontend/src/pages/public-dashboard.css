@@ -97,3 +97,39 @@
 @media(max-width:760px){.pbd-root .dsh-side{z-index:45}.pbd-overlay{display:block;position:fixed;inset:0;z-index:40;border:0;background:rgba(12,29,49,.55)}.pbd-root .dsh-head{gap:10px}.pbd-head-brand img{width:40px;height:40px}.pbd-head-brand strong{font-size:1rem}.pbd-head-brand small{font-size:.55rem}.pbd-root .dsh-head .pbd-signin{font-size:.72rem;padding:8px 10px}.pbd-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pbd-search{grid-column:1/-1}.pbd-filters label{min-width:0}.pbd-root .pub-leaflet-wrap{height:400px}}
 @media(max-width:480px){.pbd-head-brand small{display:none}.pbd-root .dsh-head .pbd-signin{white-space:normal;text-align:center}.pbd-view{padding:12px}.pbd-filters{padding:12px}.pbd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}.pbd-root .pbd-kpis .ovx-kpi{min-height:240px!important}.pbd-detail-grid{grid-template-columns:1fr}.pbd-project-row{grid-template-columns:minmax(0,1fr) 75px 16px;gap:8px}.pbd-root .pub-leaflet-wrap{height:360px}.pbd-map-page .pub-leaflet-wrap{height:440px}}
 @media(prefers-reduced-motion:reduce){.pbd-root *{scroll-behavior:auto!important}}
+
+
+/* Single-page public overview */
+.pbo-view{max-width:1500px}
+.pbo-title{margin-bottom:.7rem}
+.pbo-intro{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem;margin-bottom:1rem;box-shadow:var(--shadow-sm)}
+.pbo-intro p{margin:0;color:var(--text-2);font-size:.86rem;line-height:1.55;max-width:1100px}
+.pbo-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.85rem;margin-bottom:1rem}
+.pbo-kpis article{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1rem 1.1rem;box-shadow:var(--shadow-sm);min-width:0}
+.pbo-kpis span{display:block;color:var(--text-3);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.pbo-kpis strong{display:block;margin-top:.35rem;font-size:1.45rem;line-height:1.15;color:var(--text-1);overflow-wrap:anywhere}
+.pbo-section-head{align-items:flex-start}
+.pbo-section-head>div p{margin:.25rem 0 0;color:var(--text-3);font-size:.78rem}
+.pbo-section-head>span{color:var(--text-3);font-size:.75rem;font-weight:700}
+.pbo-projects{margin-bottom:1rem}
+.pbo-search{display:block;padding:0 1rem 1rem}
+.pbo-search input{width:100%;height:44px;border:1px solid var(--border);border-radius:10px;padding:0 .9rem;background:var(--white);color:var(--text-1);font:inherit}
+.pbo-project-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;padding:0 1rem 1rem}
+.pbo-project-card{border:1px solid var(--border);border-radius:12px;padding:1rem;background:var(--white);min-width:0}
+.pbo-project-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.pbo-project-heading h3{margin:.18rem 0 0;font-size:.95rem;line-height:1.35;color:var(--text-1)}
+.pbo-project-code{font-size:.68rem;color:var(--blue-700);font-weight:800;letter-spacing:.04em}
+.pbo-status{flex:0 0 auto;border-radius:999px;padding:.28rem .55rem;background:var(--bg-2);font-size:.64rem;font-weight:800;text-transform:capitalize;color:var(--text-2)}
+.pbo-status.ongoing{background:#e8f4ff;color:#185d91}
+.pbo-status.completed{background:#eaf7ef;color:#2d6a45}
+.pbo-status.upcoming{background:#fff4df;color:#845b10}
+.pbo-project-description{margin:.75rem 0;color:var(--text-2);font-size:.76rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.pbo-project-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem .9rem;border-top:1px solid var(--border);padding-top:.75rem}
+.pbo-project-meta div{min-width:0}
+.pbo-project-meta span{display:block;color:var(--text-3);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.pbo-project-meta strong{display:block;margin-top:.15rem;color:var(--text-1);font-size:.76rem;line-height:1.35;overflow-wrap:anywhere}
+.pbo-map-section{margin-bottom:1rem}
+.pbo-map{padding:0 1rem 1rem;min-height:420px}
+.pbo-map>div{min-height:420px;border-radius:12px;overflow:hidden}
+@media (max-width:1100px){.pbo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.pbo-project-list{grid-template-columns:1fr}}
+@media (max-width:700px){.pbo-kpis{grid-template-columns:1fr}.pbo-project-meta{grid-template-columns:1fr}.pbo-map,.pbo-map>div{min-height:340px}}

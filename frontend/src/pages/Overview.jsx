@@ -65,7 +65,7 @@ function statusLabel(key, t) {
   }[key] || key;
 }
 
-export default function Overview() {
+export default function Overview({ user }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const nav = useNavigate();
@@ -75,6 +75,9 @@ export default function Overview() {
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [progressPeriodType, setProgressPeriodType] = useState('quarterly');
+  const [publishingPublicOverview, setPublishingPublicOverview] = useState(false);
+  const [publicOverviewNotice, setPublicOverviewNotice] = useState('');
+  const isSystemAdministrator = user?.role === 'administrator';
 
   useEffect(() => {
     let mounted = true;
@@ -328,6 +331,24 @@ export default function Overview() {
       status: reportStatus(r),
     }));
 
+  const publishPublicOverview = async () => {
+    if (!isSystemAdministrator || publishingPublicOverview) return;
+    setPublishingPublicOverview(true);
+    setPublicOverviewNotice('');
+    try {
+      const { data: published, error } = await supabase.rpc('publish_public_overview');
+      if (error) throw error;
+      const row = Array.isArray(published) ? published[0] : published;
+      const when = row?.updated_at ? new Date(row.updated_at).toLocaleString() : new Date().toLocaleString();
+      const count = row?.project_count != null ? ` · ${fmtNum(row.project_count)} projects published` : '';
+      setPublicOverviewNotice(`Public Overview updated successfully at ${when}${count}.`);
+    } catch (error) {
+      setPublicOverviewNotice(error?.message || 'The Public Overview could not be updated.');
+    } finally {
+      setPublishingPublicOverview(false);
+    }
+  };
+
   return (
     <div className="ovx">
       <OverviewStyles />
@@ -337,10 +358,25 @@ export default function Overview() {
           <h1>{t('overview.title')}</h1>
           <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
         </div>
-        <button type="button" className="ovx-export" onClick={() => window.print()}>
-          <Printer size={15} aria-hidden="true" /> {t('ui.export')}
-        </button>
+        <div className="ovx-heading-actions">
+          {isSystemAdministrator && (
+            <button
+              type="button"
+              className="ovx-public-update"
+              onClick={() => void publishPublicOverview()}
+              disabled={publishingPublicOverview}
+            >
+              {publishingPublicOverview ? 'Updating Public Overview…' : 'Update Public Overview'}
+            </button>
+          )}
+          <button type="button" className="ovx-export" onClick={() => window.print()}>
+            <Printer size={15} aria-hidden="true" /> {t('ui.export')}
+          </button>
+        </div>
       </section>
+      {isSystemAdministrator && publicOverviewNotice && (
+        <div className="ovx-publish-status rp-noprint" role="status">{publicOverviewNotice}</div>
+      )}
 
       <section className="ovx-filterbar rp-noprint" aria-label={t('overview.title')}>
         <FilterSelect label={t('overview.filterFy')} value={filters.fy}
@@ -622,6 +658,11 @@ function OverviewStyles() {
       .ovx-heading p b{color:#736a84;font-weight:700}
       .ovx-export{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#5b4692;color:#fff;font:inherit;font-size:.79rem;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(74,55,125,.14)}
       .ovx-export:hover{background:#4b377d}
+      .ovx-heading-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;justify-content:flex-end}
+      .ovx-public-update{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#227a4b;color:#fff;font:inherit;font-size:.79rem;font-weight:760;cursor:pointer;box-shadow:0 8px 18px rgba(34,122,75,.14)}
+      .ovx-public-update:hover{background:#19663d}
+      .ovx-public-update:disabled{opacity:.65;cursor:wait}
+      .ovx-publish-status{margin:-.35rem 0 .9rem;padding:.72rem .85rem;border:1px solid #dcefe3;border-radius:10px;background:#f3fbf6;color:#2f6f4a;font-size:.74rem;font-weight:650}
 
       .ovx-filterbar{display:grid;grid-template-columns:.8fr .8fr 1.25fr .9fr 1.2fr auto;gap:.65rem;align-items:end;margin-bottom:1rem;padding:.85rem .9rem;border:1px solid #ebe7f2;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}
       .ovx-filter{display:block;min-width:0}
@@ -707,7 +748,7 @@ function OverviewStyles() {
       @media(max-width:1180px){.ovx-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.ovx-reset{align-self:end}.ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}}
       @media(max-width:980px){.ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}.ovx-location-layout{grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr)}}
       @media(max-width:760px){.ovx-period-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
-      @media(max-width:560px){.ovx-period-kpis{grid-template-columns:1fr}.ovx-heading{flex-direction:column}.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
+      @media(max-width:560px){.ovx-period-kpis{grid-template-columns:1fr}.ovx-heading{flex-direction:column}.ovx-heading-actions{width:100%}.ovx-public-update,.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
       @media(max-width:760px){.ovx-project-list{grid-template-columns:1fr}}
       @media print{.ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export{display:none!important}.ovx-card,.ovx-kpi{box-shadow:none!important}}
     `}</style>
