@@ -77,6 +77,7 @@ const publicFixtures={
   public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:1,project_ids:['pub1'],project_names:['Published Project']}],
   public_portal_kpis:[],
   public_portal_indicator_categories:[{project_id:'pub1',category_key:'ecosystems',indicator_count:2}],
+  public_portal_indicator_details:[{indicator_id:'pub-i1',project_id:'pub1',project_name:'Published Project',category_key:'ecosystems',indicator_code:'PUB-I1',indicator_name:'Habitat restoration',target_value:10,unit:'ha'}],
   public_portal_project_inventory:[{total_projects:20,approved_projects:1,other_projects:19}],
 };
 await pub.route(`${HOST}/**`,async route=>{
