@@ -160,7 +160,7 @@ RETURNS TABLE(
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=merl,public,pg_temp
-AS $
+AS $publish$
 DECLARE
   v_user merl.users;
 BEGIN
@@ -177,7 +177,7 @@ BEGIN
   FROM public.public_portal_summary s
   WHERE s.singleton=true;
 END;
-$;
+$publish$;
 
 REVOKE ALL ON FUNCTION public.publish_public_overview() FROM public,anon;
 GRANT EXECUTE ON FUNCTION public.publish_public_overview() TO authenticated,service_role;
@@ -185,7 +185,7 @@ GRANT EXECUTE ON FUNCTION public.publish_public_overview() TO authenticated,serv
 -- Retire automatic publication triggers. The system still gathers live MERL
 -- information in its internal views, but the public snapshot changes only when
 -- an administrator presses "Update Public Overview".
-DO $ DECLARE tbl text; BEGIN
+DO $droptriggers$ DECLARE tbl text; BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'projects','indicator_progress','reporting_periods','beneficiaries',
     'financial_progress','project_locations','project_area_councils',
@@ -196,7 +196,7 @@ DO $ DECLARE tbl text; BEGIN
       EXECUTE format('DROP TRIGGER IF EXISTS refresh_public_portal_snapshot ON merl.%I',tbl);
     END IF;
   END LOOP;
-END $;
+END $droptriggers$;
 
 -- Publish one initial snapshot when this migration is installed. Subsequent
 -- changes require the administrator button.
