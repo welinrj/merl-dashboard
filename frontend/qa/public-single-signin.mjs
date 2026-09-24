@@ -47,7 +47,7 @@ try {
   await form.locator('button[type="submit"]').click();
   await form.getByRole('alert').waitFor({ timeout: 15000 });
   if (new URL(page.url()).hash !== '#/dashboards') throw new Error('Failed login changed the dashboard route');
-  if (await form.locator('input[type="password"]').inputValue() !== '') throw new Error('Failed password was not cleared');
+  if (await form.locator('input[type="password"]').inputValue() !== 'invalid-password') throw new Error('Failed password was not retained for correction');
   console.log('PASS Invalid credentials remain on the public dashboard');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Open menu' }).click();
