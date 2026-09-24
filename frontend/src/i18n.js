@@ -1383,7 +1383,7 @@ const resources = {
       nav: {
         overview:         'Executive Overview',
         projects:         'Project Register',
-        results:          'Analysis',
+        results:          'Results Framework',
         finances:         'Financial Analysis',
         projectAnalysis:  'Project Portfolio Analysis',
         locations:        'Geographic Coverage',
@@ -1954,7 +1954,7 @@ const resources = {
       nav: {
         overview:         'Eksekutiv Ovaviu',
         projects:         'Lis blong Projek',
-        results:          'Analisis',
+        results:          'Results Framework',
         finances:         'Analisis blong Mane',
         locations:        'Ples we Projek i Kavarem',
         risks:            'Analisis blong Risk',
@@ -3540,7 +3540,7 @@ const resources = {
       nav: {
         overview:         'Vue exécutive',
         projects:         'Registre des projets',
-        results:          'Analyse',
+        results:          'Cadre de résultats',
         finances:         'Analyse financière',
         projectAnalysis:  'Analyse du portefeuille de projet',
         locations:        'Couverture géographique',
