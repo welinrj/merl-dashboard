@@ -1,90 +1,244 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, FolderKanban, Target, Menu, ArrowRight } from '../components/ui/icons';
+import { LayoutDashboard, Menu } from '../components/ui/icons';
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
-import KpiCard from '../components/ui/KpiCard';
-import PublicProjectCatalogue from '../components/PublicProjectCatalogue';
-import PublicProjectResults from '../components/PublicProjectResults';
+import PublicCoverageMap from '../components/PublicCoverageMap';
 import { usePublicSnapshot, publicTotals, publicProjectCount } from '../lib/publicSnapshot';
 import './public-dashboard.css';
 
 const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
-const PROVINCES = ['Torba', 'Sanma', 'Penama', 'Malampa', 'Shefa', 'Tafea'];
+
 const COPY = {
-  en: { title:'Public Dashboard', subtitle:'Published climate action results · Department of Climate Change', overview:'Public Overview', projects:'Projects', results:'Results', map:'Geographic Coverage', login:'Sign in to MERL', search:'Search published projects…', status:'Status', theme:'Theme', province:'Province', all:'All', reset:'Reset', refresh:'Refresh', refreshing:'Checking for published updates…', progress:'Overall Progress', investment:'Published Investment', beneficiaries:'Beneficiaries', countSub:'Published projects', progressSub:'Latest approved portfolio result', investmentSub:'Approved project investment', beneficiariesSub:'Published direct beneficiaries', viewResults:'View published results', viewProjects:'View projects', viewBudgets:'View project budgets', byProvince:'Projects by Province', projectStatus:'Project Status', coverage:'Project Locations and Coverage', themes:'Thematic Areas', updates:'Recent Published Results', viewAll:'View all', latest:'Latest published period', noData:'Not yet published', noProjects:'No published projects match these filters.', noResults:'No approved results have been published yet.', error:'Public results are temporarily unavailable.', stale:'Could not check for new results. The last successfully loaded public data is still displayed.', loading:'Loading published results…', retry:'Retry', back:'Back to projects', details:'Published project details', outcome:'Expected outcome', budget:'Published budget', publicOnly:'Approved public information only', disclosure:'Only approved public information is displayed. Drafts, internal risks, reviews, approvals and management records remain in the authorised MERL portal.', source:'Figures come from the approved public reporting snapshot. Projects may cover more than one province. Public totals may differ from internal reporting until results are approved.', updated:'Public data last refreshed', unknown:'Not specified', ongoing:'Ongoing', completed:'Completed', upcoming:'Upcoming', other:'Other', provinces:'Provinces covered', language:'Language', menu:'Open menu', close:'Close menu', investmentNote:'Investment is not expenditure or budget utilisation.', inventoryTitle:'Projects in MERL', inventorySub:'{approved} approved for public view · {other} not yet public', inventoryFiltered:'Published projects matching filters', inventoryUnavailable:'Live inventory unavailable', inventoryNote:'The project total includes registered projects that are not yet approved for public display. Only approved projects and approved results are shown below.', coverageCount:'{covered} of {total} published projects in this view have recorded Area Council coverage.', coverageMissing:'{missing} projects have no approved Area Council coverage record yet. This is missing coverage data, not zero project activity.', coverageMissingOne:'1 project has no approved Area Council coverage record yet. This is missing coverage data, not zero project activity.', coverageEmpty:'No approved Area Council coverage records match the current filters.' },
-  fr: { title:'Tableau de bord public', subtitle:'Résultats climatiques publiés · Département du changement climatique', overview:'Vue publique', projects:'Projets', results:'Résultats', map:'Couverture géographique', login:'Connexion MERL', search:'Rechercher des projets publiés…', status:'État', theme:'Thème', province:'Province', all:'Tous', reset:'Réinitialiser', refresh:'Actualiser', refreshing:'Recherche de nouveaux résultats publiés…', progress:'Progrès global', investment:'Investissement publié', beneficiaries:'Bénéficiaires', countSub:'Projets publiés', progressSub:'Dernier résultat approuvé du portefeuille', investmentSub:'Investissement approuvé des projets', beneficiariesSub:'Bénéficiaires directs publiés', viewResults:'Voir les résultats publiés', viewProjects:'Voir les projets', viewBudgets:'Voir les budgets des projets', byProvince:'Projets par province', projectStatus:'État des projets', coverage:'Localisation et couverture des projets', themes:'Domaines thématiques', updates:'Résultats récemment publiés', viewAll:'Voir tout', latest:'Dernière période publiée', noData:'Pas encore publié', noProjects:'Aucun projet publié ne correspond à ces filtres.', noResults:'Aucun résultat approuvé publié pour le moment.', error:'Les résultats publics sont temporairement indisponibles.', stale:'Impossible de vérifier les nouveaux résultats. Les dernières données publiques chargées restent affichées.', loading:'Chargement des résultats publiés…', retry:'Réessayer', back:'Retour aux projets', details:'Détails du projet publié', outcome:'Résultat attendu', budget:'Budget publié', publicOnly:'Informations publiques approuvées uniquement', disclosure:'Seules les informations publiques approuvées sont affichées. Les brouillons, risques internes, examens, validations et dossiers de gestion restent dans le portail MERL autorisé.', source:'Les chiffres proviennent des données publiques approuvées. Un projet peut couvrir plusieurs provinces. Les totaux publics peuvent différer des rapports internes jusqu’à leur approbation.', updated:'Dernière actualisation des données publiques', unknown:'Non précisé', ongoing:'En cours', completed:'Achevé', upcoming:'À venir', other:'Autre', provinces:'Provinces couvertes', language:'Langue', menu:'Ouvrir le menu', close:'Fermer le menu', investmentNote:'L’investissement ne représente pas les dépenses ni le taux d’utilisation du budget.', inventoryTitle:'Projets dans MERL', inventorySub:'{approved} approuvés pour le public · {other} pas encore publics', inventoryFiltered:'Projets publiés correspondant aux filtres', inventoryUnavailable:'Inventaire indisponible', inventoryNote:'Le total comprend les projets enregistrés qui ne sont pas encore approuvés pour l’affichage public. Seuls les projets et résultats approuvés figurent ci-dessous.', coverageCount:'{covered} projet(s) publié(s) sur {total} dans cette vue disposent d’une couverture enregistrée au niveau du conseil de zone.', coverageMissing:'{missing} projets ne disposent pas encore d’un enregistrement de couverture approuvé au niveau du conseil de zone. Il s’agit de données de couverture manquantes, et non d’une activité nulle.', coverageMissingOne:'1 projet ne dispose pas encore d’un enregistrement de couverture approuvé au niveau du conseil de zone. Il s’agit de données de couverture manquantes, et non d’une activité nulle.', coverageEmpty:'Aucun enregistrement approuvé de couverture au niveau du conseil de zone ne correspond aux filtres actuels.' }
+  en: {
+    title: 'Public Overview',
+    subtitle: 'Department of Climate Change project portfolio',
+    overview: 'Public Overview',
+    intro: 'This public overview brings together the Department of Climate Change project portfolio, where projects are working, who manages them, beneficiaries reached, total project investment and approved expenditure already utilised.',
+    projects: 'Projects under the Department of Climate Change',
+    projectsSub: 'Published project information from the MERL portfolio.',
+    locations: 'Where projects are implementing activities',
+    locationsSub: 'Approved Area Council coverage recorded for published projects.',
+    search: 'Search projects…',
+    projectCount: 'Total Projects',
+    beneficiaries: 'Total Beneficiaries',
+    investment: 'Total Project Investment',
+    utilised: 'Funds Utilised',
+    manager: 'Project Manager',
+    province: 'Province(s)',
+    areaCouncils: 'Area Council(s)',
+    budget: 'Project Investment',
+    spent: 'Utilised',
+    people: 'Beneficiaries',
+    noManager: 'Not yet published',
+    noCoverage: 'No approved Area Council coverage published yet',
+    noProjects: 'No published projects match this search.',
+    loading: 'Loading public overview…',
+    error: 'Public project information is temporarily unavailable.',
+    retry: 'Retry',
+    refreshed: 'Public data last refreshed',
+    publicOnly: 'Approved public information only',
+    language: 'Language',
+    menu: 'Open menu',
+    close: 'Close menu',
+    disclosure: 'Only approved public information is shown. Draft monitoring records, internal reviews and management workflows remain restricted to authorised MERL users.'
+  },
+  fr: {
+    title: 'Vue publique',
+    subtitle: 'Portefeuille de projets du Département du changement climatique',
+    overview: 'Vue publique',
+    intro: 'Cette vue publique regroupe le portefeuille de projets du Département du changement climatique, les lieux de mise en œuvre, les responsables de projet, les bénéficiaires, l’investissement total et les dépenses approuvées déjà utilisées.',
+    projects: 'Projets du Département du changement climatique',
+    projectsSub: 'Informations publiées sur les projets du portefeuille MERL.',
+    locations: 'Où les projets mettent en œuvre des activités',
+    locationsSub: 'Couverture approuvée des conseils de zone pour les projets publiés.',
+    search: 'Rechercher des projets…',
+    projectCount: 'Total des projets',
+    beneficiaries: 'Total des bénéficiaires',
+    investment: 'Investissement total',
+    utilised: 'Fonds utilisés',
+    manager: 'Responsable du projet',
+    province: 'Province(s)',
+    areaCouncils: 'Conseil(s) de zone',
+    budget: 'Investissement du projet',
+    spent: 'Utilisé',
+    people: 'Bénéficiaires',
+    noManager: 'Pas encore publié',
+    noCoverage: 'Aucune couverture approuvée des conseils de zone publiée',
+    noProjects: 'Aucun projet publié ne correspond à cette recherche.',
+    loading: 'Chargement de la vue publique…',
+    error: 'Les informations publiques sur les projets sont temporairement indisponibles.',
+    retry: 'Réessayer',
+    refreshed: 'Dernière actualisation des données publiques',
+    publicOnly: 'Informations publiques approuvées uniquement',
+    language: 'Langue',
+    menu: 'Ouvrir le menu',
+    close: 'Fermer le menu',
+    disclosure: 'Seules les informations publiques approuvées sont affichées. Les données de suivi provisoires, examens internes et processus de gestion restent réservés aux utilisateurs MERL autorisés.'
+  }
 };
-const num = (v, lang='en') => v == null || !Number.isFinite(Number(v)) ? '—' : new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', {maximumFractionDigits:0}).format(Number(v));
-const pct = v => v == null || !Number.isFinite(Number(v)) ? '—' : `${Math.round(Number(v))}%`;
-const vuv = (v, lang) => v == null ? '—' : `VT ${num(v, lang)}`;
-const list = v => Array.isArray(v) ? v : [];
-const themeOf = p => p.primary_climate_theme || '';
-const statusOf = p => ['ongoing','completed','upcoming'].includes(p.lifecycle_status) ? p.lifecycle_status : 'other';
-const initialFilters = {search:'',status:'',theme:'',province:''};
-const matches = (p,f) => (!f.search || [p.name,p.code,p.acronym,p.description,p.expected_primary_outcome,themeOf(p),...list(p.provinces)].join(' ').toLowerCase().includes(f.search.trim().toLowerCase())) && (!f.status || statusOf(p) === f.status) && (!f.theme || themeOf(p) === f.theme) && (!f.province || list(p.provinces).includes(f.province));
-function Panel({title,action,children}) { return <section className="pbd-panel"><div className="pbd-panel-head"><h2>{title}</h2>{action}</div>{children}</section>; }
-function Action({children,onClick}) { return <button type="button" className="pbd-action" onClick={onClick}>{children}<ArrowRight size={14} aria-hidden="true"/></button>; }
-function Empty({children}) { return <div className="pbd-empty">{children}</div>; }
-function Bar({value,max}) { return <div className="pbd-bar" aria-hidden="true"><span style={{width:`${max ? Math.min(100,Math.max(0,value/max*100)) : 0}%`}}/></div>; }
+
+const list = value => Array.isArray(value) ? value : [];
+const finite = value => value != null && value !== '' && Number.isFinite(Number(value));
+const fmtNum = (value, lang) => finite(value)
+  ? new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(Number(value))
+  : '—';
+const fmtVuv = (value, lang) => finite(value) ? `VT ${fmtNum(value, lang)}` : '—';
 
 export default function PublicDashboard() {
-  const {i18n} = useTranslation();
+  const { i18n } = useTranslation();
   const lang = i18n.resolvedLanguage?.startsWith('fr') ? 'fr' : 'en';
   const c = COPY[lang];
-  const {data,isLoading,isFetching,isError,refetch} = usePublicSnapshot();
-  const [filters,setFilters] = useState(initialFilters);
-  const [tab,setTab] = useState('overview');
-  const [selected,setSelected] = useState(null);
-  const [menuOpen,setMenuOpen] = useState(false);
+  const { data, isLoading, isError, refetch } = usePublicSnapshot();
+  const [search, setSearch] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const projects = data?.projects || [];
   const summary = data?.summary;
-  const filtered = useMemo(() => projects.filter(p => matches(p,filters)),[projects,filters]);
-  const themes = useMemo(() => [...new Set(projects.map(themeOf).filter(Boolean))].sort(),[projects]);
-  const statuses = ['ongoing','completed','upcoming','other'];
-  const statusCounts = statuses.map(key => ({key,value:filtered.filter(p=>statusOf(p)===key).length}));
-  const provinceCounts = PROVINCES.map(name => ({name,value:filtered.filter(p=>list(p.provinces).includes(name)).length}));
-  const themeCounts = [...new Set(filtered.map(themeOf).filter(Boolean))].map(name=>({name,value:filtered.filter(p=>themeOf(p)===name).length})).sort((a,b)=>b.value-a.value);
-  const allScope = !filters.search && !filters.status && !filters.theme && !filters.province;
-  const totals = publicTotals(filtered,summary,allScope);
-  const inventory = publicProjectCount(data?.inventory, filtered.length, allScope);
-  const inventorySub = inventory.scope === 'all'
-    ? c.inventorySub.replace('{approved}',num(inventory.approved,lang)).replace('{other}',num(inventory.other,lang))
-    : inventory.scope === 'published' ? c.inventoryFiltered : c.inventoryUnavailable;
-  const selectedIds = new Set(filtered.map(p=>String(p.id)));
-  const sourceAreas = data?.areas || [];
-  const coveredProjectIds = new Set(sourceAreas.flatMap(area => list(area.project_ids)).map(String).filter(id => selectedIds.has(id)));
-  const projectsWithCoverage = coveredProjectIds.size;
-  const projectsMissingCoverage = Math.max(0, filtered.length - projectsWithCoverage);
-  const areas = sourceAreas.map(a=>{
-    const ids = list(a.project_ids).filter(id=>selectedIds.has(String(id)));
-    return {...a,project_ids:ids,project_names:ids.map(id=>filtered.find(p=>String(p.id)===String(id))?.name).filter(Boolean),project_count:ids.length};
-  });
-  const go = next => {setTab(next);setSelected(null);setMenuOpen(false);};
-  const openProject = p => {go('projects');setSelected(p);};
-  const showStatus = status => {setFilters(f=>({...f,status}));go('projects');};
-  const areaNames = [...new Set(areas.filter(a=>a.project_count>0).map(a=>a.area_council).filter(Boolean))].sort();
-  const coverageCountText = c.coverageCount.replace('{covered}',num(projectsWithCoverage,lang)).replace('{total}',num(filtered.length,lang));
-  const coverageMissingText = projectsMissingCoverage === 1
-    ? c.coverageMissingOne
-    : c.coverageMissing.replace('{missing}',num(projectsMissingCoverage,lang));
-  const coverage = <div><p className="pbd-disclosure"><strong>{coverageCountText}</strong>{projectsMissingCoverage > 0 ? ` ${coverageMissingText}` : ''}</p><div className="pbd-area-list">{areaNames.length ? areaNames.map(name => <div key={name} className="pbd-area-row"><span>{name}</span><strong>{areas.find(a=>a.area_council===name)?.project_count || 0}</strong></div>) : <Empty>{c.coverageEmpty}</Empty>}</div></div>;
-  const nav = [['overview',c.overview,LayoutDashboard],['projects',c.projects,FolderKanban],['results',c.results,Target]];
-  const provinceRows = <div className="pbd-bars">{provinceCounts.map(row=><button type="button" key={row.name} className="pbd-bar-row" onClick={()=>{setFilters(f=>({...f,province:row.name}));go('projects');}}><span>{row.name}</span><Bar value={row.value} max={filtered.length}/><strong>{num(row.value,lang)}</strong></button>)}</div>;
-  const themeRows = <div className="pbd-bars">{themeCounts.length?themeCounts.map(row=><button type="button" key={row.name} className="pbd-bar-row" onClick={()=>{setFilters(f=>({...f,theme:row.name}));go('projects');}}><span>{row.name}</span><Bar value={row.value} max={filtered.length}/><strong>{num(row.value,lang)}</strong></button>):<Empty>{c.noProjects}</Empty>}</div>;
-  const refresh = () => {void refetch();};
-  return <div className="dsh pbd-root">
-    {menuOpen&&<button type="button" className="pbd-overlay" aria-label={c.close} onClick={()=>setMenuOpen(false)}/>}
-    <aside className={`dsh-side${menuOpen?' open':''}`}><div className="dsh-brand"><img src={CREST} alt=""/><div className="dsh-brand-dept">Department of Climate Change</div><div className="dsh-brand-title">MERL</div></div><nav className="dsh-nav" aria-label={c.overview}>{nav.map(([key,label,Icon])=><button type="button" key={key} className={tab===key?'active':''} onClick={()=>go(key)}><Icon size={16} aria-hidden="true"/>{label}</button>)}</nav><div className="pbd-sidebar-access"><span>{c.publicOnly}</span></div></aside>
-    <div className="dsh-main"><header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={()=>setMenuOpen(v=>!v)}><Menu size={18}/></button><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang==='en'} onClick={()=>void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang==='fr'} onClick={()=>void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>
-    <main className="dsh-scroll scrollbar-thin"><div className="ovx pbd-view"><div className="pbd-title-row"><div><h1>{tab==='overview'?c.title:tab==='projects'?c.projects:c.results}</h1><p>{c.subtitle}{summary?.updated_at&&<> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang==='fr'?'fr-FR':'en-GB')}</>}</p></div></div>
-    <div className="pbd-filters"><label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={e=>setFilters(f=>({...f,search:e.target.value}))} placeholder={c.search}/></label><label><span>{c.status}</span><select value={filters.status} onChange={e=>setFilters(f=>({...f,status:e.target.value}))}><option value="">{c.all}</option>{statuses.map(key=><option key={key} value={key}>{c[key]}</option>)}</select></label><label><span>{c.theme}</span><select value={filters.theme} onChange={e=>setFilters(f=>({...f,theme:e.target.value}))}><option value="">{c.all}</option>{themes.map(t=><option key={t}>{t}</option>)}</select></label><label><span>{c.province}</span><select value={filters.province} onChange={e=>setFilters(f=>({...f,province:e.target.value}))}><option value="">{c.all}</option>{PROVINCES.map(p=><option key={p}>{p}</option>)}</select></label><button type="button" className="pbd-reset" disabled={allScope} onClick={()=>setFilters(initialFilters)}>{c.reset}</button><button type="button" className="pbd-refresh" disabled={isFetching} onClick={refresh}>{c.refresh}</button></div>
-    {isFetching&&data&&<div className="pbd-refresh-status" role="status">{c.refreshing}</div>}
-    {isError&&data&&<div className="pbd-refresh-status pbd-refresh-error" role="alert">{c.stale}<button type="button" onClick={refresh}>{c.retry}</button></div>}
-    {!data?(isLoading?<div className="pbd-state" role="status">{c.loading}</div>:<div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>):<>
-      {tab==='overview'&&<><div className="ovx-kpis pbd-kpis"><KpiCard className="ovx-kpi ovx-kpi-progress" label={c.progress} value={pct(totals.progress)} progress={totals.progress} sub={c.progressSub} linkLabel={c.viewResults} onClick={()=>go('results')}/><KpiCard className="ovx-kpi" label={allScope?c.inventoryTitle:c.projects} value={num(inventory.value,lang)} sub={inventorySub} linkLabel={c.viewProjects} onClick={()=>go('projects')}/><KpiCard className="ovx-kpi" label={c.investment} value={vuv(totals.investment,lang)} sub={c.investmentSub} linkLabel={c.viewBudgets} onClick={()=>go('projects')}/><KpiCard className="ovx-kpi" label={c.beneficiaries} value={num(totals.beneficiaries,lang)} sub={c.beneficiariesSub} linkLabel={c.viewResults} onClick={()=>go('results')}/></div><div className="pbd-grid"><div className="pbd-column"><Panel title={c.byProvince} action={<Action onClick={()=>go('projects')}>{c.viewAll}</Action>}>{provinceRows}<div className="pbd-summary"><span><strong>{num(filtered.length,lang)}</strong>{c.countSub}</span><span><strong>{provinceCounts.filter(p=>p.value>0).length} / 6</strong>{c.provinces}</span></div></Panel><Panel title={c.projectStatus}><div className="pbd-status-list">{statusCounts.map(row=><button type="button" key={row.key} onClick={()=>showStatus(row.key)}><span>{c[row.key]}</span><strong>{num(row.value,lang)}</strong></button>)}</div></Panel></div><div className="pbd-column"><Panel title="Area Council Coverage">{coverage}</Panel><Panel title={c.themes} action={<Action onClick={()=>go('results')}>{c.viewAll}</Action>}>{themeRows}</Panel></div><div className="pbd-column"><Panel title={c.publicOnly}><p className="pbd-disclosure">{c.inventoryNote}</p><p className="pbd-disclosure">{c.disclosure}</p></Panel></div></div></>}
-      {tab==='projects'&&<Panel title={selected?c.details:c.projects} action={selected?<Action onClick={()=>setSelected(null)}>{c.back}</Action>:<span>{num(filtered.length,lang)} {c.countSub}</span>}>{selected?<div className="pbd-detail"><h2>{selected.name}</h2><p>{selected.description||selected.expected_primary_outcome||c.noData}</p><div className="pbd-detail-grid"><div><span>{c.status}</span><strong>{c[statusOf(selected)]}</strong></div><div><span>{c.progress}</span><strong>{pct(selected.progress_pct)}</strong></div><div><span>{c.budget}</span><strong>{vuv(selected.budget_vuv,lang)}</strong></div><div><span>{c.province}</span><strong>{list(selected.provinces).join(', ')||c.unknown}</strong></div><div><span>{c.theme}</span><strong>{themeOf(selected)||c.unknown}</strong></div><div><span>{c.latest}</span><strong>{selected.last_published_period||c.noData}</strong></div></div><h3>{c.outcome}</h3><p>{selected.expected_primary_outcome||c.noData}</p><Action onClick={()=>go('projects')}>Area Council coverage</Action></div>:<PublicProjectCatalogue projects={filtered} lang={lang} onProject={openProject} initialSource="merl"/>}</Panel>}
-      {tab==='results'&&<div className="pbd-results"><Panel title={c.results}><div className="pbd-results-summary"><div><strong>{pct(totals.progress)}</strong><span>{c.progress}</span></div><div><strong>{num(totals.beneficiaries,lang)}</strong><span>{c.beneficiaries}</span></div></div><p className="pbd-disclosure">{c.investmentNote}</p></Panel><Panel title={c.results}><PublicProjectResults projects={filtered} lang={lang} onProject={openProject}/></Panel><Panel title={c.themes}>{themeRows}</Panel></div>}
-      <footer className="pbd-footer"><span>{c.source}</span><span>{c.inventoryNote}</span><span>{c.disclosure}</span></footer>
-    </>}</div></main></div></div>;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return projects;
+    return projects.filter(project => [
+      project.name,
+      project.code,
+      project.acronym,
+      project.description,
+      project.project_manager_name,
+      ...list(project.provinces),
+    ].join(' ').toLowerCase().includes(q));
+  }, [projects, search]);
+
+  const totals = publicTotals(projects, summary, true);
+  const inventory = publicProjectCount(data?.inventory, projects.length, true);
+  const projectCount = inventory.scope === 'all' ? inventory.value : summary?.project_count ?? projects.length;
+
+  const areasByProject = useMemo(() => {
+    const map = new Map();
+    for (const area of data?.areas || []) {
+      for (const id of list(area.project_ids)) {
+        const key = String(id);
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push({ name: area.area_council, province: area.province });
+      }
+    }
+    return map;
+  }, [data?.areas]);
+
+  const visibleIds = new Set(filtered.map(project => String(project.id)));
+  const visibleAreas = (data?.areas || []).map(area => {
+    const ids = list(area.project_ids).filter(id => visibleIds.has(String(id)));
+    return {
+      ...area,
+      project_ids: ids,
+      project_count: ids.length,
+      project_names: ids.map(id => filtered.find(p => String(p.id) === String(id))?.name).filter(Boolean),
+    };
+  }).filter(area => area.project_count > 0);
+
+  return <div className="dsh pbd-root pbo-root">
+    {menuOpen && <button type="button" className="pbd-overlay" aria-label={c.close} onClick={() => setMenuOpen(false)} />}
+    <aside className={`dsh-side${menuOpen ? ' open' : ''}`}>
+      <div className="dsh-brand">
+        <img src={CREST} alt="" />
+        <div className="dsh-brand-dept">Department of Climate Change</div>
+        <div className="dsh-brand-title">MERL</div>
+      </div>
+      <nav className="dsh-nav" aria-label={c.overview}>
+        <button type="button" className="active" onClick={() => setMenuOpen(false)}>
+          <LayoutDashboard size={16} aria-hidden="true" />{c.overview}
+        </button>
+      </nav>
+      <div className="pbd-sidebar-access"><span>{c.publicOnly}</span></div>
+    </aside>
+
+    <div className="dsh-main">
+      <header className="dsh-head">
+        <button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}>
+          <Menu size={18} aria-hidden="true" />
+        </button>
+        <HeaderPartnerLogos />
+        <div className="dsh-head-actions">
+          <div className="dsh-lang" role="group" aria-label={c.language}>
+            <button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button>
+            <button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button>
+          </div>
+          <PublicHeaderLogin />
+        </div>
+      </header>
+
+      <main className="dsh-scroll scrollbar-thin">
+        <div className="ovx pbd-view pbo-view">
+          <div className="pbd-title-row pbo-title">
+            <div>
+              <h1>{c.title}</h1>
+              <p>{c.subtitle}{summary?.updated_at && <> · {c.refreshed}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p>
+            </div>
+          </div>
+
+          <section className="pbo-intro"><p>{c.intro}</p></section>
+
+          {!data ? (
+            isLoading
+              ? <div className="pbd-state" role="status">{c.loading}</div>
+              : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={() => void refetch()}>{c.retry}</button></div>
+          ) : <>
+            {isError && <div className="pbd-refresh-status pbd-refresh-error" role="alert">{c.error}<button type="button" onClick={() => void refetch()}>{c.retry}</button></div>}
+
+            <section className="pbo-kpis" aria-label="Portfolio totals">
+              <article><span>{c.projectCount}</span><strong>{projectCount == null ? '—' : fmtNum(projectCount, lang)}</strong></article>
+              <article><span>{c.beneficiaries}</span><strong>{fmtNum(totals.beneficiaries, lang)}</strong></article>
+              <article><span>{c.investment}</span><strong>{fmtVuv(totals.investment, lang)}</strong></article>
+              <article><span>{c.utilised}</span><strong>{fmtVuv(totals.utilised, lang)}</strong></article>
+            </section>
+
+            <section className="pbd-panel pbo-projects">
+              <div className="pbd-panel-head pbo-section-head">
+                <div><h2>{c.projects}</h2><p>{c.projectsSub}</p></div>
+                <span>{fmtNum(filtered.length, lang)} / {fmtNum(projects.length, lang)}</span>
+              </div>
+              <label className="pbo-search">
+                <span className="sr-only">{c.search}</span>
+                <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder={c.search} />
+              </label>
+
+              <div className="pbo-project-list">
+                {filtered.length ? filtered.map(project => {
+                  const coverage = areasByProject.get(String(project.id)) || [];
+                  const areaNames = [...new Set(coverage.map(item => item.name).filter(Boolean))];
+                  const provinces = list(project.provinces);
+                  return <article className="pbo-project-card" key={project.id}>
+                    <div className="pbo-project-heading">
+                      <div>
+                        <span className="pbo-project-code">{project.acronym || project.code || ''}</span>
+                        <h3>{project.name}</h3>
+                      </div>
+                      <span className={`pbo-status ${project.lifecycle_status || ''}`}>{project.lifecycle_status || ''}</span>
+                    </div>
+                    {project.description && <p className="pbo-project-description">{project.description}</p>}
+                    <div className="pbo-project-meta">
+                      <div><span>{c.manager}</span><strong>{project.project_manager_name || c.noManager}</strong></div>
+                      <div><span>{c.province}</span><strong>{provinces.length ? provinces.join(', ') : '—'}</strong></div>
+                      <div><span>{c.areaCouncils}</span><strong>{areaNames.length ? areaNames.join(', ') : c.noCoverage}</strong></div>
+                      <div><span>{c.people}</span><strong>{fmtNum(project.published_beneficiaries, lang)}</strong></div>
+                      <div><span>{c.budget}</span><strong>{fmtVuv(project.budget_vuv, lang)}</strong></div>
+                      <div><span>{c.spent}</span><strong>{fmtVuv(project.utilised_vuv, lang)}</strong></div>
+                    </div>
+                  </article>;
+                }) : <div className="pbd-empty">{c.noProjects}</div>}
+              </div>
+            </section>
+
+            <section className="pbd-panel pbo-map-section">
+              <div className="pbd-panel-head pbo-section-head">
+                <div><h2>{c.locations}</h2><p>{c.locationsSub}</p></div>
+              </div>
+              <div className="pbo-map"><PublicCoverageMap areas={visibleAreas} /></div>
+            </section>
+
+            <footer className="pbd-footer"><span>{c.disclosure}</span></footer>
+          </>}
+        </div>
+      </main>
+    </div>
+  </div>;
 }
