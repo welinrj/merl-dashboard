@@ -1,4 +1,10 @@
 /* Single-page public overview. The authorised MERL workspace is unaffected. */
+/* Public overview does not use the authenticated workspace sidebar. Keep this
+   scoped to .pbd-root so the signed-in MERL dashboard navigation is unchanged. */
+.pbd-root{grid-template-columns:minmax(0,1fr)!important}
+.pbd-root>.dsh-side{display:none!important}
+.pbd-root>.dsh-main{grid-column:1/-1!important;width:100%!important;min-width:0}
+.pbd-root .dsh-hamburger{display:none!important}
 .pbd-root .dsh-nav button{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;border:0;border-radius:var(--radius-control);background:transparent;color:inherit;text-align:left;padding:10px 12px;font:inherit;font-weight:650;cursor:pointer}
 .pbd-root .dsh-nav button:hover,.pbd-root .dsh-nav button.active{background:var(--green-600);color:#fff}
 .pbd-root .dsh-nav button svg{flex:none}
