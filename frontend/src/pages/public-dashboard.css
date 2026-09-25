@@ -88,3 +88,106 @@
 @media(max-width:600px){.pbd-activity-grid{grid-template-columns:1fr}.pbd-activity-item{grid-template-columns:1fr 1fr;gap:12px}.pbd-activity-item>div:first-child{grid-column:1/-1}}
 @media(max-width:480px){.pbd-root .dsh-head .pbd-signin{white-space:normal;text-align:center}.pbd-view{padding:12px}.pbd-filters{padding:12px}.pbd-metrics{grid-template-columns:1fr}.pbd-metric{min-height:120px}.pbd-section{padding:13px}.pbd-section-head{flex-wrap:wrap}.pbd-root .pub-leaflet-wrap{height:390px}.pbd-root .pub-map-key{left:8px;bottom:8px;width:calc(100% - 16px)}.pbd-project-facts{grid-template-columns:1fr}.pbd-project-card>header{flex-wrap:wrap}.pbd-project-image{flex-basis:76px;width:76px;height:58px}}
 @media(prefers-reduced-motion:reduce){.pbd-root *{scroll-behavior:auto!important}}
+
+
+/* Public header reset after removing the workspace sidebar.
+   The public page is a single full-width column; no authenticated-shell offset
+   or drawer geometry is allowed to shift the institutional header off-canvas. */
+.pbd-root{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  overflow:hidden!important;
+}
+.pbd-root>.dsh-main{
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
+  width:100%!important;
+  max-width:none!important;
+  height:100%!important;
+  margin:0!important;
+  left:auto!important;
+  right:auto!important;
+  transform:none!important;
+}
+.pbd-root>.dsh-main>.dsh-head{
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  left:0!important;
+  right:auto!important;
+  transform:none!important;
+  overflow:visible!important;
+}
+
+/* On tablets, give branding and credentials their own rows. This prevents the
+   email/password form from squeezing or pushing the Government partner logos
+   outside the viewport. */
+@media (max-width:1280px){
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;
+    align-items:center!important;
+    gap:10px!important;
+    min-height:0!important;
+    padding:12px 16px!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos)>.merl-partner-logos{
+    grid-column:1!important;
+    grid-row:1!important;
+    justify-self:start!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos)>.dsh-head-actions{
+    grid-column:1!important;
+    grid-row:2!important;
+    display:flex!important;
+    align-items:flex-end!important;
+    justify-content:flex-end!important;
+    flex-wrap:nowrap!important;
+    width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    gap:10px!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login{
+    flex:1 1 auto!important;
+    width:min(100%,520px)!important;
+    max-width:520px!important;
+    min-width:0!important;
+    margin:0!important;
+  }
+}
+
+/* Phones keep the same simple two-row public header. The removed sidebar means
+   there is no hamburger/drawer row on this page. */
+@media (max-width:760px){
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos){
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;
+    padding:10px 12px!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos)>.merl-partner-logos{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos)>.dsh-head-actions{
+    grid-column:1!important;
+    grid-row:2!important;
+    flex-wrap:wrap!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos)>.dsh-hamburger{
+    display:none!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login{
+    width:100%!important;
+    max-width:none!important;
+    flex:1 1 100%!important;
+  }
+}
