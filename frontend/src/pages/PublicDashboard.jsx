@@ -61,8 +61,39 @@ const positive = value => finite(value) && Number(value) > 0;
 const num = (value, lang = 'en') => finite(value)
   ? new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(Number(value)) : '—';
 const pct = value => finite(value) ? `${Math.round(Number(value))}%` : '—';
-const vuv = (value, lang, fallback = '—') => finite(value) ? `VT ${num(value, lang)}` : fallback;
-const recordedVuv = (value, lang, fallback = '—') => positive(value) ? vuv(value, lang) : fallback;
+const projectCurrency = value => String(value || 'VUV').trim().toUpperCase() || 'VUV';
+const money = (value, currency, lang, fallback = '—') => {
+  if (!finite(value)) return fallback;
+  const code = projectCurrency(currency);
+  if (code === 'VUV') return `VT ${num(value, lang)}`;
+  try {
+    return new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', {
+      style: 'currency', currency: code, maximumFractionDigits: 0,
+    }).format(Number(value));
+  } catch {
+    return `${code} ${num(value, lang)}`;
+  }
+};
+const recordedMoney = (value, currency, lang, fallback = '—') => positive(value) ? money(value, currency, lang, fallback) : fallback;
+const moneyTotals = (projects, field, lang, fallback = '—') => {
+  const totals = new Map();
+  projects.forEach(project => {
+    const value = project?.[field];
+    if (!positive(value)) return;
+    const code = projectCurrency(project.currency);
+    totals.set(code, (totals.get(code) || 0) + Number(value));
+  });
+  return totals.size
+    ? [...totals.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([code, value]) => money(value, code, lang)).join(' · ')
+    : fallback;
+};
+const comparableFinancialUtilisation = projects => {
+  const currencies = new Set(projects.filter(project => positive(project.budget_vuv)).map(project => projectCurrency(project.currency)));
+  if (currencies.size !== 1) return null;
+  const investment = projects.reduce((sum, project) => sum + (finite(project.budget_vuv) ? Number(project.budget_vuv) : 0), 0);
+  const utilised = projects.reduce((sum, project) => sum + (finite(project.cumulative_expenditure_vuv) ? Number(project.cumulative_expenditure_vuv) : 0), 0);
+  return investment > 0 ? Math.round(utilised / investment * 1000) / 10 : null;
+};
 const list = value => Array.isArray(value) ? value : [];
 const themesOf = projectThemes;
 const themeOf = project => themesOf(project).join(', ');
@@ -82,8 +113,8 @@ function ProjectCard({ project, areas, copy, lang }) {
     <dl className="pbd-project-facts">
       <div><dt>{copy.manager}</dt><dd>{project.project_manager || copy.unknown}</dd></div>
       <div><dt>{copy.implementation}</dt><dd>{places.length ? places.join(', ') : copy.unknown}</dd></div>
-      <div><dt>{copy.budget}</dt><dd>{recordedVuv(project.budget_vuv, lang, copy.unknown)}</dd></div>
-      <div><dt>{copy.spent}</dt><dd>{vuv(project.cumulative_expenditure_vuv, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
+      <div><dt>{copy.budget}</dt><dd>{recordedMoney(project.budget_vuv, project.currency, lang, copy.unknown)}</dd></div>
+      <div><dt>{copy.spent}</dt><dd>{money(project.cumulative_expenditure_vuv, project.currency, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
       <div><dt>{copy.reached}</dt><dd>{project.last_published_period ? num(project.published_beneficiaries, lang) : copy.noFinance}</dd></div>
       <div><dt>{copy.theme}</dt><dd>{themeOf(project) || copy.unknown}</dd></div>
     </dl>
@@ -120,6 +151,9 @@ export default function PublicDashboard() {
   const themes = useMemo(() => [...new Set(projects.flatMap(themesOf))].sort(), [projects]);
   const allScope = !filters.search && !filters.status && !filters.theme && !filters.province && !selectedArea;
   const totals = publicTotals(filtered, summary, allScope);
+  const fundingTotal = moneyTotals(filtered, 'budget_vuv', lang);
+  const utilisedTotal = moneyTotals(filtered, 'cumulative_expenditure_vuv', lang, c.noFinance);
+  const comparableUtilisation = comparableFinancialUtilisation(filtered);
   const selectedIds = new Set(filtered.map(project => String(project.id)));
   const areas = sourceAreas.map(area => {
     const ids = list(area.project_ids).filter(id => selectedIds.has(String(id)));
@@ -160,10 +194,10 @@ export default function PublicDashboard() {
         {!data ? (isLoading ? <div className="pbd-state" role="status">{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
           <section className="pbd-metrics" aria-label={c.title}>
             <Metric label={c.projects} value={num(filtered.length, lang)} detail={c.projectCount} tone="projects" />
-            <Metric label={c.funding} value={vuv(totals.investment, lang)} detail={c.fundingSub} tone="funding" />
-            <Metric label={c.utilised} value={vuv(totals.utilised, lang, c.noFinance)} detail={c.utilisedSub} tone="utilised" />
+            <Metric label={c.funding} value={fundingTotal} detail={c.fundingSub} tone="funding" />
+            <Metric label={c.utilised} value={utilisedTotal} detail={c.utilisedSub} tone="utilised" />
             <Metric label={c.beneficiaries} value={num(totals.beneficiaries, lang)} detail={c.beneficiariesSub} tone="beneficiaries" />
-            <Metric label={c.utilisation} value={pct(totals.utilisation)} detail={c.utilisationSub} tone="rate" />
+            <Metric label={c.utilisation} value={pct(comparableUtilisation)} detail={c.utilisationSub} tone="rate" />
           </section>
 
           <section className="pbd-section pbd-location-section">
