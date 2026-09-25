@@ -8,6 +8,7 @@ export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 // snapshot database migration is pending. Database values always win; these
 // source-backed values only fill blanks/zero placeholder budgets.
 const PROJECT_PROFILE_FALLBACKS = [
+  { match: p => p.code === 'DOCC-WEB-FCPF' || p.acronym === 'FCPF' || /forest carbon partnership facility/i.test(p.name || ''), values: { currency:'USD', budget_vuv:7186080, provinces:['Sanma','Shefa','Tafea'] } },
   { match: p => p.code === 'VCCRP-001' || p.acronym === 'VCCRP' || /community.*climate.*resilien/i.test(p.name || ''), values: { currency:'USD', budget_vuv:25000000, project_manager:'Louise Nassak' } },
   { match: p => ['23A398','VCAP2-001'].includes(p.code) || ['VCAP2','VCAP II'].includes(p.acronym) || /coastal adaptation project.*(phase 2|ii)/i.test(p.name || ''), values: { currency:'USD', budget_vuv:12544037, project_manager:'Jackson Tambe Vire' } },
   { match: p => p.acronym === 'STRENGTH' || /strength.*loss.*damage/i.test(p.name || ''), values: { currency:'USD', budget_vuv:127680, project_manager:'Brian Maltera' } },
