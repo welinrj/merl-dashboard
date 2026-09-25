@@ -6,9 +6,12 @@ import { confirmDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
 import ActivityManager from '../components/ActivityManager';
 import * as OPT from '../constants/formOptions';
-import { PROVINCE_LIST } from '../constants/vanuatuGeo';
+import { PROVINCE_LIST, AREA_COUNCILS_BY_PROVINCE } from '../constants/vanuatuGeo';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
+const OFFICIAL_AREA_COUNCIL_REFS = Object.entries(AREA_COUNCILS_BY_PROVINCE)
+  .flatMap(([province_code, names]) => names.map((name) => ({ province_code, name })))
+  .sort((a, b) => a.province_code.localeCompare(b.province_code) || a.name.localeCompare(b.name));
 const toNull = (v) => (v === '' || v === undefined ? null : v);
 const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 const toArr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
@@ -214,13 +217,16 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   const [busy, setBusy] = useState(false);
 
   const loadProjects = useCallback(async () => {
-    const [{ data: ps, error: pe }, { data: rs, error: re }] = await Promise.all([
-      supabase.from('v_projects').select('id,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome').order('code'),
-      supabase.from('v_ref_area_councils').select('*').order('province_code').order('name'),
-    ]);
-    if (pe || re) { toast.error(dbErrorMessage(pe || re)); return; }
+    const { data: ps, error: pe } = await supabase
+      .from('v_projects')
+      .select('id,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome')
+      .order('code');
+    if (pe) { toast.error(dbErrorMessage(pe)); return; }
     setProjects(ps || []);
-    setRefs(rs || []);
+    // Use the controlled national reference list in the UI. The database mirror
+    // is maintained by migration, but the dropdown must never fall back to an
+    // obsolete starter list if a database migration is temporarily delayed.
+    setRefs(OFFICIAL_AREA_COUNCIL_REFS);
     setProjectId((old) => {
       const requested = preferredProjectId || routeProjectId;
       const preferred = (ps || []).some((p) => p.id === requested) ? requested : '';

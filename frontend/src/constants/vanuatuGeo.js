@@ -18,12 +18,35 @@ export const ISLANDS_BY_PROVINCE = {
 };
 
 export const AREA_COUNCILS_BY_PROVINCE = {
-  TORBA: ['Torres', 'Ureparapara', 'Mota Lava', 'Gaua', 'Vanua Lava'],
-  SANMA: ['Big Bay Coast', 'Big Bay Inland', 'Canal Fanafo', 'East Malo', 'East Santo', 'North West Santo', 'South East Santo', 'South Santo 1', 'South Santo 2', 'West Malo', 'West Coast Santo'],
-  PENAMA: ['North Ambae', 'West Ambae', 'East Ambae', 'Maewo', 'North Pentecost', 'Central Pentecost', 'South Pentecost'],
-  MALAMPA: ['North West Malakula', 'North East Malakula', 'Central Malakula', 'South West Malakula', 'South East Malakula', 'North Ambrym', 'West Ambrym', 'South East Ambrym', 'Paama'],
-  SHEFA: ['North Efate', 'Central Efate', 'South Efate', 'Port Vila', 'Epi', 'Tongoa-Shepherds', 'Emae'],
-  TAFEA: ['North Tanna', 'West Tanna', 'Middle Bush Tanna', 'South West Tanna', 'Whitesands', 'Erromango', 'Aniwa', 'Futuna', 'Aneityum'],
+  TORBA: [
+    'Torres', 'Ureparapara', 'Motalava', 'Mota', 'East Vanualava',
+    'West Vanualava', 'East Gaua', 'West Gaua', 'Merelava-Merig',
+  ],
+  SANMA: [
+    'Northwest Santo', 'West Santo', 'South Santo One (1)', 'South Santo Two (2)',
+    'Southeast Santo', 'Canal Fanafo', 'East Santo', 'Big Bay Coast',
+    'Big Bay Inland', 'West Malo', 'East Malo',
+  ],
+  PENAMA: [
+    'North Pentecost', 'Central Pentecost One (CP1)', 'Central Pentecost Two (CP2)',
+    'South Pentecost', 'South Maewo', 'North Maewo', 'South Ambae', 'East Ambae',
+    'North Ambae', 'West Ambae',
+  ],
+  MALAMPA: [
+    'Northwest Malekula', 'Northeast Malekula', 'Central Malekula',
+    'Southeast Malekula', 'Southwest Malekula', 'South Malekula',
+    'North Ambrym', 'West Ambrym', 'Southeast Ambrym', 'Paama',
+  ],
+  SHEFA: [
+    'North Efate', 'Eratap', 'East Efate', 'Northwest Efate', 'Mele', 'Ifira',
+    'Tanvasoko', 'Erakor', 'Pango', 'Emau', 'Nguna-Pele', 'Varsu', 'Vermaul',
+    'Vermali', 'Yarsu', 'Tongoa', 'Tongariki-Buninga', 'Makira-Mataso', 'Emae',
+  ],
+  TAFEA: [
+    'North Tanna', 'East Tanna', 'Central Tanna', 'West Tanna', 'Southwest Tanna',
+    'South Tanna', 'Southeast Tanna', 'Aneityum', 'North Erromango',
+    'South Erromango', 'Aniwa', 'Futuna',
+  ],
 };
 
 export const islandsForProvince = (p) => ISLANDS_BY_PROVINCE[p] ?? [];
