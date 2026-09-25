@@ -5,8 +5,9 @@ import { normalizePublishedProjects, normalizeProvince } from './publicProvinces
 export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 
 // Production fallback for verified project profile fields while the public
-// snapshot database migration is pending. Database values always win; these
-// source-backed values only fill blanks/zero placeholder budgets.
+// snapshot database migration is pending. For source-verified funding, currency
+// and manager fields, the verified profile values take precedence over legacy
+// converted/placeholder values until the database migration is applied.
 const PROJECT_PROFILE_FALLBACKS = [
   { match: p => p.code === 'DOCC-WEB-FCPF' || p.acronym === 'FCPF' || /forest carbon partnership facility/i.test(p.name || ''), values: { currency:'USD', budget_vuv:7186080, provinces:['Sanma','Shefa','Tafea'] } },
   { match: p => p.code === 'VCCRP-001' || p.acronym === 'VCCRP' || /community.*climate.*resilien/i.test(p.name || ''), values: { currency:'USD', budget_vuv:25000000, project_manager:'Louise Nassak' } },
@@ -25,8 +26,14 @@ function enrichPublishedProject(project) {
   if (!fallback) return project;
   const next = { ...project };
   for (const [key, value] of Object.entries(fallback.values)) {
+    if (['budget_vuv', 'currency', 'project_manager'].includes(key)) {
+      next[key] = value;
+      continue;
+    }
     const current = next[key];
-    const missing = key === 'budget_vuv' ? !(Number(current) > 0) : blank(current);
+    const missing = Array.isArray(value)
+      ? !Array.isArray(current) || current.length === 0
+      : blank(current);
     if (missing) next[key] = value;
   }
   return next;
