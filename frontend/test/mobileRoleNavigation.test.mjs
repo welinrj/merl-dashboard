@@ -24,4 +24,5 @@ test('Results Framework deep links check the same permission as the navigation',
   assert.match(css, /grid-auto-columns:minmax\(0,1fr\)/);
   assert.match(browserQa, /authenticated&&width<=560/);
   assert.match(browserQa, /\.dsh-mobile-nav button/);
+  assert.match(css, /\.dsh:not\(\.pbd-root\) \.dsh-head \.dsh-hamburger\{display:none!important\}/);
 });
