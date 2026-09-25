@@ -91,6 +91,12 @@ const NAV_ITEMS: SideItem[] = [
   { key: 'admin', path: '/admin', Icon: Settings },
 ];
 
+const MOBILE_NAV_LABELS: Record<string, Partial<Record<NavKey, string>> & { more: string }> = {
+  en: { overview: 'Overview', projects: 'Projects', results: 'Results', reports: 'Reports', more: 'More' },
+  bi: { overview: 'Ovaviu', projects: 'Projek', results: 'Risalt', reports: 'Ripot', more: 'Mo' },
+  fr: { overview: 'Aperçu', projects: 'Projets', results: 'Résultats', reports: 'Rapports', more: 'Plus' },
+};
+
 // Navigation by role (spec §18). Functions a role can't use are hidden.
 const TAB_ACCESS: Record<UserRole, NavKey[]> = {
   // System Administrator — full portal incl. Administration
@@ -428,6 +434,8 @@ export default function App() {
 
   const allowed    = TAB_ACCESS[user.role] ?? [];
   const visibleNav = NAV_ITEMS.filter(n => allowed.includes(n.key));
+  const mobileNav = visibleNav.filter(n => ['overview', 'projects', 'results', 'reports'].includes(n.key));
+  const mobileLabels = MOBILE_NAV_LABELS[i18n.resolvedLanguage?.split('-')[0] ?? 'en'] ?? MOBILE_NAV_LABELS.en;
   const defaultPath = visibleNav[0]?.path ?? '/dashboards';
   const initials   = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
   const activeItem = (location.pathname === '/merl-reporting' ? NAV_ITEMS.find(n => n.key === 'activities') : undefined)
@@ -537,7 +545,7 @@ export default function App() {
               <Route path="/analytics/project-portfolio" element={allowed.includes('projectAnalysis') ? <ProjectPortfolioAnalysis /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analytics/:lens" element={<AnalyticsRoute allowed={allowed} fallback={defaultPath} />} />
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/results-framework" element={<ResultsWorkspace user={user} />} />
+              <Route path="/results-framework" element={gate('/results-framework') ? <ResultsWorkspace user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/reports" element={gate('/reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
               <Route path="/review" element={gate('/review') ? <ReviewApproval user={user} /> : <Navigate to={defaultPath} replace />} />
@@ -547,6 +555,21 @@ export default function App() {
           </ErrorBoundary>
         </div>
       </div>
+
+      <nav className="dsh-mobile-nav" aria-label={t('shell.primaryNav')}>
+        {mobileNav.map(({ key, path, Icon }) => (
+          <NavLink key={key} to={path} onClick={() => setSidebarOpen(false)}
+            className={key === activeItem.key ? 'active' : ''}>
+            <Icon size={20} aria-hidden="true" /><span>{mobileLabels[key] ?? t(`nav.${key}`)}</span>
+          </NavLink>
+        ))}
+        {visibleNav.length > 0 && (
+          <button type="button" aria-label={t('shell.toggleMenu')}
+            aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(o => !o)}>
+            <Menu size={20} aria-hidden="true" /><span>{mobileLabels.more}</span>
+          </button>
+        )}
+      </nav>
 
       {passwordOpen && <ChangePasswordModal onClose={() => setPasswordOpen(false)} />}
     </div>
