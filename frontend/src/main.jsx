@@ -1,13 +1,12 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { HashRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { ConfirmHost } from './lib/confirm';
 import DataAvailabilityGuard from './components/DataAvailabilityGuard';
 import EvidenceUploadPortal from './components/EvidenceUploadPortal';
 import PasswordRecoveryGate from './components/PasswordRecoveryGate';
-import { LayoutDashboard, FolderKanban, Target, FileBarChart, Menu } from './components/ui/icons';
 
 // i18n must be imported before the application entry so translations are ready
 import './i18n';
@@ -46,23 +45,6 @@ const queryClient = new QueryClient({
   },
 });
 
-function MobileThumbNav() {
-  const location = useLocation();
-  // Internal MERL routes only. The public overview and login stay unchanged.
-  const internal = ['/dashboards','/project-setup','/results-framework','/merl-reporting','/reports','/review','/admin','/analytics'];
-  if (!internal.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) return null;
-
-  return (
-    <nav className="dsh-mobile-nav" aria-label="Mobile navigation">
-      <NavLink to="/dashboards"><LayoutDashboard size={20} aria-hidden="true" /><span>Overview</span></NavLink>
-      <NavLink to="/project-setup"><FolderKanban size={20} aria-hidden="true" /><span>Projects</span></NavLink>
-      <NavLink to="/results-framework"><Target size={20} aria-hidden="true" /><span>Results</span></NavLink>
-      <NavLink to="/reports"><FileBarChart size={20} aria-hidden="true" /><span>Reports</span></NavLink>
-      <NavLink to="/merl-reporting"><Menu size={20} aria-hidden="true" /><span>More</span></NavLink>
-    </nav>
-  );
-}
-
 function PortalApp() {
   return (
     <Routes>
@@ -70,7 +52,6 @@ function PortalApp() {
         <>
           <PasswordRecoveryGate />
           <PublicEntry />
-          <MobileThumbNav />
           <EvidenceUploadPortal />
           <ConfirmHost />
           <DataAvailabilityGuard />
