@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const app = read('../src/App.tsx');
 const entry = read('../src/main.jsx');
 const css = read('../src/mobile-dashboard.css');
+const browserQa = read('../qa/header-brand-layout.mjs');
 
 test('mobile navigation lives inside the authenticated shell and uses its role-filtered links', () => {
   assert.doesNotMatch(entry, /MobileThumbNav|dsh-mobile-nav/);
@@ -21,4 +22,6 @@ test('Results Framework deep links check the same permission as the navigation',
   assert.match(app, /path="\/results-framework" element=\{gate\('\/results-framework'\) \? <ResultsWorkspace/);
   assert.match(app, /<button type="button" aria-label=\{t\('shell\.toggleMenu'\)\}/);
   assert.match(css, /grid-auto-columns:minmax\(0,1fr\)/);
+  assert.match(browserQa, /authenticated&&width<=560/);
+  assert.match(browserQa, /\.dsh-mobile-nav button/);
 });
