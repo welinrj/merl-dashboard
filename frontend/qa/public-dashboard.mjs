@@ -11,6 +11,7 @@ const fixtures = {
   public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:2,project_ids:['pa','pb'],project_names:['Coastal Resilience','Water Security']},{province:'TORBA',area_council:'Torres',project_count:1,project_ids:['pb'],project_names:['Water Security']}],
   public_portal_kpis:[],
   public_portal_indicator_categories:[{project_id:'pa',category_key:'ecosystems',indicator_count:3},{project_id:'pa',category_key:'capacity',indicator_count:2},{project_id:'pb',category_key:'finance',indicator_count:4}],
+  public_portal_indicator_details:[{indicator_id:'i1',project_id:'pa',project_name:'Coastal Resilience',category_key:'ecosystems',indicator_code:'COAST-1',indicator_name:'Mangrove restoration',target_value:20,unit:'ha'},{indicator_id:'i2',project_id:'pb',project_name:'Water Security',category_key:'finance',indicator_code:'WATER-1',indicator_name:'Financing arrangements',target_value:null,target_text:null}],
 };
 let failures = 0;
 const check = (name, ok) => {console.log(`${ok?'✓':'✗'} ${name}`);if(!ok)failures++;};
@@ -56,6 +57,10 @@ check('all official themes are shown for multi-theme projects',await page.getByT
 check('implementation areas are visible',await page.getByRole('heading',{name:'Area Councils'}).count()===1 && await page.getByRole('button',{name:/Big Bay Coast/}).count()===1);
 check('map legend categorises recorded areas by official themes',await page.locator('.pub-map-key').getByText('Areas by official thematic area',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Adaptation & Mitigation',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Theme not recorded',{exact:true}).count()===1);
 check('all indicator activity categories and totals are shown',await page.getByText('What project indicators cover',{exact:true}).count()===1 && await page.locator('.pbd-activity-category').count()===3 && await page.locator('.pbd-activity-section').getByText('9 indicators',{exact:true}).count()===1);
+await page.locator('.pbd-activity-ecosystems').click();
+check('category opens activity, target and implementing project',await page.locator('.pbd-activity-details').getByText('Mangrove restoration').count()===1 && await page.locator('.pbd-activity-details').getByText('20 ha').count()===1 && await page.locator('.pbd-activity-details').getByText('Coastal Resilience').count()===1);
+await page.locator('.pbd-activity-finance').click();
+check('missing targets are identified without inventing values',await page.locator('.pbd-activity-details').getByText('Not recorded').count()===1);
 await page.locator('.pbd-filters select').nth(1).selectOption('Mitigation');
 check('theme filter includes a project under either official theme',await page.locator('.pbd-project-card').count()===1 && await page.getByRole('heading',{name:'Coastal Resilience'}).count()===1);
 check('indicator category totals follow the selected projects',await page.locator('.pbd-activity-category').count()===2 && await page.locator('.pbd-activity-section').getByText('5 indicators',{exact:true}).count()===1);
