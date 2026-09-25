@@ -16,7 +16,7 @@ const COPY = {
     title: 'Public Overview', subtitle: 'Department of Climate Change project portfolio', overview: 'Public Overview',
     search: 'Search projects…', status: 'Status', theme: 'Theme', province: 'Province', all: 'All', reset: 'Reset', filters: 'Filters',
     refresh: 'Refresh', refreshing: 'Checking for updates…', projects: 'DoCC Projects', projectCount: 'Projects under the Department of Climate Change',
-    funding: 'Total Project Funding', fundingSub: 'Recorded in original project currencies; currencies are not combined', fundingOther: 'Also recorded', utilised: 'Funds Utilised', utilisedSub: 'Latest approved cumulative expenditure',
+    funding: 'Total Project Funding', fundingSub: 'All recorded project budgets converted to VUV using Reserve Bank of Vanuatu rates dated 25 Sep 2026', utilised: 'Funds Utilised', utilisedSub: 'Latest approved cumulative expenditure',
     beneficiaries: 'Total Beneficiaries', beneficiariesSub: 'Direct beneficiaries from approved reports', utilisation: 'Financial Utilisation',
     utilisationSub: 'Approved expenditure as a share of total funding', portfolio: 'Project portfolio', portfolioIntro: 'Projects coordinated by the Department of Climate Change and the information currently recorded for public view.',
     locations: 'Where projects are implementing activities', locationsIntro: 'Recorded provinces and Area Councils for projects in the selected view.',
@@ -37,7 +37,7 @@ const COPY = {
     title: 'Vue publique', subtitle: 'Portefeuille de projets du Département du changement climatique', overview: 'Vue publique',
     search: 'Rechercher des projets…', status: 'État', theme: 'Thème', province: 'Province', all: 'Tous', reset: 'Réinitialiser', filters: 'Filtres',
     refresh: 'Actualiser', refreshing: 'Recherche de mises à jour…', projects: 'Projets du DoCC', projectCount: 'Projets relevant du Département du changement climatique',
-    funding: 'Financement total des projets', fundingSub: 'Enregistré dans les devises d’origine; les devises ne sont pas additionnées', fundingOther: 'Également enregistré', utilised: 'Fonds utilisés', utilisedSub: 'Dernières dépenses cumulées approuvées',
+    funding: 'Financement total des projets', fundingSub: 'Tous les budgets enregistrés sont convertis en VUV selon les taux de la Banque de Réserve du Vanuatu du 25 sept. 2026', utilised: 'Fonds utilisés', utilisedSub: 'Dernières dépenses cumulées approuvées',
     beneficiaries: 'Total des bénéficiaires', beneficiariesSub: 'Bénéficiaires directs issus des rapports approuvés', utilisation: 'Utilisation financière',
     utilisationSub: 'Dépenses approuvées en proportion du financement total', portfolio: 'Portefeuille de projets', portfolioIntro: 'Projets coordonnés par le Département du changement climatique et informations actuellement enregistrées pour le public.',
     locations: 'Où les projets mettent en œuvre des activités', locationsIntro: 'Provinces et conseils de zone enregistrés pour les projets sélectionnés.',
@@ -62,6 +62,13 @@ const num = (value, lang = 'en') => finite(value)
   ? new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(Number(value)) : '—';
 const pct = value => finite(value) ? `${Math.round(Number(value))}%` : '—';
 const projectCurrency = value => String(value || 'VUV').trim().toUpperCase() || 'VUV';
+// Reserve Bank of Vanuatu published rates for 25 September 2026, expressed as VUV per unit.
+const VUV_RATES = Object.freeze({ VUV:1, USD:117.58, AUD:82.46, NZD:66.56, EUR:133.80, GBP:155.38, JPY:0.7404 });
+const toVuv = (value, currency) => {
+  if (!finite(value)) return null;
+  const rate = VUV_RATES[projectCurrency(currency)];
+  return finite(rate) ? Number(value) * Number(rate) : null;
+};
 const money = (value, currency, lang, fallback = '—') => {
   if (!finite(value)) return fallback;
   const code = projectCurrency(currency);
@@ -74,29 +81,33 @@ const money = (value, currency, lang, fallback = '—') => {
     return `${code} ${num(value, lang)}`;
   }
 };
-const recordedMoney = (value, currency, lang, fallback = '—') => positive(value) ? money(value, currency, lang, fallback) : fallback;
-const moneyTotalsMap = (projects, field) => {
-  const totals = new Map();
-  projects.forEach(project => {
-    const value = project?.[field];
-    if (!positive(value)) return;
-    const code = projectCurrency(project.currency);
-    totals.set(code, (totals.get(code) || 0) + Number(value));
-  });
-  return totals;
+const recordedMoney = (value, currency, lang, fallback = '—') => {
+  const converted = toVuv(value, currency);
+  return positive(converted) ? money(converted, 'VUV', lang, fallback) : fallback;
 };
 const moneyTotals = (projects, field, lang, fallback = '—') => {
-  const totals = moneyTotalsMap(projects, field);
-  return totals.size
-    ? [...totals.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([code, value]) => money(value, code, lang)).join(' · ')
-    : fallback;
+  let hasValue = false;
+  let totalVuv = 0;
+  for (const project of projects) {
+    const converted = toVuv(project?.[field], project?.currency);
+    if (!positive(converted)) continue;
+    hasValue = true;
+    totalVuv += converted;
+  }
+  return hasValue ? money(totalVuv, 'VUV', lang) : fallback;
 };
 const comparableFinancialUtilisation = projects => {
-  const currencies = new Set(projects.filter(project => positive(project.budget_vuv)).map(project => projectCurrency(project.currency)));
-  if (currencies.size !== 1) return null;
-  const investment = projects.reduce((sum, project) => sum + (finite(project.budget_vuv) ? Number(project.budget_vuv) : 0), 0);
-  const utilised = projects.reduce((sum, project) => sum + (finite(project.cumulative_expenditure_vuv) ? Number(project.cumulative_expenditure_vuv) : 0), 0);
-  return investment > 0 ? Math.round(utilised / investment * 1000) / 10 : null;
+  let investment = 0;
+  let utilised = 0;
+  let hasInvestment = false;
+  let hasUtilised = false;
+  for (const project of projects) {
+    const budgetVuv = toVuv(project.budget_vuv, project.currency);
+    const utilisedVuv = toVuv(project.cumulative_expenditure_vuv, project.currency);
+    if (positive(budgetVuv)) { investment += budgetVuv; hasInvestment = true; }
+    if (positive(utilisedVuv)) { utilised += utilisedVuv; hasUtilised = true; }
+  }
+  return hasInvestment && hasUtilised && investment > 0 ? Math.round(utilised / investment * 1000) / 10 : null;
 };
 const list = value => Array.isArray(value) ? value : [];
 const themesOf = projectThemes;
@@ -155,13 +166,7 @@ export default function PublicDashboard() {
   const themes = useMemo(() => [...new Set(projects.flatMap(themesOf))].sort(), [projects]);
   const allScope = !filters.search && !filters.status && !filters.theme && !filters.province && !selectedArea;
   const totals = publicTotals(filtered, summary, allScope);
-  const fundingByCurrency = moneyTotalsMap(filtered, 'budget_vuv');
-  const primaryFundingCurrency = fundingByCurrency.has('USD') ? 'USD' : [...fundingByCurrency.keys()][0];
-  const fundingTotal = primaryFundingCurrency ? money(fundingByCurrency.get(primaryFundingCurrency), primaryFundingCurrency, lang) : '—';
-  const fundingSecondary = [...fundingByCurrency.entries()]
-    .filter(([code]) => code !== primaryFundingCurrency)
-    .map(([code, value]) => money(value, code, lang))
-    .join(' · ');
+  const fundingTotal = moneyTotals(filtered, 'budget_vuv', lang);
   const utilisedTotal = moneyTotals(filtered, 'cumulative_expenditure_vuv', lang, c.noFinance);
   const comparableUtilisation = comparableFinancialUtilisation(filtered);
   const selectedIds = new Set(filtered.map(project => String(project.id)));
@@ -204,7 +209,7 @@ export default function PublicDashboard() {
         {!data ? (isLoading ? <div className="pbd-state" role="status">{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
           <section className="pbd-metrics" aria-label={c.title}>
             <Metric label={c.projects} value={num(filtered.length, lang)} detail={c.projectCount} tone="projects" />
-            <Metric label={c.funding} value={fundingTotal} detail={<>{c.fundingSub}{fundingSecondary ? <> · {c.fundingOther}: {fundingSecondary}</> : null}</>} tone="funding" />
+            <Metric label={c.funding} value={fundingTotal} detail={c.fundingSub} tone="funding" />
             <Metric label={c.utilised} value={utilisedTotal} detail={c.utilisedSub} tone="utilised" />
             <Metric label={c.beneficiaries} value={num(totals.beneficiaries, lang)} detail={c.beneficiariesSub} tone="beneficiaries" />
             <Metric label={c.utilisation} value={pct(comparableUtilisation)} detail={c.utilisationSub} tone="rate" />
