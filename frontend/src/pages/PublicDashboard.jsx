@@ -129,7 +129,7 @@ function ProjectCard({ project, areas, copy, lang }) {
       <div><dt>{copy.manager}</dt><dd>{project.project_manager || copy.unknown}</dd></div>
       <div><dt>{copy.implementation}</dt><dd>{places.length ? places.join(', ') : copy.unknown}</dd></div>
       <div><dt>{copy.budget}</dt><dd>{recordedMoney(project.budget_vuv, project.currency, lang, copy.unknown)}</dd></div>
-      <div><dt>{copy.spent}</dt><dd>{money(project.cumulative_expenditure_vuv, project.currency, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
+      <div><dt>{copy.spent}</dt><dd>{recordedMoney(project.cumulative_expenditure_vuv, project.currency, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
       <div><dt>{copy.reached}</dt><dd>{project.last_published_period ? num(project.published_beneficiaries, lang) : copy.noFinance}</dd></div>
       <div><dt>{copy.theme}</dt><dd>{themeOf(project) || copy.unknown}</dd></div>
     </dl>
