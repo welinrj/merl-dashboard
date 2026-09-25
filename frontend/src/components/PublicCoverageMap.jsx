@@ -19,8 +19,31 @@ function leaflet(){
   return promise;
 }
 const norm=(v)=>String(v||'').toLowerCase().replace(/\b(area council|council)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+const AREA_ALIASES=new Map(Object.entries({
+  'vanua lava':'east vanualava',
+  'west vanua lava':'west vanualava',
+  'merelava merig':'merelava merig',
+  'north west santo':'northwest santo',
+  'south east santo':'southeast santo',
+  'south santo 1':'south santo one 1',
+  'south santo 2':'south santo two 2',
+  'central pentecost 1':'central pentecost one cp1',
+  'central pentecost 2':'central pentecost two cp2',
+  'north east malekula':'northeast malekula',
+  'north west malekula':'northwest malekula',
+  'south east malekula':'southeast malekula',
+  'south west malekula':'southwest malekula',
+  'south east ambrym':'southeast ambrym',
+  'north west efate':'northwest efate',
+  'nguna pele':'nguna pele',
+  'makira mataso':'makira mataso',
+  'tongariki buninga':'tongariki buninga',
+  'south east tanna':'southeast tanna',
+  'south west tanna':'southwest tanna'
+}));
+const canonicalArea=(v)=>AREA_ALIASES.get(norm(v))||norm(v);
 const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-const key=(province,area)=>`${norm(province)}|${norm(area)}`;
+const key=(province,area)=>`${norm(province)}|${canonicalArea(area)}`;
 let boundaryPromise;
 function boundaries(){
   if(!boundaryPromise) boundaryPromise=fetch(BOUNDARY_URL).then(async r=>{
@@ -96,7 +119,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
       const themeLabel=rec?c.themes[rec.theme_category]||c.themes['not-recorded']:'';
       l.bindTooltip(rec ? `${esc(name)} · ${esc(themeLabel)} · ${n} ${n===1?c.one:c.many}` : `${esc(name)} · ${c.none}`,{sticky:true});
       l.bindPopup(`<strong>${esc(name)}</strong><br><span style="color:#6b7280">${esc(province)}</span>${rec?`<div style="margin-top:6px"><b>${esc(themeLabel)}</b></div><div style="margin-top:4px"><b>${n}</b> ${n===1?c.one:c.many}</div>${names.length?`<ul style="padding-left:16px;margin:6px 0 0">${names.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`:`<div style="margin-top:6px">${esc(c.noneDetail)}</div>`}`);
-      if(rec) l.on('click',()=>stateRef.current.onAreaSelect?.({province,area_council:name}));
+      if(rec) l.on('click',()=>stateRef.current.onAreaSelect?.({province:found.province||province,area_council:found.area_council||name}));
     }}).addTo(map);
     layerRef.current=geo;
   },[areas,selectedArea,ready,fr]);
