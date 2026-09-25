@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Activity, LayoutDashboard, Menu, MapPin, Wallet } from '../components/ui/icons';
+import { FeatureCardGradient } from '../components/ui/feature-section-with-card-gradient';
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
@@ -73,7 +74,7 @@ function Metric({ label, value, detail, tone = '' }) {
 function ProjectCard({ project, areas, copy, lang }) {
   const projectAreas = areas.filter(area => list(area.project_ids).some(id => String(id) === String(project.id)));
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
-  return <article className="pbd-project-card">
+  return <FeatureCardGradient className="pbd-project-card">
     <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><span className={`pbd-status pbd-status-${statusOf(project)}`}>{copy[statusOf(project)]}</span></header>
     <p className="pbd-project-description">{project.description || project.expected_primary_outcome || copy.noDescription}</p>
     <dl className="pbd-project-facts">
@@ -85,7 +86,7 @@ function ProjectCard({ project, areas, copy, lang }) {
       <div><dt>{copy.theme}</dt><dd>{themeOf(project) || copy.unknown}</dd></div>
     </dl>
     {project.expected_primary_outcome && <div className="pbd-project-outcome"><strong>{copy.outcome}</strong><p>{project.expected_primary_outcome}</p></div>}
-  </article>;
+  </FeatureCardGradient>;
 }
 
 export default function PublicDashboard() {
