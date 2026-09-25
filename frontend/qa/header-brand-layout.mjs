@@ -120,7 +120,15 @@ try {
         await page.screenshot({path:`qa-artifacts/header-${authenticated?'workspace':'public'}-${width}.png`,animations:'disabled'});
       }
       if (width<=760) {
-        const menu=page.locator('.dsh-head .dsh-hamburger');
+        const usesBottomNav=authenticated&&width<=560;
+        const menu=usesBottomNav
+          ? page.locator('.dsh-mobile-nav button')
+          : page.locator('.dsh-head .dsh-hamburger');
+        if (usesBottomNav) {
+          const labels=await page.locator('.dsh-mobile-nav a').allTextContents();
+          if (labels.join('|')!=='Overview|Projects|Results|Reports') throw new Error(`Unexpected mobile navigation: ${labels.join('|')}`);
+          if ((await page.locator('.dsh-mobile-nav button').count())!==1) throw new Error('Mobile More control was lost or duplicated');
+        }
         await menu.click();
         if (!await page.locator('.dsh-side').evaluate(el=>el.classList.contains('open'))) throw new Error('Mobile menu did not open');
         if (!authenticated) {
