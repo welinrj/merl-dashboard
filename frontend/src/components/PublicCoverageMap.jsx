@@ -23,7 +23,20 @@ const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':
 const key=(province,area)=>`${norm(province)}|${norm(area)}`;
 let boundaryPromise;
 function boundaries(){
-  if(!boundaryPromise) boundaryPromise=fetch(BOUNDARY_URL).then(r=>{if(!r.ok)throw new Error('Boundaries unavailable');return r.json();}).catch(e=>{boundaryPromise=null;throw e;});
+  if(!boundaryPromise) boundaryPromise=fetch(BOUNDARY_URL).then(async r=>{
+    if(!r.ok) throw new Error('Boundaries unavailable');
+    const data=await r.json();
+    const features=Array.isArray(data?.features)?data.features:[];
+    const counts=features.reduce((acc,feature)=>{
+      const province=String(feature?.properties?.ADM1_EN||'').toUpperCase();
+      if(province) acc[province]=(acc[province]||0)+1;
+      return acc;
+    },{});
+    const expected={TORBA:9,SANMA:11,PENAMA:10,MALAMPA:10,SHEFA:19,TAFEA:12};
+    const valid=features.length===71 && Object.entries(expected).every(([province,count])=>counts[province]===count);
+    if(!valid) throw new Error('Area Council boundary dataset is incomplete');
+    return data;
+  }).catch(e=>{boundaryPromise=null;throw e;});
   return boundaryPromise;
 }
 
