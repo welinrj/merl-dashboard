@@ -89,7 +89,7 @@ async function check(page, label, width, authenticated) {
   });
   const publicTabletSingleRow = width>=900 && width<=1180;
   const singleRow = authenticated ? width>760 : (width>1280 || publicTabletSingleRow);
-  const compactHeader = authenticated ? width>760 : publicTabletSingleRow;
+  const compactHeader = authenticated ? (width>760 || width<=560) : publicTabletSingleRow;
   const expected = {
     imageCount:3, imagesLoaded:true, proportions:true,
     nationalTitle:'The republic of Vanuatu', nationalTitleInside:true,
