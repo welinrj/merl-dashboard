@@ -14,7 +14,7 @@ const PROVINCES = ['Torba', 'Sanma', 'Penama', 'Malampa', 'Shefa', 'Tafea'];
 const COPY = {
   en: {
     title: 'Public Overview', subtitle: 'Department of Climate Change project portfolio', overview: 'Public Overview',
-    search: 'Search projects…', status: 'Status', theme: 'Theme', province: 'Province', all: 'All', reset: 'Reset',
+    search: 'Search projects…', status: 'Status', theme: 'Theme', province: 'Province', all: 'All', reset: 'Reset', filters: 'Filters',
     refresh: 'Refresh', refreshing: 'Checking for updates…', projects: 'DoCC Projects', projectCount: 'Projects under the Department of Climate Change',
     funding: 'Total Project Funding', fundingSub: 'Total recorded project budgets', utilised: 'Funds Utilised', utilisedSub: 'Latest approved cumulative expenditure',
     beneficiaries: 'Total Beneficiaries', beneficiariesSub: 'Direct beneficiaries from approved reports', utilisation: 'Financial Utilisation',
@@ -35,7 +35,7 @@ const COPY = {
   },
   fr: {
     title: 'Vue publique', subtitle: 'Portefeuille de projets du Département du changement climatique', overview: 'Vue publique',
-    search: 'Rechercher des projets…', status: 'État', theme: 'Thème', province: 'Province', all: 'Tous', reset: 'Réinitialiser',
+    search: 'Rechercher des projets…', status: 'État', theme: 'Thème', province: 'Province', all: 'Tous', reset: 'Réinitialiser', filters: 'Filtres',
     refresh: 'Actualiser', refreshing: 'Recherche de mises à jour…', projects: 'Projets du DoCC', projectCount: 'Projets relevant du Département du changement climatique',
     funding: 'Financement total des projets', fundingSub: 'Total des budgets de projet enregistrés', utilised: 'Fonds utilisés', utilisedSub: 'Dernières dépenses cumulées approuvées',
     beneficiaries: 'Total des bénéficiaires', beneficiariesSub: 'Bénéficiaires directs issus des rapports approuvés', utilisation: 'Utilisation financière',
@@ -100,6 +100,7 @@ export default function PublicDashboard() {
   const [selectedArea, setSelectedArea] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [openCategory, setOpenCategory] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const projects = data?.projects || [];
   const summary = data?.summary;
   const sourceAreas = data?.areas || [];
@@ -143,11 +144,12 @@ export default function PublicDashboard() {
       <div className="pbd-sidebar-access"><span>{c.publicOnly}</span></div>
     </aside>
     <div className="dsh-main">
-      <header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}><Menu size={18} /></button><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>
+      <header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}><Menu size={18} /></button><div className="pbd-mobile-brand"><img src={CREST} alt=""/><span>DoCC <strong>MERL</strong></span></div><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>
       <main className="dsh-scroll scrollbar-thin"><div className="pbd-view">
         <div className="pbd-title-row"><div><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div></div>
-        <div className="pbd-filters">
+        <div className={`pbd-filters${filtersOpen ? ' pbd-filters-open' : ''}`}>
           <label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={event => setFilters(value => ({ ...value, search: event.target.value }))} placeholder={c.search} /></label>
+          <button type="button" className="pbd-filter-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}>{c.filters}{!allScope && <span aria-label="active"> •</span>}</button>
           <label><span>{c.status}</span><select value={filters.status} onChange={event => setFilters(value => ({ ...value, status: event.target.value }))}><option value="">{c.all}</option>{['ongoing', 'completed', 'upcoming', 'other'].map(key => <option key={key} value={key}>{c[key]}</option>)}</select></label>
           <label><span>{c.theme}</span><select value={filters.theme} onChange={event => setFilters(value => ({ ...value, theme: event.target.value }))}><option value="">{c.all}</option>{themes.map(theme => <option key={theme}>{theme}</option>)}</select></label>
           <label><span>{c.province}</span><select value={filters.province} onChange={event => setFilters(value => ({ ...value, province: event.target.value }))}><option value="">{c.all}</option>{PROVINCES.map(province => <option key={province}>{province}</option>)}</select></label>
