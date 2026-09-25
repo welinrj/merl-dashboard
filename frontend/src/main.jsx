@@ -29,6 +29,7 @@ import './fixed-workspace-shell.css';
 import './mobile-dashboard.css';
 import './project-setup-form-headings.css';
 import './merl-reporting-fix.css';
+import './typography-system.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
