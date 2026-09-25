@@ -66,6 +66,7 @@ async function check(page, label, width, authenticated) {
       imageCount: images.length,
       imagesLoaded: images.every(i=>i.complete && i.naturalWidth>0),
       proportions: images.every(i=>getComputedStyle(i).objectFit==='contain'),
+      partnerLogosVisible: visible(group),
       nationalTitle: title?.textContent?.trim(),
       nationalTitleInside: fits(t,rect(state)) && fits(rect(state),g),
       nationalTitleBesideCrest: t.left>=crestBox.right-1 && Math.abs(titleCenter-(crestBox.top+crestBox.bottom)/2)<=4,
@@ -88,12 +89,13 @@ async function check(page, label, width, authenticated) {
   });
   const publicTabletSingleRow = width>=900 && width<=1180;
   const singleRow = authenticated ? width>760 : (width>1280 || publicTabletSingleRow);
-  const compactHeader = authenticated ? width>760 : publicTabletSingleRow;
+  const compactHeader = authenticated ? (width>760 || width<=560) : publicTabletSingleRow;
   const expected = {
     imageCount:3, imagesLoaded:true, proportions:true,
     nationalTitle:'The republic of Vanuatu', nationalTitleInside:true,
     nationalTitleBesideCrest:true, nationalTitleBeforeDoCC:true,
-    leftAligned:true, sameRow:singleRow, verticalPaddingBalanced:singleRow,
+    partnerLogosVisible:width>560,
+    leftAligned:width>560, sameRow:singleRow, verticalPaddingBalanced:singleRow,
     compactWorkspaceHeader:compactHeader,
     inside:true, distinct:true, controlsClear:true, controlsInside:true, menuClear:true,
     horizontalOverflow:false, headerWordmark:false, headerHeightSynced:true,
@@ -120,7 +122,15 @@ try {
         await page.screenshot({path:`qa-artifacts/header-${authenticated?'workspace':'public'}-${width}.png`,animations:'disabled'});
       }
       if (width<=760) {
-        const menu=page.locator('.dsh-head .dsh-hamburger');
+        const usesBottomNav=authenticated&&width<=560;
+        const menu=usesBottomNav
+          ? page.locator('.dsh-mobile-nav button')
+          : page.locator('.dsh-head .dsh-hamburger');
+        if (usesBottomNav) {
+          const labels=await page.locator('.dsh-mobile-nav a').allTextContents();
+          if (labels.join('|')!=='Overview|Projects|Results|Reports') throw new Error(`Unexpected mobile navigation: ${labels.join('|')}`);
+          if ((await page.locator('.dsh-mobile-nav button').count())!==1) throw new Error('Mobile More control was lost or duplicated');
+        }
         await menu.click();
         if (!await page.locator('.dsh-side').evaluate(el=>el.classList.contains('open'))) throw new Error('Mobile menu did not open');
         if (!authenticated) {

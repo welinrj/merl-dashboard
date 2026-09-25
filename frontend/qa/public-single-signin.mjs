@@ -50,7 +50,10 @@ try {
   if (await form.locator('input[type="password"]').inputValue() !== 'invalid-password') throw new Error('Failed password was not retained for correction');
   console.log('PASS Invalid credentials remain on the public dashboard');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Open menu' }).click();
+  const publicMenu = page.locator('.pbd-root .dsh-head .dsh-hamburger');
+  await publicMenu.waitFor({ state: 'visible' });
+  if (!await publicMenu.getAttribute('aria-label')) throw new Error('Public mobile menu has no accessible label');
+  await publicMenu.click();
   await assertHeaderLogin('Mobile menu open');
   const overlay = page.getByRole('button', { name: 'Close menu' });
   const box = await overlay.boundingBox();
