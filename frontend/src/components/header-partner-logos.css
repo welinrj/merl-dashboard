@@ -1,3 +1,38 @@
 /* The three supplied institutional assets retain their natural proportions.
    Responsive sizing and placement are defined in header-institutional-layout.css. */
 .merl-partner-logos img { display: block; height: auto; object-fit: contain; }
+
+/* On phones the Public Dashboard already keeps the Vanuatu Coat of Arms in
+   .pbd-mobile-brand. Keep that crest and add the DoCC identity beside it,
+   rather than replacing the national emblem or duplicating it. */
+@media (max-width: 768px) {
+  .pbd-root .merl-partner-logos {
+    display: flex !important;
+    align-items: center;
+    flex: 0 0 auto;
+    margin: 0 4px;
+  }
+
+  .pbd-root .merl-partner-state,
+  .pbd-root .merl-partner-mfat {
+    display: none !important;
+  }
+
+  .pbd-root .merl-partner-docc {
+    display: block !important;
+    width: 40px !important;
+    max-width: 40px !important;
+    height: 40px !important;
+    max-height: 40px !important;
+    object-fit: contain;
+  }
+}
+
+@media (max-width: 390px) {
+  .pbd-root .merl-partner-docc {
+    width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    max-height: 34px !important;
+  }
+}
