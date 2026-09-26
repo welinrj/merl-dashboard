@@ -20,7 +20,10 @@ test('bundled Area Council boundaries are complete and uniquely named', () => {
 });
 
 test('updated SANMA boundaries distinguish the current Santo Area Councils', () => {
-  for (const name of ['Big Bay Coast', 'Big Bay Inland', 'South Santo 1', 'South Santo 2']) {
+  // DLA's current 71-Area-Council register uses the formal labels
+  // "South Santo One (1)" and "South Santo Two (2)". Legacy compact labels
+  // such as "South Santo 1/2" are normalised elsewhere in the application.
+  for (const name of ['Big Bay Coast', 'Big Bay Inland', 'South Santo One (1)', 'South Santo Two (2)']) {
     assert.ok(sanmaNames.includes(name), `${name} is missing from the SANMA boundary layer`);
   }
   assert.ok(!sanmaNames.includes('South Santo'));
