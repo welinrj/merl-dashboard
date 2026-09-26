@@ -4,21 +4,34 @@ import { normalizePublishedProjects, normalizeProvince } from './publicProvinces
 
 export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
 
-// Production fallback for verified project profile fields while the public
-// snapshot database migration is pending. For source-verified funding, currency
-// and manager fields, the verified profile values take precedence over legacy
-// converted/placeholder values until the database migration is applied.
+// Production fallback for source-verified project profile fields while database
+// migrations are pending or a stale public snapshot is still being served.
+// Project-specific documents and current official sources take precedence over
+// older portfolio placeholders where they conflict.
 const PROJECT_PROFILE_FALLBACKS = [
   { match: p => p.code === 'DOCC-WEB-FCPF' || p.acronym === 'FCPF' || /forest carbon partnership facility/i.test(p.name || ''), values: { currency:'USD', budget_vuv:7186080, provinces:['Sanma','Shefa','Tafea'] } },
-  { match: p => p.code === 'VCCRP-001' || p.acronym === 'VCCRP' || /community.*climate.*resilien/i.test(p.name || ''), values: { currency:'USD', budget_vuv:25000000, project_manager:'Louise Nassak' } },
-  { match: p => ['23A398','VCAP2-001'].includes(p.code) || ['VCAP2','VCAP II'].includes(p.acronym) || /coastal adaptation project.*(phase 2|ii)/i.test(p.name || ''), values: { currency:'USD', budget_vuv:12544037, project_manager:'Jackson Tambe Vire' } },
-  { match: p => p.acronym === 'STRENGTH' || /strength.*loss.*damage/i.test(p.name || ''), values: { currency:'USD', budget_vuv:127680, project_manager:'Brian Maltera' } },
-  { match: p => p.acronym === 'CBIT' || /capacity-building initiative for transparency/i.test(p.name || ''), values: { currency:'USD', budget_vuv:1137215, project_manager:'Stephanie Stephens' } },
-  { match: p => p.code === '24B298' || /loss and damage.*(project|fund development)/i.test(p.name || ''), values: { currency:'VUV', budget_vuv:289393720.16, project_manager:'Willy Missack' } },
-  { match: p => /pebaccc/i.test(p.name || '') || /^PEBAC/i.test(p.acronym || ''), values: { project_manager:'William Bani' } },
-  { match: p => ['23B398','PARTNER-2-PLUS-VU'].includes(p.code) || /partner/i.test(p.name || ''), values: { project_manager:'Johnnie Tari' } },
-  { match: p => p.code === 'ICAT-VU-II' || /initiative for climate action transparency|icat vanuatu/i.test(p.name || ''), values: { project_manager:'Zechariah Bani' } },
+  { match: p => p.code === 'VCCRP-001' || p.acronym === 'VCCRP' || /community.*climate.*resilien/i.test(p.name || ''), values: { currency:'USD', budget_vuv:25000000, project_manager:'Louise Nassak', primary_climate_theme:'Adaptation', coverage_type:'targeted' } },
+  { match: p => ['23A398','VCAP2-001'].includes(p.code) || ['VCAP2','VCAP II'].includes(p.acronym) || /coastal adaptation project.*(phase 2|ii)/i.test(p.name || ''), values: { currency:'USD', budget_vuv:12544037, project_manager:'Jackson Tambe Vire', primary_climate_theme:'Adaptation' } },
+  { match: p => p.acronym === 'STRENGTH' || /strength.*loss.*damage/i.test(p.name || ''), values: { currency:'USD', budget_vuv:127680, project_manager:'Brian Maltera', donor:'International Development Research Centre (IDRC), Canada', primary_climate_theme:'Loss and Damage', coverage_type:'national' } },
+  { match: p => p.acronym === 'CBIT' || /capacity-building initiative for transparency/i.test(p.name || ''), values: { currency:'USD', budget_vuv:1137215, project_manager:'Stephanie Stephens', donor:'Global Environment Facility (GEF) / FAO', executing_agency:'Food and Agriculture Organization of the United Nations (FAO)', status:'completed', end_date:'2025-05-31', primary_climate_theme:'Mitigation', coverage_type:'national' } },
+  { match: p => p.code === '24B298' || /loss and damage.*(project|fund development)/i.test(p.name || ''), values: { currency:'VUV', budget_vuv:289393720.16, project_manager:'Willy Missack', primary_climate_theme:'Loss and Damage', coverage_type:'national' } },
+  { match: p => p.code === 'DOCC-SRC-PEBACC+' || /pebacc\+|pebaccc/i.test(p.name || '') || /^PEBAC/i.test(p.acronym || ''), values: { project_manager:'William Bani', donor:'Kiwa Initiative donors / AFD / EU / Global Affairs Canada / Australia DFAT / New Zealand MFAT; co-financing FFEM', executing_agency:'Secretariat of the Pacific Regional Environment Programme (SPREP)', status:'active', end_date:'2026-11-30', primary_climate_theme:'Adaptation', coverage_type:'targeted', provinces:['Shefa','Tafea'], islands:['Efate','Tanna'] } },
+  { match: p => p.code === '24B498' || /national adaptation plan of vanuatu/i.test(p.name || ''), values: { donor:'Green Climate Fund (GCF) Readiness', executing_agency:'Global Green Growth Institute (GGGI)', primary_climate_theme:'Adaptation', coverage_type:'national', provinces:['Torba','Sanma','Penama','Malampa','Shefa','Tafea'] } },
+  { match: p => p.code === 'PARTNER-2-PLUS-VU' || p.acronym === 'PARTneR II+' || /partner.*ii\+/i.test(p.name || ''), values: { project_manager:'Johnnie Tari', primary_climate_theme:'Adaptation', coverage_type:'national' } },
+  { match: p => p.code === 'ICAT-VU-II' || /icat vanuatu ii/i.test(p.name || ''), values: { project_manager:'Zechariah Bani', primary_climate_theme:'Mitigation', coverage_type:'national' } },
 ];
+
+const VERIFIED_OVERRIDE_KEYS = new Set([
+  'budget_vuv',
+  'currency',
+  'project_manager',
+  'donor',
+  'executing_agency',
+  'status',
+  'end_date',
+  'primary_climate_theme',
+  'coverage_type',
+]);
 
 const blank = value => value == null || String(value).trim() === '';
 function enrichPublishedProject(project) {
@@ -26,7 +39,7 @@ function enrichPublishedProject(project) {
   if (!fallback) return project;
   const next = { ...project };
   for (const [key, value] of Object.entries(fallback.values)) {
-    if (['budget_vuv', 'currency', 'project_manager'].includes(key)) {
+    if (VERIFIED_OVERRIDE_KEYS.has(key)) {
       next[key] = value;
       continue;
     }
