@@ -18,7 +18,6 @@
   .pbd-title-row h1{font-size:1.45rem!important;letter-spacing:-.025em}
   .pbd-title-row p{font-size:.7rem!important;line-height:1.45!important}
 
-  /* Search stays prominent; filters become compact chips rather than a large desktop form. */
   .pbd-filters{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin:0 0 12px!important;padding:10px!important;border-radius:14px!important;box-shadow:0 3px 12px rgba(18,49,107,.05)!important}
   .pbd-search{grid-column:1/-1!important}
   .pbd-filters label{gap:3px!important;font-size:.54rem!important}
@@ -27,7 +26,6 @@
   .pbd-filters button{height:36px!important;padding:0 7px!important;border-radius:9px!important;font-size:.62rem!important}
   .pbd-filters button:last-child{grid-column:2/3}
 
-  /* Keep useful summary information above the fold. */
   .pbd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-bottom:12px!important}
   .pbd-metric{min-height:112px!important;padding:12px!important;border-radius:13px!important}
   .pbd-metric>span{font-size:.62rem!important}.pbd-metric>strong{margin:auto 0 5px!important;font-size:1.3rem!important}.pbd-metric>small{font-size:.58rem!important;line-height:1.35!important}
@@ -38,8 +36,6 @@
   .pbd-section-head>div>span{font-size:.84rem!important}.pbd-section-head p{font-size:.65rem!important;line-height:1.4!important}.pbd-section-head>strong{font-size:.64rem!important}
   .pbd-root .pub-leaflet-wrap{height:330px!important}.pbd-area-directory{max-height:240px!important}
   .pbd-project-card{padding:12px!important;border-radius:12px!important}.pbd-project-image{flex-basis:64px!important;width:64px!important;height:52px!important}.pbd-project-card h3{font-size:.8rem!important}.pbd-project-description{font-size:.68rem!important}.pbd-project-facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}.pbd-project-facts>div{padding:7px!important}.pbd-project-facts dt{font-size:.55rem!important}.pbd-project-facts dd{font-size:.64rem!important}
-
-  /* The authenticated bottom nav must never leak onto the public landing page. */
   .pbd-root .dsh-mobile-nav{display:none!important}
 }
 
@@ -50,14 +46,13 @@
   .pbd-filters label:nth-of-type(4){grid-column:1/2}
   .pbd-filters button:last-child{grid-column:auto}
 }
-/* Real mobile hierarchy for public portfolio; override legacy desktop form rules. */
 .pbd-mobile-brand,.pbd-mobile-signin,.pbd-mobile-login-heading,.pbd-filter-toggle,.pbd-login-backdrop{display:none}
 @media(max-width:560px){
 .dsh.pbd-root{grid-template-rows:60px minmax(0,1fr)!important;--workspace-header-h:60px}
 .dsh.pbd-root .dsh-head,.dsh.pbd-root .dsh-head:has(>.merl-partner-logos){display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:8px!important;height:60px!important;min-height:60px!important;padding:0 12px!important;border-radius:0;background:#fff;box-shadow:none;border-bottom:1px solid #e2eaf4}
 .dsh.pbd-root .dsh-head>.dsh-hamburger,.dsh.pbd-root .dsh-head:has(>.merl-partner-logos)>.dsh-hamburger{display:inline-flex!important;position:static!important;align-items:center;justify-content:center;width:38px;height:38px;min-width:38px;min-height:38px;margin:0;padding:0;border:0;border-radius:9px;background:#edf3fc;color:#20539d}
 .dsh.pbd-root .dsh-head>.merl-partner-logos{display:none!important}
-.dsh.pbd-root .pbd-mobile-brand{display:flex;align-items:center;gap:6px;color:#15396f;font-size:.84rem;font-weight:650;white-space:nowrap}.pbd-mobile-brand img{width:28px;height:28px;object-fit:contain}.pbd-mobile-brand strong{font-weight:850}
+.dsh.pbd-root .pbd-mobile-brand{display:flex;align-items:center;gap:6px;color:#15396f;font-size:.84rem;font-weight:650;white-space:nowrap}.pbd-mobile-brand img{width:34px;height:34px;object-fit:contain;content:url('/merl-dashboard/docc-logo-compact.png')}.pbd-mobile-brand strong{font-weight:850}
 .dsh.pbd-root .dsh-head>.dsh-head-actions,.dsh.pbd-root .dsh-head:has(>.merl-partner-logos)>.dsh-head-actions{display:flex!important;align-items:center;gap:5px;flex:0 0 auto!important;width:auto!important;min-width:0;max-width:none!important;margin:0 0 0 auto!important;grid-column:auto;grid-row:auto}
 .dsh.pbd-root .dsh-lang{display:flex!important;align-items:center;gap:0;padding:2px;border-radius:8px;background:#f0f4fa}.dsh.pbd-root .dsh-lang button{min-width:26px;height:30px;padding:0 3px;border:0;border-radius:6px;background:transparent;color:#63748e;font-size:.65rem;font-weight:800}.dsh.pbd-root .dsh-lang button[aria-pressed=true]{background:#fff;color:#1855aa}
 .dsh.pbd-root .pbd-mobile-signin{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 10px;border:0;border-radius:8px;background:#2055a5;color:#fff;font:inherit;font-size:.68rem;font-weight:800;white-space:nowrap}
@@ -71,4 +66,4 @@
 .pbd-root .pbd-metrics{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin-bottom:15px!important}.pbd-root .pbd-metric{min-height:124px!important;padding:13px!important;border-radius:14px!important}.pbd-root .pbd-metric>span{font-size:.72rem!important;line-height:1.25}.pbd-root .pbd-metric>strong{margin:auto 0 6px!important;font-size:clamp(1.12rem,5vw,1.65rem)!important}.pbd-root .pbd-metric>small{font-size:.63rem!important;line-height:1.3!important}.pbd-root .pbd-metric:last-child:nth-child(odd){grid-column:1/-1;min-height:90px!important}
 .pbd-root .pbd-section{margin-bottom:12px!important;padding:14px!important;border-radius:14px!important}.pbd-root .pbd-section-head>div>span{font-size:.9rem!important}.pbd-root .pbd-section-head p{font-size:.72rem!important}.pbd-root .pub-leaflet-wrap{height:330px!important}.pbd-root .pbd-area-directory{max-height:240px!important}.pbd-root .dsh-mobile-nav{display:none!important}
 }
-@media(max-width:360px){.dsh.pbd-root .pbd-mobile-brand{font-size:.73rem}.pbd-mobile-brand img{width:24px;height:24px}.dsh.pbd-root .dsh-head{padding-inline:9px!important}}
+@media(max-width:360px){.dsh.pbd-root .pbd-mobile-brand{font-size:.73rem}.pbd-mobile-brand img{width:30px;height:30px}.dsh.pbd-root .dsh-head{padding-inline:9px!important}}
