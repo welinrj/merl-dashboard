@@ -9,7 +9,7 @@
   .pbd-root .dsh-lang button[aria-pressed='true']{background:#fff;color:#205fc8;box-shadow:0 1px 4px rgba(18,49,107,.12)}
   .pbd-root .dsh-head .pbd-signin{min-height:36px!important;height:36px!important;padding:0 11px!important;border-radius:9px!important;background:#205fc8!important;font-size:.66rem!important;line-height:1!important;white-space:nowrap!important}
 
-  .pbd-root .dsh-side{top:64px!important;bottom:0!important;height:calc(100dvh - 64px)!important;width:min(280px,82vw)!important}
+  .pbd-root>.dsh-side{display:flex!important;top:64px!important;bottom:0!important;height:calc(100dvh - 64px)!important;width:min(280px,82vw)!important}
   .pbd-root .pbd-overlay{top:64px}
   .pbd-root .dsh-scroll{padding:0 0 18px!important;background:#f5f8fd}
   .pbd-view{padding:14px 12px 18px!important}
@@ -45,11 +45,11 @@
   .pbd-filters label:nth-of-type(4){grid-column:1/2}
   .pbd-filters button:last-child{grid-column:auto}
 }
-.pbd-mobile-signin,.pbd-mobile-login-heading,.pbd-filter-toggle,.pbd-login-backdrop{display:none}
+.pbd-mobile-signin,.pbd-mobile-login-heading,.pbd-filter-toggle,.pbd-login-backdrop,.pbd-mobile-login-layer{display:none}
 @media(max-width:560px){
 .dsh.pbd-root{grid-template-rows:60px minmax(0,1fr)!important;--workspace-header-h:60px}
 .dsh.pbd-root .dsh-head,.dsh.pbd-root .dsh-head:has(>.merl-partner-logos){display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:8px!important;height:60px!important;min-height:60px!important;padding:0 12px!important;border-radius:0;background:#fff;box-shadow:none;border-bottom:1px solid #e2eaf4}
-.dsh.pbd-root .dsh-head>.dsh-hamburger,.dsh.pbd-root .dsh-head:has(>.merl-partner-logos)>.dsh-hamburger{display:inline-flex!important;position:static!important;align-items:center;justify-content:center;width:38px;height:38px;min-width:38px;min-height:38px;margin:0;padding:0;border:0;border-radius:9px;background:#edf3fc;color:#20539d}
+.dsh.pbd-root .dsh-head>.dsh-hamburger,.dsh.pbd-root .dsh-head:has(>.merl-partner-logos)>.dsh-hamburger{display:inline-flex!important;position:relative!important;align-items:center;justify-content:center;width:38px;height:38px;min-width:38px;min-height:38px;margin:0;padding:0;border:0;border-radius:9px;background:#edf3fc;color:#20539d}
 .dsh.pbd-root .dsh-head>.dsh-head-actions,.dsh.pbd-root .dsh-head:has(>.merl-partner-logos)>.dsh-head-actions{display:flex!important;align-items:center;gap:5px;flex:0 0 auto!important;width:auto!important;min-width:0;max-width:none!important;margin:0 0 0 auto!important;grid-column:auto;grid-row:auto}
 .dsh.pbd-root .dsh-lang{display:flex!important;align-items:center;gap:0;padding:2px;border-radius:8px;background:#f0f4fa}.dsh.pbd-root .dsh-lang button{min-width:26px;height:30px;padding:0 3px;border:0;border-radius:6px;background:transparent;color:#63748e;font-size:.65rem;font-weight:800}.dsh.pbd-root .dsh-lang button[aria-pressed=true]{background:#fff;color:#1855aa}
 .dsh.pbd-root .pbd-mobile-signin{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 10px;border:0;border-radius:8px;background:#2055a5;color:#fff;font:inherit;font-size:.68rem;font-weight:800;white-space:nowrap}
@@ -64,3 +64,53 @@
 .pbd-root .pbd-section{margin-bottom:12px!important;padding:14px!important;border-radius:14px!important}.pbd-root .pbd-section-head>div>span{font-size:.9rem!important}.pbd-root .pbd-section-head p{font-size:.72rem!important}.pbd-root .pub-leaflet-wrap{height:330px!important}.pbd-root .pbd-area-directory{max-height:240px!important}.pbd-root .dsh-mobile-nav{display:none!important}
 }
 @media(max-width:360px){.dsh.pbd-root .dsh-head{padding-inline:9px!important}}
+
+/* Mount the phone sign-in above the application shell. Keeping a fixed modal
+   inside Safari's sticky header can clip it to the header's stacking context. */
+@media(max-width:560px){
+  .pbd-mobile-login-layer{
+    box-sizing:border-box;
+    display:flex;
+    position:fixed;
+    inset:0;
+    z-index:10000;
+    align-items:flex-start;
+    justify-content:center;
+    width:100vw;
+    height:100dvh;
+    padding:max(76px,calc(env(safe-area-inset-top) + 16px)) 12px max(16px,env(safe-area-inset-bottom));
+    overflow-y:auto;
+    overscroll-behavior:contain;
+  }
+  .pbd-mobile-login-layer>.pbd-login-backdrop{
+    display:block;
+    position:fixed;
+    inset:0;
+    z-index:0;
+    width:100vw;
+    height:100dvh;
+    padding:0;
+    border:0;
+    border-radius:0;
+    background:#12294c99;
+  }
+  .pbd-mobile-login-layer>.pbd-header-login.pbd-login-open{
+    box-sizing:border-box;
+    display:block!important;
+    position:relative!important;
+    inset:auto!important;
+    z-index:1;
+    flex:none;
+    width:min(100%,420px)!important;
+    max-width:420px!important;
+    max-height:calc(100dvh - 96px);
+    margin:0!important;
+    padding:20px;
+    overflow-y:auto;
+    border:1px solid #dce6f3;
+    border-radius:18px;
+    background:#fff;
+    color:var(--text-1);
+    box-shadow:0 20px 60px #102a5066;
+  }
+}

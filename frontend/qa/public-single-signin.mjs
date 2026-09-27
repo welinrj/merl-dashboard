@@ -66,6 +66,30 @@ try {
   await assertHeaderLogin('Mobile menu closed');
   if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2)) throw new Error('Mobile page has horizontal overflow');
   console.log('PASS Mobile layout has no horizontal overflow');
+
+  const mobileSignIn = page.locator('.pbd-mobile-signin');
+  await mobileSignIn.click();
+  const loginLayer = page.locator('.pbd-mobile-login-layer');
+  const mobileForm = loginLayer.locator('form.pbd-header-login');
+  await mobileForm.waitFor({ state: 'visible' });
+  const [layerBox, formBox, viewport] = await Promise.all([
+    loginLayer.boundingBox(),
+    mobileForm.boundingBox(),
+    page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })),
+  ]);
+  if (!layerBox || layerBox.x !== 0 || layerBox.y !== 0 || Math.abs(layerBox.width - viewport.width) > 1 || Math.abs(layerBox.height - viewport.height) > 1) {
+    throw new Error('Mobile sign-in layer does not cover the viewport');
+  }
+  if (!formBox || formBox.x < 10 || formBox.x + formBox.width > viewport.width - 10 || formBox.y < 60) {
+    throw new Error('Mobile sign-in form is clipped or off-screen');
+  }
+  if (await page.locator('.dsh-side').evaluate(el => el.classList.contains('open'))) throw new Error('Opening sign-in also opened the mobile menu');
+  await mobileForm.getByLabel('Email').fill('phone@example.test');
+  await mobileForm.getByLabel('Password').fill('phone-password');
+  if (!await mobileForm.getByRole('button', { name: 'Sign In' }).isVisible()) throw new Error('Mobile sign-in submit button is not visible');
+  await mobileForm.getByRole('button', { name: 'Close' }).click();
+  await loginLayer.waitFor({ state: 'detached' });
+  console.log('PASS Mobile sign-in opens fully inside the viewport and closes cleanly');
 } finally {
   await browser.close();
 }
