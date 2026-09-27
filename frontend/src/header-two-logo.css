@@ -96,7 +96,7 @@
     grid-column: 1 !important;
     grid-row: 1 !important;
     align-self: center !important;
-    gap: 6px !important;
+    gap: 8px !important;
     width: auto !important;
     max-width: none !important;
   }
@@ -109,17 +109,17 @@
   }
 
   .dsh .dsh-head > .merl-partner-logos > .merl-partner-crest {
-    width: 30px !important;
-    height: 38px !important;
-    max-width: 30px !important;
-    max-height: 38px !important;
+    width: 34px !important;
+    height: 44px !important;
+    max-width: 34px !important;
+    max-height: 44px !important;
   }
 
   .dsh .dsh-head > .merl-partner-logos > .merl-partner-docc {
-    width: 38px !important;
-    height: 38px !important;
-    max-width: 38px !important;
-    max-height: 38px !important;
+    width: 44px !important;
+    height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
     object-fit: cover !important;
     object-position: left center !important;
   }
