@@ -1,0 +1,192 @@
+/*
+ * Final institutional header contract.
+ *
+ * Older layout layers support previous three-brand and mobile wordmark
+ * versions of the header. Keep this file last in main.jsx so both the public
+ * overview and authenticated workspace consistently render the same two
+ * supplied high-resolution assets without duplicate brand text.
+ */
+.dsh .dsh-head > .merl-partner-logos {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  justify-self: start !important;
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
+  gap: 12px !important;
+  width: max-content !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.dsh .dsh-head > .merl-partner-logos > img {
+  display: block !important;
+  flex: 0 0 auto !important;
+  object-position: center !important;
+}
+
+.dsh .dsh-head > .merl-partner-logos > .merl-partner-crest {
+  width: 44px !important;
+  height: 48px !important;
+  max-width: 44px !important;
+  max-height: 48px !important;
+  object-fit: contain !important;
+}
+
+.dsh .dsh-head > .merl-partner-logos > .merl-partner-docc {
+  width: 178px !important;
+  height: auto !important;
+  max-width: 178px !important;
+  max-height: 44px !important;
+  object-fit: contain !important;
+}
+
+/* The retired text-based phone brand must never compete with the two logos. */
+.dsh .pbd-mobile-brand {
+  display: none !important;
+}
+
+@media (max-width: 1280px) {
+  .dsh .dsh-head > .merl-partner-logos {
+    gap: 10px !important;
+  }
+
+  .dsh .dsh-head > .merl-partner-logos > .merl-partner-crest {
+    width: 40px !important;
+    height: 44px !important;
+    max-width: 40px !important;
+    max-height: 44px !important;
+  }
+
+  .dsh .dsh-head > .merl-partner-logos > .merl-partner-docc {
+    width: 160px !important;
+    max-width: 160px !important;
+    max-height: 40px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .dsh .dsh-head > .merl-partner-logos {
+    display: flex !important;
+    gap: 8px !important;
+    width: max-content !important;
+  }
+
+  .dsh .dsh-head > .merl-partner-logos > .merl-partner-crest {
+    width: 36px !important;
+    height: 40px !important;
+    max-width: 36px !important;
+    max-height: 40px !important;
+  }
+
+  .dsh .dsh-head > .merl-partner-logos > .merl-partner-docc {
+    width: 142px !important;
+    max-width: 142px !important;
+    max-height: 36px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  /* On phones, show the full vector Coat of Arms and the emblem portion of the
+     supplied 1000 x 160 DoCC artwork. object-fit: cover performs a clean crop
+     from the left at render time, so no low-resolution duplicate is needed. */
+  .dsh .dsh-head > .merl-partner-logos {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    gap: 6px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  /* Match the legacy :has() selectors' specificity so their old 100%-width
+     logo row cannot push the language and sign-in controls off the phone. */
+  .dsh .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+    width: max-content !important;
+    max-width: none !important;
+  }
+
+  .dsh .dsh-head > .merl-partner-logos > .merl-partner-crest {
+    width: 30px !important;
+    height: 38px !important;
+    max-width: 30px !important;
+    max-height: 38px !important;
+  }
+
+  .dsh .dsh-head > .merl-partner-logos > .merl-partner-docc {
+    width: 38px !important;
+    height: 38px !important;
+    max-width: 38px !important;
+    max-height: 38px !important;
+    object-fit: cover !important;
+    object-position: left center !important;
+  }
+
+  /* Authenticated phones use the bottom navigation, so the logo pair takes
+     the old generated title's place while account controls remain unchanged. */
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) {
+    display: grid !important;
+    grid-template-columns: max-content minmax(0, 1fr) !important;
+    grid-template-rows: 1fr !important;
+    align-items: center !important;
+    column-gap: 12px !important;
+    row-gap: 0 !important;
+    height: 72px !important;
+    min-height: 72px !important;
+    padding: 9px 12px 10px !important;
+  }
+
+  .dsh:not(.pbd-root) .dsh-head > div:has(> .dsh-head-title) {
+    display: none !important;
+  }
+
+  .dsh:not(.pbd-root) .dsh-head > .merl-partner-logos {
+    justify-self: start !important;
+  }
+
+  .dsh:not(.pbd-root) .dsh-head:has(> .merl-partner-logos) > .dsh-head-actions {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: end !important;
+    justify-content: flex-end !important;
+    width: max-content !important;
+    max-width: 100% !important;
+  }
+
+  /* Public phones retain the menu, language selector and sign-in action. */
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) > .merl-partner-logos {
+    display: flex !important;
+    position: relative !important;
+    z-index: 2 !important;
+    flex: 0 0 auto !important;
+    width: max-content !important;
+    max-width: none !important;
+  }
+
+  .dsh.pbd-root .dsh-head > .dsh-head-actions {
+    margin-left: auto !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .dsh .dsh-head > .merl-partner-logos {
+    gap: 5px !important;
+  }
+
+  .dsh .dsh-head > .merl-partner-logos > .merl-partner-crest {
+    width: 27px !important;
+    height: 34px !important;
+    max-width: 27px !important;
+    max-height: 34px !important;
+  }
+
+  .dsh .dsh-head > .merl-partner-logos > .merl-partner-docc {
+    width: 34px !important;
+    height: 34px !important;
+    max-width: 34px !important;
+    max-height: 34px !important;
+  }
+}

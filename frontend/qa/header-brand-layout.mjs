@@ -43,34 +43,29 @@ async function check(page, label, width, authenticated) {
   const result = await page.locator('.dsh-head').evaluate(header => {
     const group = header.querySelector('.merl-partner-logos');
     const images = [...group.querySelectorAll('img')];
-    const state = group.querySelector('.merl-partner-state');
-    const title = state?.querySelector('.merl-partner-state-name');
-    const crest = state?.querySelector('.merl-partner-crest');
+    const crest = group.querySelector('.merl-partner-crest');
     const docc = group.querySelector('.merl-partner-docc');
-    const mfat = group.querySelector('.merl-partner-mfat');
     const controls = header.querySelector('.dsh-head-actions');
     const menu = header.querySelector('.dsh-hamburger');
     const rect = el => el.getBoundingClientRect();
-    const h = rect(header), g = rect(group), c = rect(controls), t = rect(title);
+    const h = rect(header), g = rect(group), c = rect(controls);
     const fits = (a,b) => a.left >= b.left-1 && a.right <= b.right+1 && a.top >= b.top-1 && a.bottom <= b.bottom+1;
     const overlaps = (a,b) => a.left < b.right-1 && a.right > b.left+1 && a.top < b.bottom-1 && a.bottom > b.top+1;
     const boxes = images.map(rect);
     const visible = el => el && getComputedStyle(el).display !== 'none';
     const padding = parseFloat(getComputedStyle(header).paddingLeft) || 0;
-    const titleCenter = (t.top+t.bottom)/2;
-    const crestBox = rect(crest);
     const form = header.querySelector('form.pbd-header-login');
     const sidebar = header.closest('.dsh').querySelector('.dsh-side');
     const headerHeight = parseFloat(getComputedStyle(header.closest('.dsh')).getPropertyValue('--workspace-header-h'));
     return {
       imageCount: images.length,
       imagesLoaded: images.every(i=>i.complete && i.naturalWidth>0),
-      proportions: images.every(i=>getComputedStyle(i).objectFit==='contain'),
+      resolutionReady: images.every(i=>i.naturalWidth>=rect(i).width && i.naturalHeight>=rect(i).height),
       partnerLogosVisible: visible(group),
-      nationalTitle: title?.textContent?.trim(),
-      nationalTitleInside: fits(t,rect(state)) && fits(rect(state),g),
-      nationalTitleBesideCrest: t.left>=crestBox.right-1 && Math.abs(titleCenter-(crestBox.top+crestBox.bottom)/2)<=4,
-      nationalTitleBeforeDoCC: group.firstElementChild===state && state.nextElementSibling===docc && docc.nextElementSibling===mfat && !overlaps(t,rect(docc)),
+      brandTextAbsent: group.textContent.trim()==='',
+      onlyRequestedLogos: group.children.length===2 && group.firstElementChild===crest && group.lastElementChild===docc && !group.querySelector('.merl-partner-mfat'),
+      crestFit: getComputedStyle(crest).objectFit,
+      doccFit: getComputedStyle(docc).objectFit,
       leftAligned: Math.abs(g.left-h.left-padding)<=2,
       sameRow: Math.abs((g.top+g.bottom-c.top-c.bottom)/2)<=3,
       verticalPaddingBalanced: Math.abs((g.top-h.top)-(h.bottom-g.bottom))<=2,
@@ -87,15 +82,15 @@ async function check(page, label, width, authenticated) {
       onePublicForm: !form || header.querySelectorAll('form.pbd-header-login').length===1,
     };
   });
-  const publicTabletSingleRow = width>=900 && width<=1180;
-  const singleRow = authenticated ? width>760 : (width>1280 || publicTabletSingleRow);
-  const compactHeader = authenticated ? (width>760 || width<=560) : publicTabletSingleRow;
+  const phoneSingleRow = width<=560;
+  const singleRow = authenticated ? (width>760 || phoneSingleRow) : (width>1280 || phoneSingleRow);
+  const compactHeader = authenticated ? (width>760 || phoneSingleRow) : phoneSingleRow;
   const expected = {
-    imageCount:3, imagesLoaded:true, proportions:true,
-    nationalTitle:'The republic of Vanuatu', nationalTitleInside:true,
-    nationalTitleBesideCrest:true, nationalTitleBeforeDoCC:true,
-    partnerLogosVisible:width>560,
-    leftAligned:width>560, sameRow:singleRow, verticalPaddingBalanced:singleRow,
+    imageCount:2, imagesLoaded:true, resolutionReady:true,
+    brandTextAbsent:true, onlyRequestedLogos:true,
+    crestFit:'contain', doccFit:phoneSingleRow?'cover':'contain',
+    partnerLogosVisible:true,
+    leftAligned:authenticated || width>560, sameRow:singleRow, verticalPaddingBalanced:singleRow,
     compactWorkspaceHeader:compactHeader,
     inside:true, distinct:true, controlsClear:true, controlsInside:true, menuClear:true,
     horizontalOverflow:false, headerWordmark:false, headerHeightSynced:true,
@@ -115,13 +110,19 @@ try {
     for (const [width,height] of [[1920,1080],[1440,900],[1280,800],[1024,768],[768,1024],[600,850],[560,850],[520,850],[390,844],[320,720]]) {
       await page.setViewportSize({width,height});
       await page.goto('http://127.0.0.1:5199/#/dashboards', {waitUntil:'domcontentloaded'});
-      await page.locator(authenticated?'.dsh-user':'.pbd-header-login').waitFor({timeout:15000});
-      await Promise.all([...Array(3)].map((_,i)=>page.locator('.merl-partner-logos img').nth(i).evaluate(img=>img.decode())));
+      await page.locator(authenticated ? '.dsh-user' : (width<=560 ? '.pbd-mobile-signin' : '.pbd-header-login')).waitFor({timeout:15000});
+      await Promise.all([...Array(2)].map((_,i)=>page.locator('.merl-partner-logos img').nth(i).evaluate(img=>img.decode())));
+      await page.waitForFunction(() => {
+        const header = document.querySelector('.dsh-head');
+        const shell = header?.closest('.dsh');
+        const recorded = parseFloat(getComputedStyle(shell).getPropertyValue('--workspace-header-h'));
+        return header && Number.isFinite(recorded) && Math.abs(header.getBoundingClientRect().height-recorded)<=2;
+      }, null, {timeout:5000});
       await check(page, `${authenticated?'Workspace':'Public'} ${width}px`, width, authenticated);
       if (width===1440 || width===1024 || width===390) {
         await page.screenshot({path:`qa-artifacts/header-${authenticated?'workspace':'public'}-${width}.png`,animations:'disabled'});
       }
-      if (width<=760) {
+      if ((authenticated && width<=760) || (!authenticated && width<=560)) {
         const usesBottomNav=authenticated&&width<=560;
         const menu=usesBottomNav
           ? page.locator('.dsh-mobile-nav button')
@@ -143,8 +144,10 @@ try {
       }
       if (!authenticated) {
         if (await page.locator('.dsh-head form.pbd-header-login').count()!==1) throw new Error('Public sign-in was lost or duplicated');
-        await page.locator('.pbd-header-login input[type="email"]').fill('test@example.com');
-        await page.locator('.pbd-header-login input[type="password"]').fill('test-password');
+        if (width>560) {
+          await page.locator('.pbd-header-login input[type="email"]').fill('test@example.com');
+          await page.locator('.pbd-header-login input[type="password"]').fill('test-password');
+        }
       }
     }
     await context.close();
