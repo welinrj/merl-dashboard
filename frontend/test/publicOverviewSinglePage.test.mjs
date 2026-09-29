@@ -20,6 +20,15 @@ test('the public overview contains the requested portfolio information', () => {
   assert.match(dashboard, /pbd-project-grid/);
 });
 
+test('every public indicator category has a distinct web-library icon', () => {
+  for (const key of ['ecosystems', 'livelihoods', 'climate-risk', 'infrastructure', 'governance', 'capacity', 'finance', 'learning-delivery', 'beneficiaries', 'other']) {
+    assert.match(dashboard, new RegExp(`['"]?${key}['"]?\\s*:`));
+  }
+  assert.match(dashboard, /const CategoryIcon = INDICATOR_CATEGORY_ICONS\[category\.key\]/);
+  assert.match(dashboard, /<CategoryIcon size=\{21\} \/>/);
+  assert.match(dashboard, /pbd-activity-category-icon/);
+});
+
 test('anonymous reads stay within public snapshot tables', () => {
   assert.doesNotMatch(snapshot, /v_financial_progress|v_projects|service_role/);
   assert.match(snapshot, /public_portal_projects/);
