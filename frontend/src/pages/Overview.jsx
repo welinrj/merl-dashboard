@@ -14,10 +14,11 @@
 // =============================================================================
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { AlertTriangle, Printer, ArrowRight } from '../components/ui/icons';
+import { AlertTriangle, Printer, ArrowRight, Send } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
@@ -65,7 +66,7 @@ function statusLabel(key, t) {
   }[key] || key;
 }
 
-export default function Overview() {
+export default function Overview({ user }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const nav = useNavigate();
@@ -75,6 +76,23 @@ export default function Overview() {
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [progressPeriodType, setProgressPeriodType] = useState('quarterly');
+  const [publishingPublic, setPublishingPublic] = useState(false);
+  const canPublishPublic = user?.role === 'ROLE_ADMIN';
+
+  const publishPublicPortal = async () => {
+    if (!canPublishPublic || publishingPublic) return;
+    setPublishingPublic(true);
+    const pending = toast.loading(t('overview.publishingPublic'));
+    try {
+      const { error } = await supabase.rpc('publish_public_portal');
+      if (error) throw error;
+      toast.success(t('overview.publishSuccess'), { id: pending });
+    } catch {
+      toast.error(t('overview.publishError'), { id: pending });
+    } finally {
+      setPublishingPublic(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -339,9 +357,16 @@ export default function Overview() {
           <h1>{t('overview.title')}</h1>
           <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
         </div>
-        <button type="button" className="ovx-export" onClick={() => window.print()}>
-          <Printer size={15} aria-hidden="true" /> {t('ui.export')}
-        </button>
+        <div className="ovx-heading-actions">
+          {canPublishPublic && <button type="button" className="ovx-publish"
+            onClick={publishPublicPortal} disabled={publishingPublic}>
+            <Send size={16} aria-hidden="true" />
+            {publishingPublic ? t('overview.publishingPublic') : t('overview.publishPublic')}
+          </button>}
+          <button type="button" className="ovx-export" onClick={() => window.print()}>
+            <Printer size={15} aria-hidden="true" /> {t('ui.export')}
+          </button>
+        </div>
       </section>
 
       <section className="ovx-filterbar rp-noprint" aria-label={t('overview.title')}>
@@ -622,6 +647,9 @@ function OverviewStyles() {
       .ovx-heading h1{margin:0;color:#2a2148;font-size:clamp(1.55rem,2.3vw,2rem);font-weight:780;letter-spacing:-.035em}
       .ovx-heading p{margin:.3rem 0 0;color:#91899f;font-size:.82rem}
       .ovx-heading p b{color:#736a84;font-weight:700}
+      .ovx-heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:.55rem;flex-wrap:wrap}
+      .ovx-publish{display:inline-flex;align-items:center;justify-content:center;gap:.48rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#174f98;color:#fff;font:inherit;font-size:.79rem;font-weight:750;cursor:pointer;box-shadow:0 8px 18px rgba(23,79,152,.16)}
+      .ovx-publish:hover:not(:disabled){background:#123f7b}.ovx-publish:disabled{opacity:.62;cursor:wait;box-shadow:none}
       .ovx-export{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#5b4692;color:#fff;font:inherit;font-size:.79rem;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(74,55,125,.14)}
       .ovx-export:hover{background:#4b377d}
 
@@ -709,7 +737,7 @@ function OverviewStyles() {
       @media(max-width:1180px){.ovx-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.ovx-reset{align-self:end}.ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}}
       @media(max-width:980px){.ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}.ovx-location-layout{grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr)}}
       @media(max-width:760px){.ovx-period-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
-      @media(max-width:560px){.ovx-period-kpis{grid-template-columns:1fr}.ovx-heading{flex-direction:column}.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
+      @media(max-width:560px){.ovx-period-kpis{grid-template-columns:1fr}.ovx-heading{flex-direction:column}.ovx-heading-actions{display:grid;width:100%;grid-template-columns:1fr}.ovx-publish,.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
       @media(max-width:760px){.ovx-project-list{grid-template-columns:1fr}}
       @media print{.ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export{display:none!important}.ovx-card,.ovx-kpi{box-shadow:none!important}}
     `}</style>
