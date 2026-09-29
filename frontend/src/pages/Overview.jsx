@@ -38,6 +38,21 @@ const C = {
   red: '#dc2626',
 };
 
+const PUBLICATION_COPY = {
+  en: {
+    action: 'Publish to public portal',
+    publishing: 'Publishing…',
+    success: 'The public portal has been updated.',
+    error: 'The public portal could not be updated.',
+  },
+  fr: {
+    action: 'Publier sur le portail public',
+    publishing: 'Publication…',
+    success: 'Le portail public a été mis à jour.',
+    error: "Le portail public n'a pas pu être mis à jour.",
+  },
+};
+
 const STATUS_COLOR = {
   on_track: C.green,
   at_risk: C.amber,
@@ -69,6 +84,7 @@ function statusLabel(key, t) {
 export default function Overview({ user }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
+  const publicationCopy = PUBLICATION_COPY[lang?.startsWith('fr') ? 'fr' : 'en'];
   const nav = useNavigate();
   const { filters, setFilter, reset, active } = useDashboardFilters();
 
@@ -82,13 +98,13 @@ export default function Overview({ user }) {
   const publishPublicPortal = async () => {
     if (!canPublishPublic || publishingPublic) return;
     setPublishingPublic(true);
-    const pending = toast.loading(t('overview.publishingPublic'));
+    const pending = toast.loading(publicationCopy.publishing);
     try {
       const { error } = await supabase.rpc('publish_public_portal');
       if (error) throw error;
-      toast.success(t('overview.publishSuccess'), { id: pending });
+      toast.success(publicationCopy.success, { id: pending });
     } catch {
-      toast.error(t('overview.publishError'), { id: pending });
+      toast.error(publicationCopy.error, { id: pending });
     } finally {
       setPublishingPublic(false);
     }
@@ -361,7 +377,7 @@ export default function Overview({ user }) {
           {canPublishPublic && <button type="button" className="ovx-publish"
             onClick={publishPublicPortal} disabled={publishingPublic}>
             <Send size={16} aria-hidden="true" />
-            {publishingPublic ? t('overview.publishingPublic') : t('overview.publishPublic')}
+            {publishingPublic ? publicationCopy.publishing : publicationCopy.action}
           </button>}
           <button type="button" className="ovx-export" onClick={() => window.print()}>
             <Printer size={15} aria-hidden="true" /> {t('ui.export')}
