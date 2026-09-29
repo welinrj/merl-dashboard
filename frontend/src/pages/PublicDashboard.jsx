@@ -15,6 +15,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { Activity, LayoutDashboard, MapPin, Menu, Wallet } from '../components/ui/icons';
 import { FeatureCardGradient } from '../components/ui/feature-section-with-card-gradient';
+import { IndicatorProgressCard } from '../components/ui/indicator-progress-card';
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
@@ -253,11 +254,21 @@ export default function PublicDashboard() {
             <div className="pbd-section-head"><div><span><Activity size={16} aria-hidden="true" />{c.activityAreas}</span><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>
             {indicatorCategories.length ? <><div className="pbd-activity-grid">{indicatorCategories.map(category => {
               const categoryIcon = INDICATOR_CATEGORY_ICONS[category.key] || faShapes;
-              return <button type="button" className={`pbd-activity-category pbd-activity-${category.key}${openCategory === category.key ? ' is-open' : ''}`} key={category.key} aria-expanded={openCategory === category.key} aria-controls="pbd-activity-details" onClick={() => setOpenCategory(current => current === category.key ? null : category.key)}>
-              <div className="pbd-activity-category-head"><span className="pbd-activity-category-title"><i className="pbd-activity-category-icon" aria-hidden="true"><FontAwesomeIcon icon={categoryIcon} /></i><span>{c.activityCategoryLabels[category.key] || c.activityCategoryLabels.other}</span></span><strong>{num(category.indicatorCount, lang)}</strong></div>
-              <div className="pbd-activity-bar" aria-hidden="true"><i style={{ width: `${category.indicatorCount / maxCategoryCount * 100}%` }} /></div>
-              <small>{category.indicatorCount === 1 ? c.indicator : c.indicators} · {category.projectCount === 1 ? c.inProject : c.inProjects.replace('{count}', num(category.projectCount, lang))} · {openCategory === category.key ? c.collapseCategory : c.expandCategory}</small>
-            </button>;
+              const indicatorLabel = category.indicatorCount === 1 ? c.indicator : c.indicators;
+              const projectLabel = category.projectCount === 1 ? c.inProject : c.inProjects.replace('{count}', num(category.projectCount, lang));
+              return <IndicatorProgressCard
+                key={category.key}
+                className={`pbd-activity-${category.key}${openCategory === category.key ? ' is-open' : ''}`}
+                icon={<FontAwesomeIcon icon={categoryIcon} />}
+                title={c.activityCategoryLabels[category.key] || c.activityCategoryLabels.other}
+                value={num(category.indicatorCount, lang)}
+                progress={category.indicatorCount / maxCategoryCount * 100}
+                meta={`${indicatorLabel} · ${projectLabel}`}
+                actionLabel={openCategory === category.key ? c.collapseCategory : c.expandCategory}
+                open={openCategory === category.key}
+                controls="pbd-activity-details"
+                onClick={() => setOpenCategory(current => current === category.key ? null : category.key)}
+              />;
             })}</div>{activeCategory && <div className="pbd-activity-details" id="pbd-activity-details"><h3>{c.activityCategoryLabels[activeCategory.key] || c.activityCategoryLabels.other} <small>({num(activeDetails.length, lang)})</small></h3><div className="pbd-activity-list">{activeDetails.map(row => <article key={row.indicator_id} className="pbd-activity-item"><div><span className="pbd-activity-label">{c.activity}</span><strong>{row.indicator_name}</strong>{row.indicator_code && <small>{row.indicator_code}</small>}</div><div><span className="pbd-activity-label">{c.target}</span><span>{row.target_text || (finite(row.target_value) ? `${num(row.target_value, lang)}${row.unit ? ` ${row.unit}` : ''}` : c.noTarget)}</span></div><div><span className="pbd-activity-label">{c.implementingProject}</span><span>{row.project_name}</span></div></article>)}</div></div>}</> : <div className="pbd-empty">{c.noIndicators}</div>}
           </section>
 

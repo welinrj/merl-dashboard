@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const dashboard = readFileSync(new URL('../src/pages/PublicDashboard.jsx', import.meta.url), 'utf8');
+const indicatorCard = readFileSync(new URL('../src/components/ui/indicator-progress-card.jsx', import.meta.url), 'utf8');
 const snapshot = readFileSync(new URL('../src/lib/publicSnapshot.js', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../../supabase/migrations/0076_single_public_overview.sql', import.meta.url), 'utf8');
 
@@ -28,7 +29,16 @@ test('every public indicator category has a distinct web-library icon', () => {
   assert.match(dashboard, /@fortawesome\/free-solid-svg-icons/);
   assert.match(dashboard, /const categoryIcon = INDICATOR_CATEGORY_ICONS\[category\.key\]/);
   assert.match(dashboard, /<FontAwesomeIcon icon=\{categoryIcon\} \/>/);
-  assert.match(dashboard, /pbd-activity-category-icon/);
+  assert.match(indicatorCard, /pbd-activity-category-icon/);
+});
+
+test('indicator categories use the 21st.dev stats-card-with-progress composition', () => {
+  assert.match(dashboard, /<IndicatorProgressCard/);
+  assert.match(indicatorCard, /21st\.dev "Stats card with progress"/);
+  assert.match(indicatorCard, /@radix-ui\/react-progress/);
+  for (const slot of ['card', 'card-content', 'card-header', 'card-title', 'progress', 'progress-indicator', 'card-footer']) {
+    assert.match(indicatorCard, new RegExp(`data-slot="${slot}"`));
+  }
 });
 
 test('anonymous reads stay within public snapshot tables', () => {
