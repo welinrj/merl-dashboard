@@ -1,22 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  Activity,
-  BeneficiariesIcon,
-  CapacityIcon,
-  ClimateFinanceIcon,
-  ClimateRiskIcon,
-  EcosystemsIcon,
-  GovernanceIcon,
-  InfrastructureIcon,
-  LayoutDashboard,
-  LearningDeliveryIcon,
-  LivelihoodsIcon,
-  MapPin,
-  Menu,
-  OtherOutcomesIcon,
-  Wallet,
-} from '../components/ui/icons';
+  faBuildingWheat,
+  faCloudBolt,
+  faLandmark,
+  faListCheck,
+  faMoneyBillTrendUp,
+  faScrewdriverWrench,
+  faShapes,
+  faTree,
+  faUsers,
+  faUsersRays,
+} from '@fortawesome/free-solid-svg-icons';
+import { Activity, LayoutDashboard, MapPin, Menu, Wallet } from '../components/ui/icons';
 import { FeatureCardGradient } from '../components/ui/feature-section-with-card-gradient';
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
@@ -28,16 +25,16 @@ import './public-dashboard.css';
 const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
 const PROVINCES = ['Torba', 'Sanma', 'Penama', 'Malampa', 'Shefa', 'Tafea'];
 const INDICATOR_CATEGORY_ICONS = Object.freeze({
-  ecosystems: EcosystemsIcon,
-  livelihoods: LivelihoodsIcon,
-  'climate-risk': ClimateRiskIcon,
-  infrastructure: InfrastructureIcon,
-  governance: GovernanceIcon,
-  capacity: CapacityIcon,
-  finance: ClimateFinanceIcon,
-  'learning-delivery': LearningDeliveryIcon,
-  beneficiaries: BeneficiariesIcon,
-  other: OtherOutcomesIcon,
+  ecosystems: faTree,
+  livelihoods: faBuildingWheat,
+  'climate-risk': faCloudBolt,
+  infrastructure: faScrewdriverWrench,
+  governance: faLandmark,
+  capacity: faUsersRays,
+  finance: faMoneyBillTrendUp,
+  'learning-delivery': faListCheck,
+  beneficiaries: faUsers,
+  other: faShapes,
 });
 const COPY = {
   en: {
@@ -255,9 +252,9 @@ export default function PublicDashboard() {
           <section className="pbd-section pbd-activity-section">
             <div className="pbd-section-head"><div><span><Activity size={16} aria-hidden="true" />{c.activityAreas}</span><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>
             {indicatorCategories.length ? <><div className="pbd-activity-grid">{indicatorCategories.map(category => {
-              const CategoryIcon = INDICATOR_CATEGORY_ICONS[category.key] || OtherOutcomesIcon;
+              const categoryIcon = INDICATOR_CATEGORY_ICONS[category.key] || faShapes;
               return <button type="button" className={`pbd-activity-category pbd-activity-${category.key}${openCategory === category.key ? ' is-open' : ''}`} key={category.key} aria-expanded={openCategory === category.key} aria-controls="pbd-activity-details" onClick={() => setOpenCategory(current => current === category.key ? null : category.key)}>
-              <div className="pbd-activity-category-head"><span className="pbd-activity-category-title"><i className="pbd-activity-category-icon" aria-hidden="true"><CategoryIcon size={29} variant="Bold" /></i><span>{c.activityCategoryLabels[category.key] || c.activityCategoryLabels.other}</span></span><strong>{num(category.indicatorCount, lang)}</strong></div>
+              <div className="pbd-activity-category-head"><span className="pbd-activity-category-title"><i className="pbd-activity-category-icon" aria-hidden="true"><FontAwesomeIcon icon={categoryIcon} /></i><span>{c.activityCategoryLabels[category.key] || c.activityCategoryLabels.other}</span></span><strong>{num(category.indicatorCount, lang)}</strong></div>
               <div className="pbd-activity-bar" aria-hidden="true"><i style={{ width: `${category.indicatorCount / maxCategoryCount * 100}%` }} /></div>
               <small>{category.indicatorCount === 1 ? c.indicator : c.indicators} · {category.projectCount === 1 ? c.inProject : c.inProjects.replace('{count}', num(category.projectCount, lang))} · {openCategory === category.key ? c.collapseCategory : c.expandCategory}</small>
             </button>;

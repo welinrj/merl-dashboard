@@ -18,9 +18,9 @@
 //  · Stroke inherits `currentColor`, so existing CSS colour rules keep working
 //    and no call site needs a `color` prop.
 //  · Sizes stay on the 14-18px scale set by the earlier icon audit.
-//  · Icons are functional or meaning-bearing — actions, states, directions,
-//    navigation affordances and the public indicator-category pictograms.
-//    Beneficiary pictograms are a separate, deliberate exception; see Gedsi.jsx.
+//  · Icons are functional only — an action, a state, a direction or a
+//    navigation affordance. Public indicator pictograms use Font Awesome in
+//    PublicDashboard.jsx; beneficiary pictograms live in Gedsi.jsx.
 import {
   // ── Sidebar navigation ──────────────────────────────────────────────────
   Category as LayoutDashboard,   // Overview
@@ -75,18 +75,6 @@ import {
   ArrowRight2 as ChevronRight,   // pagination, tree expand
   ArrowDown2 as ChevronDown,     // tree collapse
   LanguageSquare as Languages,   // the record's other language
-
-  // ── Public indicator categories ─────────────────────────────────────
-  Tree as EcosystemsIcon,
-  Milk as LivelihoodsIcon,
-  CloudLightning as ClimateRiskIcon,
-  Buildings2 as InfrastructureIcon,
-  Courthouse as GovernanceIcon,
-  People as CapacityIcon,
-  WalletMoney as ClimateFinanceIcon,
-  TaskSquare as LearningDeliveryIcon,
-  Profile2User as BeneficiariesIcon,
-  MoreCircle as OtherOutcomesIcon,
 } from 'iconsax-reactjs';
 
 export {
@@ -98,9 +86,6 @@ export {
   Plus, Pencil, Trash2, Send, Printer, Download, FileText, RotateCcw, Unlock,
   CheckCircle2, Info, Languages,
   ArrowRight, ArrowLeft, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronDown,
-  EcosystemsIcon, LivelihoodsIcon, ClimateRiskIcon, InfrastructureIcon,
-  GovernanceIcon, CapacityIcon, ClimateFinanceIcon, LearningDeliveryIcon,
-  BeneficiariesIcon, OtherOutcomesIcon,
 };
 
 /**

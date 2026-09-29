@@ -24,8 +24,10 @@ test('every public indicator category has a distinct web-library icon', () => {
   for (const key of ['ecosystems', 'livelihoods', 'climate-risk', 'infrastructure', 'governance', 'capacity', 'finance', 'learning-delivery', 'beneficiaries', 'other']) {
     assert.match(dashboard, new RegExp(`['"]?${key}['"]?\\s*:`));
   }
-  assert.match(dashboard, /const CategoryIcon = INDICATOR_CATEGORY_ICONS\[category\.key\]/);
-  assert.match(dashboard, /<CategoryIcon size=\{29\} variant="Bold" \/>/);
+  assert.match(dashboard, /@fortawesome\/react-fontawesome/);
+  assert.match(dashboard, /@fortawesome\/free-solid-svg-icons/);
+  assert.match(dashboard, /const categoryIcon = INDICATOR_CATEGORY_ICONS\[category\.key\]/);
+  assert.match(dashboard, /<FontAwesomeIcon icon=\{categoryIcon\} \/>/);
   assert.match(dashboard, /pbd-activity-category-icon/);
 });
 
