@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import KpiCardBase from './KpiCardBase';
 import Gedsi from './Gedsi';
 import { supabase } from '../../supabaseClient';
-import { useDashboardFilters, projectMatches } from '../../lib/dashboardFilters';
+import { useDashboardFilters, projectMatches, bucketOf } from '../../lib/dashboardFilters';
 import { localised, i18nCols } from '../../lib/contentLocale';
 import { fmtNum } from '../../lib/locale';
 import { aggregateBeneficiaries } from '../../lib/beneficiaryAggregation';
@@ -75,7 +75,7 @@ export default function BeneficiarySummary(props) {
 
   const scoped = useMemo(() => {
     if (!source) return null;
-    const projects = source.projects.filter(p => projectMatches(p, filters));
+    const projects = source.projects.filter(p => bucketOf(p.status) !== 'completed' && projectMatches(p, filters));
     const ids = new Set(projects.map(p => p.id));
     const rows = source.beneficiaries.filter(row => ids.has(row.project_id));
     return { projects, rows, summary: aggregateBeneficiaries(rows) };
