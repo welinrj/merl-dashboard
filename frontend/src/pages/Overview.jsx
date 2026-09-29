@@ -133,10 +133,13 @@ export default function Overview() {
     return <BackendError onRetry={() => setReloadKey((n) => n + 1)} />;
   }
   if (!data) return <OverviewSkeleton />;
-  if (data.projects.length === 0) return <EmptyPortfolio />;
+  // Completed projects remain in MERL for reporting and audit history, but the
+  // live dashboard is intentionally limited to work that has not finished.
+  const unfinishedProjects = data.projects.filter((project) => bucketOf(project.status) !== 'completed');
+  if (unfinishedProjects.length === 0) return <EmptyPortfolio />;
 
   const years = [...new Set(
-    data.projects.flatMap((p) => [p.start_date, p.end_date]
+    unfinishedProjects.flatMap((p) => [p.start_date, p.end_date]
       .filter(Boolean)
       .map((x) => new Date(x).getFullYear())),
   )].sort((a, b) => b - a);
@@ -153,7 +156,7 @@ export default function Overview() {
     areasByProject.get(row.project_id).push(row.area_council_name);
   }
   const statusByProject = new Map((data.portfolioStatus || []).map((row) => [row.project_id, row]));
-  const allProjects = data.projects.map((p) => {
+  const allProjects = unfinishedProjects.map((p) => {
     const org = orgsByProject.get(p.id) || { donors: [], partners: p.implementing_partners || [] };
     const rollup = statusByProject.get(p.id);
     const rawBucket = bucketOf(p.status);
@@ -173,7 +176,7 @@ export default function Overview() {
   });
   const donors = [...new Set(allProjects.flatMap((p) => p.donors || []).filter(Boolean))].sort();
   const partners = [...new Set(allProjects.flatMap((p) => p.partners || []).filter(Boolean))].sort();
-  const areaCouncilOptions = [...new Set((data.areaCouncils || []).map((r) => r.area_council_name).filter(Boolean))].sort();
+  const areaCouncilOptions = [...new Set(allProjects.flatMap((p) => p.areaCouncils || []).filter(Boolean))].sort();
   const themes = [...new Set(allProjects.map((p) => p.category).filter(Boolean))].sort();
 
   const projects = allProjects.filter((p) => projectMatches(p, filters));
@@ -204,7 +207,7 @@ export default function Overview() {
   const periodAtRisk = currentPeriodRows.reduce((n,r) => n + Number(r.at_risk_results || 0),0);
   const periodDelayed = currentPeriodRows.reduce((n,r) => n + Number(r.delayed_results || 0),0);
   const total = projects.length;
-  const byBucket = { on_track: 0, attention: 0, at_risk: 0, delayed: 0, not_started: 0, completed: 0 };
+  const byBucket = { on_track: 0, attention: 0, at_risk: 0, delayed: 0, not_started: 0 };
   for (const p of projects) {
     const key = bucketOf(p.status);
     if (key in byBucket) byBucket[key] += 1;
@@ -213,11 +216,10 @@ export default function Overview() {
   // Planning and pipeline projects are in the register, but are not active.
   const lifecycleCounts = projects.reduce((counts, project) => {
     const status = bucketOf(project.status);
-    if (status === 'completed') counts.completed += 1;
-    else if (status === 'not_started') counts.planned += 1;
+    if (status === 'not_started') counts.planned += 1;
     else if (status !== 'cancelled') counts.active += 1;
     return counts;
-  }, { active: 0, completed: 0, planned: 0 });
+  }, { active: 0, planned: 0 });
   const latestFinance = new Map();
   for (const row of financial) {
     const prev = latestFinance.get(row.project_id);
@@ -272,7 +274,7 @@ export default function Overview() {
   const atRiskProjects = portfolioStatus.filter((r) => r.performance_status === 'at_risk').length;
   const delayedProjects = portfolioStatus.filter((r) => r.schedule_status === 'delayed').length;
 
-  const approvedDates = data.reporting
+  const approvedDates = reporting
     .filter((r) => r.submission_status === 'approved')
     .map((r) => r.approved_at || r.period_end)
     .filter(Boolean)
@@ -346,7 +348,7 @@ export default function Overview() {
         <FilterSelect label={t('overview.filterFy')} value={filters.fy}
           onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
         <FilterSelect label={t('overview.filterStatus')} value={filters.status}
-          onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((key) => ({ value: key, label: statusLabel(key, t) }))} />
+          onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).filter((key) => key !== 'completed').map((key) => ({ value: key, label: statusLabel(key, t) }))} />
         <FilterSelect label={t('overview.filterTheme')} value={filters.theme}
           onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
         <FilterSelect label={t('overview.filterProvince')} value={filters.province}
@@ -365,7 +367,7 @@ export default function Overview() {
           className="ovx-kpi ovx-kpi-projects"
           label="Projects in Portfolio"
           value={fmtNum(total)}
-          sub={`${fmtNum(lifecycleCounts.active)} active · ${fmtNum(lifecycleCounts.completed)} completed · ${fmtNum(lifecycleCounts.planned)} planned`}
+          sub={`${fmtNum(lifecycleCounts.active)} active · ${fmtNum(lifecycleCounts.planned)} planned`}
           linkLabel={t('overview.viewProjects')}
           onClick={() => nav('/project-setup')}
         />

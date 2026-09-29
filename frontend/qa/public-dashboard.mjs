@@ -11,7 +11,7 @@ const fixtures = {
   public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:2,project_ids:['pa','pb'],project_names:['Coastal Resilience','Water Security']},{province:'TORBA',area_council:'Torres',project_count:1,project_ids:['pb'],project_names:['Water Security']}],
   public_portal_kpis:[],
   public_portal_indicator_categories:[{project_id:'pa',category_key:'ecosystems',indicator_count:3},{project_id:'pa',category_key:'capacity',indicator_count:2},{project_id:'pb',category_key:'finance',indicator_count:4}],
-  public_portal_indicator_details:[{indicator_id:'i1',project_id:'pa',project_name:'Coastal Resilience',category_key:'ecosystems',indicator_code:'COAST-1',indicator_name:'Mangrove restoration',target_value:20,unit:'ha'},{indicator_id:'i2',project_id:'pb',project_name:'Water Security',category_key:'finance',indicator_code:'WATER-1',indicator_name:'Financing arrangements',target_value:null,target_text:null}],
+  public_portal_indicator_details:[{indicator_id:'i1',project_id:'pa',project_name:'Coastal Resilience',category_key:'ecosystems',indicator_code:'COAST-1',indicator_name:'Mangrove restoration',target_value:20,unit:'ha'},{indicator_id:'i3',project_id:'pa',project_name:'Coastal Resilience',category_key:'capacity',indicator_code:'COAST-2',indicator_name:'Community training',target_value:null,target_text:null},{indicator_id:'i2',project_id:'pb',project_name:'Water Security',category_key:'finance',indicator_code:'WATER-1',indicator_name:'Financing arrangements',target_value:null,target_text:null}],
 };
 let failures = 0;
 const check = (name, ok) => {console.log(`${ok?'✓':'✗'} ${name}`);if(!ok)failures++;};
@@ -46,40 +46,41 @@ check('bare URL resolves to the shared dashboard',new URL(page.url()).hash==='#/
 check('anonymous visitor sees one public overview',await page.getByRole('heading',{name:'Public Overview'}).count()===1);
 check('sidebar contains only one public destination',await page.locator('.pbd-root .dsh-nav button').count()===1);
 check('separate Projects and Results public pages are removed',await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:/^(Projects|Results)$/}).count()===0);
-check('project count is shown',await hasMetric('2'));
-check('total project funding is shown',await hasMetric('VT 3,000,000'));
-check('approved utilisation is shown',await hasMetric('VT 900,000') && await hasMetric('30%'));
-check('approved beneficiaries are shown',await hasMetric('120'));
-check('all project cards are on the overview',await page.locator('.pbd-project-card').count()===2);
+check('only unfinished project count is shown',await hasMetric('1'));
+check('only unfinished project funding is shown',await hasMetric('VT 1,000,000'));
+check('only unfinished project utilisation is shown',await hasMetric('VT 300,000') && await hasMetric('30%'));
+check('only unfinished project beneficiaries are shown',await hasMetric('50'));
+check('only unfinished project cards are on the overview',await page.locator('.pbd-project-card').count()===1);
+check('completed projects and their status filter are hidden',await page.getByRole('heading',{name:'Water Security'}).count()===0 && await page.locator('.pbd-filters select').first().locator('option[value="completed"]').count()===0);
 check('project image is shown beside its matching name',await page.getByRole('heading',{name:'Coastal Resilience'}).locator('xpath=ancestor::header').locator('img[src$="/project-images/vcap2.webp"]').count()===1);
-check('project managers are visible',await page.getByText('Lina Kalo',{exact:true}).count()===1 && await page.getByText('Tom Nalo',{exact:true}).count()===1);
+check('unfinished project managers are visible',await page.getByText('Lina Kalo',{exact:true}).count()===1 && await page.getByText('Tom Nalo',{exact:true}).count()===0);
 check('all official themes are shown for multi-theme projects',await page.getByText('Adaptation, Mitigation',{exact:true}).count()===1);
 check('implementation areas are visible',await page.getByRole('heading',{name:'Area Councils'}).count()===1 && await page.getByRole('button',{name:/Big Bay Coast/}).count()===1);
 check('map legend categorises recorded areas by official themes',await page.locator('.pub-map-key').getByText('Areas by official thematic area',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Adaptation & Mitigation',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Theme not recorded',{exact:true}).count()===1);
-check('all indicator activity categories and totals are shown',await page.getByText('What project indicators cover',{exact:true}).count()===1 && await page.locator('.pbd-activity-category').count()===3 && await page.locator('.pbd-activity-section').getByText('9 indicators',{exact:true}).count()===1);
+check('only unfinished-project indicator categories and totals are shown',await page.getByText('What project indicators cover',{exact:true}).count()===1 && await page.locator('.pbd-activity-category').count()===2 && await page.locator('.pbd-activity-section').getByText('5 indicators',{exact:true}).count()===1);
 await page.locator('.pbd-activity-ecosystems').click();
 check('category opens activity, target and implementing project',await page.locator('.pbd-activity-details').getByText('Mangrove restoration').count()===1 && await page.locator('.pbd-activity-details').getByText('20 ha').count()===1 && await page.locator('.pbd-activity-details').getByText('Coastal Resilience').count()===1);
-await page.locator('.pbd-activity-finance').click();
+await page.locator('.pbd-activity-capacity').click();
 check('missing targets are identified without inventing values',await page.locator('.pbd-activity-details').getByText('Not recorded').count()===1);
 await page.locator('.pbd-filters select').nth(1).selectOption('Mitigation');
 check('theme filter includes a project under either official theme',await page.locator('.pbd-project-card').count()===1 && await page.getByRole('heading',{name:'Coastal Resilience'}).count()===1);
 check('indicator category totals follow the selected projects',await page.locator('.pbd-activity-category').count()===2 && await page.locator('.pbd-activity-section').getByText('5 indicators',{exact:true}).count()===1);
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 await page.locator('.pbd-filters select').nth(2).selectOption('Torba');
-check('province filter reduces the project list',await page.locator('.pbd-project-card').count()===1 && await page.getByRole('heading',{name:'Water Security'}).count()===1);
+check('province filter never restores a completed project',await page.locator('.pbd-project-card').count()===0 && await page.getByRole('heading',{name:'Water Security'}).count()===0);
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 await page.locator('.pbd-search input').fill('Coastal Resilience');
 check('search filters projects on the same page',await page.locator('.pbd-project-card').count()===1);
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 await page.getByRole('button',{name:/Big Bay Coast/}).click();
-check('area selection filters the same overview',await page.getByText(/Showing projects recorded in/).count()===1 && await page.locator('.pbd-project-card').count()===2);
+check('area selection filters the same unfinished-project overview',await page.getByText(/Showing projects recorded in/).count()===1 && await page.locator('.pbd-project-card').count()===1);
 await page.getByRole('button',{name:'Clear area selection'}).click();
 fixtures.public_portal_summary[0] = {...fixtures.public_portal_summary[0],published_beneficiaries:150,updated_at:'2026-09-08T08:01:00Z'};
 fixtures.public_portal_projects[0] = {...fixtures.public_portal_projects[0],published_beneficiaries:80};
 const beforeRefresh = reads.filter(x=>x==='public_portal_summary').length;
 await page.clock.fastForward(61_000);
-await page.waitForFunction(() => [...document.querySelectorAll('.pbd-metric strong')].some(node => node.textContent?.trim() === '150'),null,{timeout:15000});
-check('approved public figures refresh without a page reload',await hasMetric('150'));
+await page.waitForFunction(() => [...document.querySelectorAll('.pbd-metric strong')].some(node => node.textContent?.trim() === '80'),null,{timeout:15000});
+check('unfinished-project figures refresh without a page reload',await hasMetric('80'));
 check('automatic refresh reads the snapshot again',reads.filter(x=>x==='public_portal_summary').length>beforeRefresh);
 check('anonymous reads use only public snapshot tables',reads.every(x=>x in fixtures));
 check('no browser exception',errors.length===0);

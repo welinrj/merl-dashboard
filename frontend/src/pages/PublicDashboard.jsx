@@ -138,7 +138,12 @@ const comparableFinancialUtilisation = projects => {
 const list = value => Array.isArray(value) ? value : [];
 const themesOf = projectThemes;
 const themeOf = project => themesOf(project).join(', ');
-const statusOf = project => ['ongoing', 'completed', 'upcoming'].includes(project.lifecycle_status) ? project.lifecycle_status : 'other';
+const normalizedStatus = value => String(value ?? '').trim().toLowerCase();
+const isCompletedProject = project => [project.lifecycle_status, project.status]
+  .some(value => ['completed', 'closed'].includes(normalizedStatus(value)));
+const statusOf = project => isCompletedProject(project)
+  ? 'completed'
+  : ['ongoing', 'upcoming'].includes(project.lifecycle_status) ? project.lifecycle_status : 'other';
 const initialFilters = { search: '', status: '', theme: '', province: '' };
 
 function Metric({ label, value, detail, tone = '' }) {
@@ -173,7 +178,8 @@ export default function PublicDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openCategory, setOpenCategory] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const projects = data?.projects || [];
+  const allProjects = data?.projects || [];
+  const projects = allProjects.filter(project => !isCompletedProject(project));
   const summary = data?.summary;
   const sourceAreas = data?.areas || [];
   const sourceIndicatorCategories = data?.indicatorCategories || [];
@@ -191,7 +197,7 @@ export default function PublicDashboard() {
   }), [projects, filters, selectedAreaIds]);
   const themes = useMemo(() => [...new Set(projects.flatMap(themesOf))].sort(), [projects]);
   const allScope = !filters.search && !filters.status && !filters.theme && !filters.province && !selectedArea;
-  const totals = publicTotals(filtered, summary, allScope);
+  const totals = publicTotals(filtered, summary, allScope && projects.length === allProjects.length);
   const fundingTotal = moneyTotals(filtered, 'budget_vuv', lang);
   const utilisedTotal = moneyTotals(filtered, 'cumulative_expenditure_vuv', lang, c.noFinance);
   const comparableUtilisation = comparableFinancialUtilisation(filtered);
@@ -225,7 +231,7 @@ export default function PublicDashboard() {
         <div className={`pbd-filters${filtersOpen ? ' pbd-filters-open' : ''}`}>
           <label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={event => setFilters(value => ({ ...value, search: event.target.value }))} placeholder={c.search} /></label>
           <button type="button" className="pbd-filter-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}>{c.filters}{!allScope && <span aria-label="active"> •</span>}</button>
-          <label><span>{c.status}</span><select value={filters.status} onChange={event => setFilters(value => ({ ...value, status: event.target.value }))}><option value="">{c.all}</option>{['ongoing', 'completed', 'upcoming', 'other'].map(key => <option key={key} value={key}>{c[key]}</option>)}</select></label>
+          <label><span>{c.status}</span><select value={filters.status} onChange={event => setFilters(value => ({ ...value, status: event.target.value }))}><option value="">{c.all}</option>{['ongoing', 'upcoming', 'other'].map(key => <option key={key} value={key}>{c[key]}</option>)}</select></label>
           <label><span>{c.theme}</span><select value={filters.theme} onChange={event => setFilters(value => ({ ...value, theme: event.target.value }))}><option value="">{c.all}</option>{themes.map(theme => <option key={theme}>{theme}</option>)}</select></label>
           <label><span>{c.province}</span><select value={filters.province} onChange={event => setFilters(value => ({ ...value, province: event.target.value }))}><option value="">{c.all}</option>{PROVINCES.map(province => <option key={province}>{province}</option>)}</select></label>
           <button type="button" className="pbd-reset" disabled={allScope} onClick={reset}>{c.reset}</button><button type="button" className="pbd-refresh" disabled={isFetching} onClick={refresh}>{c.refresh}</button>

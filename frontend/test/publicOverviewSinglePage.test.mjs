@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const dashboard = readFileSync(new URL('../src/pages/PublicDashboard.jsx', import.meta.url), 'utf8');
+const authenticatedOverview = readFileSync(new URL('../src/pages/Overview.jsx', import.meta.url), 'utf8');
 const indicatorCard = readFileSync(new URL('../src/components/ui/indicator-progress-card.jsx', import.meta.url), 'utf8');
 const snapshot = readFileSync(new URL('../src/lib/publicSnapshot.js', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../../supabase/migrations/0076_single_public_overview.sql', import.meta.url), 'utf8');
@@ -19,6 +20,16 @@ test('the public overview contains the requested portfolio information', () => {
   }
   assert.match(dashboard, /PublicCoverageMap/);
   assert.match(dashboard, /pbd-project-grid/);
+});
+
+test('dashboard views exclude completed projects without deleting their records', () => {
+  assert.match(dashboard, /const isCompletedProject = project/);
+  assert.match(dashboard, /allProjects\.filter\(project => !isCompletedProject\(project\)\)/);
+  assert.match(dashboard, /allScope && projects\.length === allProjects\.length/);
+  assert.match(dashboard, /\['ongoing', 'upcoming', 'other'\]\.map/);
+  assert.match(authenticatedOverview, /unfinishedProjects = data\.projects\.filter/);
+  assert.match(authenticatedOverview, /key !== 'completed'/);
+  assert.doesNotMatch(authenticatedOverview, /lifecycleCounts\.completed/);
 });
 
 test('every public indicator category has a distinct web-library icon', () => {
