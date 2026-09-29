@@ -78,13 +78,13 @@ import {
 
   // ── Public indicator categories ─────────────────────────────────────
   Tree as EcosystemsIcon,
-  Briefcase as LivelihoodsIcon,
+  Milk as LivelihoodsIcon,
   CloudLightning as ClimateRiskIcon,
-  Building4 as InfrastructureIcon,
+  Buildings2 as InfrastructureIcon,
   Courthouse as GovernanceIcon,
-  Teacher as CapacityIcon,
+  People as CapacityIcon,
   WalletMoney as ClimateFinanceIcon,
-  ChartSquare as LearningDeliveryIcon,
+  TaskSquare as LearningDeliveryIcon,
   Profile2User as BeneficiariesIcon,
   MoreCircle as OtherOutcomesIcon,
 } from 'iconsax-reactjs';

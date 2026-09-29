@@ -25,7 +25,7 @@ test('every public indicator category has a distinct web-library icon', () => {
     assert.match(dashboard, new RegExp(`['"]?${key}['"]?\\s*:`));
   }
   assert.match(dashboard, /const CategoryIcon = INDICATOR_CATEGORY_ICONS\[category\.key\]/);
-  assert.match(dashboard, /<CategoryIcon size=\{21\} \/>/);
+  assert.match(dashboard, /<CategoryIcon size=\{29\} variant="Bold" \/>/);
   assert.match(dashboard, /pbd-activity-category-icon/);
 });
 
