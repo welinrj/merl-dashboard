@@ -45,3 +45,69 @@
     animation: none;
   }
 }
+
+
+/* Stronger Safari-safe neon blink. Match the actual SVG fill attributes as a
+   fallback in case an SVG renderer does not retain our per-layer CSS classes. */
+@keyframes pbd-theme-neon-blink {
+  0%, 100% {
+    -webkit-filter: drop-shadow(0 0 2px var(--pbd-theme-glow)) drop-shadow(0 0 5px var(--pbd-theme-glow));
+    filter: drop-shadow(0 0 2px var(--pbd-theme-glow)) drop-shadow(0 0 5px var(--pbd-theme-glow));
+    stroke: var(--pbd-theme-glow);
+    stroke-width: 2.5px;
+    opacity: .84;
+  }
+  50% {
+    -webkit-filter: drop-shadow(0 0 7px var(--pbd-theme-glow)) drop-shadow(0 0 18px var(--pbd-theme-glow));
+    filter: drop-shadow(0 0 7px var(--pbd-theme-glow)) drop-shadow(0 0 18px var(--pbd-theme-glow));
+    stroke: #f7fbff;
+    stroke-width: 4px;
+    opacity: 1;
+  }
+}
+
+.pbd-root .pub-leaflet path.pbd-neon-area,
+.pbd-root .pub-leaflet path[fill="#2463c7"],
+.pbd-root .pub-leaflet path[fill="#17845f"],
+.pbd-root .pub-leaflet path[fill="#7651b5"],
+.pbd-root .pub-leaflet path[fill="#9b6a22"] {
+  vector-effect: non-scaling-stroke;
+  animation: pbd-theme-neon-blink 1.35s ease-in-out infinite;
+}
+.pbd-root .pub-leaflet path[fill="#2463c7"] { --pbd-theme-glow: #59a9ff; }
+.pbd-root .pub-leaflet path[fill="#17845f"] { --pbd-theme-glow: #35eda4; }
+.pbd-root .pub-leaflet path[fill="#7651b5"] { --pbd-theme-glow: #bd9dff; }
+.pbd-root .pub-leaflet path[fill="#9b6a22"] { --pbd-theme-glow: #ffd46a; }
+
+.pbd-root .pbd-area-directory>button[data-theme-category] {
+  animation: pbd-council-neon-pulse 1.35s ease-in-out infinite;
+}
+@keyframes pbd-council-neon-blink {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--pbd-theme-glow) 55%, #fff);
+    background: color-mix(in srgb, var(--pbd-theme-glow) 3%, #fff);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--pbd-theme-glow) 24%, transparent);
+  }
+  50% {
+    border-color: var(--pbd-theme-glow);
+    background: color-mix(in srgb, var(--pbd-theme-glow) 12%, #fff);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pbd-theme-glow) 75%, transparent),
+                0 0 13px color-mix(in srgb, var(--pbd-theme-glow) 58%, transparent);
+  }
+}
+.pbd-root .pbd-area-directory>button[data-theme-category] {
+  animation-name: pbd-council-neon-blink;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pbd-root .pub-leaflet path.pbd-neon-area,
+  .pbd-root .pub-leaflet path[fill="#2463c7"],
+  .pbd-root .pub-leaflet path[fill="#17845f"],
+  .pbd-root .pub-leaflet path[fill="#7651b5"],
+  .pbd-root .pub-leaflet path[fill="#9b6a22"],
+  .pbd-root .pbd-area-directory>button[data-theme-category] {
+    animation: none;
+    filter: drop-shadow(0 0 4px var(--pbd-theme-glow));
+    -webkit-filter: drop-shadow(0 0 4px var(--pbd-theme-glow));
+  }
+}
