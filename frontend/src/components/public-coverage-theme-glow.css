@@ -111,3 +111,31 @@
     -webkit-filter: drop-shadow(0 0 4px var(--pbd-theme-glow));
   }
 }
+
+
+/* Make the map pulse readable at mobile and overview zoom levels. */
+@keyframes pbd-area-fill-blink {
+  0%, 100% {
+    fill-opacity: .68 !important;
+    stroke: var(--pbd-theme-glow) !important;
+    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 3px var(--pbd-theme-glow))
+            drop-shadow(0 0 7px var(--pbd-theme-glow));
+    -webkit-filter: drop-shadow(0 0 3px var(--pbd-theme-glow))
+                    drop-shadow(0 0 7px var(--pbd-theme-glow));
+  }
+  50% {
+    fill-opacity: .98 !important;
+    stroke: #ffffff !important;
+    stroke-width: 5px !important;
+    filter: drop-shadow(0 0 8px var(--pbd-theme-glow))
+            drop-shadow(0 0 20px var(--pbd-theme-glow));
+    -webkit-filter: drop-shadow(0 0 8px var(--pbd-theme-glow))
+                    drop-shadow(0 0 20px var(--pbd-theme-glow));
+  }
+}
+
+.pbd-root .pub-leaflet path.pbd-neon-area {
+  animation: pbd-area-fill-blink 1.25s ease-in-out infinite !important;
+  vector-effect: non-scaling-stroke;
+}
