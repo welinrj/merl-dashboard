@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { THEME_AREA_COLOURS, THEME_AREA_ORDER } from '../lib/publicPortfolioCategories';
+import './public-coverage-theme-glow.css';
 
 const LEAFLET_JS='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 const LEAFLET_CSS='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
@@ -121,6 +122,21 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
       l.bindPopup(`<strong>${esc(name)}</strong><br><span style="color:#6b7280">${esc(province)}</span>${rec?`<div style="margin-top:6px"><b>${esc(themeLabel)}</b></div><div style="margin-top:4px"><b>${n}</b> ${n===1?c.one:c.many}</div>${names.length?`<ul style="padding-left:16px;margin:6px 0 0">${names.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`:`<div style="margin-top:6px">${esc(c.noneDetail)}</div>`}`);
       if(rec) l.on('click',()=>stateRef.current.onAreaSelect?.({province:found.province||province,area_council:found.area_council||name}));
     }}).addTo(map);
+    const addThemeGlow=(layer,category)=>{
+      if(typeof layer.eachLayer==='function') layer.eachLayer(child=>addThemeGlow(child,category));
+      const path=layer.getElement?.();
+      if(path?.classList) path.classList.add('pbd-neon-area',`pbd-neon-area--${category}`);
+    };
+    geo.eachLayer(layer=>{
+      const feature=layer.feature;
+      const name=feature?.properties?.ADM2_EN||'',province=feature?.properties?.ADM1_EN||'';
+      const rec=lookup.get(key(province,name));
+      if(rec?.project_count>0){
+        const category=['adaptation','mitigation','both','not-recorded'].includes(rec.theme_category)
+          ? rec.theme_category : 'not-recorded';
+        addThemeGlow(layer,category);
+      }
+    });
     layerRef.current=geo;
   },[areas,selectedArea,ready,fr]);
   const themeCounts=areas.reduce((counts,area)=>{
