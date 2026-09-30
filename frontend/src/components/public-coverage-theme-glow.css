@@ -139,3 +139,44 @@
   animation: pbd-area-fill-blink 1.25s ease-in-out infinite !important;
   vector-effect: non-scaling-stroke;
 }
+
+
+/* Valid SVG keyframes for the active Area Council boundaries. */
+@keyframes pbd-area-neon-cycle {
+  0%, 100% {
+    fill-opacity: .72;
+    stroke: var(--pbd-theme-glow);
+    stroke-width: 2.5px;
+    opacity: .86;
+    filter: drop-shadow(0 0 2px var(--pbd-theme-glow))
+            drop-shadow(0 0 5px var(--pbd-theme-glow));
+    -webkit-filter: drop-shadow(0 0 2px var(--pbd-theme-glow))
+                    drop-shadow(0 0 5px var(--pbd-theme-glow));
+  }
+  50% {
+    fill-opacity: 1;
+    stroke: #ffffff;
+    stroke-width: 5px;
+    opacity: 1;
+    filter: drop-shadow(0 0 8px var(--pbd-theme-glow))
+            drop-shadow(0 0 20px var(--pbd-theme-glow));
+    -webkit-filter: drop-shadow(0 0 8px var(--pbd-theme-glow))
+                    drop-shadow(0 0 20px var(--pbd-theme-glow));
+  }
+}
+
+.pbd-root .pub-leaflet path.pbd-neon-area {
+  vector-effect: non-scaling-stroke;
+  animation: pbd-area-neon-cycle 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pbd-root .pub-leaflet path.pbd-neon-area {
+    animation: none;
+    fill-opacity: .94;
+    stroke: var(--pbd-theme-glow);
+    stroke-width: 3px;
+    filter: drop-shadow(0 0 5px var(--pbd-theme-glow));
+    -webkit-filter: drop-shadow(0 0 5px var(--pbd-theme-glow));
+  }
+}
