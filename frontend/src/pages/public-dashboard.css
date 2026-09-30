@@ -190,3 +190,90 @@
     flex:1 1 100%!important;
   }
 }
+
+
+/* Desktop public-overview shell repair.
+   The authenticated workspace stylesheet places .dsh-scroll in grid column 2.
+   On the public page the sidebar is removed, so leaving that placement in
+   place creates an empty implicit first column (the large blank strip seen on
+   desktop). Collapse the public shell to one explicit column and place both
+   header and content in it. */
+.dsh.pbd-root{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
+}
+.dsh.pbd-root>.dsh-main{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
+  grid-column:1!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.dsh.pbd-root>.dsh-main>.dsh-head{
+  grid-column:1!important;
+  grid-row:1!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.dsh.pbd-root>.dsh-main>.dsh-scroll{
+  grid-column:1!important;
+  grid-row:2!important;
+  width:100%!important;
+  min-width:0!important;
+  padding:0!important;
+}
+.dsh.pbd-root .pbd-view{
+  width:min(100%,1600px);
+  margin:0 auto;
+  padding:24px clamp(18px,2vw,32px) 36px!important;
+}
+
+/* Keep the desktop institutional header balanced: logos on the left, language
+   and login on the right, with usable control sizes instead of the compressed
+   strip shown in the broken layout. */
+@media (min-width:1281px){
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos){
+    display:grid!important;
+    grid-template-columns:minmax(260px,1fr) auto!important;
+    grid-template-rows:auto!important;
+    align-items:center!important;
+    column-gap:24px!important;
+    min-height:82px!important;
+    height:auto!important;
+    padding:14px clamp(20px,2vw,34px)!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos)>.merl-partner-logos{
+    grid-column:1!important;
+    grid-row:1!important;
+    justify-self:start!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos)>.dsh-head-actions{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:end!important;
+    justify-content:flex-end!important;
+    align-items:flex-end!important;
+    width:auto!important;
+    max-width:min(720px,58vw)!important;
+    gap:14px!important;
+  }
+  .dsh.pbd-root .dsh-head:has(> .merl-partner-logos) .pbd-header-login{
+    flex:0 1 520px!important;
+    width:520px!important;
+    max-width:520px!important;
+    min-width:430px!important;
+    margin:0!important;
+  }
+  .dsh.pbd-root .pbd-header-login-fields{
+    grid-template-columns:minmax(155px,1fr) minmax(155px,1fr) auto!important;
+    gap:10px!important;
+    align-items:end!important;
+  }
+  .dsh.pbd-root .pbd-header-login input,
+  .dsh.pbd-root .pbd-header-login button[type="submit"]{
+    height:40px!important;
+    min-height:40px!important;
+  }
+}
