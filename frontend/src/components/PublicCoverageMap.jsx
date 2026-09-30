@@ -111,17 +111,20 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     const selectedKey=selectedArea?key(selectedArea.province,selectedArea.area_council):'';
     const themeFor=(rec)=>['adaptation','mitigation','both','not-recorded'].includes(rec?.theme_category)
       ? rec.theme_category : 'not-recorded';
+    const categoryFor=(feature)=>{
+      const name=feature?.properties?.ADM2_EN||'',province=feature?.properties?.ADM1_EN||'';
+      const rec=lookup.get(key(province,name));
+      return rec?.project_count>0?themeFor(rec):'';
+    };
     const geo=L.geoJSON(dataRef.current,{style:f=>{
       const name=f.properties?.ADM2_EN||'',province=f.properties?.ADM1_EN||'';
       const rec=lookup.get(key(province,name));const selected=selectedKey===key(province,name);
       const theme=rec?.theme_category||'none';
-      const category=rec?.project_count>0?themeFor(rec):'';
       return {
         color:selected?'#173f83':'#536575',
         weight:selected?3:rec?.project_count?1.4:.7,
         fillColor:THEME_AREA_COLOURS[theme]||THEME_AREA_COLOURS['not-recorded'],
         fillOpacity:rec?.project_count?0.76:0.12,
-        className:category?`pbd-neon-area pbd-neon-area--${category}`:undefined,
       };
     },onEachFeature:(f,l)=>{
       const name=f.properties?.ADM2_EN||'',province=f.properties?.ADM1_EN||'';
@@ -132,8 +135,29 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
       if(rec){
         l.on('click',()=>stateRef.current.onAreaSelect?.({province:found.province||province,area_council:found.area_council||name}));
       }
-    }}).addTo(map);
-    layerRef.current=geo;
+    }});
+    const glow=L.geoJSON(dataRef.current,{
+      filter:feature=>Boolean(categoryFor(feature)),
+      style:feature=>{
+        const category=categoryFor(feature);
+        const glowColour={
+          adaptation:'#59a9ff',
+          mitigation:'#35eda4',
+          both:'#bd9dff',
+          'not-recorded':'#ffd46a',
+        }[category]||'#59a9ff';
+        return {
+          className:`pbd-neon-boundary pbd-neon-boundary--${category}`,
+          color:glowColour,
+          weight:5,
+          opacity:1,
+          fill:false,
+          interactive:false,
+        };
+      },
+    });
+    const coverageLayers=L.layerGroup([geo,glow]).addTo(map);
+    layerRef.current=coverageLayers;
   },[areas,selectedArea,ready,fr]);
   const themeCounts=areas.reduce((counts,area)=>{
     if(area.project_count>0) counts[area.theme_category||'not-recorded']=(counts[area.theme_category||'not-recorded']||0)+1;
