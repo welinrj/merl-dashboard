@@ -252,7 +252,7 @@ export default function PublicDashboard() {
             {selectedArea && <div className="pbd-area-selection">{c.selectedArea} <strong>{selectedArea.area_council}, {selectedArea.province}</strong></div>}
             <div className="pbd-location-grid">
               <PublicCoverageMap areas={areas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} />
-              <div className="pbd-area-directory"><h3>{c.areaCouncils}</h3>{visibleAreas.length ? visibleAreas.map(area => <button type="button" key={`${area.province}-${area.area_council}`} className={selectedArea?.province === area.province && selectedArea?.area_council === area.area_council ? 'active' : ''} onClick={() => setSelectedArea({ province: area.province, area_council: area.area_council })}><span><strong>{area.area_council}</strong><small>{area.province}</small></span><b>{area.project_count}</b></button>) : <p>{c.noLocations}</p>}</div>
+              <div className="pbd-area-directory"><h3>{c.areaCouncils}</h3>{visibleAreas.length ? visibleAreas.map(area => <button type="button" key={`${area.province}-${area.area_council}`} className={selectedArea?.province === area.province && selectedArea?.area_council === area.area_council ? 'active' : ''} data-theme-category={area.project_count>0 ? (area.theme_category || 'not-recorded') : undefined} onClick={() => setSelectedArea({ province: area.province, area_council: area.area_council })}><span><strong>{area.area_council}</strong><small>{area.province}</small></span><b>{area.project_count}</b></button>) : <p>{c.noLocations}</p>}</div>
             </div>
           </section>
 
