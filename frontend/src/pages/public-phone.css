@@ -121,3 +121,31 @@
     box-shadow:0 20px 60px #102a5066;
   }
 }
+
+
+/* iOS Safari: let the public overview grow with its content and use document
+   scrolling. The fixed-height authenticated shell can otherwise clip the
+   public page below its header on narrow phone viewports. Keep this scoped to
+   the unauthenticated public overview. */
+@media (max-width:760px){
+  .dsh.pbd-root.dsh{
+    display:block!important;
+    height:auto!important;
+    min-height:100dvh!important;
+    overflow:visible!important;
+  }
+  .dsh.pbd-root.dsh>.dsh-main{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+  }
+  .dsh.pbd-root.dsh>.dsh-main>.dsh-scroll{
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+    overflow-y:visible!important;
+    overflow-x:visible!important;
+    -webkit-overflow-scrolling:auto!important;
+  }
+}
