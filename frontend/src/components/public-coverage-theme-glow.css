@@ -1,0 +1,47 @@
+/* Thematic pulse used by the public project coverage map and Area Council list. */
+@keyframes pbd-theme-neon-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 1px var(--pbd-theme-glow));
+    opacity: .88;
+  }
+  50% {
+    filter: drop-shadow(0 0 3px var(--pbd-theme-glow)) drop-shadow(0 0 8px var(--pbd-theme-glow));
+    opacity: 1;
+  }
+}
+
+@keyframes pbd-council-neon-pulse {
+  0%, 100% {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pbd-theme-glow) 30%, transparent),
+                0 0 3px color-mix(in srgb, var(--pbd-theme-glow) 15%, transparent);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pbd-theme-glow) 75%, transparent),
+                0 0 10px color-mix(in srgb, var(--pbd-theme-glow) 48%, transparent);
+  }
+}
+
+.pbd-root .pub-leaflet .pbd-neon-area {
+  --pbd-theme-glow: #2463c7;
+  animation: pbd-theme-neon-pulse 2.4s ease-in-out infinite;
+}
+.pbd-root .pub-leaflet .pbd-neon-area--adaptation { --pbd-theme-glow: #2463c7; }
+.pbd-root .pub-leaflet .pbd-neon-area--mitigation { --pbd-theme-glow: #17845f; }
+.pbd-root .pub-leaflet .pbd-neon-area--both { --pbd-theme-glow: #9b72e0; }
+.pbd-root .pub-leaflet .pbd-neon-area--not-recorded { --pbd-theme-glow: #c58a32; }
+
+.pbd-root .pbd-area-directory>button[data-theme-category] {
+  --pbd-theme-glow: #2463c7;
+  animation: pbd-council-neon-pulse 2.4s ease-in-out infinite;
+}
+.pbd-root .pbd-area-directory>button[data-theme-category="adaptation"] { --pbd-theme-glow: #2463c7; }
+.pbd-root .pbd-area-directory>button[data-theme-category="mitigation"] { --pbd-theme-glow: #17845f; }
+.pbd-root .pbd-area-directory>button[data-theme-category="both"] { --pbd-theme-glow: #9b72e0; }
+.pbd-root .pbd-area-directory>button[data-theme-category="not-recorded"] { --pbd-theme-glow: #c58a32; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pbd-root .pub-leaflet .pbd-neon-area,
+  .pbd-root .pbd-area-directory>button[data-theme-category] {
+    animation: none;
+  }
+}
