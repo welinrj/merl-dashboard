@@ -29,8 +29,18 @@ test('Area Council names use an accessible, reduced-motion split-flap display', 
   assert.match(dashboard, /--pbd-flap-delay/);
   assert.match(publicDashboardCss, /@keyframes pbd-area-flap-enter/);
   assert.match(publicDashboardCss, /rotateX\(-90deg\)/);
-  assert.match(publicDashboardCss, /prefers-reduced-motion:reduce[\s\S]*\.pbd-area-flap-face\{animation-name:pbd-area-flap-fade/);
+  assert.match(publicDashboardCss, /prefers-reduced-motion:reduce[\s\S]*\.pbd-area-flap-face[\s\S]*animation-name:pbd-area-flap-fade/);
   assert.doesNotMatch(publicDashboardCss, /\.pbd-area-flap-face[^}]*infinite/);
+});
+
+test('Area Council directory auto-scrolls with user and motion-preference controls', () => {
+  assert.match(dashboard, /window\.setInterval\([\s\S]*3200/);
+  assert.match(dashboard, /directory\.scrollTo\(\{ top, behavior: 'smooth' \}\)/);
+  assert.match(dashboard, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/);
+  assert.match(dashboard, /aria-pressed=\{areaScrollPaused\}/);
+  assert.match(dashboard, /onTouchStart=\{\(\) => setAreaScrollPaused\(true\)\}/);
+  assert.match(publicDashboardCss, /@keyframes pbd-area-flap-cycle/);
+  assert.match(publicDashboardCss, /\.pbd-area-list>button\.is-auto-current \.pbd-area-flap-face/);
 });
 
 test('dashboard views exclude completed projects without deleting their records', () => {

@@ -8,7 +8,7 @@ const projects = [
 const fixtures = {
   public_portal_summary:[{project_count:2,overall_progress_pct:70,published_beneficiaries:120,total_investment_vuv:3000000,total_utilised_vuv:900000,financial_utilisation_pct:30,updated_at:'2026-07-01T00:00:00Z'}],
   public_portal_projects:projects,
-  public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:2,project_ids:['pa','pb'],project_names:['Coastal Resilience','Water Security']},{province:'TORBA',area_council:'Torres',project_count:1,project_ids:['pb'],project_names:['Water Security']}],
+  public_portal_area_councils:[{province:'SANMA',area_council:'Big Bay Coast',project_count:2,project_ids:['pa','pb'],project_names:['Coastal Resilience','Water Security']},{province:'SANMA',area_council:'South Santo One (1)',project_count:1,project_ids:['pa'],project_names:['Coastal Resilience']},{province:'SANMA',area_council:'South Santo Two (2)',project_count:1,project_ids:['pa'],project_names:['Coastal Resilience']},{province:'MALAMPA',area_council:'West Ambrym',project_count:1,project_ids:['pa'],project_names:['Coastal Resilience']},{province:'TORBA',area_council:'Mota Lava',project_count:1,project_ids:['pa'],project_names:['Coastal Resilience']},{province:'TORBA',area_council:'Torres',project_count:1,project_ids:['pb'],project_names:['Water Security']}],
   public_portal_kpis:[],
   public_portal_indicator_categories:[{project_id:'pa',category_key:'ecosystems',indicator_count:3},{project_id:'pa',category_key:'capacity',indicator_count:2},{project_id:'pb',category_key:'finance',indicator_count:4}],
   public_portal_indicator_details:[{indicator_id:'i1',project_id:'pa',project_name:'Coastal Resilience',category_key:'ecosystems',indicator_code:'COAST-1',indicator_name:'Mangrove restoration',target_value:20,unit:'ha'},{indicator_id:'i3',project_id:'pa',project_name:'Coastal Resilience',category_key:'capacity',indicator_code:'COAST-2',indicator_name:'Community training',target_value:null,target_text:null},{indicator_id:'i2',project_id:'pb',project_name:'Water Security',category_key:'finance',indicator_code:'WATER-1',indicator_name:'Financing arrangements',target_value:null,target_text:null}],
@@ -57,7 +57,16 @@ check('unfinished project managers are visible',await page.getByText('Lina Kalo'
 check('all official themes are shown for multi-theme projects',await page.getByText('Adaptation, Mitigation',{exact:true}).count()===1);
 check('implementation areas are visible',await page.getByRole('heading',{name:'Area Councils'}).count()===1 && await page.getByRole('button',{name:/Big Bay Coast/}).count()===1);
 const areaFlap = page.getByRole('button',{name:/Big Bay Coast/}).locator('.pbd-area-flap-face');
-check('Area Council names use the split-flap display',await areaFlap.count()===1 && (await areaFlap.evaluate(node=>getComputedStyle(node).animationName)).includes('pbd-area-flap-enter'));
+check('Area Council names use the split-flap display',await areaFlap.count()===1 && (await areaFlap.evaluate(node=>getComputedStyle(node).animationName)).includes('pbd-area-flap'));
+const autoAreaBefore = await page.locator('.pbd-area-list>button.is-auto-current').getAttribute('data-area-index');
+await page.clock.fastForward(3300);
+const autoAreaAfter = await page.locator('.pbd-area-list>button.is-auto-current').getAttribute('data-area-index');
+check('Area Council directory advances automatically',autoAreaBefore!==autoAreaAfter);
+await page.getByRole('button',{name:'Pause',exact:true}).click();
+const pausedAreaIndex = await page.locator('.pbd-area-list>button').evaluateAll(rows=>rows.findIndex(row=>row.classList.contains('is-auto-current')));
+await page.clock.fastForward(6500);
+check('Area Council pause control stops automatic movement',await page.locator('.pbd-area-list>button').evaluateAll((rows,index)=>rows.findIndex(row=>row.classList.contains('is-auto-current'))===index,pausedAreaIndex));
+await page.getByRole('button',{name:'Resume',exact:true}).click();
 check('map legend categorises recorded areas by official themes',await page.locator('.pub-map-key').getByText('Areas by official thematic area',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Adaptation & Mitigation',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Theme not recorded',{exact:true}).count()===1);
 check('only unfinished-project indicator categories and totals are shown',await page.getByText('What project indicators cover',{exact:true}).count()===1 && await page.locator('.pbd-activity-category').count()===2 && await page.locator('.pbd-activity-section').getByText('5 indicators',{exact:true}).count()===1);
 await page.locator('.pbd-activity-ecosystems').click();
