@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -13,7 +13,7 @@ import {
   faUsers,
   faUsersRays,
 } from '@fortawesome/free-solid-svg-icons';
-import { Activity, LayoutDashboard, MapPin, Menu, Wallet } from '../components/ui/icons';
+import { Activity, LayoutDashboard, MapPin, Menu, Pause, Play, Wallet } from '../components/ui/icons';
 import { FeatureCardGradient } from '../components/ui/feature-section-with-card-gradient';
 import { IndicatorProgressCard } from '../components/ui/indicator-progress-card';
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
@@ -53,7 +53,7 @@ const COPY = {
     manager: 'Project Manager', implementation: 'Implementation locations', budget: 'Project funding', spent: 'Utilised',
     reached: 'Beneficiaries', outcome: 'Expected outcome', noDescription: 'Project information has not yet been recorded.', unknown: 'Not recorded',
     noFinance: 'Not yet reported', noProjects: 'No projects match these filters.', noLocations: 'No implementation location is recorded for this selection.',
-    areaCouncils: 'Area Councils', clearArea: 'Clear area selection', selectedArea: 'Showing projects recorded in',
+    areaCouncils: 'Area Councils', clearArea: 'Clear area selection', selectedArea: 'Showing projects recorded in', pauseAreaScroll: 'Pause', resumeAreaScroll: 'Resume',
     publicOnly: 'Public overview', source: 'Project profiles and implementation locations come from the DoCC MERL project register. Beneficiary and expenditure figures are shown only from approved reporting periods.',
     updated: 'Data refreshed', ongoing: 'Ongoing', completed: 'Completed', upcoming: 'Upcoming', other: 'Other',
     language: 'Language', menu: 'Open menu', close: 'Close menu', error: 'Public project information is temporarily unavailable.',
@@ -74,7 +74,7 @@ const COPY = {
     manager: 'Chef de projet', implementation: 'Lieux de mise en œuvre', budget: 'Financement du projet', spent: 'Utilisé',
     reached: 'Bénéficiaires', outcome: 'Résultat attendu', noDescription: 'Les informations du projet ne sont pas encore enregistrées.', unknown: 'Non renseigné',
     noFinance: 'Pas encore déclaré', noProjects: 'Aucun projet ne correspond à ces filtres.', noLocations: 'Aucun lieu de mise en œuvre n’est enregistré pour cette sélection.',
-    areaCouncils: 'Conseils de zone', clearArea: 'Effacer la sélection de zone', selectedArea: 'Projets enregistrés à',
+    areaCouncils: 'Conseils de zone', clearArea: 'Effacer la sélection de zone', selectedArea: 'Projets enregistrés à', pauseAreaScroll: 'Suspendre', resumeAreaScroll: 'Reprendre',
     publicOnly: 'Vue publique', source: 'Les profils des projets et les lieux de mise en œuvre proviennent du registre MERL du DoCC. Les bénéficiaires et les dépenses proviennent uniquement des périodes de rapportage approuvées.',
     updated: 'Données actualisées', ongoing: 'En cours', completed: 'Achevé', upcoming: 'À venir', other: 'Autre',
     language: 'Langue', menu: 'Ouvrir le menu', close: 'Fermer le menu', error: 'Les informations publiques sur les projets sont temporairement indisponibles.',
@@ -178,6 +178,11 @@ export default function PublicDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openCategory, setOpenCategory] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [autoAreaIndex, setAutoAreaIndex] = useState(0);
+  const [areaScrollPaused, setAreaScrollPaused] = useState(false);
+  const [areaScrollHover, setAreaScrollHover] = useState(false);
+  const [reduceAreaMotion, setReduceAreaMotion] = useState(false);
+  const areaListRef = useRef(null);
   const allProjects = data?.projects || [];
   const projects = allProjects.filter(project => !isCompletedProject(project));
   const summary = data?.summary;
@@ -208,6 +213,8 @@ export default function PublicDashboard() {
     return { ...area, project_ids: ids, project_names: areaProjects.map(project => project.name), project_count: ids.length, theme_category: thematicAreaCategory(areaProjects) };
   });
   const visibleAreas = areas.filter(area => area.project_count > 0);
+  const visibleAreaKey = visibleAreas.map(area => `${area.province}:${area.area_council}`).join('|');
+  const areaScrollStopped = areaScrollPaused || areaScrollHover || reduceAreaMotion;
   const indicatorCategories = aggregateIndicatorCategories(sourceIndicatorCategories, selectedIds);
   const indicatorTotal = indicatorCategories.reduce((sum, category) => sum + category.indicatorCount, 0);
   const visibleIndicatorDetails = sourceIndicatorDetails.filter(row => selectedIds.has(String(row.project_id)));
@@ -216,6 +223,40 @@ export default function PublicDashboard() {
   const maxCategoryCount = Math.max(1, ...indicatorCategories.map(category => category.indicatorCount));
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
   const refresh = () => { void refetch(); };
+
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncMotionPreference = () => setReduceAreaMotion(query.matches);
+    syncMotionPreference();
+    query.addEventListener?.('change', syncMotionPreference);
+    return () => query.removeEventListener?.('change', syncMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    setAutoAreaIndex(0);
+    areaListRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [visibleAreaKey]);
+
+  useEffect(() => {
+    if (areaScrollStopped || visibleAreas.length < 2) return undefined;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        setAutoAreaIndex(index => (index + 1) % visibleAreas.length);
+      }
+    }, 3200);
+    return () => window.clearInterval(timer);
+  }, [areaScrollStopped, visibleAreas.length, visibleAreaKey]);
+
+  useEffect(() => {
+    const directory = areaListRef.current;
+    if (!directory || areaScrollStopped || visibleAreas.length < 2) return;
+    const activeRow = directory.querySelector(`[data-area-index="${autoAreaIndex}"]`);
+    if (!activeRow || directory.scrollHeight <= directory.clientHeight + 1) return;
+    const maxScroll = directory.scrollHeight - directory.clientHeight;
+    const rowTop = activeRow.getBoundingClientRect().top - directory.getBoundingClientRect().top + directory.scrollTop;
+    const top = Math.max(0, Math.min(rowTop - (directory.clientHeight - activeRow.offsetHeight) / 2, maxScroll));
+    directory.scrollTo({ top, behavior: 'smooth' });
+  }, [autoAreaIndex, areaScrollStopped, visibleAreas.length]);
 
   return <div className="dsh pbd-root">
     {menuOpen && <button type="button" className="pbd-overlay" aria-label={c.close} onClick={() => setMenuOpen(false)} />}
@@ -252,7 +293,31 @@ export default function PublicDashboard() {
             {selectedArea && <div className="pbd-area-selection">{c.selectedArea} <strong>{selectedArea.area_council}, {selectedArea.province}</strong></div>}
             <div className="pbd-location-grid">
               <PublicCoverageMap areas={areas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} />
-              <div className="pbd-area-directory"><h3>{c.areaCouncils}</h3>{visibleAreas.length ? visibleAreas.map((area, index) => <button type="button" key={`${area.province}-${area.area_council}`} className={selectedArea?.province === area.province && selectedArea?.area_council === area.area_council ? 'active' : ''} data-theme-category={area.project_count>0 ? (area.theme_category || 'not-recorded') : undefined} onClick={() => setSelectedArea({ province: area.province, area_council: area.area_council })}><span className="pbd-area-copy"><strong className="pbd-area-flap" style={{ '--pbd-flap-delay': `${Math.min(index, 6) * 40}ms` }}><span className="pbd-area-flap-face">{area.area_council}</span></strong><small>{area.province}</small></span><b>{area.project_count}</b></button>) : <p>{c.noLocations}</p>}</div>
+              <div className="pbd-area-directory">
+                <div className="pbd-area-directory-head">
+                  <h3>{c.areaCouncils}</h3>
+                  {visibleAreas.length > 1 && <button type="button" className="pbd-area-scroll-toggle" aria-pressed={areaScrollPaused} onClick={() => setAreaScrollPaused(value => !value)}>{areaScrollPaused ? <Play size={13} aria-hidden="true" /> : <Pause size={13} aria-hidden="true" />}{areaScrollPaused ? c.resumeAreaScroll : c.pauseAreaScroll}</button>}
+                </div>
+                {visibleAreas.length ? <div
+                  ref={areaListRef}
+                  className="pbd-area-list"
+                  onMouseEnter={() => setAreaScrollHover(true)}
+                  onMouseLeave={() => setAreaScrollHover(false)}
+                  onFocus={() => setAreaScrollHover(true)}
+                  onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setAreaScrollHover(false); }}
+                  onTouchStart={() => setAreaScrollPaused(true)}
+                >{visibleAreas.map((area, index) => <button
+                  type="button"
+                  key={`${area.province}-${area.area_council}`}
+                  data-area-index={index}
+                  className={[
+                    selectedArea?.province === area.province && selectedArea?.area_council === area.area_council ? 'active' : '',
+                    autoAreaIndex === index ? 'is-auto-current' : '',
+                  ].filter(Boolean).join(' ')}
+                  data-theme-category={area.project_count > 0 ? (area.theme_category || 'not-recorded') : undefined}
+                  onClick={() => { setAreaScrollPaused(true); setSelectedArea({ province: area.province, area_council: area.area_council }); }}
+                ><span className="pbd-area-copy"><strong className="pbd-area-flap" style={{ '--pbd-flap-delay': `${Math.min(index, 6) * 40}ms` }}><span className="pbd-area-flap-face">{area.area_council}</span></strong><small>{area.province}</small></span><b>{area.project_count}</b></button>)}</div> : <p>{c.noLocations}</p>}
+              </div>
             </div>
           </section>
 

@@ -61,6 +61,8 @@ import {
   DocumentText as FileText,
   Refresh2 as RotateCcw,         // reset filters, return for correction, reopen
   Unlock,
+  Play,
+  Pause,
 
   // ── State ───────────────────────────────────────────────────────────────
   TickCircle as CheckCircle2,    // approved / step complete / section has data
@@ -83,7 +85,7 @@ export {
   AlertTriangle, FileBarChart, ClipboardCheck, FolderOpen, Settings,
   LogOut, Menu, Bell, Search,
   Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck,
-  Plus, Pencil, Trash2, Send, Printer, Download, FileText, RotateCcw, Unlock,
+  Plus, Pencil, Trash2, Send, Printer, Download, FileText, RotateCcw, Unlock, Play, Pause,
   CheckCircle2, Info, Languages,
   ArrowRight, ArrowLeft, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronDown,
 };
