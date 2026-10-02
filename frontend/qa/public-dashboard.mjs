@@ -56,6 +56,8 @@ check('project image is shown beside its matching name',await page.getByRole('he
 check('unfinished project managers are visible',await page.getByText('Lina Kalo',{exact:true}).count()===1 && await page.getByText('Tom Nalo',{exact:true}).count()===0);
 check('all official themes are shown for multi-theme projects',await page.getByText('Adaptation, Mitigation',{exact:true}).count()===1);
 check('implementation areas are visible',await page.getByRole('heading',{name:'Area Councils'}).count()===1 && await page.getByRole('button',{name:/Big Bay Coast/}).count()===1);
+const areaFlap = page.getByRole('button',{name:/Big Bay Coast/}).locator('.pbd-area-flap-face');
+check('Area Council names use the split-flap display',await areaFlap.count()===1 && (await areaFlap.evaluate(node=>getComputedStyle(node).animationName)).includes('pbd-area-flap-enter'));
 check('map legend categorises recorded areas by official themes',await page.locator('.pub-map-key').getByText('Areas by official thematic area',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Adaptation & Mitigation',{exact:true}).count()===1 && await page.locator('.pub-map-key').getByText('Theme not recorded',{exact:true}).count()===1);
 check('only unfinished-project indicator categories and totals are shown',await page.getByText('What project indicators cover',{exact:true}).count()===1 && await page.locator('.pbd-activity-category').count()===2 && await page.locator('.pbd-activity-section').getByText('5 indicators',{exact:true}).count()===1);
 await page.locator('.pbd-activity-ecosystems').click();
