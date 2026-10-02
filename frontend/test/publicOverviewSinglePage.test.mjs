@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const dashboard = readFileSync(new URL('../src/pages/PublicDashboard.jsx', import.meta.url), 'utf8');
+const publicDashboardCss = readFileSync(new URL('../src/pages/public-dashboard.css', import.meta.url), 'utf8');
 const authenticatedOverview = readFileSync(new URL('../src/pages/Overview.jsx', import.meta.url), 'utf8');
 const indicatorCard = readFileSync(new URL('../src/components/ui/indicator-progress-card.jsx', import.meta.url), 'utf8');
 const snapshot = readFileSync(new URL('../src/lib/publicSnapshot.js', import.meta.url), 'utf8');
@@ -20,6 +21,16 @@ test('the public overview contains the requested portfolio information', () => {
   }
   assert.match(dashboard, /PublicCoverageMap/);
   assert.match(dashboard, /pbd-project-grid/);
+});
+
+test('Area Council names use an accessible, reduced-motion split-flap display', () => {
+  assert.match(dashboard, /className="pbd-area-flap"/);
+  assert.match(dashboard, /className="pbd-area-flap-face">\{area\.area_council\}/);
+  assert.match(dashboard, /--pbd-flap-delay/);
+  assert.match(publicDashboardCss, /@keyframes pbd-area-flap-enter/);
+  assert.match(publicDashboardCss, /rotateX\(-90deg\)/);
+  assert.match(publicDashboardCss, /prefers-reduced-motion:reduce[\s\S]*\.pbd-area-flap-face\{animation-name:pbd-area-flap-fade/);
+  assert.doesNotMatch(publicDashboardCss, /\.pbd-area-flap-face[^}]*infinite/);
 });
 
 test('dashboard views exclude completed projects without deleting their records', () => {
