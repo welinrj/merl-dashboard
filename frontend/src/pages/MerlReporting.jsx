@@ -994,7 +994,7 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
         {enableFileUpload && module.key === 'evidence' && !initial?.id && (
           <div style={{ marginTop: '0.8rem' }}>
             <label className="field-label" htmlFor="ri-evidence-file">Supporting file (optional if a file is already attached)</label>
-            <input id="ri-evidence-file" type="file" className="field-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.csv,.json,.geojson,.zip" onChange={async (e) => {
+            <input id="ri-evidence-file" type="file" className="field-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.csv,.json,.geojson,.txt,.zip" onChange={async (e) => {
               const selected = e.target.files?.[0] ?? null;
               if (!selected) { setFile(null); return; }
               try {
