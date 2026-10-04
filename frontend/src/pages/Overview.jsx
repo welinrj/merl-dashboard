@@ -327,6 +327,24 @@ export default function Overview({ user }) {
   const awaitingReview = reporting.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
   const offTrackIndicators = indicatorStatus.off_track;
 
+  const frenchAssurance = lang?.startsWith('fr');
+  // Transparent data-quality checks over the filtered portfolio; these indicate missing records, not delivery performance.
+  const assuranceSignals = [
+    { key: 'locations', value: projects.filter((project) => !project.areaCouncils.length).length,
+      label: frenchAssurance ? 'Projets sans conseil de zone' : 'Projects without an Area Council',
+      source: frenchAssurance ? 'Couverture géographique' : 'Area Council coverage', to: '/analytics/portfolio' },
+    { key: 'progress', value: indicators.filter((indicator) => !latestProgress.has(indicator.id)).length,
+      label: frenchAssurance ? 'Indicateurs sans progrès enregistré' : 'Indicators without recorded progress',
+      source: frenchAssurance ? 'Suivi des indicateurs' : 'Indicator progress records', to: '/analytics/results' },
+    { key: 'finance', value: projects.filter((project) => !latestFinance.has(project.id)).length,
+      label: frenchAssurance ? 'Projets sans suivi financier' : 'Projects without a financial record',
+      source: frenchAssurance ? 'Suivi financier' : 'Financial progress records', to: '/reports' },
+    { key: 'reporting', value: projects.filter((project) => !reporting.some((row) => row.project_id === project.id)).length,
+      label: frenchAssurance ? 'Projets sans période de rapport' : 'Projects without a reporting period',
+      source: frenchAssurance ? 'Périodes de rapport' : 'Reporting period records', to: '/analytics/reporting' },
+  ];
+  const assuranceTotal = assuranceSignals.reduce((count, signal) => count + signal.value, 0);
+
   const attention = [
     { key: 'reports', label: t('overview.attnOverdue'), value: overdueReports, to: '/merl-reporting', tone: overdueReports ? 'critical' : 'clear' },
     { key: 'indicators', label: t('overview.attnOffTrack'), value: offTrackIndicators, to: '/analytics/results', tone: offTrackIndicators ? 'warning' : 'clear' },
@@ -471,6 +489,37 @@ export default function Overview({ user }) {
           <div><span>Reporting completion</span><b>{currentPeriodRows.length ? `${periodReportingCompletion}%` : '—'}</b><small>{fmtNum(periodApproved)} / {fmtNum(currentPeriodRows.length)} project periods approved</small></div>
           <div><span>At-risk results</span><b>{fmtNum(periodAtRisk)}</b><small>Performance status</small></div>
           <div><span>Delayed results</span><b>{fmtNum(periodDelayed)}</b><small>Schedule status</small></div>
+        </div>
+      </section>
+
+      <section className="ovx-card ovx-assurance-card" aria-labelledby="ovx-assurance-title">
+        <div className="ovx-assurance-heading">
+          <div>
+            <span className="ovx-assurance-eyebrow">{frenchAssurance ? 'ASSURANCE DU PORTEFEUILLE' : 'PORTFOLIO ASSURANCE'}</span>
+            <h2 id="ovx-assurance-title">{frenchAssurance ? 'Couverture des données à vérifier' : 'Data coverage to verify'}</h2>
+            <p>{frenchAssurance
+              ? 'Décompte transparent des enregistrements absents dans le périmètre filtré — ce ne sont pas des résultats générés par IA.'
+              : 'Transparent counts of missing records in the filtered scope—not AI-generated findings.'}</p>
+          </div>
+          <span className={`ovx-assurance-total${assuranceTotal ? ' has-gaps' : ''}`}>
+            {fmtNum(assuranceTotal)} {frenchAssurance ? 'éléments à vérifier' : 'records to verify'}
+          </span>
+        </div>
+        <div className="ovx-assurance-grid">
+          {assuranceSignals.map((signal) => (
+            <button key={signal.key} type="button" className="ovx-assurance-signal"
+              onClick={() => nav(signal.to)} aria-label={`${signal.value} ${signal.label}. ${signal.source}`}>
+              <span className="ovx-assurance-value">{fmtNum(signal.value)}</span>
+              <span className="ovx-assurance-copy">
+                <strong>{signal.label}</strong>
+                <small>{signal.source}</small>
+              </span>
+              <ArrowRight size={15} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+        <div className="ovx-assurance-footnote">
+          {frenchAssurance ? 'Les comptes s’actualisent avec les filtres ci-dessus.' : 'Counts update with the filters above.'}
         </div>
       </section>
 
@@ -721,6 +770,23 @@ function OverviewStyles() {
       .ovx-status-row:last-child{border-bottom:0}.ovx-status-row:hover{background:#faf8fd}
       .ovx-status-dot{width:9px;height:9px;border-radius:3px}.ovx-status-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ovx-status-row b{color:#31274d;font-size:.78rem}.ovx-status-row>span:last-child{text-align:right;color:#91899f}
 
+.ovx-assurance-card{margin-bottom:.9rem;border-color:#dfe7f1;background:linear-gradient(130deg,#fff 0%,#fbfdff 60%,#f5f8ff 100%)}
+      .ovx-assurance-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.9rem}
+      .ovx-assurance-eyebrow{display:block;margin-bottom:.3rem;color:#4271a2;font-size:.59rem;font-weight:820;letter-spacing:.1em}
+      .ovx-assurance-heading h2{margin:0;color:#2c3650;font-size:.96rem;font-weight:780;letter-spacing:-.02em}
+      .ovx-assurance-heading p{max-width:680px;margin:.35rem 0 0;color:#788397;font-size:.7rem;line-height:1.45}
+      .ovx-assurance-total{flex:none;padding:.38rem .65rem;border:1px solid #dce6f2;border-radius:999px;background:#fff;color:#52647e;font-size:.65rem;font-weight:740}
+      .ovx-assurance-total.has-gaps{border-color:#f2d4a1;background:#fffaf0;color:#92611c}
+      .ovx-assurance-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem}
+      .ovx-assurance-signal{display:grid;grid-template-columns:auto minmax(0,1fr) 15px;align-items:center;gap:.55rem;min-width:0;min-height:76px;padding:.7rem;border:1px solid #e8edf4;border-radius:10px;background:rgba(255,255,255,.86);color:inherit;text-align:left;cursor:pointer;font:inherit;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+      .ovx-assurance-signal:hover{transform:translateY(-1px);border-color:#b9cde3;box-shadow:0 5px 14px rgba(38,73,112,.08)}
+      .ovx-assurance-signal:focus-visible{outline:3px solid rgba(44,105,174,.24);outline-offset:2px}
+      .ovx-assurance-value{min-width:2ch;color:#2e5e91;font-family:var(--font-display);font-size:1.35rem;font-weight:830;line-height:1}
+      .ovx-assurance-copy{display:grid;min-width:0;gap:.2rem}
+      .ovx-assurance-copy strong{color:#414e63;font-size:.68rem;line-height:1.3}
+      .ovx-assurance-copy small{color:#8c96a6;font-size:.59rem;line-height:1.3}
+      .ovx-assurance-signal>svg{color:#97a6b8}
+      .ovx-assurance-footnote{margin-top:.6rem;color:#929aaa;font-size:.61rem}
 .ovx-period-card{margin-bottom:.85rem}.ovx-period-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap}.ovx-period-head h2{margin:0;color:#3a3050;font-size:.92rem}.ovx-period-head p{margin:.2rem 0 0;color:#8e8699;font-size:.68rem}.ovx-period-select{display:grid;gap:.2rem;font-size:.62rem;color:#8e8699;text-transform:uppercase;font-weight:750}.ovx-period-select select{min-width:150px;border:1px solid #e6e2ec;border-radius:8px;background:#fff;padding:.45rem .55rem;color:#4b4357}.ovx-period-label{margin:.65rem 0;color:#756d81;font-size:.7rem;font-weight:700}.ovx-period-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem}.ovx-period-kpis>div{border:1px solid #ece8f2;border-radius:10px;padding:.72rem;background:#faf9fc;display:grid;gap:.16rem}.ovx-period-kpis span{font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:#8c8499;font-weight:750}.ovx-period-kpis b{font-family:var(--font-display);font-size:1.25rem;color:#3a3050}.ovx-period-kpis small{font-size:.62rem;color:#9a92a5;line-height:1.35}
       .ovx-performance-list{display:flex;flex-direction:column;gap:.9rem;padding:.25rem 0 .35rem}
       .ovx-performance-row{display:grid;grid-template-columns:1fr auto;grid-template-areas:'meta meta' 'track detail';gap:.35rem .7rem}
@@ -750,10 +816,10 @@ function OverviewStyles() {
 
       .ovx-skeleton{position:relative;overflow:hidden;border-radius:14px;background:#ece9f2}.ovx-skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:ovx-shimmer 1.4s infinite}.ovx-skeleton-heading{height:58px;margin-bottom:.9rem}.ovx-skeleton-filters{height:82px;margin-bottom:1rem}.ovx-skeleton-kpi{height:174px}.ovx-skeleton-panel{height:270px}@keyframes ovx-shimmer{to{transform:translateX(100%)}}
 
-      @media(max-width:1180px){.ovx-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.ovx-reset{align-self:end}.ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}}
+      @media(max-width:1180px){.ovx-assurance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}.ovx-reset{align-self:end}.ovx-location-layout{grid-template-columns:1fr}.ovx-map-panel{min-height:240px}}
       @media(max-width:980px){.ovx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-priority-grid,.ovx-secondary-grid{grid-template-columns:1fr}.ovx-location-layout{grid-template-columns:minmax(220px,.9fr) minmax(300px,1.1fr)}}
       @media(max-width:760px){.ovx-period-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx{padding:.8rem .7rem 1.1rem}.ovx-heading{align-items:flex-start}.ovx-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.ovx-location-layout{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:145px minmax(0,1fr)}.ovx-donut-wrap{width:145px;height:145px}}
-      @media(max-width:560px){.ovx-period-kpis{grid-template-columns:1fr}.ovx-heading{flex-direction:column}.ovx-heading-actions{display:grid;width:100%;grid-template-columns:1fr}.ovx-publish,.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
+      @media(max-width:560px){.ovx-assurance-heading{flex-direction:column}.ovx-assurance-grid{grid-template-columns:1fr}.ovx-assurance-signal{min-height:68px}.ovx-period-kpis{grid-template-columns:1fr}.ovx-heading{flex-direction:column}.ovx-heading-actions{display:grid;width:100%;grid-template-columns:1fr}.ovx-publish,.ovx-export{width:100%}.ovx-filterbar{grid-template-columns:1fr}.ovx-kpis{grid-template-columns:1fr}.ovx-attention-grid{grid-template-columns:1fr}.ovx-implementation{grid-template-columns:1fr;justify-items:center}.ovx-status-list{width:100%}.ovx-kpi{min-height:154px!important}}
       @media(max-width:760px){.ovx-project-list{grid-template-columns:1fr}}
       @media print{.ovx{max-width:none;padding:0}.ovx-filterbar,.ovx-export{display:none!important}.ovx-card,.ovx-kpi{box-shadow:none!important}}
     `}</style>
