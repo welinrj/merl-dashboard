@@ -39,8 +39,18 @@ export async function inspectEvidenceFile(file) {
     try {
       const archive = await JSZip.loadAsync(file, { checkCRC32: true });
       if (!Object.keys(archive.files).some((name) => !archive.files[name].dir)) throw new Error('empty archive');
-      if (ext === 'docx' && !archive.file('word/document.xml')) throw new Error('not a DOCX document');
-      if (ext === 'xlsx' && !archive.file('xl/workbook.xml')) throw new Error('not an XLSX workbook');
+      if (ext === 'docx') {
+        const document = archive.file('word/document.xml');
+        if (!document) throw new Error('not a DOCX document');
+        const xml = await document.async('string');
+        const text = xml.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+        if (text.replace(/\s/g, '').length < 40) throw new Error('empty DOCX document');
+      }
+      if (ext === 'xlsx') {
+        if (!archive.file('xl/workbook.xml')) throw new Error('not an XLSX workbook');
+        const hasValues = Object.keys(archive.files).some((name) => name.startsWith('xl/worksheets/sheet') && name.endsWith('.xml'));
+        if (!hasValues) throw new Error('empty XLSX workbook');
+      }
     } catch {
       throw new Error('This archive is corrupt or is not a valid DOCX, XLSX, or ZIP file.');
     }
@@ -48,6 +58,17 @@ export async function inspectEvidenceFile(file) {
   if (['csv', 'json', 'geojson'].includes(ext)) {
     const body = (await file.text()).replace(/^\uFEFF/, '').trim();
     if (body.length < 40) throw new Error('This file has too little readable content to be a report.');
+    if (ext === 'csv') {
+      const rows = body.split(/\r?\n/).filter((row) => row.trim());
+      if (rows.length < 2) throw new Error('This CSV has a header but no data rows.');
+    }
+    if (ext === 'json' || ext === 'geojson') {
+      let data;
+      try { data = JSON.parse(body); } catch { throw new Error('This JSON file is malformed.'); }
+      if (ext === 'geojson' && !['FeatureCollection', 'Feature', 'Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection'].includes(data?.type)) {
+        throw new Error('This GeoJSON file does not contain a valid GeoJSON type.');
+      }
+    }
   }
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
   const sha256 = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
