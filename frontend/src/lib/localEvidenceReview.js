@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { summarizeEvidenceText, matchEvidenceToIndicator } from './localEvidenceText';
+import { summarizeEvidenceText, matchEvidenceToIndicator, readableText } from './localEvidenceText';
 
 const MIN_TEXT_CHARS = 60;
 const MAX_PDF_PAGES = 80;
