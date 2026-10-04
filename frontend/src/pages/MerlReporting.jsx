@@ -18,6 +18,8 @@ import {
 import { supabase } from '../supabaseClient';
 import { saveModuleRecord } from '../lib/merlRecordSave';
 import { inspectEvidenceFile, uploadEvidenceFile, removeEvidenceFile } from '../lib/evidenceUpload';
+import { readEvidenceDocument } from '../lib/localEvidenceReview';
+import { matchEvidenceToIndicator } from '../lib/localEvidenceText';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
@@ -824,6 +826,8 @@ export default function MerlReporting({ user }) {
           onSave={saveRecord}
           onTranslated={loadRecords}
           enableFileUpload={activeModule.key === 'evidence'}
+          projectId={projectId}
+          reportingPeriod={activePeriod}
         />
       )}
     </div>
@@ -867,7 +871,7 @@ function PeriodForm({ onCancel, onSave }) {
 }
 
 // ── Generic module record form ───────────────────────────────────────────────
-export function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators, onCancel, onSave, onTranslated, enableFileUpload = false, busy = false }) {
+export function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators, onCancel, onSave, onTranslated, enableFileUpload = false, projectId, reportingPeriod, busy = false }) {
   const { t } = useTranslation();
   const seed = useMemo(() => {
     const base = {};
@@ -876,7 +880,28 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
   }, [module, initial]);
   const [v, setV] = useState(seed);
   const [file, setFile] = useState(null);
-  useEffect(() => { setV(seed); setFile(null); }, [seed]);
+  const [localReview, setLocalReview] = useState(null);
+  const [readingFile, setReadingFile] = useState(false);
+  const [readError, setReadError] = useState('');
+  const [savedProgress, setSavedProgress] = useState({ loading: false, rows: [], error: '' });
+  useEffect(() => { setV(seed); setFile(null); setLocalReview(null); setReadError(''); }, [seed]);
+
+  useEffect(() => {
+    if (!enableFileUpload || module.key !== 'evidence' || !v.indicator_id || !projectId || !reportingPeriod) {
+      setSavedProgress({ loading: false, rows: [], error: '' });
+      return undefined;
+    }
+    let alive = true;
+    setSavedProgress({ loading: true, rows: [], error: '' });
+    supabase.from('v_indicator_progress')
+      .select('id, reporting_period, actual_this_period, cumulative_actual, date_reported')
+      .eq('project_id', projectId).eq('indicator_id', v.indicator_id).eq('reporting_period', reportingPeriod)
+      .then(({ data, error }) => {
+        if (!alive) return;
+        setSavedProgress({ loading: false, rows: data || [], error: error ? 'Could not compare saved progress. Check the progress table manually.' : '' });
+      });
+    return () => { alive = false; };
+  }, [enableFileUpload, module.key, v.indicator_id, projectId, reportingPeriod]);
   const set = (name, type) => (e) =>
     setV((s) => ({ ...s, [name]: type === 'checkbox' ? e.target.checked : e.target.value }));
 
@@ -970,13 +995,71 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
         {enableFileUpload && module.key === 'evidence' && !initial?.id && (
           <div style={{ marginTop: '0.8rem' }}>
             <label className="field-label" htmlFor="ri-evidence-file">Supporting file (optional if a file is already attached)</label>
-            <input id="ri-evidence-file" type="file" className="field-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.csv,.json,.geojson,.zip" onChange={async (e) => {
+            <input id="ri-evidence-file" type="file" className="field-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.csv,.json,.geojson,.txt,.zip" onChange={async (e) => {
               const selected = e.target.files?.[0] ?? null;
-              if (!selected) { setFile(null); return; }
-              try { await inspectEvidenceFile(selected); setFile(selected); }
-              catch (error) { setFile(null); e.target.value = ''; toast.error(error.message); }
+              if (!selected) { setFile(null); setLocalReview(null); setReadError(''); setReadingFile(false); return; }
+              try {
+                await inspectEvidenceFile(selected);
+                setFile(selected); setLocalReview(null); setReadError(''); setReadingFile(true);
+                try { setLocalReview(await readEvidenceDocument(selected)); }
+                catch (error) { setReadError(error.message || 'This file could not be read locally.'); }
+                finally { setReadingFile(false); }
+              } catch (error) { setFile(null); setLocalReview(null); setReadError(error.message); e.target.value = ''; toast.error(error.message); }
             }} />
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Private project evidence only. Up to 25 MB. Empty, malformed, mislabeled, and duplicate files are blocked before saving. Some file types are stored for review but cannot yet be read by automated analysis.</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Private project evidence only. Up to 25 MB. Empty, malformed, mislabeled, and duplicate files are blocked before saving. Local text review runs in this browser; extracted text is not sent to an AI service. Device OCR is used only if this browser provides it. The evidence file itself uploads to the project evidence store when saved.</p>
+            {(readingFile || readError || localReview) && (
+              <div role="status" aria-live="polite" style={{ marginTop: '0.65rem', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-2, #f8fafc)' }}>
+                <strong style={{ fontSize: '0.82rem' }}>On-device report check</strong>
+                {readingFile && <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem' }}>Reading this file in your browser…</p>}
+                {readError && <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--red-600)' }}>{readError} You can still save it for manual review.</p>}
+                {localReview && (
+                  <>
+                    <p style={{ margin: '0.35rem 0', fontSize: '0.78rem' }}>
+                      {localReview.characterCount.toLocaleString()} readable characters · {localReview.wordCount.toLocaleString()} words
+                      {localReview.pages ? ` · ${localReview.pages} pages` : ''} · method: {localReview.method}
+                    </p>
+                    {localReview.message && <p style={{ margin: '0.35rem 0', fontSize: '0.78rem', color: '#9a6700' }}>{localReview.message}</p>}
+                    {v.indicator_id && (
+                      <p style={{ margin: '0.35rem 0', fontSize: '0.78rem' }}>
+                        {matchEvidenceToIndicator(localReview, indicators.find((item) => item.id === v.indicator_id)).matched
+                          ? `Indicator reference found: ${matchEvidenceToIndicator(localReview, indicators.find((item) => item.id === v.indicator_id)).matchedTerm}`
+                          : matchEvidenceToIndicator(localReview, indicators.find((item) => item.id === v.indicator_id)).reason}
+                      </p>
+                    )}
+                    {!v.indicator_id && <p style={{ margin: '0.35rem 0', fontSize: '0.78rem' }}>Choose a related indicator to check whether its code or name appears in the report.</p>}
+                    {savedProgress.loading && <p style={{ margin: '0.35rem 0', fontSize: '0.78rem' }}>Checking saved progress for the selected indicator and period…</p>}
+                    {savedProgress.error && <p style={{ margin: '0.35rem 0', fontSize: '0.78rem', color: '#9a6700' }}>{savedProgress.error}</p>}
+                    {!savedProgress.loading && !savedProgress.error && savedProgress.rows.length > 0 && (() => {
+                      const saved = savedProgress.rows;
+                      const priorValues = new Set(saved.flatMap((row) => [row.actual_this_period, row.cumulative_actual]).filter((value) => value !== null && value !== undefined).map((value) => String(Number(value))));
+                      const matches = localReview.numericCandidates.filter((candidate) => priorValues.has(String(Number(candidate.value.replace(/%$/, '')))));
+                      const latestDate = saved.map((row) => row.date_reported).filter(Boolean).sort().at(-1);
+                      const documentDate = v.document_date;
+                      return (
+                        <div style={{ marginTop: '0.4rem', padding: '0.55rem', borderRadius: 8, background: '#fff7ed', fontSize: '0.78rem' }}>
+                          <strong>Saved progress check for {reportingPeriod}</strong>
+                          {matches.length > 0
+                            ? <p style={{ margin: '0.25rem 0' }}>Possible overlap: {matches.slice(0, 4).map((candidate) => candidate.value).join(', ')} also appears in saved actuals. Compare the context before entering a result; this check does not decide whether it is a duplicate.</p>
+                            : <p style={{ margin: '0.25rem 0' }}>No exact numeric match was found against {saved.length} saved progress record{saved.length === 1 ? '' : 's'} for this period. This cannot rule out double counting.</p>}
+                          {documentDate && latestDate && documentDate < latestDate && <p style={{ margin: '0.25rem 0', color: '#9a6700' }}>The document date ({documentDate}) is older than a saved report ({latestDate}). Check whether it has been superseded.</p>}
+                        </div>
+                      );
+                    })()}
+                    {localReview.numericCandidates.length > 0 && (
+                      <details style={{ marginTop: '0.4rem' }}>
+                        <summary style={{ cursor: 'pointer', fontSize: '0.78rem' }}>Possible figures in the report ({localReview.numericCandidates.length})</summary>
+                        <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.2rem', maxHeight: 180, overflowY: 'auto', fontSize: '0.76rem' }}>
+                          {localReview.numericCandidates.slice(0, 12).map((candidate, index) => (
+                            <li key={index}><strong>{candidate.value}</strong> — {candidate.context}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.72rem', color: 'var(--text-3)' }}>These are review cues, not verified results. Confirm each figure and reporting period in the source before adding progress. Saving this evidence does not change indicator results.</p>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
         {preview.length > 0 && (
