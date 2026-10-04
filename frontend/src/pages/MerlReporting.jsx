@@ -392,7 +392,7 @@ export default function MerlReporting({ user }) {
     try {
       if (m.key === 'evidence' && file) {
         uploadedEvidence = await uploadEvidenceFile(file, projectId);
-        evidenceValues = { ...values, file_url: uploadedEvidence.path };
+        evidenceValues = { ...values, file_url: uploadedEvidence.storageUrl };
       }
       const savedId = await saveModuleRecord({ module: m, values: evidenceValues, id: editing?.id ?? null, projectId, reportingPeriod: activePeriod, indicators });
       if (m.key === 'indicator_progress' && savedId) {
