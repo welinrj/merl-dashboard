@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import JSZip from 'jszip';
 
 const MAX_EVIDENCE_BYTES = 25 * 1024 * 1024;
 const TYPES = {
@@ -34,6 +35,16 @@ export async function inspectEvidenceFile(file) {
   if (!type) throw new Error('Use PDF, JPG, PNG, WEBP, DOCX, XLSX, CSV, JSON, GeoJSON, or ZIP.');
   const bytes = new Uint8Array(await file.slice(0, 512).arrayBuffer());
   if (!type.magic(bytes)) throw new Error('The file contents do not match its filename, or the file is damaged.');
+  if (['docx', 'xlsx', 'zip'].includes(ext)) {
+    try {
+      const archive = await JSZip.loadAsync(file, { checkCRC32: true });
+      if (!Object.keys(archive.files).some((name) => !archive.files[name].dir)) throw new Error('empty archive');
+      if (ext === 'docx' && !archive.file('word/document.xml')) throw new Error('not a DOCX document');
+      if (ext === 'xlsx' && !archive.file('xl/workbook.xml')) throw new Error('not an XLSX workbook');
+    } catch {
+      throw new Error('This archive is corrupt or is not a valid DOCX, XLSX, or ZIP file.');
+    }
+  }
   if (['csv', 'json', 'geojson'].includes(ext)) {
     const body = (await file.text()).replace(/^\uFEFF/, '').trim();
     if (body.length < 40) throw new Error('This file has too little readable content to be a report.');
@@ -67,7 +78,7 @@ export async function uploadEvidenceFile(file, projectId) {
       .from('v_evidence').select('id').eq('file_url', path).maybeSingle();
     if (secondLookupError) throw secondLookupError;
     if (attached) throw new Error('This exact file is already attached to an evidence record for this project.');
-    return { path, uploaded: false };
+    throw new Error('This file is already in storage but has no evidence record. Ask a MERL administrator to review it before retrying.');
   }
   return { path, uploaded: true };
 }
