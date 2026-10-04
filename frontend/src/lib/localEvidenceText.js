@@ -1,7 +1,10 @@
 const MIN_TEXT_CHARS = 60;
 
 export function readableText(text) {
-  return String(text || '').replace(/\u0000/g, ' ').replace(/[\t\r ]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  const lineFeed = String.fromCharCode(10);
+  const carriageReturn = String.fromCharCode(13);
+  return String(text || '').replaceAll(String.fromCharCode(0), ' ').replaceAll(carriageReturn, lineFeed)
+    .split(lineFeed).map((line) => line.trim().replace(/ {2,}/g, ' ')).filter(Boolean).join(lineFeed);
 }
 
 export function summarizeEvidenceText(text, { method, pages = null, ocrAvailable = false } = {}) {
