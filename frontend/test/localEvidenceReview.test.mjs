@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { matchEvidenceToIndicator, summarizeEvidenceText } from '../src/lib/localEvidenceText.js';
+import { matchEvidenceToIndicator, readableText, summarizeEvidenceText } from '../src/lib/localEvidenceText.js';
 
 test('marks blank or scan-only evidence for manual review without claiming it was analysed', () => {
   const result = summarizeEvidenceText('     ', { method: 'pdf-text', ocrAvailable: false });
@@ -19,4 +19,8 @@ test('indicator match requires a code or name in locally extracted text', () => 
   const result = summarizeEvidenceText('The IND-01 indicator reports 240 households for the second quarter.', { method: 'local-text' });
   assert.equal(matchEvidenceToIndicator(result, { code: 'IND-01', name: 'Households reached' }).matched, true);
   assert.equal(matchEvidenceToIndicator(result, { code: 'IND-99', name: 'Forest hectares' }).matched, false);
+});
+
+test('normalizes empty lines and hidden null bytes before review', () => {
+  assert.equal(readableText(`Line one${String.fromCharCode(0)}\n\n\n Line two  `), 'Line one \nLine two');
 });
