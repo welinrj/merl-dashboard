@@ -964,7 +964,10 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
             </div>
           ))}
         </div>
-        {enableFileUpload && module.key === 'evidence' && (
+        {enableFileUpload && module.key === 'evidence' && initial?.id && (
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>To preserve the original evidence file, add a new evidence record when submitting a revised document.</p>
+        )}
+        {enableFileUpload && module.key === 'evidence' && !initial?.id && (
           <div style={{ marginTop: '0.8rem' }}>
             <label className="field-label" htmlFor="ri-evidence-file">Supporting file (optional if a file is already attached)</label>
             <input id="ri-evidence-file" type="file" className="field-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.csv,.json,.geojson,.zip" onChange={async (e) => {
