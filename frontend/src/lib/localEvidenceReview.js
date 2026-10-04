@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 
 const MIN_TEXT_CHARS = 60;
 const MAX_PDF_PAGES = 80;
+const MAX_OCR_PAGES = 20;
 
 function decodeXml(value = '') {
   return value.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -94,7 +95,7 @@ async function readPdf(file) {
   let ocrAvailable = false;
   if (readableText(text).length < MIN_TEXT_CHARS && typeof globalThis.TextDetector === 'function') {
     const ocrPages = [];
-    for (const pageInfo of pages) {
+    for (const pageInfo of pages.slice(0, MAX_OCR_PAGES)) {
       const page = await document.getPage(pageInfo.pageNo);
       const viewport = page.getViewport({ scale: 1.35 });
       const canvas = document.createElement('canvas');
@@ -110,6 +111,7 @@ async function readPdf(file) {
       }
     }
     if (ocrPages.length) text = ocrPages.join('\n');
+    if (document.numPages > MAX_OCR_PAGES && ocrPages.length) text += `\nOCR limited to the first ${MAX_OCR_PAGES} pages; review remaining pages manually.`;
   }
   return { text, pages: document.numPages, method: readableText(text).length >= MIN_TEXT_CHARS ? (pages.some((p) => p.text.trim()) ? 'pdf-text' : 'device-ocr') : 'pdf-text', ocrAvailable };
 }
