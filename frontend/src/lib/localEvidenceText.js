@@ -1,6 +1,6 @@
 const MIN_TEXT_CHARS = 60;
 
-function readableText(text) {
+export function readableText(text) {
   return String(text || '').replace(/\u0000/g, ' ').replace(/[\t\r ]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
 }
 
