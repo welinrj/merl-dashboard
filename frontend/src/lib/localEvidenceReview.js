@@ -127,13 +127,3 @@ export async function readEvidenceDocument(file) {
   }
   return summarizeEvidenceText(text, { method, pages, ocrAvailable });
 }
-
-export function matchEvidenceToIndicator(review, indicator) {
-  if (!review?.text || !indicator) return { matched: false, reason: 'Select a related indicator to check the report text.' };
-  const text = review.text.toLocaleLowerCase();
-  const terms = [indicator.code, indicator.name].filter(Boolean).map((term) => String(term).trim()).filter((term) => term.length >= 3);
-  const matchedTerm = terms.find((term) => text.includes(term.toLocaleLowerCase()));
-  return matchedTerm
-    ? { matched: true, matchedTerm }
-    : { matched: false, reason: 'The selected indicator name or code was not found in the extracted text. Check that the right report and indicator are selected.' };
-}
