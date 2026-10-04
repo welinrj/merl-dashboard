@@ -98,7 +98,7 @@ export async function uploadEvidenceFile(file, projectId) {
     // save. Reuse the immutable, hash-matched object; never overwrite it.
     if (!/already exists|duplicate|409/i.test(error.message || '')) throw error;
     const { data: attached, error: secondLookupError } = await supabase
-      .from('v_evidence').select('id').eq('file_url', path).maybeSingle();
+      .from('v_evidence').select('id').eq('file_url', storageUrl).maybeSingle();
     if (secondLookupError) throw secondLookupError;
     if (attached) throw new Error('This exact file is already attached to an evidence record for this project.');
     throw new Error('This file is already in storage but has no evidence record. Ask a MERL administrator to review it before retrying.');
