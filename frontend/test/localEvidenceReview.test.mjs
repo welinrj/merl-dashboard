@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { matchEvidenceToIndicator, summarizeEvidenceText } from '../src/lib/localEvidenceReview.js';
+import { matchEvidenceToIndicator, summarizeEvidenceText } from '../src/lib/localEvidenceText.js';
 
 test('marks blank or scan-only evidence for manual review without claiming it was analysed', () => {
   const result = summarizeEvidenceText('     ', { method: 'pdf-text', ocrAvailable: false });
