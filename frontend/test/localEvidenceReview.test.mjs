@@ -22,5 +22,5 @@ test('indicator match requires a code or name in locally extracted text', () => 
 });
 
 test('normalizes empty lines and hidden null bytes before review', () => {
-  assert.equal(readableText(`Line one${String.fromCharCode(0)}\n\n\n Line two  `), 'Line one \nLine two');
+  assert.equal(readableText(`Line one${String.fromCharCode(0)}\n\n\n Line two  `), 'Line one\nLine two');
 });
