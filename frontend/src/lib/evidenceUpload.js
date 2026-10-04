@@ -2,6 +2,7 @@ import { supabase } from '../supabaseClient';
 import JSZip from 'jszip';
 
 const MAX_EVIDENCE_BYTES = 25 * 1024 * 1024;
+const BUCKET = 'merl-indicator-evidence';
 const TYPES = {
   pdf: { mime: 'application/pdf', magic: (b) => ascii(b, 0, 5) === '%PDF-' },
   jpg: { mime: 'image/jpeg', magic: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
@@ -83,12 +84,13 @@ export async function inspectEvidenceFile(file) {
 export async function uploadEvidenceFile(file, projectId) {
   const { ext, mime, sha256 } = await inspectEvidenceFile(file);
   const path = `${projectId}/sha256/${sha256}.${ext}`;
+  const storageUrl = `storage://${BUCKET}/${path}`;
   const { data: existing, error: lookupError } = await supabase
-    .from('v_evidence').select('id').eq('file_url', path).maybeSingle();
+    .from('v_evidence').select('id').eq('file_url', storageUrl).maybeSingle();
   if (lookupError) throw lookupError;
   if (existing) throw new Error('This exact file is already attached to an evidence record for this project.');
 
-  const { error } = await supabase.storage.from('merl-indicator-evidence').upload(path, file, {
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     contentType: mime, cacheControl: '3600', upsert: false,
   });
   if (error) {
@@ -101,11 +103,11 @@ export async function uploadEvidenceFile(file, projectId) {
     if (attached) throw new Error('This exact file is already attached to an evidence record for this project.');
     throw new Error('This file is already in storage but has no evidence record. Ask a MERL administrator to review it before retrying.');
   }
-  return { path, uploaded: true };
+  return { path, storageUrl, uploaded: true };
 }
 
 export async function removeEvidenceFile(path) {
   if (!path) return;
-  const { error } = await supabase.storage.from('merl-indicator-evidence').remove([path]);
+  const { error } = await supabase.storage.from(BUCKET).remove([path]);
   if (error) throw error;
 }
