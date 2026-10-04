@@ -16,10 +16,6 @@ function xmlText(xml, tag) {
     .map((match) => decodeXml(match[1].replace(/<[^>]+>/g, ''))).filter(Boolean).join(' ');
 }
 
-function readableText(text) {
-  return String(text || '').replace(/\u0000/g, ' ').replace(/[\t\r ]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
-}
-
 
 async function runDeviceOcr(blob) {
   if (typeof globalThis.TextDetector !== 'function' || typeof createImageBitmap !== 'function') return { text: '', available: false };
@@ -66,11 +62,11 @@ async function readPdf(file) {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-  const document = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
-  if (document.numPages > MAX_PDF_PAGES) throw new Error(`This PDF has ${document.numPages} pages. Split it into files of ${MAX_PDF_PAGES} pages or fewer for local review.`);
+  const pdfDoc = await pdfjs.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
+  if (pdfDoc.numPages > MAX_PDF_PAGES) throw new Error(`This PDF has ${pdfDoc.numPages} pages. Split it into files of ${MAX_PDF_PAGES} pages or fewer for local review.`);
   const pages = [];
-  for (let pageNo = 1; pageNo <= document.numPages; pageNo += 1) {
-    const page = await document.getPage(pageNo);
+  for (let pageNo = 1; pageNo <= pdfDoc.numPages; pageNo += 1) {
+    const page = await pdfDoc.getPage(pageNo);
     const content = await page.getTextContent();
     const text = content.items.map((item) => item.str || '').join(' ');
     pages.push({ pageNo, text });
@@ -80,7 +76,7 @@ async function readPdf(file) {
   if (readableText(text).length < MIN_TEXT_CHARS && typeof globalThis.TextDetector === 'function') {
     const ocrPages = [];
     for (const pageInfo of pages.slice(0, MAX_OCR_PAGES)) {
-      const page = await document.getPage(pageInfo.pageNo);
+      const page = await pdfDoc.getPage(pageInfo.pageNo);
       const viewport = page.getViewport({ scale: 1.35 });
       const canvas = document.createElement('canvas');
       canvas.width = Math.ceil(viewport.width);
@@ -95,9 +91,9 @@ async function readPdf(file) {
       }
     }
     if (ocrPages.length) text = ocrPages.join('\n');
-    if (document.numPages > MAX_OCR_PAGES && ocrPages.length) text += `\nOCR limited to the first ${MAX_OCR_PAGES} pages; review remaining pages manually.`;
+    if (pdfDoc.numPages > MAX_OCR_PAGES && ocrPages.length) text += `\nOCR limited to the first ${MAX_OCR_PAGES} pages; review remaining pages manually.`;
   }
-  return { text, pages: document.numPages, method: readableText(text).length >= MIN_TEXT_CHARS ? (pages.some((p) => p.text.trim()) ? 'pdf-text' : 'device-ocr') : 'pdf-text', ocrAvailable };
+  return { text, pages: pdfDoc.numPages, method: readableText(text).length >= MIN_TEXT_CHARS ? (pages.some((p) => p.text.trim()) ? 'pdf-text' : 'device-ocr') : 'pdf-text', ocrAvailable };
 }
 
 export async function readEvidenceDocument(file) {
