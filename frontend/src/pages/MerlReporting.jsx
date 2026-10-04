@@ -17,6 +17,7 @@ import {
 } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { saveModuleRecord } from '../lib/merlRecordSave';
+import { inspectEvidenceFile, uploadEvidenceFile, removeEvidenceFile } from '../lib/evidenceUpload';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
@@ -371,7 +372,7 @@ export default function MerlReporting({ user }) {
   // ── Save a module record via its upsert RPC ─────────────────────────────────
   // This is the submission step: a record only reaches the database once every
   // required field is filled. Anything short of that stays a draft.
-  const saveRecord = async (values) => {
+  const saveRecord = async (values, file = null) => {
     const m = activeModule;
     const missing = m.fields
       .filter((f) => f.required && (values[f.name] === '' || values[f.name] == null))
@@ -386,8 +387,14 @@ export default function MerlReporting({ user }) {
     // officer is told which figures disagree rather than seeing a constraint.
     const problem = m.validate?.(values);
     if (problem) { toast.error(t(problem.key, problem.params)); return; }
+    let uploadedEvidence = null;
+    let evidenceValues = values;
     try {
-      const savedId = await saveModuleRecord({ module: m, values, id: editing?.id ?? null, projectId, reportingPeriod: activePeriod, indicators });
+      if (m.key === 'evidence' && file) {
+        uploadedEvidence = await uploadEvidenceFile(file, projectId);
+        evidenceValues = { ...values, file_url: uploadedEvidence.path };
+      }
+      const savedId = await saveModuleRecord({ module: m, values: evidenceValues, id: editing?.id ?? null, projectId, reportingPeriod: activePeriod, indicators });
       if (m.key === 'indicator_progress' && savedId) {
         const { error: narrativeError } = await supabase.rpc('upsert_result_narrative', {
           p_indicator_progress_id: savedId,
@@ -401,7 +408,12 @@ export default function MerlReporting({ user }) {
         });
         if (narrativeError) throw narrativeError;
       }
-    } catch (error) { toast.error(dbErrorMessage(error)); return; }
+    } catch (error) {
+      if (uploadedEvidence?.uploaded) {
+        try { await removeEvidenceFile(uploadedEvidence.path); } catch (cleanupError) { console.error('Evidence upload cleanup failed', cleanupError); }
+      }
+      toast.error(dbErrorMessage(error)); return;
+    }
     // The record is saved, so its draft has served its purpose.
     clearDraft(draftKeyFor(m, editing?.id));
     toast.success(editing?.id ? t('merl.updatedToast') : t('merl.addedToast'));
@@ -811,6 +823,7 @@ export default function MerlReporting({ user }) {
           onCancel={() => setEditing(null)}
           onSave={saveRecord}
           onTranslated={loadRecords}
+          enableFileUpload={activeModule.key === 'evidence'}
         />
       )}
     </div>
@@ -846,7 +859,7 @@ function PeriodForm({ onCancel, onSave }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem' }}>
-        <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>{t('merl.create')}</button>
+        <button style={btn('var(--green-700)')} onClick={() => onSave(v, file)}>{t('merl.create')}</button>
         <button style={btnSecondary()} onClick={onCancel}>{t('merl.cancel')}</button>
       </div>
     </div>
@@ -954,8 +967,13 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
         {enableFileUpload && module.key === 'evidence' && (
           <div style={{ marginTop: '0.8rem' }}>
             <label className="field-label" htmlFor="ri-evidence-file">Supporting file (optional if a file is already attached)</label>
-            <input id="ri-evidence-file" type="file" className="field-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.csv,.geojson,.zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Private evidence. Maximum 25 MB. The file is not published to the public portal.</p>
+            <input id="ri-evidence-file" type="file" className="field-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.csv,.json,.geojson,.zip" onChange={async (e) => {
+              const selected = e.target.files?.[0] ?? null;
+              if (!selected) { setFile(null); return; }
+              try { await inspectEvidenceFile(selected); setFile(selected); }
+              catch (error) { setFile(null); e.target.value = ''; toast.error(error.message); }
+            }} />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Private project evidence only. Up to 25 MB. Empty, malformed, mislabeled, and duplicate files are blocked before saving. Some file types are stored for review but cannot yet be read by automated analysis.</p>
           </div>
         )}
         {preview.length > 0 && (
