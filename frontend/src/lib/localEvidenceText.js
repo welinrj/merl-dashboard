@@ -1,3 +1,5 @@
+const MIN_TEXT_CHARS = 60;
+
 export function summarizeEvidenceText(text, { method, pages = null, ocrAvailable = false } = {}) {
   const normalized = readableText(text);
   const digits = (normalized.match(/\d/g) || []).length;
