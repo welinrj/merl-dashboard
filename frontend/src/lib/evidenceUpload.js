@@ -12,6 +12,7 @@ const TYPES = {
   docx: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', magic: zipMagic },
   xlsx: { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', magic: zipMagic },
   csv: { mime: 'text/csv', magic: textMagic },
+  txt: { mime: 'text/plain', magic: textMagic },
   json: { mime: 'application/json', magic: textMagic },
   geojson: { mime: 'application/geo+json', magic: textMagic },
   zip: { mime: 'application/zip', magic: zipMagic },
@@ -56,7 +57,7 @@ export async function inspectEvidenceFile(file) {
       throw new Error('This archive is corrupt or is not a valid DOCX, XLSX, or ZIP file.');
     }
   }
-  if (['csv', 'json', 'geojson'].includes(ext)) {
+  if (['csv', 'json', 'geojson', 'txt'].includes(ext)) {
     const body = (await file.text()).replace(/^\uFEFF/, '').trim();
     if (body.length < 40) throw new Error('This file has too little readable content to be a report.');
     if (ext === 'csv') {
