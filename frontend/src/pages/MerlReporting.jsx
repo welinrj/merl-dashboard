@@ -18,7 +18,8 @@ import {
 import { supabase } from '../supabaseClient';
 import { saveModuleRecord } from '../lib/merlRecordSave';
 import { inspectEvidenceFile, uploadEvidenceFile, removeEvidenceFile } from '../lib/evidenceUpload';
-import { readEvidenceDocument, matchEvidenceToIndicator } from '../lib/localEvidenceReview';
+import { readEvidenceDocument } from '../lib/localEvidenceReview';
+import { matchEvidenceToIndicator } from '../lib/localEvidenceText';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
 import PageHeader from '../components/ui/PageHeader';
