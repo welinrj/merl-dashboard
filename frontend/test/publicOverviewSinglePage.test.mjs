@@ -43,14 +43,11 @@ test('Area Council directory auto-scrolls with user and motion-preference contro
   assert.match(publicDashboardCss, /\.pbd-area-list>button\.is-auto-current \.pbd-area-flap-face/);
 });
 
-test('dashboard views exclude completed projects without deleting their records', () => {
-  assert.match(dashboard, /const isCompletedProject = project/);
-  assert.match(dashboard, /allProjects\.filter\(project => !isCompletedProject\(project\)\)/);
-  assert.match(dashboard, /allScope && projects\.length === allProjects\.length/);
-  assert.match(dashboard, /\['ongoing', 'upcoming', 'other'\]\.map/);
+test('dashboard views use the same framework-backed published scope', () => {
+  assert.match(dashboard, /const projects = allProjects;/);
+  assert.match(dashboard, /\['ongoing', 'upcoming', 'completed', 'other'\]\.map/);
   assert.match(authenticatedOverview, /unfinishedProjects = currentProjects\(registeredProjects\)/);
-  assert.match(authenticatedOverview, /key !== 'completed'/);
-  assert.doesNotMatch(authenticatedOverview, /lifecycleCounts\.completed/);
+  assert.match(authenticatedOverview, /lifecycleCounts\.completed/);
 });
 
 test('every public indicator category has a distinct web-library icon', () => {

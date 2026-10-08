@@ -572,8 +572,8 @@ function ProjectsTab() {
         </div>
       )}
 
-      <p className="text-sm text-gray-600">{currentProjects(projects).length} current DoCC projects. Completed projects are available in history.</p>
-      <label className="text-sm"><input type="checkbox" checked={showCompletedProjects} onChange={event => setShowCompletedProjects(event.target.checked)} /> Include completed project history</label>
+      <p className="text-sm text-gray-600">{currentProjects(projects).length} projects with results frameworks. Other projects are available in the register.</p>
+      <label className="text-sm"><input type="checkbox" checked={showCompletedProjects} onChange={event => setShowCompletedProjects(event.target.checked)} /> Include all registered projects</label>
       <label className="text-sm"><input type="checkbox" checked={showTestProjects} onChange={event => setShowTestProjects(event.target.checked)} /> Show test projects</label>
       {/* Projects table */}
       <AdminDataTable title={t('adm.projects')} rows={visibleProjects} loading={loading} selection

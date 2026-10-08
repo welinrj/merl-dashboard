@@ -127,7 +127,7 @@ export default function Overview({ user }) {
         ));
 
         const responses = await Promise.all([
-          q('v_projects', 'id, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
+          q('v_projects', 'id,has_results_framework, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
           q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, reporting_period, created_at, updated_at'),
           q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
           q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
@@ -247,7 +247,7 @@ export default function Overview({ user }) {
   const periodAtRisk = currentPeriodRows.reduce((n,r) => n + Number(r.at_risk_results || 0),0);
   const periodDelayed = currentPeriodRows.reduce((n,r) => n + Number(r.delayed_results || 0),0);
   const total = projects.length;
-  const byBucket = { on_track: 0, attention: 0, at_risk: 0, delayed: 0, not_started: 0 };
+  const byBucket = { completed: 0, on_track: 0, attention: 0, at_risk: 0, delayed: 0, not_started: 0 };
   for (const p of projects) {
     const key = bucketOf(p.status);
     if (key in byBucket) byBucket[key] += 1;
@@ -257,9 +257,10 @@ export default function Overview({ user }) {
   const lifecycleCounts = projects.reduce((counts, project) => {
     const status = bucketOf(project.status);
     if (status === 'not_started') counts.planned += 1;
+    else if (status === 'completed') counts.completed += 1;
     else if (status !== 'cancelled') counts.active += 1;
     return counts;
-  }, { active: 0, planned: 0 });
+  }, { active: 0, planned: 0, completed: 0 });
   const latestFinance = latestReportedBy(withReportingDates(financial, reporting), 'project_id');
   const totalBudget = sumReported(projects.map(p => toVuv(p.budget_vuv, p.currency)));
   const reportedExpenditure = [...latestFinance.values()].filter(row => row.cumulative_expenditure != null);
@@ -373,7 +374,7 @@ export default function Overview({ user }) {
       <section className="ovx-heading rp-noprint">
         <div>
           <h1>{t('overview.title')}</h1>
-          <p>{unfinishedProjects.length} current DoCC projects. Filters apply to this portfolio.</p>
+          <p>{unfinishedProjects.length} projects with results frameworks. Filters apply to this portfolio.</p>
           <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
           {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
         </div>
@@ -393,7 +394,7 @@ export default function Overview({ user }) {
         <FilterSelect label={t('overview.filterFy')} value={filters.fy}
           onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
         <FilterSelect label={t('overview.filterStatus')} value={filters.status}
-          onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).filter((key) => key !== 'completed').map((key) => ({ value: key, label: statusLabel(key, t) }))} />
+          onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((key) => ({ value: key, label: statusLabel(key, t) }))} />
         <FilterSelect label={t('overview.filterTheme')} value={filters.theme}
           onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
         <FilterSelect label={t('overview.filterProvince')} value={filters.province}
@@ -412,7 +413,7 @@ export default function Overview({ user }) {
           className="ovx-kpi ovx-kpi-projects"
           label="Projects in Portfolio"
           value={fmtNum(total)}
-          sub={`${fmtNum(lifecycleCounts.active)} active · ${fmtNum(lifecycleCounts.planned)} planned`}
+          sub={`${fmtNum(lifecycleCounts.active)} active · ${fmtNum(lifecycleCounts.planned)} planned · ${fmtNum(lifecycleCounts.completed)} completed`}
           linkLabel={t('overview.viewProjects')}
           onClick={() => nav('/project-setup')}
         />

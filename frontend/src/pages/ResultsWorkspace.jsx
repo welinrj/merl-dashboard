@@ -1,3 +1,4 @@
+import { currentProjects } from '../lib/docc/projectScope';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -120,7 +121,7 @@ export default function ResultsWorkspace({ user }) {
     setLoading(true);
     setError('');
     Promise.all([
-      localised(() => supabase.from('v_projects').select(i18nCols('id, code, acronym, name, status')).order('code')),
+      localised(() => supabase.from('v_projects').select(i18nCols('id,has_results_framework, code, acronym, name, status')).order('code')),
       supabase.from('v_framework_nodes').select('*').order('sort_order').order('node_code'),
       localised(() => supabase.from('v_project_indicators').select('*').order('code')),
       supabase.from('v_indicator_targets').select('*'),
@@ -133,7 +134,7 @@ export default function ResultsWorkspace({ user }) {
       const failed = [...responses.slice(0, 6), responses[7]].find((r) => r.error);
       if (failed?.error) throw failed.error;
       const [projects, nodes, indicators, targets, progress, narratives] = responses.slice(0, 6).map((r) => r.data || []);
-      setData({ projects, nodes, indicators, targets, progress: withReportingDates(progress, responses[7].data || []), narratives });
+      setData({ projects: currentProjects(projects), nodes, indicators, targets, progress: withReportingDates(progress, responses[7].data || []), narratives });
 
       const permission = responses[6];
       setEditableIds(new Set(permission.error ? [] : (permission.data || []).map((r) => r.project_id)));

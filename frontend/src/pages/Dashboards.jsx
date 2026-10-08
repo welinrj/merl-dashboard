@@ -75,7 +75,7 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
       const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs] = await Promise.all([
-        q('v_projects', 'id, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
+        q('v_projects', 'id,has_results_framework, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
         q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at, updated_at'),
         q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
         q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, other_vulnerable, indirect, reporting_period'),

@@ -5,8 +5,8 @@ import { readFileSync } from 'node:fs';
 const summary = readFileSync(new URL('../src/components/ui/BeneficiarySummary.jsx', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../../supabase/migrations/20260929032027_restore_vcap2_beneficiary_disaggregation.sql', import.meta.url), 'utf8');
 
-test('beneficiary card excludes completed projects consistently with the dashboard', () => {
-  assert.match(summary, /bucketOf\(p\.status\) !== 'completed'/);
+test('beneficiary card uses the shared dashboard project scope', () => {
+  assert.match(summary, /has_results_framework/);
   assert.match(summary, /projectMatches\(p, filters\)/);
 });
 

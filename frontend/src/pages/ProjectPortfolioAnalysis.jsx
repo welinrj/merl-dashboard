@@ -571,7 +571,7 @@ export default function ProjectPortfolioAnalysis() {
     setProjectsError(null);
     const { data, error } = await localised(() =>
       supabase.from('v_projects')
-        .select(i18nCols('id, code, name, status, category, donor, provinces'))
+        .select(i18nCols('id,has_results_framework, code, name, status, category, donor, provinces'))
         .order('code'));
     if (error) { setProjectsError(dbErrorMessage(error, t('ppa.projectsFailed'))); setProjectsLoading(false); return; }
     const rows = currentProjects(data ?? []);

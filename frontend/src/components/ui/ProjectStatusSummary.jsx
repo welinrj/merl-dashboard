@@ -5,8 +5,8 @@ import { useDashboardFilters, projectMatches, bucketOf } from '../../lib/dashboa
 import { fmtNum } from '../../lib/locale';
 
 const LABELS = {
-  en: { title: 'Current projects by status', ongoing: 'Ongoing / On track', risk: 'At risk / Delayed / On hold', planning: 'Planning / Not started', completed: 'Completed', cancelled: 'Cancelled', unknown: 'Other / Unclassified', loading: 'Loading project statuses…', error: 'Project statuses could not be loaded.', retry: 'Retry', empty: 'No projects match the selected filters.', total: 'Projects' },
-  fr: { title: 'Projets actuels par statut', ongoing: 'En cours / En bonne voie', risk: 'À risque / En retard / En attente', planning: 'Planification / Non démarrés', completed: 'Terminés', cancelled: 'Annulés', unknown: 'Autres / Non classés', loading: 'Chargement des statuts…', error: 'Impossible de charger les statuts.', retry: 'Réessayer', empty: 'Aucun projet ne correspond aux filtres.', total: 'Projets' },
+  en: { title: 'Framework projects by status', ongoing: 'Ongoing / On track', risk: 'At risk / Delayed / On hold', planning: 'Planning / Not started', completed: 'Completed', cancelled: 'Cancelled', unknown: 'Other / Unclassified', loading: 'Loading project statuses…', error: 'Project statuses could not be loaded.', retry: 'Retry', empty: 'No projects match the selected filters.', total: 'Projects' },
+  fr: { title: 'Projets avec cadre de résultats par statut', ongoing: 'En cours / En bonne voie', risk: 'À risque / En retard / En attente', planning: 'Planification / Non démarrés', completed: 'Terminés', cancelled: 'Annulés', unknown: 'Autres / Non classés', loading: 'Chargement des statuts…', error: 'Impossible de charger les statuts.', retry: 'Réessayer', empty: 'Aucun projet ne correspond aux filtres.', total: 'Projets' },
 };
 const GROUPS = [['on_track', 'ongoing'], ['at_risk', 'risk'], ['not_started', 'planning'], ['completed', 'completed'], ['cancelled', 'cancelled'], ['unknown', 'unknown']];
 
@@ -28,7 +28,7 @@ export default function ProjectStatusSummary() {
         const all = [];
         for (let offset = 0; ; offset += 1000) {
           const { data, error: readError } = await supabase.from('v_projects')
-            .select('id,code,status,category,donor,provinces,start_date,end_date')
+            .select('id,has_results_framework,code,status,category,donor,provinces,start_date,end_date')
             .order('id').range(offset, offset + 999);
           if (readError) throw readError;
           const page = data ?? [];

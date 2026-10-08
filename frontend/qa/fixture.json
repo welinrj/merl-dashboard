@@ -22,7 +22,8 @@
       "registration_status": "approved",
       "description": "Coastal protection works.",
       "updated_at": "2026-07-01T00:00:00Z",
-      "i18n": {}
+      "i18n": {},
+      "has_results_framework": true
     },
     {
       "id": "pb",
@@ -42,7 +43,8 @@
       "lead_agency": "DoCC",
       "registration_status": "approved",
       "updated_at": "2026-07-01T00:00:00Z",
-      "i18n": {}
+      "i18n": {},
+      "has_results_framework": true
     }
   ],
   "v_objectives": [
@@ -303,7 +305,17 @@
   "v_project_period_progress": [],
   "v_ref_area_councils": [],
   "v_dashboard_kpi_config": [],
-  "v_framework_nodes": [],
+  "v_framework_nodes": [
+    {
+      "id": "pb-objective",
+      "project_id": "pb",
+      "node_type": "objective",
+      "node_code": "OBJ-WATER",
+      "title": "Water security",
+      "sort_order": 0,
+      "status": "approved"
+    }
+  ],
   "v_indicator_targets": [],
   "v_result_narratives": [],
   "v_indicator_evidence_status": [

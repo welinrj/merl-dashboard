@@ -239,7 +239,7 @@ export default function GeographicCoverageExperience() {
     (async () => {
       setLoading(true);
       const [p, l, v] = await Promise.all([
-        supabase.from('v_projects').select('id,code,name,status,provinces'),
+        supabase.from('v_projects').select('id,has_results_framework,code,name,status,provinces'),
         supabase.from('v_project_locations').select('id,project_id,province,island,area_council,community,beneficiaries,latitude,longitude,intervention,status'),
         supabase.from('v_ref_villages').select('id,name,island,area_council,latitude,longitude,verified'),
       ]);

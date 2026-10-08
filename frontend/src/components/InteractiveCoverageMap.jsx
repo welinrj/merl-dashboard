@@ -115,7 +115,7 @@ export default function InteractiveCoverageMap({ selected }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const p = await supabase.from('v_projects').select('id,code,name,status,provinces,donor,category,start_date,end_date');
+      const p = await supabase.from('v_projects').select('id,has_results_framework,code,name,status,provinces,donor,category,start_date,end_date');
       if (p.error) throw p.error;
       const filteredProjects = (p.data || []).filter(project => projectMatches(project, filters));
       const ids = filteredProjects.map(project => project.id);

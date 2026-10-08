@@ -222,7 +222,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   const loadProjects = useCallback(async () => {
     const { data: ps, error: pe } = await supabase
       .from('v_projects')
-      .select('id,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome')
+      .select('id,has_results_framework,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome')
       .order('code');
     if (pe) { toast.error(dbErrorMessage(pe)); return; }
     setProjects(officialProjects(ps || []));
@@ -358,8 +358,8 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
         {isAdmin && projectId && <button type="button" className="btn btn-secondary" onClick={deleteProject} disabled={busy} style={{color:'var(--red-600)',borderColor:'var(--red-200)'}}>Delete project</button>}
       </div>
     </div>
-    <p className="ps-config-note">{currentProjects(projects).length} current DoCC projects.</p>
-    <label className="ps-config-note"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked) setProjectId(currentProjects(projects)[0]?.id || ''); }} /> Include completed project history</label>
+    <p className="ps-config-note">{currentProjects(projects).length} projects with results frameworks.</p>
+    <label className="ps-config-note"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked) setProjectId(currentProjects(projects)[0]?.id || ''); }} /> Include all registered projects</label>
     {projectId && <div className="ps-config-grid">
       <div className="ps-config-card">
         <h3>Donors & Partners</h3>

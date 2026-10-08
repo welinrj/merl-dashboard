@@ -65,7 +65,7 @@ export default function BeneficiarySummary(props) {
     setSource(null);
     setError(false);
     Promise.all([
-      readAll('v_projects', 'id, code, name, status, provinces, donor, category, start_date, end_date', lang, true),
+      readAll('v_projects', 'id, has_results_framework, code, name, status, provinces, donor, category, start_date, end_date', lang, true),
       readAll('v_beneficiaries', 'id, project_id, total_direct, female, male, other_gender, youth, persons_with_disability, indirect, double_counting_check', lang),
     ]).then(([projects, beneficiaries]) => {
       if (active) setSource({ projects, beneficiaries });
@@ -75,7 +75,7 @@ export default function BeneficiarySummary(props) {
 
   const scoped = useMemo(() => {
     if (!source) return null;
-    const projects = source.projects.filter(p => bucketOf(p.status) !== 'completed' && projectMatches(p, filters));
+    const projects = source.projects.filter(p => projectMatches(p, filters));
     const ids = new Set(projects.map(p => p.id));
     const rows = source.beneficiaries.filter(row => ids.has(row.project_id));
     return { projects, rows, summary: aggregateBeneficiaries(rows) };
