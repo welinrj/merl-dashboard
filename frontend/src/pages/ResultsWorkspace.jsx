@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { latestReportedBy, withReportingDates } from '../lib/docc/progressSelection';
+import { frameworkTargetValue } from '../lib/docc/frameworkTarget';
 import { useLiveDashboard } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import { localised, i18nCols } from '../lib/contentLocale';
@@ -380,9 +381,9 @@ export default function ResultsWorkspace({ user }) {
         </tr></thead>
         <tbody>
           {filtered.map((row, idx) => {
-            const baseline = row.targets.baseline?.numeric_value ?? row.indicator?.baseline_value;
-            const mid = row.targets.mid_term?.numeric_value ?? row.targets.mid_term?.text_value;
-            const finalTarget = row.targets.final?.numeric_value ?? row.indicator?.target_value;
+            const baseline = frameworkTargetValue(row.targets.baseline, row.indicator?.baseline_value);
+            const mid = frameworkTargetValue(row.targets.mid_term);
+            const finalTarget = frameworkTargetValue(row.targets.final, row.indicator?.target_value);
             const actual = row.progress?.cumulative_actual ?? row.progress?.actual_this_period;
             const narrative = row.narrative?.progress_summary || row.progress?.narrative || '';
             const rowKey = row.indicator?.id || row.node?.id || idx;
