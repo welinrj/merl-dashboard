@@ -120,6 +120,7 @@ for (const role of ROLES) {
     assert.equal(await dialog.getByLabel('Information to edit').count(),0);
     await dialog.getByLabel('Content').fill(`Updated indicator by ${role}`);
     await page.setViewportSize({width:390,height:380});
+    await page.waitForFunction(() => { const button=document.querySelector('.rf2-form button[type=submit]'); return button && button.getBoundingClientRect().bottom <= window.innerHeight; },null,{timeout:5000});
     assert.equal(await saveButton.evaluate(el=>el.getBoundingClientRect().bottom<=window.innerHeight),true);
     await saveButton.click();
     await dialog.waitFor({state:'hidden'});
