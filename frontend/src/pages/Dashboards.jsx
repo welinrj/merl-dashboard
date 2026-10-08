@@ -1,3 +1,4 @@
+import { toVuv, sumReported, recordedExpenditure } from '../lib/docc/currency';
 // =============================================================================
 // Dashboards.jsx — DoCC MERL dashboards, all derived from the standardised
 // dataset (the "DISPLAY" end of ENTER ONCE -> STORE -> DISPLAY -> REPORT).
@@ -10,6 +11,8 @@ import { useSearchParams } from 'react-router-dom';
 // One icon on this page: the warning triangle that marks Attention Required.
 // Every other metric, tab and heading is carried by its label and its number.
 import { AlertTriangle } from '../components/ui/icons';
+import { latestReportedBy, withReportingDates, portfolioProgress } from '../lib/docc/progressSelection';
+import { useLiveDashboard } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import StatTile from '../components/ui/StatTile';
 import MetricStrip from '../components/ui/MetricStrip';
@@ -36,17 +39,12 @@ const TABS = [
   { key: 'reporting',  label: 'dash.tabReporting' },
 ];
 
-const ACTIVE_STATUSES = ['approved', 'not_started', 'on_track', 'at_risk', 'delayed'];
+const ACTIVE_STATUSES = ['active', 'approved', 'not_started', 'on_track', 'at_risk', 'delayed'];
 const today = () => new Date().toISOString().slice(0, 10);
 
-// latest row per project_id, by created_at
+// Latest reported period per project; upload chronology is only a tie breaker.
 function latestByProject(rows) {
-  const m = new Map();
-  for (const r of rows) {
-    const prev = m.get(r.project_id);
-    if (!prev || (r.created_at ?? '') > (prev.created_at ?? '')) m.set(r.project_id, r);
-  }
-  return m;
+  return latestReportedBy(rows, 'project_id');
 }
 const countBy = (rows, keyFn) => {
   const m = new Map();
@@ -61,6 +59,8 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
   // refetches rather than leaving the previous language's copy on screen.
   const lang = i18n.resolvedLanguage;
   const [tab, setTab] = useState(initialTab || 'portfolio');
+  const liveRevision = useLiveDashboard();
+  const [loadError, setLoadError] = useState(null);
   const [d, setD] = useState(null); // loaded datasets
   const [projectId, setProjectId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -74,29 +74,32 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
       const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs] = await Promise.all([
-        q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
-        q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at'),
+        q('v_projects', 'id, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, category, start_date, end_date'),
+        q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, remaining_balance, utilisation_pct, funds_received, funds_available, reporting_period, created_at, updated_at'),
         q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
         q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, other_vulnerable, indirect, reporting_period'),
         q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code, province, island, area_council, community'),
-        q('v_project_indicators', 'project_id, code, name, baseline_value, target_value, indicator_level, framework_node_id'),
-        q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, schedule_status, reporting_period, final_target, created_at'),
+        q('v_project_indicators', 'id, project_id, code, name, baseline_value, target_value, indicator_level, framework_node_id'),
+        q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, schedule_status, reporting_period, final_target, date_reported, review_status, created_at, updated_at'),
         q('v_reporting_periods', 'project_id, period_label, period_type, submission_status, period_end'),
         supabase.from('v_framework_nodes').select('id, project_id, parent_node_id, node_code, node_type, title, status, sort_order'),
         supabase.from('v_project_area_councils').select('id, project_id, province_code, area_council_name, coverage_status, feasibility_status, feasibility_note'),
         supabase.from('v_project_organizations').select('project_id, role, name'),
       ]);
+      const failure = [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs].find(response => response.error);
+      if (failure) { setLoadError(failure.error); setLoading(false); return; }
+      setLoadError(null);
       setD({
-        projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
+        projects: proj.data ?? [], financial: withReportingDates(fin.data ?? [], rep.data ?? []), risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
-        progress: prog.data ?? [], reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
+        progress: [...latestReportedBy(withReportingDates(prog.data ?? [], rep.data ?? [])).values()], reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [],
       });
       if ((proj.data ?? []).length && !projectId) setProjectId(proj.data[0].id);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+  }, [lang, liveRevision]);
 
   // Data freshness (§76): latest approved reporting period.
   const dataAsAt = useMemo(() => {
@@ -106,6 +109,7 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
     return fmtDate(latest);
   }, [d]);
 
+  if (loadError) return <div role="alert" className="page-pad">Dashboard data could not be loaded. Reconnect and refresh to retry.</div>;
   if (loading || !d) {
     return (
       <div className="page-pad" style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -258,16 +262,14 @@ function Portfolio({ d, onNavigate }) {
     const activities = within(d.activities), beneficiaries = within(d.beneficiaries), reporting = within(d.reporting);
 
     const fin = latestByProject(financial);
-    const totalBudget = sum(projects, (p) => p.budget_vuv);
-    const totalExp = [...fin.values()].reduce((a, r) => a + (Number(r.cumulative_expenditure) || 0), 0)
-      || sum(projects, (p) => p.spent_vuv);
+    const totalBudget = sumReported(projects.map(p => toVuv(p.budget_vuv, p.currency)));
+    const totalExp = sumReported(projects.map(p => toVuv(recordedExpenditure(p, fin.get(p.id)), p.currency)));
     const openRisks = risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status));
     const overdue = risks.filter((r) => r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status));
-    const achieved = progress.filter((p) => p.achievement_pct != null);
-    const avgAch = achieved.length ? Math.round(achieved.reduce((a, r) => a + Number(r.achievement_pct), 0) / achieved.length) : null;
+    const avgAch = portfolioProgress(progress);
 
     // Attention Required (§31) — clickable management intelligence.
-    const offTrack = progress.filter((p) => p.performance_status === 'off_track').length;
+    const offTrack = progress.filter((p) => ['off_track', 'at_risk', 'attention_required'].includes(p.performance_status)).length;
     const reportsOverdue = reporting.filter((r) => r.period_end && r.period_end < today() && r.submission_status !== 'approved').length;
     const highRiskOverdue = risks.filter((r) => ['high', 'critical', 'severe'].includes(String(r.risk_rating || '').toLowerCase())
       && r.due_date && r.due_date < today() && !['resolved', 'closed'].includes(r.status)).length;
@@ -289,7 +291,7 @@ function Portfolio({ d, onNavigate }) {
       const ph = physAgg[p.id] ? Math.round(physAgg[p.id].s / physAgg[p.id].n) : null;
       const f = fin.get(p.id);
       const finPct = f?.utilisation_pct != null ? Math.round(Number(f.utilisation_pct))
-        : (p.budget_vuv ? Math.round(utilisationPct(p.budget_vuv, p.spent_vuv)) : null);
+        : (recordedExpenditure(p, f) != null ? utilisationPct(p.budget_vuv, recordedExpenditure(p, f)) : null);
       const variance = (ph != null && finPct != null) ? finPct - ph : null;
       return { code: p.code, physical: ph, financial: finPct, variance };
     }).filter((r) => r.physical != null || r.financial != null);
@@ -315,7 +317,7 @@ function Portfolio({ d, onNavigate }) {
       totalBudget, totalExp, util: utilisationPct(totalBudget, totalExp),
       actCompleted: activities.filter((a) => a.status === 'completed').length,
       openRisks: openRisks.length, overdue: overdue.length,
-      beneficiaries: portfolioBeneficiaries(beneficiaries) ?? 0,
+      beneficiaries: portfolioBeneficiaries(beneficiaries),
       avgAch,
       byProvince: countBy(projects, (p) => p.provinces || []),
       byDonor: countBy(projects, (p) => p.donor),
@@ -354,8 +356,8 @@ function Portfolio({ d, onNavigate }) {
       </div>
       <div className="db-kpis">
         <StatTile label={t('dash.totalProjects')} value={m.total} />
-        <StatTile label={t('dash.totalBeneficiaries')} value={m.beneficiaries ? fmtNum(m.beneficiaries) : '—'} />
-        <StatTile label={t('dash.approvedBudget')} value={fmtAmount(m.totalBudget)} />
+        <StatTile label={t('dash.totalBeneficiaries')} value={m.beneficiaries != null ? fmtNum(m.beneficiaries) : '—'} />
+        <StatTile label={`${t('dash.approvedBudget')} (VUV)`} value={fmtAmount(m.totalBudget)} />
         <StatTile label={t('dash.budgetUtilisation')} value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} />
         <StatTile label={t('dash.indAchievement')} value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" />
       </div>
@@ -364,7 +366,7 @@ function Portfolio({ d, onNavigate }) {
         { label: t('dash.completed'), value: m.completed },
         { label: 'At risk', value: m.atRisk, tone: m.atRisk ? 'warning' : undefined },
         { label: 'Delayed', value: m.delayed, tone: m.delayed ? 'danger' : undefined },
-        { label: t('dash.expenditure'), value: fmtAmount(m.totalExp) },
+        { label: `${t('dash.expenditure')} (VUV)`, value: fmtAmount(m.totalExp) },
         { label: t('dash.activitiesCompleted'), value: m.actCompleted },
         { label: t('dash.openRisks'), value: m.openRisks, tone: m.openRisks ? 'warning' : undefined },
         { label: t('dash.overdueActions'), value: m.overdue, tone: m.overdue ? 'danger' : undefined },
@@ -486,10 +488,10 @@ function ProjectView({ d, projectId }) {
   const prog = d.progress.filter((x) => x.project_id === projectId);
   const rep = d.reporting.filter((r) => r.project_id === projectId).sort((a, b) => (b.period_end ?? '').localeCompare(a.period_end ?? ''))[0];
   const budget = fin?.approved_budget ?? p.budget_vuv;
-  const exp = fin?.cumulative_expenditure ?? p.spent_vuv;
+  const exp = recordedExpenditure(p, fin);
   const physAvg = acts.filter((a) => a.physical_progress_pct != null);
   const phys = physAvg.length ? Math.round(physAvg.reduce((a, x) => a + Number(x.physical_progress_pct), 0) / physAvg.length) : null;
-  const ben = beneficiaryReach(d.beneficiaries.filter((b) => b.project_id === projectId)).reached ?? 0;
+  const ben = beneficiaryReach(d.beneficiaries.filter((b) => b.project_id === projectId)).reached;
 
   return (
     <>
@@ -512,7 +514,7 @@ function ProjectView({ d, projectId }) {
       <div className="db-kpis">
         <StatTile label={t('dash.physicalProgress')} value={phys != null ? `${phys}%` : '—'} sub="avg of activities" />
         <StatTile label={t('dash.financialUtilisation')} value={fmtPct(utilisationPct(budget, exp))} />
-        <StatTile label={t('dash.beneficiaries')} value={ben ? fmtNum(ben) : '—'} />
+        <StatTile label={t('dash.beneficiaries')} value={ben == null ? '—' : fmtNum(ben)} />
         <StatTile label={t('dash.latestReport')} value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} />
       </div>
       {(() => { const openRisksCount = risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length; return (
@@ -531,7 +533,7 @@ function ProjectView({ d, projectId }) {
               <thead><tr><th>{t('dash.code')}</th><th>{t('dash.indicator')}</th><th>{t('dash.baseline')}</th><th>{t('dash.target')}</th><th>{t('dash.current')}</th><th>{t('dash.achievementShort')}</th></tr></thead>
               <tbody>
                 {inds.map((i) => {
-                  const last = prog.filter((x) => x.indicator_id === i.id).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0];
+                  const last = prog.find(x => x.indicator_id === i.id);
                   return (
                     <tr key={i.code}>
                       <td>{i.code}</td><td>{i.name}</td><td>{i.baseline_value ?? '—'}</td><td>{i.target_value ?? '—'}</td>
@@ -580,7 +582,7 @@ function Results({ d }) {
         <div style={{ overflowX: 'auto' }}><table className="db-table">
           <thead><tr><th>{t('dash.indicator')}</th><th>{t('dash.period')}</th><th>{t('dash.current')}</th><th>{t('dash.target')}</th><th>{t('dash.achievement')}</th><th>{t('dash.status')}</th></tr></thead>
           <tbody>
-            {d.progress.slice(0, 30).map((r, idx) => (
+            {d.progress.map((r, idx) => (
               <tr key={idx}>
                 <td>{r.indicator_code}</td><td>{r.reporting_period}</td><td>{r.cumulative_actual ?? '—'}</td>
                 <td>{r.final_target ?? '—'}</td>
@@ -602,19 +604,19 @@ function Financial({ d }) {
   const rows = d.projects.map((p) => {
     const f = fin.get(p.id);
     const budget = f?.approved_budget ?? p.budget_vuv;
-    const exp = f?.cumulative_expenditure ?? p.spent_vuv;
-    return { code: p.code, name: p.name, budget, exp, util: utilisationPct(budget, exp), avail: f?.funds_available };
+    const exp = recordedExpenditure(p, f);
+    return { code: p.code, name: p.name, currency: p.currency, budget, exp, util: utilisationPct(budget, exp), avail: f?.funds_available };
   });
-  const totalBudget = sum(rows, (r) => r.budget); const totalExp = sum(rows, (r) => r.exp);
+  const totalBudget = sumReported(rows.map(r => toVuv(r.budget, r.currency))); const totalExp = sumReported(rows.map(r => toVuv(r.exp, r.currency)));
   return (
     <>
       <div className="db-kpis">
-        <StatTile label={t('dash.totalApproved')} value={fmtAmount(totalBudget)} />
+        <StatTile label={`${t('dash.totalApproved')} (VUV)`} value={fmtAmount(totalBudget)} />
         <StatTile label={t('dash.utilisation')} value={fmtPct(utilisationPct(totalBudget, totalExp))} />
       </div>
       <MetricStrip style={{ marginTop: '0.7rem' }} items={[
-        { label: t('dash.totalExpenditure'), value: fmtAmount(totalExp) },
-        { label: t('dash.remaining'), value: fmtAmount(totalBudget - totalExp) },
+        { label: `${t('dash.totalExpenditure')} (VUV)`, value: fmtAmount(totalExp) },
+        { label: t('dash.remaining'), value: fmtAmount(totalBudget != null && totalExp != null ? totalBudget - totalExp : null) },
       ]} />
       <div className="db-card" style={{ marginTop: '1rem' }}>
         <h3 className="db-h">{t('dash.budgetVsExp')}</h3>
@@ -623,8 +625,8 @@ function Financial({ d }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r.code}>
-                <td>{r.code}</td><td>{r.name}</td><td>{fmtAmount(r.budget)}</td><td>{fmtAmount(r.exp)}</td>
-                <td>{fmtAmount((Number(r.budget) || 0) - (Number(r.exp) || 0))}</td>
+                <td>{r.code}</td><td>{r.name} ({r.currency || 'VUV'})</td><td>{fmtAmount(r.budget)}</td><td>{fmtAmount(r.exp)}</td>
+                <td>{fmtAmount(r.budget != null && r.exp != null ? Number(r.budget) - Number(r.exp) : null)}</td>
                 <td style={{ fontWeight: 700, color: (r.util ?? 0) > 100 ? '#dc2626' : 'var(--text-1)' }}>{fmtPct(r.util)}</td>
               </tr>
             ))}

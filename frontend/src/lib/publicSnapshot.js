@@ -21,28 +21,14 @@ const PROJECT_PROFILE_FALLBACKS = [
   { match: p => p.code === 'ICAT-VU-II' || /icat vanuatu ii/i.test(p.name || ''), values: { project_manager:'Zechariah Bani', primary_climate_theme:'Mitigation', coverage_type:'national' } },
 ];
 
-const VERIFIED_OVERRIDE_KEYS = new Set([
-  'budget_vuv',
-  'currency',
-  'project_manager',
-  'donor',
-  'executing_agency',
-  'status',
-  'end_date',
-  'primary_climate_theme',
-  'coverage_type',
-]);
-
 const blank = value => value == null || String(value).trim() === '';
-function enrichPublishedProject(project) {
+export function enrichPublishedProject(project) {
   const fallback = PROJECT_PROFILE_FALLBACKS.find(entry => entry.match(project));
   if (!fallback) return project;
   const next = { ...project };
   for (const [key, value] of Object.entries(fallback.values)) {
-    if (VERIFIED_OVERRIDE_KEYS.has(key)) {
-      next[key] = value;
-      continue;
-    }
+    // A published field always takes precedence over a legacy fallback.
+    if (key === 'status' && !blank(project.lifecycle_status)) continue;
     const current = next[key];
     const missing = Array.isArray(value)
       ? !Array.isArray(current) || current.length === 0

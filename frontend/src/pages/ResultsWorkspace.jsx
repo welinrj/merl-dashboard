@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
+import { latestReportedBy, withReportingDates } from '../lib/docc/progressSelection';
+import { useLiveDashboard } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import { localised, i18nCols } from '../lib/contentLocale';
 import { dbErrorMessage } from '../lib/dbError';
@@ -86,6 +88,7 @@ function targetLookup(targets) {
 }
 
 export default function ResultsWorkspace({ user }) {
+  const liveRevision = useLiveDashboard();
   const { t, i18n } = useTranslation();
   const [data, setData] = useState(empty);
   const [loading, setLoading] = useState(true);
@@ -123,12 +126,13 @@ export default function ResultsWorkspace({ user }) {
       localised(() => supabase.from('v_indicator_progress').select('*')),
       supabase.from('v_result_narratives').select('*'),
       supabase.rpc('list_results_framework_editable_projects'),
+      supabase.from('v_reporting_periods').select('project_id, period_label, period_end'),
     ]).then((responses) => {
       if (!alive) return;
-      const failed = responses.slice(0, 6).find((r) => r.error);
+      const failed = [...responses.slice(0, 6), responses[7]].find((r) => r.error);
       if (failed?.error) throw failed.error;
       const [projects, nodes, indicators, targets, progress, narratives] = responses.slice(0, 6).map((r) => r.data || []);
-      setData({ projects, nodes, indicators, targets, progress, narratives });
+      setData({ projects, nodes, indicators, targets, progress: withReportingDates(progress, responses[7].data || []), narratives });
 
       const permission = responses[6];
       setEditableIds(new Set(permission.error ? [] : (permission.data || []).map((r) => r.project_id)));
@@ -146,11 +150,11 @@ export default function ResultsWorkspace({ user }) {
       }
     });
     return () => { alive = false; };
-  }, [i18n.resolvedLanguage, reloadKey, user?.id]);
+  }, [i18n.resolvedLanguage, reloadKey, user?.id, liveRevision]);
 
   const nodesById = useMemo(() => new Map(data.nodes.map((r) => [r.id, r])), [data.nodes]);
   const targetsByIndicator = useMemo(() => targetLookup(data.targets), [data.targets]);
-  const latestProgress = useMemo(() => latestBy(data.progress, 'indicator_id', (r) => r.date_reported || r.created_at || ''), [data.progress]);
+  const latestProgress = useMemo(() => latestReportedBy(data.progress, 'indicator_id'), [data.progress]);
   const narrativeByProgress = useMemo(() => new Map(data.narratives.map((r) => [r.indicator_progress_id, r])), [data.narratives]);
 
   const rows = useMemo(() => {
@@ -330,6 +334,7 @@ export default function ResultsWorkspace({ user }) {
     const schedule = row.progress.schedule_status || 'on_schedule';
     return <div className="rf2-status-stack">
       <span className={`rf2-pill ${performance}`}>{performance.replaceAll('_', ' ')}</span>
+      <span className="rf2-pill neutral">{row.progress.review_status || 'Unreviewed'}</span>
       {schedule === 'delayed' && <span className="rf2-pill delayed">Delayed</span>}
     </div>;
   };

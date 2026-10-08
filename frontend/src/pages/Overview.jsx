@@ -1,3 +1,4 @@
+import { toVuv, sumReported } from '../lib/docc/currency';
 // =============================================================================
 // Overview.jsx — MERL Project Portfolio Dashboard (Executive Overview)
 //
@@ -29,6 +30,8 @@ import KpiCard from '../components/ui/KpiCard';
 import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
+import { latestReportedBy, withReportingDates, portfolioProgress } from '../lib/docc/progressSelection';
+import { useLiveDashboard } from '../lib/useLiveDashboard';
 import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
 
 const C = {
@@ -88,6 +91,7 @@ export default function Overview({ user }) {
   const nav = useNavigate();
   const { filters, setFilter, reset, active } = useDashboardFilters();
 
+  const liveRevision = useLiveDashboard();
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -122,13 +126,13 @@ export default function Overview({ user }) {
         ));
 
         const responses = await Promise.all([
-          q('v_projects', 'id, code, name, status, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
-          q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, created_at'),
+          q('v_projects', 'id, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
+          q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, reporting_period, created_at, updated_at'),
           q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
           q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
           q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
           q('v_project_indicators', 'project_id, id'),
-          q('v_indicator_progress', 'project_id, indicator_id, achievement_pct, performance_status, reporting_period, created_at'),
+          q('v_indicator_progress', 'id, project_id, indicator_id, achievement_pct, performance_status, review_status, reporting_period, date_reported, created_at, updated_at'),
           q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
           supabase.from('v_project_organizations').select('project_id, role, name'),
           supabase.from('v_project_area_councils').select('project_id, province_code, area_council_name, coverage_status, feasibility_status'),
@@ -161,7 +165,7 @@ export default function Overview({ user }) {
     })();
 
     return () => { mounted = false; };
-  }, [lang, reloadKey]);
+  }, [lang, reloadKey, liveRevision]);
 
   if (loadError) {
     return <BackendError onRetry={() => setReloadKey((n) => n + 1)} />;
@@ -232,7 +236,7 @@ export default function Overview({ user }) {
   const latestPeriodEnd = matchingPeriodRows.map((r) => r.period_end).filter(Boolean).sort().at(-1) || null;
   const currentPeriodRows = latestPeriodEnd ? matchingPeriodRows.filter((r) => r.period_end === latestPeriodEnd) : [];
   const currentPeriodLabel = currentPeriodRows[0]?.period_label || 'No reporting period';
-  const periodProgressValues = currentPeriodRows.map((r) => Number(r.progress_pct)).filter(Number.isFinite);
+  const periodProgressValues = currentPeriodRows.filter(r => r.progress_pct != null).map((r) => Number(r.progress_pct)).filter(Number.isFinite);
   const periodPortfolioProgress = periodProgressValues.length
     ? Math.round(periodProgressValues.reduce((a,b) => a+b,0) / periodProgressValues.length)
     : null;
@@ -254,37 +258,16 @@ export default function Overview({ user }) {
     else if (status !== 'cancelled') counts.active += 1;
     return counts;
   }, { active: 0, planned: 0 });
-  const latestFinance = new Map();
-  for (const row of financial) {
-    const prev = latestFinance.get(row.project_id);
-    if (!prev || (row.created_at ?? '') > (prev.created_at ?? '')) {
-      latestFinance.set(row.project_id, row);
-    }
-  }
-  const totalBudget = sum(projects, (p) => p.budget_vuv);
-  const totalExpenditure = [...latestFinance.values()]
-    .reduce((a, f) => a + (Number(f.cumulative_expenditure) || 0), 0);
-  const budgetUtilisation = totalBudget ? Math.round((totalExpenditure / totalBudget) * 100) : 0;
+  const latestFinance = latestReportedBy(withReportingDates(financial, reporting), 'project_id');
+  const totalBudget = sumReported(projects.map(p => toVuv(p.budget_vuv, p.currency)));
+  const reportedExpenditure = [...latestFinance.values()].filter(row => row.cumulative_expenditure != null);
+  const totalExpenditure = reportedExpenditure.length ? sumReported(reportedExpenditure.map(row => toVuv(row.cumulative_expenditure, projects.find(p => p.id === row.project_id)?.currency))) : null;
+  const budgetUtilisation = totalBudget && totalExpenditure != null ? Math.round(totalExpenditure / totalBudget * 100) : null;
+  const datedProgress = withReportingDates(progress, reporting);
+  const latestProgress = latestReportedBy(datedProgress);
+  const overallProgress = portfolioProgress(datedProgress);
 
-  // Latest recorded result per indicator. This keeps the headline result from
-  // overweighting indicators that have more historical reporting periods.
-  const latestProgress = new Map();
-  for (const row of progress) {
-    const prev = latestProgress.get(row.indicator_id);
-    const rank = row.created_at ?? row.reporting_period ?? '';
-    const prevRank = prev?.created_at ?? prev?.reporting_period ?? '';
-    if (!prev || rank > prevRank) latestProgress.set(row.indicator_id, row);
-  }
-
-  const latestAchievement = indicators
-    .map((ind) => latestProgress.get(ind.id)?.achievement_pct)
-    .filter((v) => v != null)
-    .map(Number);
-  const overallProgress = latestAchievement.length
-    ? Math.round(latestAchievement.reduce((a, b) => a + b, 0) / latestAchievement.length)
-    : null;
-
-  const indicatorStatus = { on_track: 0, attention_required: 0, off_track: 0, no_data: 0 };
+  const indicatorStatus = { on_track: 0, target_achieved: 0, attention_required: 0, at_risk: 0, off_track: 0, no_data: 0 };
   for (const ind of indicators) {
     const key = latestProgress.get(ind.id)?.performance_status || 'no_data';
     indicatorStatus[key in indicatorStatus ? key : 'no_data'] += 1;
@@ -292,7 +275,7 @@ export default function Overview({ user }) {
 
   // Reduced per project under the shared double-counting rule, so this KPI
   // agrees with the per-project figure on Project Analysis.
-  const totalBeneficiaries = portfolioBeneficiaries(beneficiaries) ?? 0;
+  const totalBeneficiaries = portfolioBeneficiaries(beneficiaries);
   const hasField = (field) => beneficiaries.some((b) => b[field] != null);
   const fieldSum = (field) => hasField(field)
     ? beneficiaries.reduce((a, b) => a + (b[field] != null ? Number(b[field]) : 0), 0)
@@ -308,9 +291,8 @@ export default function Overview({ user }) {
   const atRiskProjects = portfolioStatus.filter((r) => r.performance_status === 'at_risk').length;
   const delayedProjects = portfolioStatus.filter((r) => r.schedule_status === 'delayed').length;
 
-  const approvedDates = reporting
-    .filter((r) => r.submission_status === 'approved')
-    .map((r) => r.approved_at || r.period_end)
+  const approvedDates = [...latestProgress.values()]
+    .map((r) => r.period_end || r.date_reported)
     .filter(Boolean)
     .sort();
   const dataAsAt = approvedDates.length
@@ -319,13 +301,13 @@ export default function Overview({ user }) {
 
   const now = todayIso();
   const overdueActivities = activities.filter((a) => (
-    a.status !== 'completed' && a.planned_end_date && a.planned_end_date.slice(0, 10) < now
+    !['completed', 'cancelled'].includes(a.status) && a.planned_end_date && a.planned_end_date.slice(0, 10) < now
   )).length;
   const overdueReports = reporting.filter((r) => (
     r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < now
   )).length;
   const awaitingReview = reporting.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).length;
-  const offTrackIndicators = indicatorStatus.off_track;
+  const offTrackIndicators = indicatorStatus.off_track + indicatorStatus.at_risk + indicatorStatus.attention_required;
 
   const frenchAssurance = lang?.startsWith('fr');
   // Transparent data-quality checks over the filtered portfolio; these indicate missing records, not delivery performance.
@@ -390,6 +372,7 @@ export default function Overview({ user }) {
         <div>
           <h1>{t('overview.title')}</h1>
           <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
+          {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
         </div>
         <div className="ovx-heading-actions">
           {canPublishPublic && <button type="button" className="ovx-publish"
@@ -443,8 +426,8 @@ export default function Overview({ user }) {
         <KpiCard
           className="ovx-kpi ovx-kpi-budget"
           label="Budget Utilisation"
-          value={`${budgetUtilisation}%`}
-          sub={`${fmtVUV(totalExpenditure)} spent`}
+          value={budgetUtilisation == null ? '—' : `${budgetUtilisation}%`}
+          sub={totalExpenditure == null ? 'No financial update reported' : `${fmtVUV(totalExpenditure)} spent`}
           progress={budgetUtilisation}
           progressColor={C.amber}
           linkLabel="View reports"
@@ -453,7 +436,7 @@ export default function Overview({ user }) {
         <KpiCard
           className="ovx-kpi ovx-kpi-beneficiaries"
           label="Beneficiaries Reached"
-          value={fmtNum(totalBeneficiaries)}
+          value={totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries)}
           sub={genderSummary || 'Latest approved beneficiary records'}
           linkLabel="View project analysis"
           onClick={() => nav('/analytics/project')}

@@ -14,6 +14,8 @@ import { supabase } from '../supabaseClient';
 import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
+import { compareReportedRows, latestReportedBy, withReportingDates } from '../lib/docc/progressSelection';
+import { useLiveDashboard } from '../lib/useLiveDashboard';
 import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime, fmtNum } from '../lib/locale';
@@ -65,11 +67,7 @@ const projectExpenditureValue = (project, financial) => {
   if (Number(project?.spent_vuv) > 0) return project?.spent_vuv;
   return null;
 };
-function latestByProject(rows) {
-  const m = new Map();
-  for (const r of rows) { const p = m.get(r.project_id); if (!p || (r.created_at ?? '') > (p.created_at ?? '')) m.set(r.project_id, r); }
-  return m;
-}
+function latestByProject(rows) { return latestReportedBy(rows, 'project_id'); }
 
 const isOfficialProject = (project) => project?.code !== 'AUDIT-2026'
   && !/non-production staging|do not use for official reporting/i.test(project?.description || '');
@@ -119,6 +117,7 @@ const reportBlocks = () => {
 export default function Reports() {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
+  const liveRevision = useLiveDashboard();
   const [d, setD] = useState(null);
   const [type, setType] = useState('full_me');
   const [projectId, setProjectId] = useState('');
@@ -175,16 +174,16 @@ export default function Reports() {
         return;
       }
       setD({
-        projects: proj.data ?? [], financial: fin.data ?? [], risks: risk.data ?? [],
+        projects: proj.data ?? [], financial: withReportingDates(fin.data ?? [], rep.data ?? []), risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
-        progress: prog.data ?? [], reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
+        progress: withReportingDates(prog.data ?? [], rep.data ?? []), reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [], narratives: narr.data ?? [],
-        portfolioStatus: status.data ?? [], learning: learn.data ?? [], evidence: evidence.data ?? [],
+        portfolioStatus: status.data ?? [], learning: withReportingDates(learn.data ?? [], rep.data ?? []), evidence: evidence.data ?? [],
       });
-      if ((proj.data ?? []).length) setProjectId(proj.data[0].id);
+      if ((proj.data ?? []).length) setProjectId(current => current || proj.data[0].id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+  }, [lang, liveRevision]);
 
   if (dataError) return <div className="page-pad"><div role="alert" className="card" style={{ padding: '1rem', color: 'var(--red-700)' }}>{dataError}</div></div>;
   if (!d) return <div className="page-pad"><p style={{ color: 'var(--text-3)' }}>{t('rpt.loading')}</p></div>;
@@ -572,7 +571,7 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
         const projectAreas = areas.filter((row) => row.project_id === project.id);
         const projectEvidence = evidence.filter((row) => row.project_id === project.id);
         const projectBeneficiaries = beneficiaries.filter((row) => row.project_id === project.id);
-        const learning = d.learning.filter((row) => row.project_id === project.id && inOfficialScope(row)).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0] || {};
+        const learning = d.learning.filter((row) => row.project_id === project.id && inOfficialScope(row)).sort((a, b) => compareReportedRows(b, a))[0] || {};
         const financeRecord = financial.get(project.id);
         const budget = projectBudgetValue(project, financeRecord);
         const expenditure = projectExpenditureValue(project, financeRecord);
@@ -583,7 +582,7 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
           <Narr text={project.description || project.objective} />
           <table className="rp-t"><thead><tr><th>Code</th><th>Result level</th><th>Expected result</th></tr></thead><tbody>{projectNodes.map((row) => <tr key={row.id}><td>{row.node_code || '—'}</td><td>{humanToken(row.node_type)}</td><td>{row.title}</td></tr>)}{projectNodes.length === 0 && <tr><td colSpan={3}>Not reported</td></tr>}</tbody></table>
           <h4>Indicator results</h4>
-          <table className="rp-t"><thead><tr><th>Indicator</th><th>Baseline</th><th>Target</th><th>Current result</th><th>Achievement</th></tr></thead><tbody>{projectIndicators.map((indicator) => { const latest = projectProgress.filter((row) => row.indicator_id === indicator.id).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]; return <tr key={indicator.id}><td>{indicator.code} — {indicator.name}</td><td>{indicator.baseline_value ?? 'Not reported'}</td><td>{indicator.target_value ?? 'Not reported'}</td><td>{latest?.cumulative_actual ?? 'Not reported'}</td><td>{fmtPct(latest?.achievement_pct)}</td></tr>; })}{projectIndicators.length === 0 && <tr><td colSpan={5}>Not reported</td></tr>}</tbody></table>
+          <table className="rp-t"><thead><tr><th>Indicator</th><th>Baseline</th><th>Target</th><th>Current result</th><th>Achievement</th></tr></thead><tbody>{projectIndicators.map((indicator) => { const latest = latestReportedBy(projectProgress).get(indicator.id); return <tr key={indicator.id}><td>{indicator.code} — {indicator.name}</td><td>{indicator.baseline_value ?? 'Not reported'}</td><td>{indicator.target_value ?? 'Not reported'}</td><td>{latest?.cumulative_actual ?? 'Not reported'}</td><td>{fmtPct(latest?.achievement_pct)}</td></tr>; })}{projectIndicators.length === 0 && <tr><td colSpan={5}>Not reported</td></tr>}</tbody></table>
           <h4>Activity implementation</h4>
           <table className="rp-t"><thead><tr><th>Activity</th><th>Status</th><th>Progress</th><th>Planned budget</th><th>Expenditure</th></tr></thead><tbody>{projectActivities.map((row) => <tr key={row.id || row.code}><td>{row.code ? `${row.code} — ` : ''}{row.name}</td><td>{humanToken(row.status)}</td><td>{row.physical_progress_pct == null ? 'Not reported' : `${row.physical_progress_pct}%`}</td><td>{knownOrMissing(row.planned_budget)}</td><td>{knownOrMissing(row.actual_expenditure)}</td></tr>)}{projectActivities.length === 0 && <tr><td colSpan={5}>Not reported</td></tr>}</tbody></table>
           <h4>Achievements and major results</h4><Narr text={[learning.key_achievements, learning.major_results].filter(Boolean).join('\n\n')} />
@@ -613,12 +612,12 @@ function ProjectProgress({ d, projectId, period, periodType }) {
   const risks = d.risks.filter((r) => r.project_id === projectId);
   const locs = d.areaCouncils.filter((l) => l.project_id === projectId);
   const bens = d.beneficiaries.filter((b) => b.project_id === projectId && inScope(b));
-  const learn = d.learning.filter((l) => l.project_id === projectId && inScope(l)).sort((a, b) => (b.reporting_period ?? '').localeCompare(a.reporting_period ?? ''))[0] || {};
+  const learn = d.learning.filter((l) => l.project_id === projectId && inScope(l)).sort((a, b) => compareReportedRows(b, a))[0] || {};
   const budget = projectBudgetValue(p, fin);
   const exp = projectExpenditureValue(p, fin);
   const physAvg = acts.filter((a) => a.physical_progress_pct != null);
   const phys = physAvg.length ? Math.round(physAvg.reduce((a, x) => a + Number(x.physical_progress_pct), 0) / physAvg.length) : null;
-  const indLast = (i) => prog.filter((x) => x.indicator_id === i.id).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0];
+  const indLast = (i) => latestReportedBy(prog).get(i.id);
 
   return <div>
     <h2>{t('rpt.projectProgressReport')}</h2><div className="rp-muted">{p.code} — {p.name}{period ? ` · ${period}` : ''}</div>

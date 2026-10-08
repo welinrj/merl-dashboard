@@ -1,3 +1,4 @@
+import { reportedAchievement } from './progressSelection';
 // Pure selectors for report previews. No database writes and no fabricated values.
 const rows = (value) => Array.isArray(value) ? value : [];
 const stamp = (r) => r.updated_at || r.created_at || '';
@@ -56,10 +57,7 @@ export function indicatorReportValue(indicator, progress) {
   if (!progress) return { actual: null, cumulative: null, percentage: null, status: 'no_data' };
   const actual = progress.actual_this_period ?? null;
   const cumulative = progress.cumulative_actual ?? null;
-  const quantitative = indicator.is_qualitative === false && indicator.higher_is_better === true;
-  const valid = (v) => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
-  const percentage = quantitative && valid(cumulative) && valid(indicator.target_value) && Number(indicator.target_value) !== 0
-    ? Math.round(Number(cumulative) / Number(indicator.target_value) * 1000) / 10 : null;
+  const percentage = reportedAchievement(indicator, progress);
   return { actual, cumulative, percentage, status: progress.performance_status || 'no_data' };
 }
 

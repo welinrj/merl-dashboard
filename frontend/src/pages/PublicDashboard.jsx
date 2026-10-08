@@ -161,7 +161,7 @@ function ProjectCard({ project, areas, copy, lang }) {
       <div><dt>{copy.implementation}</dt><dd>{places.length ? places.join(', ') : copy.unknown}</dd></div>
       <div><dt>{copy.budget}</dt><dd>{recordedMoney(project.budget_vuv, project.currency, lang, copy.unknown)}</dd></div>
       <div><dt>{copy.spent}</dt><dd>{recordedMoney(project.cumulative_expenditure_vuv, project.currency, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
-      <div><dt>{copy.reached}</dt><dd>{project.last_published_period ? num(project.published_beneficiaries, lang) : copy.noFinance}</dd></div>
+      <div><dt>{copy.reached}</dt><dd>{project.published_beneficiaries != null ? num(project.published_beneficiaries, lang) : copy.noFinance}</dd></div>
       <div><dt>{copy.theme}</dt><dd>{themeOf(project) || copy.unknown}</dd></div>
     </dl>
     {project.expected_primary_outcome && <div className="pbd-project-outcome"><strong>{copy.outcome}</strong><p>{project.expected_primary_outcome}</p></div>}
@@ -284,7 +284,7 @@ export default function PublicDashboard() {
             <Metric label={c.projects} value={num(filtered.length, lang)} detail={c.projectCount} tone="projects" />
             <Metric label={c.funding} value={fundingTotal} detail={c.fundingSub} tone="funding" />
             <Metric label={c.utilised} value={utilisedTotal} detail={c.utilisedSub} tone="utilised" />
-            <Metric label={c.beneficiaries} value={num(totals.beneficiaries, lang)} detail={c.beneficiariesSub} tone="beneficiaries" />
+            <Metric label={c.beneficiaries} value={totals.beneficiaries == null ? c.noFinance : num(totals.beneficiaries, lang)} detail={c.beneficiariesSub} tone="beneficiaries" />
             <Metric label={c.utilisation} value={pct(comparableUtilisation)} detail={c.utilisationSub} tone="rate" />
           </section>
 

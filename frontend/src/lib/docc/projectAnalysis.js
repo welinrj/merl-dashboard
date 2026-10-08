@@ -19,6 +19,7 @@
 // The health thresholds are the ones specified for the module and are grouped
 // in HEALTH_RULES so they can be changed in one place.
 // =============================================================================
+import { latestReportedBy, withReportingDates, reportedAchievement, compareReportedRows } from './progressSelection';
 import {
   achievementPct, utilisationPct, remainingBalance,
   PERFORMANCE_THRESHOLDS,
@@ -228,22 +229,10 @@ export function indicatorStatus(indicator, progressRow, asOf = startOfToday()) {
     return { status: 'no_data', pct: null };
   }
 
-  const periodTarget = num(progressRow.period_target);
-  const actualThis = num(progressRow.actual_this_period);
-  const cumulative = num(progressRow.cumulative_actual);
-  const finalTarget = num(progressRow.final_target) ?? num(indicator?.target_value);
-
-  // Period target first: judge the period that was reported on.
-  let pct = null;
-  if (isNum(periodTarget) && periodTarget !== 0 && isNum(actualThis)) {
-    pct = achievementPct(actualThis, periodTarget);
-  } else if (isNum(cumulative) && isNum(finalTarget) && finalTarget !== 0) {
-    pct = achievementPct(cumulative, finalTarget);
-  } else if (isNum(num(progressRow.achievement_pct))) {
-    pct = num(progressRow.achievement_pct);
-  }
-
+  const pct = reportedAchievement(indicator, progressRow);
   if (!isNum(pct)) return { status: 'no_data', pct: null };
+  if (['attention_required', 'at_risk', 'off_track'].includes(progressRow.performance_status)) return { status: 'below_target', pct };
+  if (progressRow.performance_status === 'on_track') return { status: 'on_track', pct };
   if (pct >= 100) return { status: 'achieved', pct };
   if (pct >= PERFORMANCE_THRESHOLDS.onTrack) return { status: 'on_track', pct };
   return { status: 'below_target', pct };
@@ -255,16 +244,7 @@ export function indicatorStatus(indicator, progressRow, asOf = startOfToday()) {
  * progress row for each indicator is used.
  */
 export function resultsPerformance(indicators = [], progress = [], period = '', asOf = startOfToday()) {
-  const byIndicator = new Map();
-  for (const p of progress) {
-    if (period && p.reporting_period !== period) continue;
-    const prev = byIndicator.get(p.indicator_id);
-    // Newest wins when no period is pinned; created_at is the only ordering the
-    // rows reliably carry.
-    if (!prev || new Date(p.created_at ?? 0) > new Date(prev.created_at ?? 0)) {
-      byIndicator.set(p.indicator_id, p);
-    }
-  }
+  const byIndicator = latestReportedBy(progress.filter(row => !period || row.reporting_period === period), 'indicator_id', { includeDraft: Boolean(period) });
 
   const rows = indicators.map((ind) => {
     const row = byIndicator.get(ind.id) ?? null;
@@ -292,9 +272,9 @@ export function resultsPerformance(indicators = [], progress = [], period = '', 
 // Financial
 // =============================================================================
 
-/** Financial rows in reporting order — created_at is the only reliable one. */
+/** Financial rows in reporting order; later backfills do not supersede newer periods. */
 export const orderedFinancial = (financial = []) =>
-  [...financial].sort((a, b) => new Date(a.created_at ?? 0) - new Date(b.created_at ?? 0));
+  [...financial].sort(compareReportedRows);
 
 /**
  * The project's financial position.
@@ -666,8 +646,8 @@ export function analyseProject(d, period = '', asOf = new Date()) {
 
   const buckets = activityBuckets(activities, today);
   const implementation = implementationProgress(activities);
-  const results = resultsPerformance(indicators, d.progress ?? [], period, today);
-  const financial = financialSummary(project, d.financial ?? [], asOf);
+  const results = resultsPerformance(indicators, withReportingDates(d.progress ?? [], d.periods ?? []), period, today);
+  const financial = financialSummary(project, withReportingDates((d.financial ?? []).filter(row => !period || row.reporting_period === period), d.periods ?? []), asOf);
   const beneficiaries = beneficiarySummary(project, d.beneficiaries ?? [], period);
   const risks = riskSummary(d.risks ?? [], today);
   const reporting = reportingCompliance(d.periods ?? [], today);

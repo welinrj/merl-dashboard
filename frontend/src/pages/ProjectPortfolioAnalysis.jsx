@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts';
+import { useLiveDashboard } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import { localised, i18nCols } from '../lib/contentLocale';
 import { dbErrorMessage } from '../lib/dbError';
@@ -531,6 +532,7 @@ const EMPTY = {
 };
 
 export default function ProjectPortfolioAnalysis() {
+  const liveRevision = useLiveDashboard();
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const navigate = useNavigate();
@@ -621,7 +623,7 @@ export default function ProjectPortfolioAnalysis() {
         + 'is_qualitative, higher_is_better, direction, aggregation_method, progress_method, '
         + 'official_reporting_frequency, is_featured_kpi, kpi_label, kpi_order'),
       progress: scoped('v_indicator_progress',
-        'id, indicator_id, reporting_period, period_target, actual_this_period, cumulative_actual, '
+        'id, project_id, indicator_id, review_status, date_reported, reporting_period, period_target, actual_this_period, cumulative_actual, '
         + 'final_target, achievement_pct, performance_status, narrative, created_at, updated_at'),
       financial: scoped('v_financial_progress',
         'id, reporting_period, approved_budget, period_budget, expenditure_period, cumulative_expenditure, '
@@ -659,7 +661,7 @@ export default function ProjectPortfolioAnalysis() {
     setLoading(false);
   }, [t]);
 
-  useEffect(() => { load(projectId); }, [projectId, lang]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(projectId); }, [projectId, lang, liveRevision]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── The analysis ───────────────────────────────────────────────────────────
   const a = useMemo(() => analyseProject(d, period), [d, period]);
@@ -753,144 +755,7 @@ export default function ProjectPortfolioAnalysis() {
 
   if (projectsError) {
     return (
-      <div className="page-pad">
-        <PageHeader title={t('ppa.title')} />
-        <SectionCard>
-          <EmptyState title={t('ppa.projectsFailed')} description={projectsError}
-            action={(
-              <button type="button" className="btn-secondary" onClick={loadProjects}
-                style={{ padding: '0.4rem 0.8rem', borderRadius: 'var(--radius-control)', fontWeight: 700, cursor: 'pointer' }}>
-                {t('ppa.retry')}
-              </button>
-            )} />
-        </SectionCard>
-      </div>
-    );
-  }
-
-  if (!projectId) {
-    return (
-      <div className="page-pad">
-        <PageHeader title={t('ppa.title')} />
-        {picker}
-        <div style={{ marginTop: '1rem' }}>
-          <SectionCard>
-            <EmptyState
-              title={t('ppa.chooseTitle')}
-              description={projectsLoading ? t('ui.loading')
-                : projects.length === 0 ? t('ppa.noProjectsVisible') : t('ppa.chooseText')} />
-          </SectionCard>
-        </div>
-      </div>
-    );
-  }
-
-  const periodLabel = period || t('ppa.cumulativeTotal');
-
-  return (
-    <div className="page-pad">
-      {/* Printed only: the report has to identify itself away from the screen. */}
-      <div className="ppa-printhead" style={{ display: 'none' }}>
-        <h1>{t('ppa.reportTitle')}</h1>
-        <p>
-          {project ? `${project.code} — ${project.name}` : ''}<br />
-          {t('ppa.reportPeriod', { period: periodLabel })}<br />
-          {t('ppa.reportGenerated', { date: fmtDate(new Date()) })}
-        </p>
-      </div>
-
-      <PageHeader title={t('ppa.title')} />
-      {picker}
-
-      {busy ? (
-        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <SkeletonCard /><SkeletonCard />
-        </div>
-      ) : !project ? (
-        <div style={{ marginTop: '1rem' }}>
-          <SectionCard>
-            <EmptyState title={t('ppa.projectMissing')} description={errors.project ?? t('ppa.projectMissingText')}
-              action={(
-                <button type="button" className="btn-secondary" onClick={() => load(projectId)}
-                  style={{ padding: '0.4rem 0.8rem', borderRadius: 'var(--radius-control)', fontWeight: 700, cursor: 'pointer' }}>
-                  {t('ppa.retry')}
-                </button>
-              )} />
-          </SectionCard>
-        </div>
-      ) : (
-        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-          {/* 3 — project identification */}
-          <div className="card" style={{ padding: '0.9rem 1.1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.85rem' }}>
-              <Field label={t('ppa.projectName')} value={project.name} />
-              <Field label={t('ppa.projectCode')} value={project.code} />
-              <Field label={t('ppa.donor')} value={project.donor} />
-              <Field label={t('ppa.implementing')} value={project.executing_agency || project.lead_agency} />
-              <Field label={t('ppa.startDate')} value={project.start_date ? fmtDate(project.start_date) : null} />
-              <Field label={t('ppa.endDate')} value={project.end_date ? fmtDate(project.end_date) : null} />
-              <Field label={t('ppa.status')} value={<StatusBadge status={project.status} />} />
-              <Field label={t('ppa.manager')} value={project.project_manager_name} />
-            </div>
-          </div>
-
-          {/* 4 — executive KPIs. Each jumps to the section that explains it. */}
-          <div className="grid-kpi-6">
-            <button type="button" onClick={() => jump('ppa-health')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiHealth')} status={tile(a.health.status)}
-                value={t(`ppa.health_${a.health.status}`)}
-                sub={t('ppa.kpiHealthSub')} />
-            </button>
-            <button type="button" onClick={() => jump('ppa-financial')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiBudget')} status={tile(a.dimensions.financial.status)}
-                value={typeof a.financial.utilisationPct === 'number' ? fmtPct(a.financial.utilisationPct) : t('ppa.notReported')}
-                placeholder={typeof a.financial.utilisationPct !== 'number'}
-                sub={a.financial.hasRecords
-                  ? t('ppa.kpiBudgetSub', { spent: fmtAmount(a.financial.spent), budget: fmtAmount(a.financial.approved) })
-                  : t('ppa.noFinancialRecords')} />
-            </button>
-            <button type="button" onClick={() => jump('ppa-implementation')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiImplementation')} status={tile(a.dimensions.schedule.status)}
-                value={typeof a.implementation.pct === 'number' ? fmtPct(a.implementation.pct) : t('ppa.notReported')}
-                placeholder={typeof a.implementation.pct !== 'number'}
-                sub={a.implementation.basis === 'physical'
-                  ? t('ppa.basisPhysical', { counted: a.implementation.counted, total: a.implementation.total })
-                  : a.implementation.basis === 'status'
-                    ? t('ppa.basisStatus', { counted: a.implementation.counted, total: a.implementation.total })
-                    : t('ppa.noActivities')} />
-            </button>
-            <button type="button" onClick={() => jump('ppa-results')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiResults')} status={tile(a.dimensions.results.status)}
-                value={typeof a.results.achievementPct === 'number' ? fmtPct(a.results.achievementPct) : t('ppa.notReported')}
-                placeholder={typeof a.results.achievementPct !== 'number'}
-                sub={a.results.due > 0
-                  ? t('ppa.kpiResultsSub', { meeting: a.results.meeting, due: a.results.due })
-                  : t('ppa.noIndicatorsDue')} />
-            </button>
-            <button type="button" onClick={() => jump('ppa-timeline')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiTime')} status="none"
-                value={typeof a.timeElapsedPct === 'number' ? fmtPct(a.timeElapsedPct) : t('ppa.notReported')}
-                placeholder={typeof a.timeElapsedPct !== 'number'}
-                sub={project.end_date ? t('ppa.kpiTimeSub', { date: fmtDate(project.end_date) }) : t('ppa.noDates')} />
-            </button>
-            <button type="button" onClick={() => jump('ppa-beneficiaries')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiBeneficiaries')} status="none"
-                value={a.beneficiaries.reached != null ? fmtNum(a.beneficiaries.reached) : t('ppa.notReported')}
-                placeholder={a.beneficiaries.reached == null}
-                sub={a.beneficiaries.target != null
-                  ? t('ppa.kpiBeneficiariesSub', { target: fmtNum(a.beneficiaries.target) })
-                  : t('ppa.noBeneficiaryTarget')} />
-            </button>
-          </div>
-
-          {d.kpiConfig.length > 0 && (
-            <Section title="Project Result KPIs" description="Featured indicators configured from this project's official results framework.">
-              <div className="grid-kpi-6">
-                {[...d.kpiConfig].sort((a,b) => a.display_order - b.display_order).map((cfg) => {
-                  const entry = a.results.rows.find((r) => r.indicator.id === cfg.indicator_id);
-                  if (!entry) return null;
-                  const actual = entry.progress?.cumulative_actual ?? entry.progress?.actual_this_period;
+ …1939 tokens truncated…ogress?.actual_this_period;
                   const target = entry.progress?.final_target ?? entry.indicator.target_value;
                   return (
                     <button type="button" key={cfg.id} onClick={() => setIndicator(entry)} className="kpi-jump">
