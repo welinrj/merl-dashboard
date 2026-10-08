@@ -126,7 +126,7 @@ for (const role of ROLES) {
     assert.equal(ctx.frameworkWrites.at(-1).args.p_changes.indicator.name,`Updated indicator by ${role}`);
     assert.equal(ctx.frameworkWrites.at(-1).args.p_changes.targets,undefined);
     await page.setViewportSize({width:390,height:664});
-    await page.getByRole('button',{name:'Edit Project objective: OBJ',exact:true}).first().click();
+    await page.getByRole('button',{name:'Edit Project objective / strategic results: OBJ',exact:true}).first().click();
     await dialog.getByLabel('Content').fill(`Updated objective by ${role}`);
     await saveButton.click();
     await dialog.waitFor({state:'hidden'});
