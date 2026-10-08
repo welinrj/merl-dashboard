@@ -1,3 +1,4 @@
+import { officialPortfolioData } from '../lib/docc/projectScope';
 // =============================================================================
 // Reports.jsx — DoCC MERL report generators, built directly from the
 // standardised dataset (the "REPORT" end of ENTER ONCE -> STORE -> DISPLAY ->
@@ -173,14 +174,14 @@ export default function Reports() {
         setDataError(`The report could not load live data for: ${failures.join(', ')}. No report has been generated. Please retry after the data service is available.`);
         return;
       }
-      setD({
+      setD(officialPortfolioData({
         projects: proj.data ?? [], financial: withReportingDates(fin.data ?? [], rep.data ?? []), risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
         progress: withReportingDates(prog.data ?? [], rep.data ?? []), reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [], narratives: narr.data ?? [],
         portfolioStatus: status.data ?? [], learning: withReportingDates(learn.data ?? [], rep.data ?? []), evidence: evidence.data ?? [],
-      });
-      if ((proj.data ?? []).length) setProjectId(current => current || proj.data[0].id);
+      }));
+      if ((proj.data ?? []).length) setProjectId(current => current || officialPortfolioData({ projects: proj.data ?? [] }).projects[0]?.id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang, liveRevision]);

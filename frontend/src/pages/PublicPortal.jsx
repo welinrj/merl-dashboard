@@ -86,7 +86,7 @@ export default function PublicPortal() {
   const featured = useMemo(() => [...projects].sort((a,b) => (b.progress_pct ?? -1) - (a.progress_pct ?? -1)).slice(0,6), [projects]);
   const published = featured.filter((p) => p.progress_pct != null);
   const heroStats = [
-    [summary?.project_count ?? '—', c.projectsLabel],
+    [projects.length || (summary ? 0 : '—'), `${c.projectsLabel} (${lang === 'fr' ? 'tous les projets enregistrés' : 'all registered projects'})`],
     [summary?.overall_progress_pct != null ? `${Math.round(summary.overall_progress_pct)}%` : '—', c.progress],
     [summary ? fmtNum(summary.published_beneficiaries) : '—', c.people],
     [summary ? fmtVuv(summary.total_investment_vuv) : '—', c.investment],

@@ -75,7 +75,7 @@ test('selecting a reporting period scopes finance as well as results', () => {
 
 test('published project updates take precedence over old hardcoded profile values', () => {
   const project = { code: '24B298', budget_vuv: 300000000, currency: 'VUV', project_manager: 'Updated manager', primary_climate_theme: 'Updated theme' };
-  assert.deepEqual(enrichPublishedProject(project), { ...project, coverage_type: 'national' });
+  assert.deepEqual(enrichPublishedProject(project), project);
 });
 
 import { toVuv, sumReported, recordedExpenditure } from '../src/lib/docc/currency.js';

@@ -1,3 +1,4 @@
+import { officialProjects, currentProjects } from '../lib/docc/projectScope';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
@@ -222,16 +223,16 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
       .select('id,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome')
       .order('code');
     if (pe) { toast.error(dbErrorMessage(pe)); return; }
-    setProjects(ps || []);
+    setProjects(officialProjects(ps || []));
     // Use the controlled national reference list in the UI. The database mirror
     // is maintained by migration, but the dropdown must never fall back to an
     // obsolete starter list if a database migration is temporarily delayed.
     setRefs(OFFICIAL_AREA_COUNCIL_REFS);
     setProjectId((old) => {
       const requested = preferredProjectId || routeProjectId;
-      const preferred = (ps || []).some((p) => p.id === requested) ? requested : '';
-      const existing = (ps || []).some((p) => p.id === old) ? old : '';
-      return preferred || existing || ps?.[0]?.id || '';
+      const preferred = officialProjects(ps || []).some((p) => p.id === requested) ? requested : '';
+      const existing = officialProjects(ps || []).some((p) => p.id === old) ? old : '';
+      return preferred || existing || officialProjects(ps || [])[0]?.id || '';
     });
   }, [preferredProjectId]);
 
@@ -357,6 +358,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     {projectId && <div className="ps-config-grid">
       <div className="ps-config-card">
         <h3>Donors & Partners</h3>
+        <p className="ps-config-note">{projects.length} registered projects · {currentProjects(projects).length} current · {projects.length - currentProjects(projects).length} completed. All registered projects remain available for reporting history.</p>
         <p className="ps-config-note">Donors and partners are stored separately by role so dashboard filters and reports do not mix funding sources with implementing organisations.</p>
         <div className="ps-config-form">
           <label className="full"><span className="field-label">Organization name</span><input className="field-input" value={orgEdit.name} onChange={(e)=>setOrgEdit(s=>({...s,name:e.target.value}))}/></label>

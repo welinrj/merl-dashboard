@@ -1,3 +1,4 @@
+import { officialPortfolioData } from '../lib/docc/projectScope';
 import { toVuv, sumReported, recordedExpenditure } from '../lib/docc/currency';
 // =============================================================================
 // Dashboards.jsx — DoCC MERL dashboards, all derived from the standardised
@@ -89,13 +90,13 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
       const failure = [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs].find(response => response.error);
       if (failure) { setLoadError(failure.error); setLoading(false); return; }
       setLoadError(null);
-      setD({
+      setD(officialPortfolioData({
         projects: proj.data ?? [], financial: withReportingDates(fin.data ?? [], rep.data ?? []), risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
         progress: [...latestReportedBy(withReportingDates(prog.data ?? [], rep.data ?? [])).values()], reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [],
-      });
-      if ((proj.data ?? []).length && !projectId) setProjectId(proj.data[0].id);
+      }));
+      if ((proj.data ?? []).length && !projectId) setProjectId(officialPortfolioData({ projects: proj.data ?? [] }).projects[0]?.id);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,7 +353,7 @@ function Portfolio({ d, onNavigate }) {
         onReset={() => { setFlt({ status: '', theme: '', province: '', donor: '', partner: '', project: '' }); clearHandover(''); }}
       />
       <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', margin: '0.6rem 0' }}>
-        {t('dash.showing')} <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} projects
+        {t('dash.showing')} <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} registered projects (all lifecycle statuses)
       </div>
       <div className="db-kpis">
         <StatTile label={t('dash.totalProjects')} value={m.total} />

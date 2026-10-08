@@ -1,3 +1,4 @@
+import { officialProjects, currentProjects } from '../lib/docc/projectScope';
 import { toVuv, sumReported } from '../lib/docc/currency';
 // =============================================================================
 // Overview.jsx — MERL Project Portfolio Dashboard (Executive Overview)
@@ -173,7 +174,8 @@ export default function Overview({ user }) {
   if (!data) return <OverviewSkeleton />;
   // Completed projects remain in MERL for reporting and audit history, but the
   // live dashboard is intentionally limited to work that has not finished.
-  const unfinishedProjects = data.projects.filter((project) => bucketOf(project.status) !== 'completed');
+  const registeredProjects = officialProjects(data.projects);
+  const unfinishedProjects = currentProjects(registeredProjects);
   if (unfinishedProjects.length === 0) return <EmptyPortfolio />;
 
   const years = [...new Set(
@@ -371,6 +373,7 @@ export default function Overview({ user }) {
       <section className="ovx-heading rp-noprint">
         <div>
           <h1>{t('overview.title')}</h1>
+          <p>{registeredProjects.length} registered · {unfinishedProjects.length} current · {registeredProjects.length - unfinishedProjects.length} completed. Filters apply to current projects.</p>
           <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
           {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
         </div>

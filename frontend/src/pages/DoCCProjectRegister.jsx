@@ -110,7 +110,7 @@ export default function DoCCProjectRegister() {
           <div>
             <div className="docc-register-kicker">Department of Climate Change</div>
             <h1 className="docc-register-title">DoCC Project Register</h1>
-            <p className="docc-register-sub">Complete project-profile information transcribed from the Department's source workbook. Blank source cells are shown as “—”; they are not filled with assumptions.</p>
+            <p className="docc-register-sub">Historical source workbook: this page contains only projects included in that spreadsheet. The live project list includes additional projects and subsequent updates. Blank source cells are shown as “—”; they are not filled with assumptions.</p>
           </div>
           <Link className="docc-register-back" to="/dashboards">← Back to Dashboard</Link>
         </div>
@@ -119,7 +119,7 @@ export default function DoCCProjectRegister() {
         {!error && loading ? <div className="docc-register-empty">Loading DoCC project register…</div> : null}
         {!error && !loading ? <>
           <div className="docc-register-summary">
-            <div className="docc-register-stat"><span>Distinct projects</span><b>{distinctProjects}</b></div>
+            <div className="docc-register-stat"><span>Projects in source workbook</span><b>{distinctProjects}</b></div>
             <div className="docc-register-stat"><span>Source spreadsheet rows</span><b>{rows.length}</b></div>
             <div className="docc-register-stat"><span>Annual budget allocations captured</span><b>{fmtVuv(totalBudget)}</b></div>
           </div>

@@ -1,3 +1,4 @@
+import { officialProjects } from '../lib/docc/projectScope';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -245,7 +246,7 @@ export default function GeographicCoverageExperience() {
       if (!active) return;
       if (p.error) setError(p.error.message);
       else if (l.error) setError(l.error.message);
-      setProjects(p.data || []);
+      setProjects(officialProjects(p.data || []));
       setLocations((l.data || []).map((row) => ({ ...row, province: canonicalProvince(row.province) })));
       setVillages(v.error ? [] : (v.data || []));
       setLoading(false);

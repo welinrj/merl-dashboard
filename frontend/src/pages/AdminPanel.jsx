@@ -1,3 +1,4 @@
+import { officialProjects } from '../lib/docc/projectScope';
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
@@ -301,6 +302,9 @@ function ProjectsTab() {
     budget_vuv: '', status: 'active', provinces: [],
   };
   const [projects, setProjects] = useState([]);
+  const [showTestProjects, setShowTestProjects] = useState(false);
+  const official = officialProjects(projects);
+  const visibleProjects = showTestProjects ? projects : official;
   const [loading, setLoading]   = useState(true);
   const [err, setErr]           = useState('');       // page-level load error
   const [form, setForm]         = useState(EMPTY_FORM);
@@ -387,7 +391,7 @@ function ProjectsTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-base font-bold text-gray-800">
-          {t('adm.projectsCount', { count: projects.length })}{loading && <span className="ml-2 text-xs font-normal text-gray-400">{t('adm.loadingShort')}</span>}
+          {t('adm.projectsCount', { count: visibleProjects.length })}{loading && <span className="ml-2 text-xs font-normal text-gray-400">{t('adm.loadingShort')}</span>}
         </h2>
         <button
           onClick={openAdd}
@@ -567,8 +571,10 @@ function ProjectsTab() {
         </div>
       )}
 
+      <p className="text-sm text-gray-600">{official.length} official registered projects · {projects.length - official.length} test projects excluded from reporting.</p>
+      <label className="text-sm"><input type="checkbox" checked={showTestProjects} onChange={event => setShowTestProjects(event.target.checked)} /> Show test projects</label>
       {/* Projects table */}
-      <AdminDataTable title={t('adm.projects')} rows={projects} loading={loading} selection
+      <AdminDataTable title={t('adm.projects')} rows={visibleProjects} loading={loading} selection
         searchPlaceholder="Search projects…" empty={t('adm.noProjectsAdd')} onRefresh={load}
         filters={[{key:'status',label:t('adm.status'),options:STATUS_OPTIONS.map(s=>({value:s,label:s.charAt(0).toUpperCase()+s.slice(1)}))},{key:'category',label:t('adm.category'),options:CATEGORIES.map(c=>({value:c.id,label:t(c.label)}))}]}
         columns={[
@@ -576,7 +582,7 @@ function ProjectsTab() {
           {key:'code',label:t('adm.code'),render:p=><span className="font-mono text-xs">{p.code}</span>},
           {key:'category',label:t('adm.category'),render:p=><span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">{p.category}</span>},
           {key:'lead_agency',label:t('adm.leadAgency')},
-          {key:'budget_vuv',label:t('adm.budgetVuv'),value:p=>p.budget_vuv==null?null:Number(p.budget_vuv),align:'right',render:p=>p.budget_vuv==null?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(p.budget_vuv)},
+          {key:'budget_vuv',label:'Approved budget (project currency)',value:p=>p.budget_vuv==null?null:Number(p.budget_vuv),align:'right',render:p=>p.budget_vuv==null?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(p.budget_vuv) + ' ' + (p.currency || 'VUV')},
           {key:'provinces',label:t('adm.provinces')},
           {key:'status',label:t('adm.status'),render:p=><span className={`text-xs px-2 py-1 rounded font-semibold ${p.status==='active'?'bg-green-100 text-green-700':p.status==='completed'?'bg-blue-100 text-blue-700':'bg-red-100 text-red-700'}`}>{p.status}</span>},
         ]}
