@@ -8,8 +8,8 @@ test('results workspace uses the table as the single framework editing entry poi
   assert.doesNotMatch(source, />Framework editor</);
   assert.doesNotMatch(source, />\+ Result node</);
   assert.doesNotMatch(source, />\+ Indicator</);
-  assert.match(source, /onClick=\{\(\) => editNode\(node\)\}/);
-  assert.match(source, /onClick=\{\(\) => editIndicator\(row\.indicator\)\}/);
+  assert.match(source, /onClick=\{\(\) => editNode\(node, row\)\}/);
+  assert.match(source, /onClick=\{\(\) => editRow\(row\)\}/);
 });
 
 test('table edit actions open an accessible focused dialog', () => {

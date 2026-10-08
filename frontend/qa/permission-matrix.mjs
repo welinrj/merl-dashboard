@@ -48,7 +48,7 @@ const mkContext = async (role, withSession = true) => {
       const allowed = ['system_admin', 'docc_me_officer'].includes(role);
       return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(allowed ? [{ project_id: 'pa' }, { project_id: 'pb' }] : []) });
     }
-    if (p.endsWith('/rpc/upsert_framework_node') || p.endsWith('/rpc/upsert_project_indicator_v2')) {
+    if (p.endsWith('/rpc/patch_results_framework_node') || p.endsWith('/rpc/patch_results_framework_row')) {
       writes.push({ rpc: p.split('/').at(-1), args: r.request().postDataJSON() });
       return r.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
     }
@@ -56,6 +56,7 @@ const mkContext = async (role, withSession = true) => {
     if (p.startsWith('/rest/v1/')) {
       const rel = p.replace('/rest/v1/', '').split('/')[0];
       let body = T[rel] ?? [];
+      if (rel === 'v_reporting_periods') body = [{ id:'period-1',project_id:'pa',period_label:'Q2 2026',period_end:'2026-06-30' }];
       if (rel === 'v_framework_nodes') body = [
         { id: 'test-objective', project_id: 'pa', node_type: 'project_objective', node_code: 'OBJ', title: 'Resilience objective', status: 'approved' },
         { id: 'test-component', project_id: 'pa', parent_node_id: 'test-objective', node_type: 'component', node_code: 'C1', title: 'Coastal component', status: 'approved' },
@@ -126,16 +127,41 @@ for (const role of ROLES) {
     await dialog.getByLabel('Title', { exact: true }).fill(`Updated objective by ${role}`);
     await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await dialog.waitFor({ state: 'hidden' });
-    assert.equal(ctx.frameworkWrites.at(-1).rpc, 'upsert_framework_node');
+    assert.equal(ctx.frameworkWrites.at(-1).rpc, 'patch_results_framework_node');
     assert.equal(ctx.frameworkWrites.at(-1).args.p_id, 'test-objective');
-    assert.equal(ctx.frameworkWrites.at(-1).args.p_title, `Updated objective by ${role}`);
+    assert.equal(ctx.frameworkWrites.at(-1).args.p_changes.title, `Updated objective by ${role}`);
     await page.getByRole('button', { name: 'Edit row: IND-01', exact: true }).click();
     await dialog.getByLabel('Indicator name', { exact: true }).fill(`Updated indicator by ${role}`);
     await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await dialog.waitFor({ state: 'hidden' });
-    assert.equal(ctx.frameworkWrites.at(-1).rpc, 'upsert_project_indicator_v2');
-    assert.equal(ctx.frameworkWrites.at(-1).args.p_name, `Updated indicator by ${role}`);
-    assert.equal(ctx.frameworkWrites.at(-1).args.p_baseline_value, 100);
+    assert.equal(ctx.frameworkWrites.at(-1).rpc, 'patch_results_framework_row');
+    assert.equal(ctx.frameworkWrites.at(-1).args.p_changes.indicator.name, `Updated indicator by ${role}`);
+    assert.equal(ctx.frameworkWrites.at(-1).args.p_changes.targets, undefined, 'Editing an indicator preserves all targets');
+    await page.getByRole('button', { name: 'Edit Mid-term: IND-01', exact: true }).click();
+    await dialog.getByLabel('Information to edit').selectOption('row:targets');
+    await dialog.getByLabel('Baseline Numeric value', { exact:true }).fill('125');
+    await dialog.getByLabel('Mid-term Numeric value', { exact:true }).fill('500');
+    await dialog.getByLabel('Final Numeric value', { exact:true }).fill('1000');
+    await dialog.getByLabel('Information to edit').selectOption('row:progress');
+    await dialog.getByLabel('Reporting period', { exact:true }).selectOption('Q2 2026');
+    await dialog.getByLabel('Cumulative actual', { exact:true }).fill('400');
+    await dialog.getByLabel('Progress (%)', { exact:true }).fill('45');
+    await dialog.getByLabel('Performance status', { exact:true }).selectOption('attention_required');
+    await dialog.getByLabel('Schedule status', { exact:true }).selectOption('delayed');
+    await dialog.getByLabel('Information to edit').selectOption('row:narrative');
+    await dialog.getByLabel('Progress summary', { exact:true }).fill('Updated row narrative');
+    await dialog.getByLabel('Information to edit').selectOption('row:indicator');
+    await dialog.getByLabel('Official reporting frequency', { exact:true }).selectOption('Annual');
+    await dialog.getByRole('button', { name:'Save', exact:true }).click();
+    await dialog.waitFor({ state:'hidden' });
+    const changed = ctx.frameworkWrites.at(-1).args.p_changes;
+    assert.equal(changed.targets.find(t=>t.target_type==='mid_term').numeric_value,500);
+    assert.equal(changed.progress.cumulative_actual,400);
+    assert.equal(changed.progress.achievement_pct,45);
+    assert.equal(changed.progress.performance_status,'attention_required');
+    assert.equal(changed.progress.schedule_status,'delayed');
+    assert.equal(changed.narrative.progress_summary,'Updated row narrative');
+    assert.equal(changed.indicator.official_reporting_frequency,'Annual');
   } else {
     assert.equal(await edits.count(), 0, `${role} has no edit controls without project edit permission`);
     assert.equal(ctx.frameworkWrites.length, 0);

@@ -2,6 +2,8 @@ import { FRAMEWORK_COLUMNS, frameworkColumns } from '../lib/docc/frameworkColumn
 import { currentProjects } from '../lib/docc/projectScope';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import FrameworkRowForm from '../components/FrameworkRowForm';
+import { createRowEditor, rowEditorChanges } from '../lib/docc/frameworkRowEditor';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { latestReportedBy, withReportingDates } from '../lib/docc/progressSelection';
@@ -96,6 +98,7 @@ export default function ResultsWorkspace({ user }) {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState(empty);
   const [loading, setLoading] = useState(true);
+  const [reportingPeriods, setReportingPeriods] = useState([]);
   const [error, setError] = useState('');
   const [permissionError, setPermissionError] = useState('');
   const [editableIds, setEditableIds] = useState(new Set());
@@ -144,7 +147,7 @@ export default function ResultsWorkspace({ user }) {
       localised(() => supabase.from('v_projects').select(i18nCols('id,has_results_framework, code, acronym, name, status')).order('code')),
       supabase.from('v_framework_nodes').select('*').order('sort_order').order('node_code'),
       localised(() => supabase.from('v_project_indicators').select('*').order('code')),
-      supabase.from('v_indicator_targets').select('*'),
+      supabase.from('v_indicator_targets').select('*').order('created_at').order('id'),
       localised(() => supabase.from('v_indicator_progress').select('*')),
       supabase.from('v_result_narratives').select('*'),
       supabase.rpc('list_results_framework_editable_projects'),
@@ -153,6 +156,7 @@ export default function ResultsWorkspace({ user }) {
       if (!alive) return;
       const failed = [...responses.slice(0, 6), responses[7]].find((r) => r.error);
       if (failed?.error) throw failed.error;
+      setReportingPeriods(responses[7].data || []);
       const [projects, nodes, indicators, targets, progress, narratives] = responses.slice(0, 6).map((r) => r.data || []);
       setData({ projects: currentProjects(projects), nodes, indicators, targets, progress: withReportingDates(progress, responses[7].data || []), narratives });
 
@@ -247,7 +251,7 @@ export default function ResultsWorkspace({ user }) {
     setEditor({
       ...blankNode(), id: node.id, projectId: node.project_id,
       parentId: node.parent_node_id || '', nodeType: node.node_type,
-      title: node.title || '', description: node.description || '',
+      nodeCode: node.node_code || '', title: node.title || '', description: node.description || '',
       status: node.status || 'draft', sortOrder: node.sort_order || 0,
     });
   };
@@ -268,13 +272,25 @@ export default function ResultsWorkspace({ user }) {
     });
   };
 
-  const editRow = row => {
-    if (row.indicator) editIndicator(row.indicator, row);
+  const editRow = (row, section = 'indicator') => {
+    if (row.indicator && canEdit(row.project.id)) {
+      setEditingRow(row);
+      setEditor({...createRowEditor(row, data.targets, reportingPeriods),section});
+    }
     else if (row.node) editNode(row.node, row);
+  };
+  const attachIndicator = row => {
+    setEditingRow(null);
+    setEditor({...blankIndicator(),projectId:row.project.id,frameworkNodeId:row.node.id});
   };
   const selectRowField = value => {
     if (!editingRow) return;
-    if (value === 'indicator') editIndicator(editingRow.indicator, editingRow);
+    if (value.startsWith('row:')) {
+      const section=value.slice(4);
+      if(editor?.mode==='row') setEditor(current=>({...current,section}));
+      else editRow(editingRow,section);
+    }
+    else if (value === 'indicator') editIndicator(editingRow.indicator, editingRow);
     else {
       const node = editingRow.path.find(item => item.id === value);
       if (node) editNode(node, editingRow);
@@ -287,7 +303,13 @@ export default function ResultsWorkspace({ user }) {
     setSaving(true);
     try {
       let result;
-      if (editor.mode === 'node') {
+      if (editor.mode === 'row') {
+        const changes = rowEditorChanges(editor);
+        if ((changes.progress || changes.narrative) && !editor.progress.reporting_period) throw new Error('Select a reporting period before saving progress or narrative.');
+        result = await supabase.rpc('patch_results_framework_row', { p_indicator_id:editor.id, p_changes:changes, p_progress_id:editor.progressId });
+      } else if (editor.mode === 'node' && editor.id) {
+        result = await supabase.rpc('patch_results_framework_node', { p_id:editor.id,p_changes:{node_code:editor.nodeCode || null,node_type:editor.nodeType,parent_node_id:editor.parentId || null,title:editor.title,description:editor.description || null,sort_order:Number(editor.sortOrder) || 0,status:editor.status} });
+      } else if (editor.mode === 'node') {
         result = await supabase.rpc('upsert_framework_node', {
           p_id: editor.id,
           p_project_id: editor.projectId,
@@ -300,30 +322,17 @@ export default function ResultsWorkspace({ user }) {
         });
       } else {
         if (!editor.frameworkNodeId) throw new Error('Select the result node this indicator belongs to.');
-        result = await supabase.rpc('upsert_project_indicator_v2', {
-          p_id: editor.id,
-          p_project_id: editor.projectId,
-          p_framework_node_id: editor.frameworkNodeId,
-          p_name: editor.name,
-          p_unit: editor.unit || null,
-          p_baseline_value: asNumber(editor.baseline),
-          p_final_target: asNumber(editor.finalTarget),
-          p_frequency: editor.frequency || null,
-          p_direction: editor.direction,
-          p_aggregation_method: editor.aggregationMethod,
-          p_progress_method: editor.progressMethod,
-          p_means_of_verification: editor.meansOfVerification || null,
-          p_data_source: editor.dataSource || null,
-          p_collection_method: editor.collectionMethod || null,
-          p_disaggregation: editor.disaggregation || null,
-          p_assumptions: editor.assumptions || null,
-          p_is_qualitative: editor.isQualitative,
-          p_higher_is_better: editor.higherIsBetter,
-          p_responsible_officer: editor.responsibleOfficer || null,
-        });
+        result = await supabase.rpc('create_results_framework_indicator', { p_project_id:editor.projectId,p_fields:{
+          framework_node_id:editor.frameworkNodeId,name:editor.name,unit:editor.unit || null,
+          baseline_value:asNumber(editor.baseline),target_value:asNumber(editor.finalTarget),
+          official_reporting_frequency:editor.frequency || null,direction:editor.direction,aggregation_method:editor.aggregationMethod,
+          progress_method:editor.progressMethod,means_of_verification:editor.meansOfVerification || null,data_source:editor.dataSource || null,
+          collection_method:editor.collectionMethod || null,disaggregation:editor.disaggregation || null,assumptions:editor.assumptions || null,
+          is_qualitative:editor.isQualitative,higher_is_better:editor.higherIsBetter,responsible_officer:editor.responsibleOfficer || null,
+        }});
       }
       if (result?.error) throw result.error;
-      toast.success(editor.mode === 'node' ? 'Result node saved.' : 'Indicator saved.');
+      toast.success(editor.mode === 'row' ? 'Framework row saved.' : editor.mode === 'node' ? 'Result node saved.' : 'Indicator saved.');
       setEditor(null);
       reload();
     } catch (err) {
@@ -431,6 +440,7 @@ export default function ResultsWorkspace({ user }) {
                   <small>{row.project.code || row.project.acronym || 'NO CODE'}</small>
                   <b>{row.project.name}</b>
                 </div>
+                {canEdit(row.project.id) && <a className="rf2-project-link" href={`#/project-setup?project=${encodeURIComponent(row.project.id)}`}>Edit project information</a>}
                 {canEdit(row.project.id) && <button type="button" className="rf2-edit-row" onClick={() => editRow(row)} aria-label={`Edit row: ${row.indicator?.code || row.node?.node_code || row.project.name}`}>Edit row</button>}
               </td>
               {FRAMEWORK_COLUMNS.map(column => <td key={column.key} className={`rf2-level rf2-level-${column.key}`}>
@@ -443,7 +453,7 @@ export default function ResultsWorkspace({ user }) {
                     <details className="rf2-path-details"><summary>Details</summary><p>{node.description}</p></details>
                   )}
                   {canEdit(row.project.id) && <span className="rf2-inline-actions">
-                    <button type="button" onClick={() => editNode(node)}>Edit</button>
+                    <button type="button" onClick={() => editNode(node, row)}>Edit</button>
                     {node.id === row.node?.id && <button type="button" className="danger" onClick={() => removeNode(node)}>Delete</button>}
                   </span>}
                 </div>) : <span className="rf2-muted" aria-label={`No ${column.label.toLowerCase()} recorded for this row`}>—</span>}
@@ -453,27 +463,27 @@ export default function ResultsWorkspace({ user }) {
                   <small>{row.indicator.code}</small><b>{row.indicator.name}</b>
                   {row.indicator.unit && <span>{row.indicator.unit}</span>}
                   {canEdit(row.project.id) && <span className="rf2-inline-actions">
-                    <button type="button" onClick={() => editIndicator(row.indicator)}>Edit</button>
+                    <button type="button" onClick={() => editRow(row)}>Edit</button>
                     <button type="button" className="danger" onClick={() => removeIndicator(row.indicator)}>Delete</button>
                   </span>}
-                </> : <span className="rf2-muted">No indicator attached</span>}
+                </> : <><span className="rf2-muted">No indicator attached</span>{canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" onClick={() => attachIndicator(row)}>Attach indicator to enter targets and results</button>}</>}
               </td>
-              <td className="rf2-num">{row.indicator ? display(baseline) : '—'}</td>
-              <td className="rf2-num">{row.indicator ? display(mid) : '—'}</td>
-              <td className="rf2-num">{row.indicator ? display(finalTarget) : '—'}</td>
-              <td className="rf2-num">{row.indicator ? display(actual) : '—'}</td>
-              <td className="rf2-num">{row.indicator ? pct(row.progress?.achievement_pct) : '—'}</td>
-              <td className="rf2-status">{row.indicator ? status(row) : <span className="rf2-pill neutral">{row.node?.status || 'draft'}</span>}</td>
+              <td className="rf2-num">{row.indicator ? display(baseline) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Baseline: ${row.indicator.code}`} onClick={() => editRow(row, 'baseline')}>Edit</button>}</td>
+              <td className="rf2-num">{row.indicator ? display(mid) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Mid-term: ${row.indicator.code}`} onClick={() => editRow(row, 'mid_term')}>Edit</button>}</td>
+              <td className="rf2-num">{row.indicator ? display(finalTarget) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Final target: ${row.indicator.code}`} onClick={() => editRow(row, 'final')}>Edit</button>}</td>
+              <td className="rf2-num">{row.indicator ? display(actual) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Latest actual: ${row.indicator.code}`} onClick={() => editRow(row, 'progress')}>Edit</button>}</td>
+              <td className="rf2-num">{row.indicator ? pct(row.progress?.achievement_pct) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Progress: ${row.indicator.code}`} onClick={() => editRow(row, 'progress')}>Edit</button>}</td>
+              <td className="rf2-status">{row.indicator ? status(row) : <span className="rf2-pill neutral">{row.node?.status || 'draft'}</span>}{canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" onClick={() => editRow(row, 'progress')}>Edit</button>}</td>
               <td className="rf2-narrative">
                 {narrative
                   ? <button type="button" title={narrativeOpen ? undefined : narrative}
                       className={narrativeOpen ? 'rf2-narrative-text open' : 'rf2-narrative-text'}
                       onClick={() => toggleNarrative(rowKey)}>{narrative}</button>
                   : '—'}
-                {row.narrative?.challenges && <details><summary>Challenges</summary><p>{row.narrative.challenges}</p></details>}</td>
+                {row.narrative?.challenges && <details><summary>Challenges</summary><p>{row.narrative.challenges}</p></details>}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" onClick={() => editRow(row, 'narrative')}>Edit narrative</button>}</td>
               <td className="rf2-small">{row.indicator?.official_reporting_frequency || row.indicator?.frequency
                 ? OPT.labelOf(OPT.REPORTING_FREQUENCY, row.indicator.official_reporting_frequency || row.indicator.frequency)
-                : '—'}</td>
+                : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" onClick={() => editRow(row)}>Edit reporting</button>}</td>
               <td className="rf2-evidence">{row.indicator ? (() => {
                 const st = evidence.get(row.indicator.id);
                 const docs = st?.recent_documents ?? [];
@@ -486,7 +496,7 @@ export default function ResultsWorkspace({ user }) {
                     {extra > 0 && <span className="evi-cell-more">{t('evi.moreDocs', { count: extra })}</span>}
                   </span>}
                 </button>;
-              })() : '—'}</td>
+              })() : '—'}{row.indicator && canEdit(row.project.id) && <a className="rf2-cell-edit" href={`#/merl-reporting?module=evidence&project=${encodeURIComponent(row.project.id)}`}>Edit evidence</a>}</td>
             </tr>;
           })}
         </tbody>
@@ -502,15 +512,16 @@ export default function ResultsWorkspace({ user }) {
     {editor && createPortal(<div className="rf2-edit-backdrop" style={editorViewport || undefined} role="presentation" onMouseDown={(e) => {
       if (e.target === e.currentTarget && !saving) setEditor(null);
     }}>
-      <div className="rf2-edit-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${editor.mode === 'node' ? 'result' : 'indicator'}`}>
+      <div className="rf2-edit-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${editor.mode === 'row' ? 'framework row' : editor.mode === 'node' ? 'result' : 'indicator'}`}>
         {editingRow && <div className="rf2-row-edit-picker">
           <b>{editingRow.project.name}</b>
-          <label>Information to edit<select className="field-input" value={editor.mode === 'indicator' ? 'indicator' : editor.id} onChange={event => selectRowField(event.target.value)} disabled={saving}>
+          <label>Information to edit<select className="field-input" value={editor.mode === 'row' ? `row:${editor.section || 'indicator'}` : editor.mode === 'indicator' ? 'indicator' : editor.id} onChange={event => selectRowField(event.target.value)} disabled={saving}>
             {editingRow.path.map(node => <option key={node.id} value={node.id}>{nodeTypeLabel(node.node_type)}{node.node_code ? ` · ${node.node_code}` : ''}</option>)}
-            {editingRow.indicator && <option value="indicator">Indicator · {editingRow.indicator.code || editingRow.indicator.name}</option>}
+            {editingRow.indicator && <>{[['indicator','Indicator and reporting'],['baseline','Baseline'],['mid_term','Mid-term'],['final','Final target'],['targets','All target periods'],['progress','Latest actual, progress and status'],['narrative','Narrative']].map(([value,label])=><option key={value} value={`row:${value}`}>{label} · {editingRow.indicator.code || editingRow.indicator.name}</option>)}</>}
           </select></label>
+          {!editingRow.indicator && <><p className="rf2-note">This result has no attached indicator yet. Attach an indicator to enter its targets, actuals and narrative.</p><button type="button" className="btn btn-secondary" disabled={saving} onClick={() => attachIndicator(editingRow)}>Attach indicator</button></>}
         </div>}
-        <EditorForm editor={editor} setEditor={setEditor} nodes={projectNodes(editor.projectId)} saving={saving} onSubmit={saveEditor} onCancel={() => setEditor(null)} />
+        {editor.mode === 'row' ? <FrameworkRowForm editor={editor} setEditor={setEditor} nodes={projectNodes(editor.projectId)} saving={saving} onSubmit={saveEditor} onCancel={() => setEditor(null)} /> : <EditorForm editor={editor} setEditor={setEditor} nodes={projectNodes(editor.projectId)} saving={saving} onSubmit={saveEditor} onCancel={() => setEditor(null)} />}
       </div>
     </div>, document.body)}
   </div>;
@@ -522,6 +533,7 @@ function EditorForm({ editor, setEditor, nodes, saving, onSubmit, onCancel }) {
   return <form className="rf2-form" onSubmit={onSubmit}>
     <h3>{editor.id ? 'Edit' : 'Add'} {editor.mode === 'node' ? 'result node' : 'indicator'}</h3>
     {editor.mode === 'node' ? <div className="rf2-form-grid">
+      <label>Result code<input aria-label="Result code" className="field-input" value={editor.nodeCode || ''} onChange={e=>change('nodeCode',e.target.value)} /></label>
       <label>Result type<select className="field-input" value={editor.nodeType} onChange={(e) => change('nodeType', e.target.value)}>{NODE_TYPES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label>Parent result<select className="field-input" value={editor.parentId} onChange={(e) => change('parentId', e.target.value)}><option value="">Top level</option>{sortedNodes.filter((n) => n.id !== editor.id).map((n) => <option key={n.id} value={n.id}>{n.node_code ? `${n.node_code} — ` : ''}{n.title}</option>)}</select></label>
       <label className="full">Title<textarea aria-label="Title" className="field-input" rows={4} value={editor.title} onChange={(e) => change('title', e.target.value)} required /></label>
@@ -554,7 +566,7 @@ function ResultsStyles() {
     .rf2-summary{display:flex;gap:.55rem}.rf2-summary div{border:1px solid var(--border);border-radius:10px;background:var(--white);padding:.55rem .85rem}.rf2-summary b{display:block;font-size:1rem}.rf2-summary span{font-size:.66rem;color:var(--text-2)}
     .rf2-tools{display:grid;grid-template-columns:minmax(220px,360px) minmax(260px,1fr) auto;gap:.65rem;align-items:end;border:1px solid var(--border);border-radius:12px;background:var(--white);padding:.85rem;margin-bottom:.85rem}.rf2-tools label,.rf2-form label{display:grid;gap:.25rem;font-size:.72rem;font-weight:700}
     .rf2-edit-row{display:block;margin-top:.55rem;border:1px solid var(--border-strong);border-radius:6px;background:var(--white);color:var(--text-1);padding:.4rem .65rem;font:inherit;font-weight:700;cursor:pointer}.rf2-row-edit-picker{flex-shrink:0;display:grid;gap:.6rem;background:var(--white);padding:.85rem;border-bottom:1px solid var(--border)}.rf2-row-edit-picker{min-width:0;overflow-wrap:anywhere}.rf2-row-edit-picker .field-input{width:100%;min-width:0;box-sizing:border-box}.rf2-row-edit-picker label{min-width:0;display:grid;gap:.3rem;font-size:.75rem;font-weight:700}
-    .rf2-inline-actions button{border:1px solid var(--border);border-radius:6px;background:var(--white);padding:.3rem .5rem;font:inherit;font-size:.68rem;cursor:pointer}.rf2-inline-actions button.danger{color:#b91c1c}
+    .rf2-project-link,.rf2-cell-edit{display:block;margin-top:.4rem;color:var(--text-1);font:inherit;font-size:.72rem;background:var(--white);border:1px solid var(--border);border-radius:5px;padding:.3rem .5rem;cursor:pointer}.rf2-row-fields fieldset{min-width:0;border:1px solid var(--border);border-radius:6px;padding:.65rem;margin:0}.rf2-row-fields legend{font-weight:800;font-size:.85rem;white-space:normal}.rf2-fields-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.rf2-fields-grid .full{grid-column:1/-1}.rf2-target-fields{margin-bottom:.6rem!important}.rf2-inline-actions button{border:1px solid var(--border);border-radius:6px;background:var(--white);padding:.3rem .5rem;font:inherit;font-size:.68rem;cursor:pointer}.rf2-inline-actions button.danger{color:#b91c1c}
     .rf2-edit-backdrop{position:fixed;inset:0;bottom:auto;height:100vh;height:100dvh;z-index:10000;display:grid;place-items:center;box-sizing:border-box;padding:1rem;background:rgb(15 23 42 / .55)}.rf2-edit-dialog{width:min(760px,100%);max-height:100%;height:min(850px,100%);min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--white);border-radius:12px;box-shadow:0 20px 50px rgb(15 23 42 / .25)}
     .rf2-form{display:flex;flex-direction:column;flex:1;min-height:0;margin:0;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.8rem}.rf2-form h3{margin:0 0 .65rem;font-size:.9rem}.rf2-form-grid{overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:0;padding:.15rem;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.rf2-form-grid .full{grid-column:1/-1}.rf2-form h3{flex-shrink:0}.rf2-form-grid label{min-width:0}.rf2-form .field-input{width:100%;min-width:0;box-sizing:border-box}.rf2-form textarea{white-space:pre-wrap;overflow-wrap:anywhere;resize:vertical}.rf2-form-actions{flex-shrink:0;background:var(--white);padding-top:.65rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.45rem;margin-top:.7rem}
     .rf2-table-wrap{overflow:auto;border:1px solid var(--border-strong);border-radius:12px;background:var(--white);max-height:calc(100vh - 260px)}
@@ -587,6 +599,6 @@ function ResultsStyles() {
     .rf2-muted{color:var(--text-2);font-style:italic}.rf2-empty{padding:1.3rem;text-align:center;color:var(--text-2)}
     /* A frozen column costs half a phone screen, so it only pays on wide ones. */
     @media(max-width:900px){.rf2-project{position:static;min-width:165px;max-width:180px}.rf2-table th:first-child{left:auto}}
-    @media(max-width:800px){.rf2-tools,.rf2-form-grid{grid-template-columns:1fr}.rf2-form-grid .full{grid-column:1}.rf2-edit-backdrop{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}.rf2-edit-dialog{height:100%;max-height:100%;width:100%;border-radius:0}.rf2-form .field-input,.rf2-row-edit-picker .field-input{font-size:16px}.rf2-form-actions button{min-height:44px;flex:1}.rf2-table-wrap{max-height:none}}
+    @media(max-width:800px){.rf2-tools,.rf2-form-grid,.rf2-fields-grid{grid-template-columns:1fr}.rf2-form-grid .full{grid-column:1}.rf2-edit-backdrop{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}.rf2-edit-dialog{height:100%;max-height:100%;width:100%;border-radius:0}.rf2-form .field-input,.rf2-row-edit-picker .field-input{font-size:16px}.rf2-form-actions button{min-height:44px;flex:1}.rf2-table-wrap{max-height:none}}
   `}</style>;
 }

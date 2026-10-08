@@ -257,7 +257,7 @@ export default function MerlReporting({ user }) {
   const canApprove = APPROVER_ROLES.includes(user?.role);
 
   const [projects, setProjects] = useState([]);
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(() => new URLSearchParams(window.location.hash.split('?')[1] || '').get('project') || '');
   const [indicators, setIndicators] = useState([]);
   const [activities, setActivities] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -283,7 +283,7 @@ export default function MerlReporting({ user }) {
   // address bar and the highlighted sidebar entry agree.
   const selectTab = (key) => {
     setTab(key);
-    setSearchParams(key === MODULES[0].key ? {} : { module: key }, { replace: true });
+    setSearchParams({ ...(projectId ? { project:projectId } : {}), ...(key === MODULES[0].key ? {} : { module:key }) }, { replace: true });
   };
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
