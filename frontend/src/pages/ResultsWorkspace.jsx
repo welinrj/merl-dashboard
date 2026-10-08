@@ -524,13 +524,13 @@ function EditorForm({ editor, setEditor, nodes, saving, onSubmit, onCancel }) {
     {editor.mode === 'node' ? <div className="rf2-form-grid">
       <label>Result type<select className="field-input" value={editor.nodeType} onChange={(e) => change('nodeType', e.target.value)}>{NODE_TYPES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label>Parent result<select className="field-input" value={editor.parentId} onChange={(e) => change('parentId', e.target.value)}><option value="">Top level</option>{sortedNodes.filter((n) => n.id !== editor.id).map((n) => <option key={n.id} value={n.id}>{n.node_code ? `${n.node_code} — ` : ''}{n.title}</option>)}</select></label>
-      <label className="full">Title<textarea className="field-input" rows={4} value={editor.title} onChange={(e) => change('title', e.target.value)} required /></label>
+      <label className="full">Title<textarea aria-label="Title" className="field-input" rows={4} value={editor.title} onChange={(e) => change('title', e.target.value)} required /></label>
       <label className="full">Description<textarea className="field-input" rows={3} value={editor.description} onChange={(e) => change('description', e.target.value)} /></label>
       <label>Sort order<input className="field-input" type="number" value={editor.sortOrder} onChange={(e) => change('sortOrder', e.target.value)} /></label>
       <label>Status<select className="field-input" value={editor.status} onChange={(e) => change('status', e.target.value)}><option value="draft">Draft</option><option value="approved">Approved</option><option value="archived">Archived</option></select></label>
     </div> : <div className="rf2-form-grid">
       <label className="full">Result node<select className="field-input" value={editor.frameworkNodeId} onChange={(e) => change('frameworkNodeId', e.target.value)} required><option value="">Select result node</option>{sortedNodes.map((n) => <option key={n.id} value={n.id}>{nodeTypeLabel(n.node_type)} · {n.node_code ? `${n.node_code} — ` : ''}{n.title}</option>)}</select></label>
-      <label className="full">Indicator name<textarea className="field-input" rows={3} value={editor.name} onChange={(e) => change('name', e.target.value)} required /></label>
+      <label className="full">Indicator name<textarea aria-label="Indicator name" className="field-input" rows={3} value={editor.name} onChange={(e) => change('name', e.target.value)} required /></label>
       <label>Baseline<input className="field-input" type="number" step="any" value={editor.baseline} onChange={(e) => change('baseline', e.target.value)} /></label>
       <label>Final target<input className="field-input" type="number" step="any" value={editor.finalTarget} onChange={(e) => change('finalTarget', e.target.value)} /></label>
       <label>Unit<input className="field-input" value={editor.unit} onChange={(e) => change('unit', e.target.value)} /></label>
