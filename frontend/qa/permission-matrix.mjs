@@ -6,6 +6,7 @@
 // with the back button or a copied URL.
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
 
 const REF = 'ndntvncboeajanipafeq', HOST = `https://${REF}.supabase.co`;
 const now = Math.floor(Date.now() / 1000);
@@ -21,6 +22,7 @@ const ROUTES = ['/dashboards', '/project-setup', '/merl-reporting', '/reports', 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 
 const mkContext = async (role, withSession = true) => {
+  const writes = [];
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } });
   if (withSession) {
     await ctx.addInitScript(([ref, tok, exp]) => {
@@ -42,10 +44,24 @@ const mkContext = async (role, withSession = true) => {
       return r.fulfill({ status: 200, contentType: 'application/json',
         body: JSON.stringify({ id: 'u1', aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: '2025-01-01T00:00:00Z' }) });
     }
+    if (p.endsWith('/rpc/list_results_framework_editable_projects')) {
+      const allowed = ['system_admin', 'docc_me_officer'].includes(role);
+      return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(allowed ? [{ project_id: 'pa' }, { project_id: 'pb' }] : []) });
+    }
+    if (p.endsWith('/rpc/upsert_framework_node') || p.endsWith('/rpc/upsert_project_indicator_v2')) {
+      writes.push({ rpc: p.split('/').at(-1), args: r.request().postDataJSON() });
+      return r.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
+    }
     if (p.startsWith('/rest/v1/rpc/')) return r.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
     if (p.startsWith('/rest/v1/')) {
       const rel = p.replace('/rest/v1/', '').split('/')[0];
       let body = T[rel] ?? [];
+      if (rel === 'v_framework_nodes') body = [
+        { id: 'test-objective', project_id: 'pa', node_type: 'project_objective', node_code: 'OBJ', title: 'Resilience objective', status: 'approved' },
+        { id: 'test-component', project_id: 'pa', parent_node_id: 'test-objective', node_type: 'component', node_code: 'C1', title: 'Coastal component', status: 'approved' },
+        { id: 'test-output', project_id: 'pa', parent_node_id: 'test-component', node_type: 'output', node_code: 'OP1', title: 'Seawalls built', status: 'approved' },
+      ];
+      if (rel === 'v_project_indicators') body = (T[rel] ?? []).map(x => ({ ...x, framework_node_id: 'test-output' }));
       for (const [k, v] of u.searchParams) if (v.startsWith('eq.')) body = body.filter((x) => String(x[k]) === v.slice(3));
       if ((r.request().headers()['accept'] || '').includes('vnd.pgrst.object')) {
         const one = body[0] ?? null;
@@ -55,6 +71,7 @@ const mkContext = async (role, withSession = true) => {
     }
     return r.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
   });
+  ctx.frameworkWrites = writes;
   return ctx;
 };
 
@@ -84,6 +101,33 @@ for (const role of ROLES) {
   const ps = await page.locator('body').innerText().catch(() => '');
   matrix[role]._newProject = /New project/i.test(ps);
   matrix[role]._nav = (await page.locator('.dsh-nav').innerText().catch(() => '')).split('\n').filter(Boolean).length;
+  await page.goto('http://localhost:5199/#/results-framework', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Results Framework', exact: true }).waitFor();
+  await page.waitForTimeout(1500);
+  const edits = page.getByRole('button', { name: /^Edit row:/ });
+  if (['system_admin', 'docc_me_officer'].includes(role)) {
+    assert.ok(await edits.count() > 0, `${role} can edit rows`);
+    await page.getByRole('button', { name: 'Edit row: IND-01', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Information to edit').selectOption('test-objective');
+    await dialog.getByLabel('Title', { exact: true }).fill(`Updated objective by ${role}`);
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(ctx.frameworkWrites.at(-1).rpc, 'upsert_framework_node');
+    assert.equal(ctx.frameworkWrites.at(-1).args.p_id, 'test-objective');
+    assert.equal(ctx.frameworkWrites.at(-1).args.p_title, `Updated objective by ${role}`);
+    await page.getByRole('button', { name: 'Edit row: IND-01', exact: true }).click();
+    await dialog.getByLabel('Indicator name', { exact: true }).fill(`Updated indicator by ${role}`);
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(ctx.frameworkWrites.at(-1).rpc, 'upsert_project_indicator_v2');
+    assert.equal(ctx.frameworkWrites.at(-1).args.p_name, `Updated indicator by ${role}`);
+    assert.equal(ctx.frameworkWrites.at(-1).args.p_baseline_value, 100);
+  } else {
+    assert.equal(await edits.count(), 0, `${role} has no edit controls without project edit permission`);
+    assert.equal(ctx.frameworkWrites.length, 0);
+  }
+  console.log(`Framework row edit permissions verified: ${role}`);
   await ctx.close();
 }
 for (const route of ROUTES) {

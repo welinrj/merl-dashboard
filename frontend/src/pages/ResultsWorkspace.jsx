@@ -101,6 +101,7 @@ export default function ResultsWorkspace({ user }) {
   const [projectFilter, setProjectFilter] = useState(routeProject);
   const [search, setSearch] = useState('');
   const [editor, setEditor] = useState(null);
+  const [editingRow, setEditingRow] = useState(null);
   const [saving, setSaving] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [evidence, setEvidence] = useState(() => new Map());
@@ -222,8 +223,9 @@ export default function ResultsWorkspace({ user }) {
   const projectNodes = (projectId) => data.nodes.filter((n) => n.project_id === projectId);
   const canEdit = (projectId) => !loading && !saving && editableIds.has(projectId);
 
-  const editNode = (node) => {
+  const editNode = (node, rowContext = null) => {
     if (!canEdit(node.project_id)) return;
+    setEditingRow(rowContext);
     setEditor({
       ...blankNode(), id: node.id, projectId: node.project_id,
       parentId: node.parent_node_id || '', nodeType: node.node_type,
@@ -231,8 +233,9 @@ export default function ResultsWorkspace({ user }) {
       status: node.status || 'draft', sortOrder: node.sort_order || 0,
     });
   };
-  const editIndicator = (indicator) => {
+  const editIndicator = (indicator, rowContext = null) => {
     if (!canEdit(indicator.project_id)) return;
+    setEditingRow(rowContext);
     setEditor({
       ...blankIndicator(), id: indicator.id, projectId: indicator.project_id,
       frameworkNodeId: indicator.framework_node_id || '', name: indicator.name || '',
@@ -245,6 +248,19 @@ export default function ResultsWorkspace({ user }) {
       isQualitative: Boolean(indicator.is_qualitative), higherIsBetter: indicator.higher_is_better !== false,
       responsibleOfficer: indicator.responsible_officer || '',
     });
+  };
+
+  const editRow = row => {
+    if (row.indicator) editIndicator(row.indicator, row);
+    else if (row.node) editNode(row.node, row);
+  };
+  const selectRowField = value => {
+    if (!editingRow) return;
+    if (value === 'indicator') editIndicator(editingRow.indicator, editingRow);
+    else {
+      const node = editingRow.path.find(item => item.id === value);
+      if (node) editNode(node, editingRow);
+    }
   };
 
   const saveEditor = async (e) => {
@@ -397,6 +413,7 @@ export default function ResultsWorkspace({ user }) {
                   <small>{row.project.code || row.project.acronym || 'NO CODE'}</small>
                   <b>{row.project.name}</b>
                 </div>
+                {canEdit(row.project.id) && <button type="button" className="rf2-edit-row" onClick={() => editRow(row)} aria-label={`Edit row: ${row.indicator?.code || row.node?.node_code || row.project.name}`}>Edit row</button>}
               </td>
               {FRAMEWORK_COLUMNS.map(column => <td key={column.key} className={`rf2-level rf2-level-${column.key}`}>
                 {columns[column.key].length ? columns[column.key].map(node => <div key={node.id} className="rf2-level-node">
@@ -407,9 +424,9 @@ export default function ResultsWorkspace({ user }) {
                   {node.id === row.node?.id && node.description && (
                     <details className="rf2-path-details"><summary>Details</summary><p>{node.description}</p></details>
                   )}
-                  {canEdit(row.project.id) && node.id === row.node?.id && <span className="rf2-inline-actions">
+                  {canEdit(row.project.id) && <span className="rf2-inline-actions">
                     <button type="button" onClick={() => editNode(node)}>Edit</button>
-                    <button type="button" className="danger" onClick={() => removeNode(node)}>Delete</button>
+                    {node.id === row.node?.id && <button type="button" className="danger" onClick={() => removeNode(node)}>Delete</button>}
                   </span>}
                 </div>) : <span className="rf2-muted" aria-label={`No ${column.label.toLowerCase()} recorded for this row`}>—</span>}
               </td>)}
@@ -468,6 +485,13 @@ export default function ResultsWorkspace({ user }) {
       if (e.target === e.currentTarget && !saving) setEditor(null);
     }}>
       <div className="rf2-edit-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${editor.mode === 'node' ? 'result' : 'indicator'}`}>
+        {editingRow && <div className="rf2-row-edit-picker">
+          <b>{editingRow.project.name}</b>
+          <label>Information to edit<select className="field-input" value={editor.mode === 'indicator' ? 'indicator' : editor.id} onChange={event => selectRowField(event.target.value)} disabled={saving}>
+            {editingRow.path.map(node => <option key={node.id} value={node.id}>{nodeTypeLabel(node.node_type)}{node.node_code ? ` · ${node.node_code}` : ''}</option>)}
+            {editingRow.indicator && <option value="indicator">Indicator · {editingRow.indicator.code || editingRow.indicator.name}</option>}
+          </select></label>
+        </div>}
         <EditorForm editor={editor} setEditor={setEditor} nodes={projectNodes(editor.projectId)} saving={saving} onSubmit={saveEditor} onCancel={() => setEditor(null)} />
       </div>
     </div>}
@@ -511,6 +535,7 @@ function ResultsStyles() {
     .rf2-header h1{margin:0;font-size:1.7rem}.rf2-header p,.rf2-note{color:var(--text-2);font-size:.78rem;line-height:1.5}
     .rf2-summary{display:flex;gap:.55rem}.rf2-summary div{border:1px solid var(--border);border-radius:10px;background:var(--white);padding:.55rem .85rem}.rf2-summary b{display:block;font-size:1rem}.rf2-summary span{font-size:.66rem;color:var(--text-2)}
     .rf2-tools{display:grid;grid-template-columns:minmax(220px,360px) minmax(260px,1fr) auto;gap:.65rem;align-items:end;border:1px solid var(--border);border-radius:12px;background:var(--white);padding:.85rem;margin-bottom:.85rem}.rf2-tools label,.rf2-form label{display:grid;gap:.25rem;font-size:.72rem;font-weight:700}
+    .rf2-edit-row{display:block;margin-top:.55rem;border:1px solid var(--border-strong);border-radius:6px;background:var(--white);color:var(--text-1);padding:.4rem .65rem;font:inherit;font-weight:700;cursor:pointer}.rf2-row-edit-picker{display:grid;gap:.6rem;background:var(--white);padding:.85rem;border-bottom:1px solid var(--border)}.rf2-row-edit-picker label{display:grid;gap:.3rem;font-size:.75rem;font-weight:700}
     .rf2-inline-actions button{border:1px solid var(--border);border-radius:6px;background:var(--white);padding:.3rem .5rem;font:inherit;font-size:.68rem;cursor:pointer}.rf2-inline-actions button.danger{color:#b91c1c}
     .rf2-edit-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:1rem;background:rgb(15 23 42 / .55)}.rf2-edit-dialog{width:min(760px,100%);max-height:calc(100vh - 2rem);overflow:auto;border-radius:12px;box-shadow:0 20px 50px rgb(15 23 42 / .25)}
     .rf2-form{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.8rem}.rf2-form h3{margin:0 0 .65rem;font-size:.9rem}.rf2-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.rf2-form-grid .full{grid-column:1/-1}.rf2-form-actions{display:flex;justify-content:flex-end;gap:.45rem;margin-top:.7rem}
