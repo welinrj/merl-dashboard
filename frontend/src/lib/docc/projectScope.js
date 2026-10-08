@@ -3,8 +3,8 @@ export const isOfficialProject = project => String(project.code || '').trim().to
 export const officialProjects = projects => projects.filter(isOfficialProject);
 export const isCompletedProject = project => ['completed', 'closed'].includes(String(project.lifecycle_status || project.status || '').trim().toLowerCase());
 export const currentProjects = projects => officialProjects(projects).filter(project => !isCompletedProject(project));
-export function officialPortfolioData(data) {
-  const projects = officialProjects(data.projects || []);
+export function officialPortfolioData(data, includeCompleted = false) {
+  const projects = includeCompleted ? officialProjects(data.projects || []) : currentProjects(data.projects || []);
   const ids = new Set(projects.map(project => String(project.id)));
   return Object.fromEntries(Object.entries({ ...data, projects }).map(([key, value]) => [key,
     key === 'projects' || !Array.isArray(value) ? value : value.filter(row => row.project_id == null || ids.has(String(row.project_id))),

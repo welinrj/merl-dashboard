@@ -353,7 +353,7 @@ function Portfolio({ d, onNavigate }) {
         onReset={() => { setFlt({ status: '', theme: '', province: '', donor: '', partner: '', project: '' }); clearHandover(''); }}
       />
       <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', margin: '0.6rem 0' }}>
-        {t('dash.showing')} <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} registered projects (all lifecycle statuses)
+        {t('dash.showing')} <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} current DoCC projects
       </div>
       <div className="db-kpis">
         <StatTile label={t('dash.totalProjects')} value={m.total} />

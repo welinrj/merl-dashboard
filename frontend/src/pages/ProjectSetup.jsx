@@ -206,6 +206,8 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     } catch { return ''; }
   })();
   const [projects, setProjects] = useState([]);
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
+  const visibleProjects = showCompletedProjects ? projects : currentProjects(projects);
   const [projectId, setProjectId] = useState('');
   const [refs, setRefs] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -231,8 +233,9 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     setProjectId((old) => {
       const requested = preferredProjectId || routeProjectId;
       const preferred = officialProjects(ps || []).some((p) => p.id === requested) ? requested : '';
+      if (preferred && !currentProjects(ps || []).some(p => p.id === preferred)) setShowCompletedProjects(true);
       const existing = officialProjects(ps || []).some((p) => p.id === old) ? old : '';
-      return preferred || existing || officialProjects(ps || [])[0]?.id || '';
+      return preferred || existing || currentProjects(ps || [])[0]?.id || '';
     });
   }, [preferredProjectId]);
 
@@ -348,17 +351,18 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
       <div><h2>Selected Project</h2>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access</p>}</div>
       <div style={{display:'flex',gap:'.5rem',alignItems:'end',flexWrap:'wrap'}}>
         <select className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
-          <option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
+          <option value="">Select project</option>{visibleProjects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
         </select>
         {projectId && <a className="btn btn-secondary" href={`#/results-framework?project=${encodeURIComponent(projectId)}`}>Results framework</a>}
         {canEdit && projectId && <button type="button" className="btn btn-secondary" onClick={()=>onEditProject?.(projects.find((p)=>p.id===projectId))} disabled={busy}>Edit profile</button>}
         {isAdmin && projectId && <button type="button" className="btn btn-secondary" onClick={deleteProject} disabled={busy} style={{color:'var(--red-600)',borderColor:'var(--red-200)'}}>Delete project</button>}
       </div>
     </div>
+    <p className="ps-config-note">{currentProjects(projects).length} current DoCC projects.</p>
+    <label className="ps-config-note"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked) setProjectId(currentProjects(projects)[0]?.id || ''); }} /> Include completed project history</label>
     {projectId && <div className="ps-config-grid">
       <div className="ps-config-card">
         <h3>Donors & Partners</h3>
-        <p className="ps-config-note">{projects.length} registered projects · {currentProjects(projects).length} current · {projects.length - currentProjects(projects).length} completed. All registered projects remain available for reporting history.</p>
         <p className="ps-config-note">Donors and partners are stored separately by role so dashboard filters and reports do not mix funding sources with implementing organisations.</p>
         <div className="ps-config-form">
           <label className="full"><span className="field-label">Organization name</span><input className="field-input" value={orgEdit.name} onChange={(e)=>setOrgEdit(s=>({...s,name:e.target.value}))}/></label>

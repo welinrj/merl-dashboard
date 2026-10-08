@@ -120,6 +120,7 @@ export default function Reports() {
   const lang = i18n.resolvedLanguage;
   const liveRevision = useLiveDashboard();
   const [d, setD] = useState(null);
+  const [includeCompletedProjects, setIncludeCompletedProjects] = useState(false);
   const [type, setType] = useState('full_me');
   const [projectId, setProjectId] = useState('');
   const [province, setProvince] = useState('');
@@ -180,11 +181,11 @@ export default function Reports() {
         progress: withReportingDates(prog.data ?? [], rep.data ?? []), reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [], narratives: narr.data ?? [],
         portfolioStatus: status.data ?? [], learning: withReportingDates(learn.data ?? [], rep.data ?? []), evidence: evidence.data ?? [],
-      }));
+      }, includeCompletedProjects));
       if ((proj.data ?? []).length) setProjectId(current => current || officialPortfolioData({ projects: proj.data ?? [] }).projects[0]?.id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang, liveRevision]);
+  }, [lang, liveRevision, includeCompletedProjects]);
 
   if (dataError) return <div className="page-pad"><div role="alert" className="card" style={{ padding: '1rem', color: 'var(--red-700)' }}>{dataError}</div></div>;
   if (!d) return <div className="page-pad"><p style={{ color: 'var(--text-3)' }}>{t('rpt.loading')}</p></div>;
@@ -356,6 +357,7 @@ export default function Reports() {
       `}</style>
 
       <div className="rp-noprint">
+        <label><input type="checkbox" checked={includeCompletedProjects} onChange={event => { setIncludeCompletedProjects(event.target.checked); setProjectId(''); }} /> Include completed project history</label>
         <PageHeader
           title={t('rpt.reports')}
         />

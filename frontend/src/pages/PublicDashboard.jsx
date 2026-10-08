@@ -185,7 +185,6 @@ export default function PublicDashboard() {
   const areaListRef = useRef(null);
   const allProjects = data?.projects || [];
   const projects = allProjects.filter(project => !isCompletedProject(project));
-  const completedCount = allProjects.length - projects.length;
   const summary = data?.summary;
   const sourceAreas = data?.areas || [];
   const sourceIndicatorCategories = data?.indicatorCategories || [];
@@ -270,7 +269,7 @@ export default function PublicDashboard() {
       <header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}><Menu size={18} /></button><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>
       <main className="dsh-scroll scrollbar-thin"><div className="pbd-view">
         <div className="pbd-title-row"><div><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div></div>
-        <p>{lang === 'fr' ? `${allProjects.length} projets enregistrés · ${projects.length} projets actuels · ${completedCount} achevés. Les filtres portent sur les projets actuels.` : `${allProjects.length} registered · ${projects.length} current · ${completedCount} completed. Filters apply to current projects.`}</p>
+        <p>{data && (lang === 'fr' ? `${projects.length} projets actuels du DoCC. Les filtres portent sur ce portefeuille.` : `${projects.length} current DoCC projects. Filters apply to this portfolio.`)}</p>
         <div className={`pbd-filters${filtersOpen ? ' pbd-filters-open' : ''}`}>
           <label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={event => setFilters(value => ({ ...value, search: event.target.value }))} placeholder={c.search} /></label>
           <button type="button" className="pbd-filter-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}>{c.filters}{!allScope && <span aria-label="active"> •</span>}</button>

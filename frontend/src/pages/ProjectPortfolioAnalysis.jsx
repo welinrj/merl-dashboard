@@ -1,3 +1,4 @@
+import { currentProjects } from '../lib/docc/projectScope';
 // =============================================================================
 // ProjectPortfolioAnalysis.jsx — one project, analysed end to end.
 //
@@ -573,7 +574,7 @@ export default function ProjectPortfolioAnalysis() {
         .select(i18nCols('id, code, name, status, category, donor, provinces'))
         .order('code'));
     if (error) { setProjectsError(dbErrorMessage(error, t('ppa.projectsFailed'))); setProjectsLoading(false); return; }
-    const rows = data ?? [];
+    const rows = currentProjects(data ?? []);
     setProjects(rows);
     setProjectsLoading(false);
 

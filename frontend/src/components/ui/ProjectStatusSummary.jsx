@@ -5,8 +5,8 @@ import { useDashboardFilters, projectMatches, bucketOf } from '../../lib/dashboa
 import { fmtNum } from '../../lib/locale';
 
 const LABELS = {
-  en: { title: 'Registered projects by status (including completed)', ongoing: 'Ongoing / On track', risk: 'At risk / Delayed / On hold', planning: 'Planning / Not started', completed: 'Completed', cancelled: 'Cancelled', unknown: 'Other / Unclassified', loading: 'Loading project statuses…', error: 'Project statuses could not be loaded.', retry: 'Retry', empty: 'No projects match the selected filters.', total: 'Projects' },
-  fr: { title: 'Projets enregistrés par statut (y compris achevés)', ongoing: 'En cours / En bonne voie', risk: 'À risque / En retard / En attente', planning: 'Planification / Non démarrés', completed: 'Terminés', cancelled: 'Annulés', unknown: 'Autres / Non classés', loading: 'Chargement des statuts…', error: 'Impossible de charger les statuts.', retry: 'Réessayer', empty: 'Aucun projet ne correspond aux filtres.', total: 'Projets' },
+  en: { title: 'Current projects by status', ongoing: 'Ongoing / On track', risk: 'At risk / Delayed / On hold', planning: 'Planning / Not started', completed: 'Completed', cancelled: 'Cancelled', unknown: 'Other / Unclassified', loading: 'Loading project statuses…', error: 'Project statuses could not be loaded.', retry: 'Retry', empty: 'No projects match the selected filters.', total: 'Projects' },
+  fr: { title: 'Projets actuels par statut', ongoing: 'En cours / En bonne voie', risk: 'À risque / En retard / En attente', planning: 'Planification / Non démarrés', completed: 'Terminés', cancelled: 'Annulés', unknown: 'Autres / Non classés', loading: 'Chargement des statuts…', error: 'Impossible de charger les statuts.', retry: 'Réessayer', empty: 'Aucun projet ne correspond aux filtres.', total: 'Projets' },
 };
 const GROUPS = [['on_track', 'ongoing'], ['at_risk', 'risk'], ['not_started', 'planning'], ['completed', 'completed'], ['cancelled', 'cancelled'], ['unknown', 'unknown']];
 

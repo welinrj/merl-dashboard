@@ -1,5 +1,5 @@
 // Shared filters and operational status classification for the MERL dashboard.
-import { isOfficialProject } from './docc/projectScope';
+import { isOfficialProject, isCompletedProject } from './docc/projectScope';
 import { createContext, useContext, useMemo, useState, useCallback } from 'react';
 
 const EMPTY = { fy: '', status: '', theme: '', province: '', areaCouncil: '', donor: '', partner: '' };
@@ -48,7 +48,7 @@ export function useDashboardFilters() {
 }
 
 export function projectMatches(p, filters) {
-  if (!isOfficialProject(p)) return false;
+  if (!isOfficialProject(p) || isCompletedProject(p)) return false;
   if (filters.status && bucketOf(p.status) !== filters.status) return false;
   if (filters.theme && p.category !== filters.theme) return false;
   if (filters.donor && p.donor !== filters.donor && !(p.donors || []).includes(filters.donor)) return false;

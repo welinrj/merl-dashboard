@@ -1,4 +1,4 @@
-import { officialProjects } from '../lib/docc/projectScope';
+import { officialProjects, currentProjects } from '../lib/docc/projectScope';
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
@@ -304,7 +304,8 @@ function ProjectsTab() {
   const [projects, setProjects] = useState([]);
   const [showTestProjects, setShowTestProjects] = useState(false);
   const official = officialProjects(projects);
-  const visibleProjects = showTestProjects ? projects : official;
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
+  const visibleProjects = showTestProjects ? projects : showCompletedProjects ? official : currentProjects(projects);
   const [loading, setLoading]   = useState(true);
   const [err, setErr]           = useState('');       // page-level load error
   const [form, setForm]         = useState(EMPTY_FORM);
@@ -571,7 +572,8 @@ function ProjectsTab() {
         </div>
       )}
 
-      <p className="text-sm text-gray-600">{official.length} official registered projects · {projects.length - official.length} test projects excluded from reporting.</p>
+      <p className="text-sm text-gray-600">{currentProjects(projects).length} current DoCC projects. Completed projects are available in history.</p>
+      <label className="text-sm"><input type="checkbox" checked={showCompletedProjects} onChange={event => setShowCompletedProjects(event.target.checked)} /> Include completed project history</label>
       <label className="text-sm"><input type="checkbox" checked={showTestProjects} onChange={event => setShowTestProjects(event.target.checked)} /> Show test projects</label>
       {/* Projects table */}
       <AdminDataTable title={t('adm.projects')} rows={visibleProjects} loading={loading} selection

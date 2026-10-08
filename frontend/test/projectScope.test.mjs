@@ -11,7 +11,8 @@ test('official register reconciles to current plus completed, excluding the fixt
 });
 test('official portfolio excludes fixture results, activities and expenditure together', () => {
   const data=officialPortfolioData({projects,activities:[{project_id:'a'},{project_id:'t'}],financial:[{project_id:'t'}]});
-  assert.equal(data.projects.length,3);
+  assert.equal(data.projects.length,2);
+  assert.equal(officialPortfolioData({projects}, true).projects.length,3);
   assert.equal(data.activities.length,1);
   assert.equal(data.financial.length,0);
 });
