@@ -48,6 +48,12 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate role permission matrix
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/permission-matrix.mjs
+
       - name: Validate institutional header alignment and mobile controls
         working-directory: frontend
         env:
@@ -96,12 +102,6 @@ jobs:
         env:
           STUB_FILE: qa/fixture.json
         run: node qa/evidence-intelligence.mjs
-
-      - name: Validate role permission matrix
-        working-directory: frontend
-        env:
-          STUB_FILE: qa/fixture.json
-        run: node qa/permission-matrix.mjs
 
       - name: Validate auth lifecycle
         working-directory: frontend

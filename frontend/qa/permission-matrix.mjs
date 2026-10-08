@@ -109,7 +109,20 @@ for (const role of ROLES) {
     assert.ok(await edits.count() > 0, `${role} can edit rows`);
     await page.getByRole('button', { name: 'Edit row: IND-01', exact: true }).click();
     const dialog = page.getByRole('dialog');
+    await page.setViewportSize({ width: 390, height: 664 });
+    assert.equal(await dialog.evaluate(el => el.parentElement.parentElement === document.body), true, 'Editor escapes dashboard stacking contexts');
+    const saveButton = dialog.getByRole('button', { name: 'Save', exact: true });
+    assert.equal(await saveButton.evaluate(el => {
+      const rect = el.getBoundingClientRect();
+      return rect.bottom <= window.innerHeight && rect.top >= 0 && el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    }), true, 'Mobile save button is visible above navigation');
+    await dialog.getByLabel('Assumptions / notes').fill('Mobile indicator notes');
+    assert.equal(await saveButton.isVisible(), true);
+    await page.setViewportSize({ width: 390, height: 380 });
+    assert.equal(await saveButton.evaluate(el => el.getBoundingClientRect().bottom <= window.innerHeight), true, 'Save fits shortened keyboard viewport');
+    await page.setViewportSize({ width: 390, height: 664 });
     await dialog.getByLabel('Information to edit').selectOption('test-objective');
+    assert.equal(await dialog.getByLabel('Title', { exact: true }).evaluate(el => el.tagName), 'TEXTAREA');
     await dialog.getByLabel('Title', { exact: true }).fill(`Updated objective by ${role}`);
     await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await dialog.waitFor({ state: 'hidden' });
