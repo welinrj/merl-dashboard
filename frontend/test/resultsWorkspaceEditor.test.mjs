@@ -8,7 +8,8 @@ test('results workspace uses the table as the single framework editing entry poi
   assert.doesNotMatch(source, />Framework editor</);
   assert.doesNotMatch(source, />\+ Result node</);
   assert.doesNotMatch(source, />\+ Indicator</);
-  assert.match(source, /onClick=\{\(\) => editNode\(node, row\)\}/);
+  assert.match(source, /onClick=\{\(\) => editNode\(node\)\}/);
+  assert.doesNotMatch(source, /Information to edit|Parent result|Sort order/);
   assert.match(source, /onClick=\{\(\) => editRow\(row\)\}/);
 });
 
