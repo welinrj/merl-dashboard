@@ -37,9 +37,10 @@ export async function fetchPublicSnapshot({ signal } = {}) {
   };
 }
 
-export function usePublicSnapshot() {
+export function usePublicSnapshot({ enabled = true } = {}) {
   return useQuery({
     queryKey: PUBLIC_SNAPSHOT_KEY,
+    enabled,
     queryFn: ({ signal }) => fetchPublicSnapshot({ signal }),
     staleTime: 0,
     refetchInterval: 60_000,

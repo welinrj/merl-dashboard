@@ -6,6 +6,7 @@ import PublicDashboard from './pages/PublicDashboard';
 import DoCCProjectRegister from './pages/DoCCProjectRegister';
 import { supabase } from './supabaseClient';
 import { loadCurrentProfile } from './lib/authProfile';
+import { usePublicSnapshot } from './lib/publicSnapshot';
 import './login-home-link.css';
 import './pages/public-refresh.css';
 import './pages/public-phone.css';
@@ -22,19 +23,21 @@ export default function PublicEntry() {
 
   useEffect(() => {
     let alive = true;
+    let validationId = 0;
     const validate = async (nextSession) => {
       if (!alive) return;
+      const currentValidation = ++validationId;
       setSession(nextSession || null);
       if (!nextSession) { setProfileValid(false); return; }
       setProfileValid(undefined);
       try {
         const { profile } = await loadCurrentProfile();
         const valid = !!profile?.id && !!profile?.role;
-        if (!alive) return;
+        if (!alive || currentValidation !== validationId) return;
         setProfileValid(valid);
         if (!valid) await supabase.auth.signOut();
       } catch {
-        if (!alive) return;
+        if (!alive || currentValidation !== validationId) return;
         setProfileValid(false);
         try { await supabase.auth.signOut(); } catch { /* non-fatal */ }
       }
@@ -45,8 +48,11 @@ export default function PublicEntry() {
   }, []);
 
   const checking = session === undefined || (!!session && profileValid === undefined);
-  if (checking) return <div role="status" className="pbd-state">{i18n.resolvedLanguage?.startsWith('fr') ? 'Ouverture de MERL…' : 'Opening MERL…'}</div>;
   const authorised = !!session && profileValid === true;
+  // Warm only the approved public snapshot while officers use the workspace.
+  // Logout can then render the full public overview from its independent cache.
+  usePublicSnapshot({ enabled: authorised });
+  if (checking) return <div role="status" className="pbd-state">{i18n.resolvedLanguage?.startsWith('fr') ? 'Ouverture de MERL…' : 'Opening MERL…'}</div>;
   if (!authorised) {
     if (pathname !== DEFAULT_PATH) return <Navigate to={DEFAULT_PATH} replace />;
     return <PublicDashboard />;
@@ -56,5 +62,5 @@ export default function PublicEntry() {
   if (!internal) return <Navigate to={DEFAULT_PATH} replace />;
   if (pathname === '/docc-project-register') return <DoCCProjectRegister />;
   if (pathname === '/login') return <Navigate to={DEFAULT_PATH} replace />;
-  return <App />;
+  return <App publicEntryManaged />;
 }

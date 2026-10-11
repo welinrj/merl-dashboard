@@ -48,6 +48,13 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate inline header authentication
+        if: ${{ success() || failure() }}
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/header-inline-auth.mjs
+
       - name: Validate role permission matrix
         working-directory: frontend
         env:
@@ -127,13 +134,6 @@ jobs:
         if: ${{ success() || failure() }}
         working-directory: frontend
         run: node qa/public-single-signin.mjs
-
-      - name: Validate inline header authentication
-        if: ${{ success() || failure() }}
-        working-directory: frontend
-        env:
-          STUB_FILE: qa/fixture.json
-        run: node qa/header-inline-auth.mjs
 
       - name: Show preview log on failure
         if: failure()

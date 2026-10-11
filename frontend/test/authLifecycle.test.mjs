@@ -39,3 +39,20 @@ test('mobile login keeps failed input available for correction', () => {
   assert.doesNotMatch(publicLogin, /if \(authError\)[\s\S]{0,160}setPassword\(''\)/);
   assert.match(publicLogin, /replace\(\/\[\\r\\n\]\//);
 });
+
+const shell = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+const entry = readFileSync(new URL('../src/PublicEntry.jsx', import.meta.url), 'utf8');
+const snapshot = readFileSync(new URL('../src/lib/publicSnapshot.js', import.meta.url), 'utf8');
+
+test('logout hands over to the public entry without mounting the standalone login page', () => {
+  assert.match(entry, /<App publicEntryManaged \/>/);
+  assert.match(shell, /if \(!user && publicEntryManaged\) return null;/);
+  assert.doesNotMatch(shell, /void supabase\.auth\.signOut\(\); setUser\(null\)/);
+  assert.match(entry, /currentValidation !== validationId/);
+});
+
+test('the signed-in entry warms the independent approved-public cache before logout', () => {
+  assert.match(entry, /usePublicSnapshot\(\{ enabled: authorised \}\)/);
+  assert.match(snapshot, /queryKey: PUBLIC_SNAPSHOT_KEY,\s+enabled,/);
+  assert.doesNotMatch(snapshot, /from\('v_/);
+});

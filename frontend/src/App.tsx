@@ -409,7 +409,7 @@ function LoginScreen({ onLogin }: LoginScreenProps) {
 }
 
 // ── App Shell ─────────────────────────────────────────────────────────────────
-export default function App() {
+export default function App({ publicEntryManaged = false }: { publicEntryManaged?: boolean } = {}) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [booting, setBooting] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);   // mobile nav dropdown
@@ -437,6 +437,9 @@ export default function App() {
   }, []);
 
   if (booting) return null;
+  // PublicEntry owns the logout destination; never mount a second login page
+  // during its handover to the public overview.
+  if (!user && publicEntryManaged) return null;
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const allowed    = TAB_ACCESS[user.role] ?? [];
@@ -544,7 +547,7 @@ export default function App() {
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-2)', fontSize: '0.8rem', fontWeight: 600 }}>
                       <Lock size={16} aria-hidden="true" /> {t('pw.changePassword')}
                     </button>
-                    <button onClick={() => { setUserMenuOpen(false); void supabase.auth.signOut(); setUser(null); }}
+                    <button onClick={() => { setUserMenuOpen(false); void supabase.auth.signOut(); }}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-600)', fontSize: '0.8rem', fontWeight: 600 }}>
                       <LogOut size={16} aria-hidden="true" /> {t('shell.signOut')}
                     </button>

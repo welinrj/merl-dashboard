@@ -46,11 +46,33 @@ try {
   if(await page.locator('.pbd-root').count()) throw new Error('Authenticated user remained on the public view');
   if(loginCalls !== 1) throw new Error(`Expected one authentication request, got ${loginCalls}`);
   console.log('PASS Header credentials open the existing authenticated workspace');
+  // Reload while signed in to discard the previous public-view cache. The
+  // workspace must warm it again before its logout transition.
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('.dsh-user').first().waitFor({timeout:20000});
+  await page.waitForTimeout(500);
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(() => {
+    window.logoutFrames = [];
+    const sample = () => {
+      window.logoutFrames.push({
+        login: !!document.querySelector('.lg2-root'),
+        publicLoading: !![...document.querySelectorAll('.pbd-root .pbd-state')].find(el => el.textContent.includes('Loading public overview')),
+      });
+      window.logoutFrameId = requestAnimationFrame(sample);
+    };
+    window.logoutFrameId = requestAnimationFrame(sample);
+  });
   await page.locator('.dsh-user').first().click();
   await page.getByRole('button',{name:/Sign out|Log ?out/i}).first().click();
-  await page.locator('.pbd-header-login').waitFor({timeout:15000});
+  await page.locator('.pbd-root').waitFor({timeout:15000});
   if(new URL(page.url()).hash !== '#/dashboards') throw new Error('Sign-out did not return to the shared public route');
-  console.log('PASS Sign-out returns to the public header login');
+  const flashes = await page.evaluate(() => {
+    cancelAnimationFrame(window.logoutFrameId);
+    return window.logoutFrames.filter(frame => frame.login || frame.publicLoading);
+  });
+  if(flashes.length) throw new Error(`Logout painted an intermediate page: ${JSON.stringify(flashes)}`);
+  console.log('PASS Phone logout renders the public overview without an intermediate login or loading page');
 } finally {
   await browser.close();
 }
