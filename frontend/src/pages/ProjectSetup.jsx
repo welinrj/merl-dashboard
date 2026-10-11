@@ -1,4 +1,5 @@
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
+import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
@@ -198,7 +199,7 @@ function ActualMerlForms() {
   );
 }
 
-function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProject }) {
+function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProject, user }) {
   const routeProjectId = (() => {
     try {
       const query = window.location.hash.split('?')[1] || '';
@@ -347,6 +348,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   };
 
   return <section className="ps-config">
+    <PendingResultsFrameworks projects={projects} user={user} onSelect={id => { setShowCompletedProjects(true); setProjectId(id); }} />
     <div className="ps-config-head">
       <div><h2>Selected Project</h2>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access</p>}</div>
       <div style={{display:'flex',gap:'.5rem',alignItems:'end',flexWrap:'wrap'}}>
@@ -449,7 +451,7 @@ export default function ProjectSetup({ user }) {
     return (
       <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }}>
         <PageHeader title={title} />
-        <ProjectConfiguration preferredProjectId={null} canEdit={false} isAdmin={false} />
+        <ProjectConfiguration preferredProjectId={null} canEdit={false} isAdmin={false} user={user} />
       </div>
     );
   }
@@ -566,7 +568,7 @@ export default function ProjectSetup({ user }) {
         </div>
       </form>}
 
-      {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} onEditProject={beginEditProfile} />}
+      {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} onEditProject={beginEditProfile} user={user} />}
 
       <style>{`
         .ps-mode-tabs{display:flex;gap:.45rem;flex-wrap:wrap;margin:0 0 1rem;padding:.35rem;background:var(--surface-1);border:1px solid var(--border);border-radius:10px;width:max-content;max-width:100%}.ps-mode-tabs button{border:0;background:transparent;color:var(--text-2);font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .8rem;border-radius:7px;cursor:pointer}.ps-mode-tabs button.active{background:var(--white);color:var(--green-700);box-shadow:0 1px 2px rgba(15,23,42,.08)}

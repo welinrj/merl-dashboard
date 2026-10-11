@@ -1,4 +1,5 @@
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
+import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
 import { toVuv, sumReported } from '../lib/docc/currency';
 // =============================================================================
 // Overview.jsx — MERL Project Portfolio Dashboard (Executive Overview)
@@ -176,7 +177,7 @@ export default function Overview({ user }) {
   // live dashboard is intentionally limited to work that has not finished.
   const registeredProjects = officialProjects(data.projects);
   const unfinishedProjects = currentProjects(registeredProjects);
-  if (unfinishedProjects.length === 0) return <EmptyPortfolio />;
+  if (unfinishedProjects.length === 0) return <><PendingResultsFrameworks projects={registeredProjects} user={user} /><EmptyPortfolio /></>;
 
   const years = [...new Set(
     unfinishedProjects.flatMap((p) => [p.start_date, p.end_date]
@@ -389,6 +390,8 @@ export default function Overview({ user }) {
           </button>
         </div>
       </section>
+
+      <PendingResultsFrameworks projects={registeredProjects} user={user} />
 
       <section className="ovx-filterbar rp-noprint" aria-label={t('overview.title')}>
         <FilterSelect label={t('overview.filterFy')} value={filters.fy}
