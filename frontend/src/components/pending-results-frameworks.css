@@ -1,5 +1,6 @@
 .pending-frameworks{margin:1rem 0;padding:.85rem 1rem;border:1px solid #d3a64d;border-left:4px solid #b7791f;border-radius:8px;background:var(--white,#fff);color:var(--text-1,#172b3a)}
 .pending-frameworks summary{cursor:pointer;font-weight:700;font-size:.88rem;line-height:1.5}
+.pending-frameworks>p,.pending-frameworks li>small{font-size:.8rem;line-height:1.6;color:var(--text-2);margin:.6rem 0}.pending-frameworks li>small{flex-basis:100%}
 .pending-frameworks ul{list-style:none;padding:0;margin:.75rem 0 0;display:grid;gap:.65rem}
 .pending-frameworks li{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem .8rem;padding:.55rem 0;border-top:1px solid var(--border,#e5e7eb)}
 .pending-frameworks a,.pending-frameworks button{font:inherit;font-size:.85rem;color:var(--text-1,#172b3a);font-weight:600;overflow-wrap:anywhere;text-align:left}

@@ -1,4 +1,5 @@
 import { FRAMEWORK_COLUMNS, frameworkColumns } from '../lib/docc/frameworkColumns';
+import { standaloneFrameworkNodes } from '../lib/docc/frameworkRows';
 import { currentProjects } from '../lib/docc/projectScope';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -108,6 +109,7 @@ export default function ResultsWorkspace({ user }) {
     };
   }, [editorOpen]);
   const [saving, setSaving] = useState(false);
+  const [showFullTable, setShowFullTable] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [evidence, setEvidence] = useState(() => new Map());
   const [evidenceIndicator, setEvidenceIndicator] = useState(null);
@@ -185,9 +187,7 @@ export default function ResultsWorkspace({ user }) {
       };
     }).filter((r) => r.project);
 
-    const linkedNodeIds = new Set(data.indicators.map((i) => i.framework_node_id).filter(Boolean));
-    const standaloneNodes = data.nodes
-      .filter((n) => !linkedNodeIds.has(n.id))
+    const standaloneNodes = standaloneFrameworkNodes(data.nodes, data.indicators)
       .map((node) => ({
         type: 'node',
         project: projectMap.get(node.project_id),
@@ -329,7 +329,25 @@ export default function ResultsWorkspace({ user }) {
     {loading && <div className="rf2-empty" role="status">Loading results framework…</div>}
     {error && <div className="rf2-empty" role="alert">{error}</div>}
 
-    {!loading && !error && <div className="rf2-table-wrap">
+    {!loading && !error && <div className="rf2-mobile-results">
+      <button type="button" className="btn btn-secondary" aria-pressed={showFullTable} onClick={() => setShowFullTable(v => !v)}>{showFullTable ? 'View results list' : 'View full framework table'}</button>
+      {!showFullTable && !filtered.length && <p className="rf2-empty">No results-framework rows match the current filters.</p>}
+      {!showFullTable && filtered.map(row => <article className="rf2-result-card" key={row.indicator?.id || row.node.id}>
+        <small>{row.project.code || row.project.acronym} · {row.project.name}</small>
+        <h2>{row.indicator?.name || row.node.title}</h2>
+        {row.indicator && <>
+          {row.node && <p><strong>Output:</strong> {row.node.title}</p>}
+          <dl><div><dt>Latest actual</dt><dd>{display(row.progress?.cumulative_actual ?? row.progress?.actual_this_period)}</dd></div><div><dt>Final target</dt><dd>{display(frameworkTargetValue(row.targets.final, row.indicator.target_value))}</dd></div><div><dt>Progress</dt><dd>{pct(row.progress?.achievement_pct)}</dd></div></dl>
+          {status(row)}
+          {row.progress?.reporting_period && <p><strong>Reporting period:</strong> {row.progress.reporting_period}</p>}
+          {(row.narrative?.progress_summary || row.progress?.narrative) && <details><summary>Reported update</summary><p>{row.narrative?.progress_summary || row.progress.narrative}</p></details>}
+          {canEdit(row.project.id) && <button type="button" className="btn btn-secondary" onClick={() => editRow(row)}>Edit result</button>}
+        </>}
+        {!row.indicator && <p>No indicator or reported progress is attached to this output.</p>}
+      </article>)}
+    </div>}
+
+    {!loading && !error && <div className={`rf2-table-wrap${showFullTable ? ' rf2-show-table' : ''}`}>
       <table className="rf2-table">
         <thead><tr>
           <th scope="col">Project</th>{FRAMEWORK_COLUMNS.map(column => <th scope="col" key={column.key}>{column.label}</th>)}<th scope="col">Indicator</th>
@@ -482,6 +500,8 @@ function ResultsStyles() {
     .rf2-narrative details{margin-top:.35rem}.rf2-narrative summary{cursor:pointer;font-weight:700;color:var(--text-2)}.rf2-narrative p{margin:.25rem 0 0}
     .rf2-status-stack{display:grid;gap:.25rem}.rf2-pill{display:inline-flex;width:max-content;border-radius:999px;padding:.2rem .45rem;font-size:.62rem;font-weight:800;text-transform:capitalize;background:#e5e7eb;color:#374151}.rf2-pill.on_track{background:#dcfce7;color:#166534}.rf2-pill.attention_required,.rf2-pill.attention{background:#fef3c7;color:#92400e}.rf2-pill.off_track,.rf2-pill.at_risk{background:#ffedd5;color:#9a3412}.rf2-pill.delayed{background:#fee2e2;color:#991b1b}.rf2-pill.completed,.rf2-pill.approved{background:#ede9fe;color:#5b21b6}.rf2-pill.neutral{background:#f3f4f6;color:#6b7280}
     .rf2-muted{color:var(--text-2);font-style:italic}.rf2-empty{padding:1.3rem;text-align:center;color:var(--text-2)}
+    .rf2-mobile-results{display:none}.rf2-result-card{border:1px solid var(--border);background:var(--white);border-radius:10px;padding:1rem;min-width:0}.rf2-result-card>small{display:block;color:var(--text-3);line-height:1.5}.rf2-result-card h2{font-size:1rem;line-height:1.5;margin:.6rem 0}.rf2-result-card p{font-size:.85rem;line-height:1.6;overflow-wrap:anywhere}.rf2-result-card dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}.rf2-result-card dt{font-size:.75rem;color:var(--text-2)}.rf2-result-card dd{font-size:1.15rem;font-weight:700;margin:.4rem 0;overflow-wrap:anywhere}.rf2-result-card summary{cursor:pointer;min-height:44px;align-content:center}.rf2-result-card>.btn{margin-top:.75rem;min-height:44px}
+    @media(max-width:700px){.rf2-mobile-results{display:grid;gap:1rem}.rf2-table-wrap:not(.rf2-show-table){display:none}}
     /* A frozen column costs half a phone screen, so it only pays on wide ones. */
     @media(max-width:900px){.rf2-project{position:static;min-width:165px;max-width:180px}.rf2-table th:first-child{left:auto}}
     @media(max-width:800px){.rf2-tools,.rf2-form-grid,.rf2-fields-grid{grid-template-columns:1fr}.rf2-form-grid .full{grid-column:1}.rf2-edit-backdrop{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}.rf2-edit-dialog{height:100%;max-height:100%;width:100%;border-radius:0}.rf2-form .field-input,.rf2-row-edit-picker .field-input{font-size:16px}.rf2-form-actions button{min-height:44px;flex:1}.rf2-table-wrap{max-height:none}}
