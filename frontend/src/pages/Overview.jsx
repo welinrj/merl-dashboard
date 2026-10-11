@@ -1,3 +1,4 @@
+import { OverviewIcon, ResultsIcon, BudgetUsageIcon, BeneficiariesIcon, ReviewIcon, UpdateProgressIcon } from '../components/ui/MerlIcons';
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
 import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
 import { toVuv, sumReported } from '../lib/docc/currency';
@@ -414,6 +415,7 @@ export default function Overview({ user }) {
       <section className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
           className="ovx-kpi ovx-kpi-projects"
+          icon={OverviewIcon}
           label="Projects in Portfolio"
           value={fmtNum(total)}
           sub={`${fmtNum(lifecycleCounts.active)} active · ${fmtNum(lifecycleCounts.planned)} planned · ${fmtNum(lifecycleCounts.completed)} completed`}
@@ -422,6 +424,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-progress"
+          icon={ResultsIcon}
           label={t('overview.overallProgress')}
           value={overallProgress == null ? '—' : `${overallProgress}%`}
           sub="MERL calculated from latest indicator results"
@@ -432,6 +435,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-budget"
+          icon={BudgetUsageIcon}
           label="Budget Utilisation"
           value={budgetUtilisation == null ? '—' : `${budgetUtilisation}%`}
           sub={totalExpenditure == null ? 'No financial update reported' : `${fmtVUV(totalExpenditure)} spent`}
@@ -442,6 +446,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-beneficiaries"
+          icon={BeneficiariesIcon}
           label="Beneficiaries Reached"
           value={totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries)}
           sub={genderSummary || 'Latest approved beneficiary records'}
@@ -451,6 +456,7 @@ export default function Overview({ user }) {
         <KpiCard
           className="ovx-kpi"
           label="Needs Attention"
+          icon={ReviewIcon}
           value={fmtNum(atRiskProjects + delayedProjects)}
           sub={`${fmtNum(atRiskProjects)} at risk · ${fmtNum(delayedProjects)} delayed`}
           linkLabel={t('overview.viewPerformance')}
@@ -459,6 +465,7 @@ export default function Overview({ user }) {
         <KpiCard
           className="ovx-kpi"
           label="Reporting Completion"
+          icon={UpdateProgressIcon}
           value={`${reportingCompletion}%`}
           sub={`${fmtNum(reportsApproved)} / ${fmtNum(reporting.length)} approved periods`}
           progress={reportingCompletion}

@@ -10,32 +10,15 @@
 // is actually used, so screens read plainly and there is exactly one file to
 // touch if the icon set is ever changed again.
 //
-// HOUSE RULES
-//  · Variant is always Linear — the stroke-outline style, 1.5 stroke on a 24px
-//    grid. It is `iconsax-reactjs`'s default, so no call site passes `variant`.
-//    The filled styles (Outline, Bold, Bulk) and the decorative ones (TwoTone,
-//    Broken) are deliberately unused: this is an institutional reporting system.
-//  · Stroke inherits `currentColor`, so existing CSS colour rules keep working
-//    and no call site needs a `color` prop.
-//  · Sizes stay on the 14-18px scale set by the earlier icon audit.
-//  · Icons are functional only — an action, a state, a direction or a
-//    navigation affordance. Public indicator pictograms use Font Awesome in
-//    PublicDashboard.jsx; beneficiary pictograms live in Gedsi.jsx.
+// Navigation and headline metrics use the approved navy/blue duotone MERL
+// artwork. Small record actions and state indicators retain Iconsax so their
+// currentColor semantics and familiar action shapes remain intact.
 import {
   // ── Sidebar navigation ──────────────────────────────────────────────────
-  Category as LayoutDashboard,   // Overview
-  Folder2 as FolderKanban,       // Projects
-  Hierarchy as Target,           // Results Framework — objective → outcome → output
   Activity,                      // Indicators
-  Task as ListChecks,            // Activities & Workplan
-  Wallet2 as Wallet,             // Finances
   PresentionChart as ProjectAnalysis, // Project Portfolio Analysis — one project, end to end
-  Location as MapPin,            // Locations
   Danger as AlertTriangle,       // Risks & Issues, and every warning in the app
-  Chart2 as FileBarChart,        // Reports
-  ClipboardTick as ClipboardCheck, // Review & Approval
   FolderOpen,                    // Documents & Evidence
-  Setting2 as Settings,          // Administration
 
   // ── App chrome ──────────────────────────────────────────────────────────
   Logout as LogOut,
@@ -78,6 +61,10 @@ import {
   ArrowDown2 as ChevronDown,     // tree collapse
   LanguageSquare as Languages,   // the record's other language
 } from 'iconsax-reactjs';
+
+import { OverviewIcon as LayoutDashboard, ProjectsIcon as FolderKanban, ResultsIcon as Target,
+  UpdateProgressIcon as ListChecks, FundsUsedIcon as Wallet, LocationsIcon as MapPin,
+  ReportsIcon as FileBarChart, ReviewIcon as ClipboardCheck, AdministrationIcon as Settings } from './MerlIcons';
 
 export {
   LayoutDashboard, FolderKanban, Target, Activity, ListChecks, Wallet, MapPin,

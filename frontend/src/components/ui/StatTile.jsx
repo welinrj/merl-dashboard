@@ -6,9 +6,10 @@ import React from 'react';
 const STATUS_DOT = { green: '#1a8c4e', amber: '#d99a2b', red: '#b3402f', none: '#9a9186' };
 const STATUS_LABEL = { green: 'On track', amber: 'Needs attention', red: 'Critical', none: 'No data' };
 
-export default function StatTile({ label, value, sub, status, placeholder = false, style }) {
+export default function StatTile({ label, value, sub, status, placeholder = false, style, icon: Icon }) {
   return (
     <div className="stat-tile" style={style}>
+      {Icon && <span className="merl-card-icon"><Icon size={26} /></span>}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minHeight: 16 }}>
         {status && (
           <span

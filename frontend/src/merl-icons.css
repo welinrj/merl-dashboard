@@ -1,0 +1,11 @@
+/* Approved MERL icon family: colour identifies the icon, not reporting status. */
+.merl-icon{display:inline-block;vertical-align:middle;flex-shrink:0;overflow:visible}
+.merl-card-icon{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:10px;background:#eaf3fd;flex-shrink:0}
+.dsh .kpi-card-head{display:flex;align-items:center;gap:.75rem}
+.dsh .merl-metric-head{display:flex;align-items:center;gap:.65rem;min-width:0;color:var(--text-2);font-size:.875rem;font-weight:700;line-height:1.4}
+.dsh .pbd-metric:before{display:none!important}
+.dsh .pbd-metric .merl-card-icon{margin:0}
+.dsh .dsh-nav .merl-icon{--merl-icon-outline:currentColor;--merl-icon-blue:#4799dc;--merl-icon-pale:#c9e2f7;width:24px;height:24px}
+.dsh .dsh-mobile-nav .merl-icon{width:24px;height:24px}
+.dsh .stat-tile>.merl-card-icon{margin-bottom:.65rem}
+@media(max-width:560px){.dsh .merl-card-icon{width:38px;height:38px;border-radius:8px}.dsh .merl-card-icon .merl-icon{width:26px;height:26px}.dsh .merl-metric-head{gap:.5rem;align-items:flex-start;flex-direction:column}.dsh .kpi-card-head{gap:.6rem}}

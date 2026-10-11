@@ -1,3 +1,4 @@
+import { OverviewIcon, ProjectsIcon, FundingIcon, FundsUsedIcon, BeneficiariesIcon, BudgetUsageIcon, ForestsIcon, UpdateProgressIcon, AdaptationIcon, LossDamageIcon } from '../components/ui/MerlIcons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -146,12 +147,15 @@ const statusOf = project => isCompletedProject(project)
   : ['ongoing', 'upcoming'].includes(project.lifecycle_status) ? project.lifecycle_status : 'other';
 const initialFilters = { search: '', status: '', theme: '', province: '' };
 
+const METRIC_ICONS = { projects: OverviewIcon, funding: FundingIcon, utilised: FundsUsedIcon, beneficiaries: BeneficiariesIcon, rate: BudgetUsageIcon };
 function Metric({ label, value, detail, tone = '' }) {
-  return <article className={`pbd-metric ${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+  const Icon = METRIC_ICONS[tone] || OverviewIcon;
+  return <article className={`pbd-metric ${tone}`}><div className="merl-metric-head"><span className="merl-card-icon"><Icon size={30} /></span><span>{label}</span></div><strong>{value}</strong><small>{detail}</small></article>;
 }
 
 function ProjectCard({ project, areas, copy, lang }) {
   const projectAreas = areas.filter(area => list(area.project_ids).some(id => String(id) === String(project.id)));
+  const ThemeIcon = /loss.*damage/i.test(themeOf(project)) ? LossDamageIcon : /adaptation/i.test(themeOf(project)) ? AdaptationIcon : null;
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
   return <FeatureCardGradient className="pbd-project-card">
     <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><span className={`pbd-status pbd-status-${statusOf(project)}`}>{copy[statusOf(project)]}</span></header>
@@ -162,7 +166,7 @@ function ProjectCard({ project, areas, copy, lang }) {
       <div><dt>{copy.budget}</dt><dd>{recordedMoney(project.budget_vuv, project.currency, lang, copy.unknown)}</dd></div>
       <div><dt>{copy.spent}</dt><dd>{recordedMoney(project.cumulative_expenditure_vuv, project.currency, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
       <div><dt>{copy.reached}</dt><dd>{project.published_beneficiaries != null ? num(project.published_beneficiaries, lang) : copy.noFinance}</dd></div>
-      <div><dt>{copy.theme}</dt><dd>{themeOf(project) || copy.unknown}</dd></div>
+      <div><dt>{copy.theme}</dt><dd>{ThemeIcon && <ThemeIcon size={16} style={{ marginRight: 4 }} />}{themeOf(project) || copy.unknown}</dd></div>
     </dl>
     {project.expected_primary_outcome && <div className="pbd-project-outcome"><strong>{copy.outcome}</strong><p>{project.expected_primary_outcome}</p></div>}
   </FeatureCardGradient>;
@@ -326,12 +330,13 @@ export default function PublicDashboard() {
             <div className="pbd-section-head"><div><span><Activity size={16} aria-hidden="true" />{c.activityAreas}</span><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>
             {indicatorCategories.length ? <><div className="pbd-activity-grid">{indicatorCategories.map(category => {
               const categoryIcon = INDICATOR_CATEGORY_ICONS[category.key] || faShapes;
+              const CategoryIcon = { ecosystems: ForestsIcon, finance: FundingIcon, beneficiaries: BeneficiariesIcon, capacity: BeneficiariesIcon, 'learning-delivery': UpdateProgressIcon }[category.key];
               const indicatorLabel = category.indicatorCount === 1 ? c.indicator : c.indicators;
               const projectLabel = category.projectCount === 1 ? c.inProject : c.inProjects.replace('{count}', num(category.projectCount, lang));
               return <IndicatorProgressCard
                 key={category.key}
                 className={`pbd-activity-${category.key}${openCategory === category.key ? ' is-open' : ''}`}
-                icon={<FontAwesomeIcon icon={categoryIcon} />}
+                icon={CategoryIcon ? <CategoryIcon size={30} /> : <FontAwesomeIcon icon={categoryIcon} />}
                 title={c.activityCategoryLabels[category.key] || c.activityCategoryLabels.other}
                 value={num(category.indicatorCount, lang)}
                 progress={category.indicatorCount / maxCategoryCount * 100}
@@ -345,7 +350,7 @@ export default function PublicDashboard() {
           </section>
 
           <section className="pbd-section pbd-portfolio">
-            <div className="pbd-section-head"><div><span><Wallet size={16} aria-hidden="true" />{c.portfolio}</span><p>{c.portfolioIntro}</p></div><strong>{num(filtered.length, lang)} {c.projects}</strong></div>
+            <div className="pbd-section-head"><div><span><ProjectsIcon size={20} aria-hidden="true" />{c.portfolio}</span><p>{c.portfolioIntro}</p></div><strong>{num(filtered.length, lang)} {c.projects}</strong></div>
             <div className="pbd-project-grid">{filtered.length ? filtered.map(project => <ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang} />) : <div className="pbd-empty">{c.noProjects}</div>}</div>
           </section>
           <footer className="pbd-footer"><span>{c.source}</span></footer>

@@ -1,3 +1,4 @@
+import { OverviewIcon, BeneficiariesIcon, FundingIcon, BudgetUsageIcon, ResultsIcon, UpdateProgressIcon, ReportsIcon } from '../components/ui/MerlIcons';
 import { officialPortfolioData } from '../lib/docc/projectScope';
 import { toVuv, sumReported, recordedExpenditure } from '../lib/docc/currency';
 // =============================================================================
@@ -356,11 +357,11 @@ function Portfolio({ d, onNavigate }) {
         {t('dash.showing')} <strong style={{ color: 'var(--text-2)' }}>{m.total}</strong> of {d.projects.length} current DoCC projects
       </div>
       <div className="db-kpis">
-        <StatTile label={t('dash.totalProjects')} value={m.total} />
-        <StatTile label={t('dash.totalBeneficiaries')} value={m.beneficiaries != null ? fmtNum(m.beneficiaries) : '—'} />
-        <StatTile label={`${t('dash.approvedBudget')} (VUV)`} value={fmtAmount(m.totalBudget)} />
-        <StatTile label={t('dash.budgetUtilisation')} value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} />
-        <StatTile label={t('dash.indAchievement')} value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" />
+        <StatTile icon={OverviewIcon} label={t('dash.totalProjects')} value={m.total} />
+        <StatTile icon={BeneficiariesIcon} label={t('dash.totalBeneficiaries')} value={m.beneficiaries != null ? fmtNum(m.beneficiaries) : '—'} />
+        <StatTile icon={FundingIcon} label={`${t('dash.approvedBudget')} (VUV)`} value={fmtAmount(m.totalBudget)} />
+        <StatTile icon={BudgetUsageIcon} label={t('dash.budgetUtilisation')} value={fmtPct(m.util)} status={m.util > 100 ? 'red' : 'green'} />
+        <StatTile icon={ResultsIcon} label={t('dash.indAchievement')} value={m.avgAch != null ? `${m.avgAch}%` : '—'} sub="avg across reported" />
       </div>
       <MetricStrip title={t('dash.portfolioSummary')} style={{ marginTop: '0.7rem' }} items={[
         { label: t('dash.active'), value: m.active },
@@ -513,10 +514,10 @@ function ProjectView({ d, projectId }) {
         </div>
       </div>
       <div className="db-kpis">
-        <StatTile label={t('dash.physicalProgress')} value={phys != null ? `${phys}%` : '—'} sub="avg of activities" />
-        <StatTile label={t('dash.financialUtilisation')} value={fmtPct(utilisationPct(budget, exp))} />
-        <StatTile label={t('dash.beneficiaries')} value={ben == null ? '—' : fmtNum(ben)} />
-        <StatTile label={t('dash.latestReport')} value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} />
+        <StatTile icon={UpdateProgressIcon} label={t('dash.physicalProgress')} value={phys != null ? `${phys}%` : '—'} sub="avg of activities" />
+        <StatTile icon={BudgetUsageIcon} label={t('dash.financialUtilisation')} value={fmtPct(utilisationPct(budget, exp))} />
+        <StatTile icon={BeneficiariesIcon} label={t('dash.beneficiaries')} value={ben == null ? '—' : fmtNum(ben)} />
+        <StatTile icon={ReportsIcon} label={t('dash.latestReport')} value={rep ? OPT.labelOf(OPT.SUBMISSION_STATUS, rep.submission_status) : '—'} sub={rep?.period_label} />
       </div>
       {(() => { const openRisksCount = risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length; return (
         <MetricStrip title={t('dash.finDeliverySummary')} style={{ marginTop: '0.7rem' }} items={[
@@ -612,8 +613,8 @@ function Financial({ d }) {
   return (
     <>
       <div className="db-kpis">
-        <StatTile label={`${t('dash.totalApproved')} (VUV)`} value={fmtAmount(totalBudget)} />
-        <StatTile label={t('dash.utilisation')} value={fmtPct(utilisationPct(totalBudget, totalExp))} />
+        <StatTile icon={FundingIcon} label={`${t('dash.totalApproved')} (VUV)`} value={fmtAmount(totalBudget)} />
+        <StatTile icon={BudgetUsageIcon} label={t('dash.utilisation')} value={fmtPct(utilisationPct(totalBudget, totalExp))} />
       </div>
       <MetricStrip style={{ marginTop: '0.7rem' }} items={[
         { label: `${t('dash.totalExpenditure')} (VUV)`, value: fmtAmount(totalExp) },

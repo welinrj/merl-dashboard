@@ -185,7 +185,7 @@ const OVERVIEW_METRIC_STYLES = `
 
 export default function KpiCard({
   label, value, sub, progress, progressColor, linkLabel,
-  onClick, children, className,
+  onClick, children, className, icon: Icon,
 }) {
   const Tag = onClick ? 'button' : 'div';
   const injectOverviewStyles = typeof className === 'string' && className.includes('ovx-kpi-progress');
@@ -205,6 +205,7 @@ export default function KpiCard({
         )}
       >
         <div className="kpi-card-head min-w-0">
+          {Icon && <span className="merl-card-icon"><Icon size={30} /></span>}
           <div className="kpi-card-label text-[0.72rem] font-semibold leading-tight text-[var(--text-2)]">{label}</div>
         </div>
         <div className="kpi-card-visual">

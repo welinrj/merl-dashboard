@@ -34,6 +34,7 @@ import './typography-system.css';
 // Coat of Arms and the DoCC logo at every viewport size.
 import './header-two-logo.css';
 import './visual-consistency.css';
+import './merl-icons.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,3 +1,4 @@
+import { ReviewIcon, BudgetUsageIcon, UpdateProgressIcon, ResultsIcon, BeneficiariesIcon } from '../components/ui/MerlIcons';
 import { currentProjects } from '../lib/docc/projectScope';
 // =============================================================================
 // ProjectPortfolioAnalysis.jsx — one project, analysed end to end.
@@ -841,12 +842,12 @@ export default function ProjectPortfolioAnalysis() {
           {/* 4 — executive KPIs. Each jumps to the section that explains it. */}
           <div className="grid-kpi-6">
             <button type="button" onClick={() => jump('ppa-health')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiHealth')} status={tile(a.health.status)}
+              <StatTile icon={ReviewIcon} label={t('ppa.kpiHealth')} status={tile(a.health.status)}
                 value={t(`ppa.health_${a.health.status}`)}
                 sub={t('ppa.kpiHealthSub')} />
             </button>
             <button type="button" onClick={() => jump('ppa-financial')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiBudget')} status={tile(a.dimensions.financial.status)}
+              <StatTile icon={BudgetUsageIcon} label={t('ppa.kpiBudget')} status={tile(a.dimensions.financial.status)}
                 value={typeof a.financial.utilisationPct === 'number' ? fmtPct(a.financial.utilisationPct) : t('ppa.notReported')}
                 placeholder={typeof a.financial.utilisationPct !== 'number'}
                 sub={a.financial.hasRecords
@@ -854,7 +855,7 @@ export default function ProjectPortfolioAnalysis() {
                   : t('ppa.noFinancialRecords')} />
             </button>
             <button type="button" onClick={() => jump('ppa-implementation')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiImplementation')} status={tile(a.dimensions.schedule.status)}
+              <StatTile icon={UpdateProgressIcon} label={t('ppa.kpiImplementation')} status={tile(a.dimensions.schedule.status)}
                 value={typeof a.implementation.pct === 'number' ? fmtPct(a.implementation.pct) : t('ppa.notReported')}
                 placeholder={typeof a.implementation.pct !== 'number'}
                 sub={a.implementation.basis === 'physical'
@@ -864,7 +865,7 @@ export default function ProjectPortfolioAnalysis() {
                     : t('ppa.noActivities')} />
             </button>
             <button type="button" onClick={() => jump('ppa-results')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiResults')} status={tile(a.dimensions.results.status)}
+              <StatTile icon={ResultsIcon} label={t('ppa.kpiResults')} status={tile(a.dimensions.results.status)}
                 value={typeof a.results.achievementPct === 'number' ? fmtPct(a.results.achievementPct) : t('ppa.notReported')}
                 placeholder={typeof a.results.achievementPct !== 'number'}
                 sub={a.results.due > 0
@@ -878,7 +879,7 @@ export default function ProjectPortfolioAnalysis() {
                 sub={project.end_date ? t('ppa.kpiTimeSub', { date: fmtDate(project.end_date) }) : t('ppa.noDates')} />
             </button>
             <button type="button" onClick={() => jump('ppa-beneficiaries')} className="kpi-jump">
-              <StatTile label={t('ppa.kpiBeneficiaries')} status="none"
+              <StatTile icon={BeneficiariesIcon} label={t('ppa.kpiBeneficiaries')} status="none"
                 value={a.beneficiaries.reached != null ? fmtNum(a.beneficiaries.reached) : t('ppa.notReported')}
                 placeholder={a.beneficiaries.reached == null}
                 sub={a.beneficiaries.target != null
