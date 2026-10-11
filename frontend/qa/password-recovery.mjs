@@ -36,6 +36,7 @@ try {
   if(updates !== 1 || logout !== 1) throw new Error('Recovery did not update once and end the session');
   if(page.url().includes('access_token')) throw new Error('Recovery tokens remain in URL');
   console.log('PASS Recovery URL survives SDK consumption before the profile gate');
+  await page.goto('about:blank');
   await page.goto('http://localhost:5199/#error=access_denied&error_code=otp_expired');
   await page.getByRole('alert').filter({hasText:'expired or is incomplete'}).waitFor();
   if(await page.getByRole('button',{name:'Change password',exact:true}).count()) throw new Error('Expired link permits a password update');
