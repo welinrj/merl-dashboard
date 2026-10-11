@@ -4,10 +4,10 @@
 import { useTranslation } from 'react-i18next';
 
 const TONES = {
-  success: { col: '#1a8c4e', bg: '#f1f7f3', txt: '#2f6f45' },
-  warning: { col: '#c28a20', bg: '#fbf6e8', txt: '#806019' },
+  success: { col: '#16a34a', bg: '#dcfce7', txt: '#166534' },
+  warning: { col: '#d97706', bg: '#fef3c7', txt: '#92400e' },
   danger:  { col: '#b3402f', bg: '#fbf1ef', txt: '#8c3529' },
-  neutral: { col: '#85808d', bg: '#f5f5f7', txt: '#625d69' },
+  neutral: { col: '#6b7280', bg: '#f3f4f6', txt: '#4b5563' },
   info:    { col: '#4d73a5', bg: '#f0f4f9', txt: '#3f6088' },
 };
 
@@ -23,9 +23,13 @@ const STATUS_MAP = {
   rejected:   ['danger',  'status.rejected'],    high:      ['danger',  'status.high'],
   critical:   ['danger',  'status.critical'],    overdue:   ['danger',  'status.overdue'],
   draft:      ['neutral', 'status.draft'],       inactive:  ['neutral', 'status.inactive'],
-  closed:     ['neutral', 'status.closed'],      none:      ['neutral', 'status.no_data'],
+  closed:     ['success', 'status.closed'],      none:      ['neutral', 'status.no_data'],
   unrated:    ['neutral', 'status.unrated'],
-  submitted:  ['info',    'status.submitted'],   reviewed:  ['info',    'status.under_review'],
+  no_data:    ['neutral', 'status.no_data'],
+  unreported: ['neutral', 'status.no_data'],
+  not_reported: ['neutral', 'status.no_data'],
+  pending_review: ['warning', 'status.pending'],
+  submitted:  ['warning',    'status.submitted'],   reviewed:  ['info',    'status.under_review'],
   in_progress:['info',    'status.in_progress'],
 };
 
@@ -42,7 +46,7 @@ export default function StatusBadge({ status, tone, label, size = 'sm' }) {
   const pad = size === 'md' ? '0.24rem 0.52rem' : '0.18rem 0.44rem';
   const fs = size === 'md' ? '0.75rem' : '0.7rem';
   return (
-    <span style={{
+    <span className="merl-status-badge" data-tone={resolvedTone || 'neutral'} style={{
       display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: m.bg, color: m.txt,
       border: `1px solid ${m.col}26`, borderRadius: 4, padding: pad, fontSize: fs,
       fontWeight: 650, letterSpacing: 0, textTransform: 'none', whiteSpace: 'nowrap',

@@ -15,11 +15,11 @@
   --type-h2: clamp(1.25rem, 1.15rem + 0.35vw, 1.55rem);
   --type-h3: 1.0625rem;
   --type-h4: 0.9375rem;
-  --type-body: 0.9375rem;
-  --type-body-sm: 0.8125rem;
-  --type-label: 0.75rem;
-  --type-caption: 0.6875rem;
-  --type-control: 0.875rem;
+  --type-body: 1rem;
+  --type-body-sm: 0.875rem;
+  --type-label: 0.875rem;
+  --type-caption: 0.8125rem;
+  --type-control: 1rem;
   --type-kpi: clamp(1.55rem, 1.35rem + 0.7vw, 2.1rem);
 }
 
@@ -280,7 +280,7 @@ pre,
   :root {
     --type-body: 0.9rem;
     --type-body-sm: 0.8rem;
-    --type-control: 0.875rem;
+    --type-control: 1rem;
     --type-label: 0.72rem;
   }
 

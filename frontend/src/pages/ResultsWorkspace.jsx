@@ -293,7 +293,7 @@ export default function ResultsWorkspace({ user }) {
     const schedule = row.progress.schedule_status || 'on_schedule';
     return <div className="rf2-status-stack">
       <span className={`rf2-pill ${performance}`}>{performance.replaceAll('_', ' ')}</span>
-      <span className="rf2-pill neutral">{row.progress.review_status || 'Unreviewed'}</span>
+      <span className={`rf2-pill ${['submitted', 'pending', 'pending_review'].includes(row.progress.review_status) ? 'pending' : 'neutral'}`}>{row.progress.review_status || 'Unreviewed'}</span>
       {schedule === 'delayed' && <span className="rf2-pill delayed">Delayed</span>}
     </div>;
   };

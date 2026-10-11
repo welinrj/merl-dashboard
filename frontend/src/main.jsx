@@ -33,6 +33,7 @@ import './typography-system.css';
 // Final responsive branding contract: the header contains only the national
 // Coat of Arms and the DoCC logo at every viewport size.
 import './header-two-logo.css';
+import './visual-consistency.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
