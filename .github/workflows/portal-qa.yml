@@ -55,6 +55,10 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/header-inline-auth.mjs
 
+      - name: Validate password recovery links and delivery failures
+        working-directory: frontend
+        run: node qa/password-recovery.mjs
+
       - name: Validate role permission matrix
         working-directory: frontend
         env:

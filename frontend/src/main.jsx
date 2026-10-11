@@ -57,11 +57,12 @@ function PortalApp() {
     <Routes>
       <Route path="*" element={(
         <>
-          <PasswordRecoveryGate />
+          <PasswordRecoveryGate>
           <PublicEntry />
           <EvidenceUploadPortal />
           <ConfirmHost />
           <DataAvailabilityGuard />
+          </PasswordRecoveryGate>
         </>
       )} />
     </Routes>

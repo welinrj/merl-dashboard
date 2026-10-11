@@ -3,6 +3,7 @@
 // Override per environment with VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.
 import { createClient } from '@supabase/supabase-js';
 import type { UserRole } from './types';
+import { recoveryBootstrap } from './lib/passwordRecovery';
 
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
   ?? 'https://ndntvncboeajanipafeq.supabase.co';
@@ -82,6 +83,15 @@ const monitoredFetch: typeof fetch = async (input, init) => {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   global: { fetch: monitoredFetch },
+});
+
+// Register before React mounts so fast recovery callbacks cannot be missed.
+supabase.auth.onAuthStateChange(event => {
+  if (event === 'PASSWORD_RECOVERY') {
+    recoveryBootstrap.active = true;
+    recoveryBootstrap.credentials = true;
+    recoveryBootstrap.invalid = false;
+  }
 });
 
 // ── Role mapping ──────────────────────────────────────────────────────────────

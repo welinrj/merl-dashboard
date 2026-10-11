@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-const hasRecoveryMarker = () => {
-  if (typeof window === 'undefined') return false;
-  const here = `${window.location.search}${window.location.hash}`;
-  return /(?:type=recovery|recovery_token|access_token)/i.test(here);
-};
+import { recoveryBootstrap } from '../lib/passwordRecovery';
+import './public-header-login.css';
 
 /**
  * Global password-recovery gate.
@@ -14,8 +11,10 @@ const hasRecoveryMarker = () => {
  * normal MERL profile gate runs. This component listens for PASSWORD_RECOVERY
  * and forces the user to choose a new password before continuing.
  */
-export default function PasswordRecoveryGate() {
-  const [open, setOpen] = useState(hasRecoveryMarker);
+export default function PasswordRecoveryGate({ children }) {
+  const [open, setOpen] = useState(recoveryBootstrap.active);
+  const [ready, setReady] = useState(false);
+  const [invalid, setInvalid] = useState(recoveryBootstrap.invalid);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -27,17 +26,27 @@ export default function PasswordRecoveryGate() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (alive && event === 'PASSWORD_RECOVERY') {
         setOpen(true);
+        setReady(true);
+        setInvalid(false);
         setMessage('');
         setError('');
       }
     });
 
-    // If the auth client consumed the URL before this component subscribed,
-    // keep the recovery screen visible when the recovery marker was present.
-    if (hasRecoveryMarker()) {
-      void supabase.auth.getSession().then(({ data }) => {
-        if (alive && data.session) setOpen(true);
-      });
+    if (recoveryBootstrap.active) {
+      void (async () => {
+        try {
+          const { error: initError } = await supabase.auth.initialize();
+          const { data, error: sessionError } = await supabase.auth.getSession();
+          if (!alive) return;
+          const valid = !recoveryBootstrap.invalid && !initError && !sessionError
+            && recoveryBootstrap.credentials && !!data.session;
+          setInvalid(!valid);
+          setReady(valid);
+        } catch {
+          if (alive) setInvalid(true);
+        }
+      })();
     }
 
     return () => {
@@ -60,25 +69,32 @@ export default function PasswordRecoveryGate() {
       return;
     }
 
+    if (!ready || busy) return;
     setBusy(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) {
-      setError(updateError.message || 'The password could not be changed. Request a new recovery link and try again.');
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) {
+        setError(updateError.message || 'The password could not be changed. Request a new recovery link.');
+        return;
+      }
+      setPassword('');
+      setConfirm('');
+      setMessage('Password changed successfully. You can now sign in with your new password.');
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch {
+      setError('The request could not be completed. Check your connection and try again.');
+    } finally {
       setBusy(false);
-      return;
     }
-
-    setPassword('');
-    setConfirm('');
-    setMessage('Password changed successfully. You can now sign in with your new password.');
-
-    // End the recovery session so the user proves the new password at the next
-    // sign-in and does not retain access through an old recovery link.
-    await supabase.auth.signOut();
-    setBusy(false);
   };
 
-  if (!open) return null;
+  const returnToSignIn = () => {
+    recoveryBootstrap.active = false;
+    window.history.replaceState(null, '', `${window.location.pathname}#/dashboards`);
+    setOpen(false);
+  };
+
+  if (!open) return children;
 
   return (
     <div className="merl-recovery-backdrop" role="dialog" aria-modal="true" aria-labelledby="merl-recovery-title">
@@ -87,13 +103,17 @@ export default function PasswordRecoveryGate() {
         <h2 id="merl-recovery-title">Set a new password</h2>
         <p>Enter a new password for your MERL account. It must contain at least 10 characters.</p>
 
-        {message ? (
+        {invalid ? (
+          <>
+            <div className="merl-recovery-error" role="alert">This recovery link has expired or is incomplete. Return to sign in and request a new link using Forgot password.</div>
+            <button type="button" className="merl-recovery-primary" onClick={returnToSignIn}>Return to sign in</button>
+          </>
+        ) : !ready && !message ? (
+          <p role="status">Checking recovery link…</p>
+        ) : message ? (
           <>
             <div className="merl-recovery-success" role="status">{message}</div>
-            <button type="button" className="merl-recovery-primary" onClick={() => {
-              setOpen(false);
-              window.location.hash = '#/dashboards';
-            }}>
+            <button type="button" className="merl-recovery-primary" onClick={returnToSignIn} disabled={busy}>
               Return to sign in
             </button>
           </>

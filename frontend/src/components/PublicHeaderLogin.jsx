@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import { loadCurrentProfile } from '../lib/authProfile';
+import { recoveryDeliveryError } from '../lib/passwordRecovery';
 import { loginErrorKey } from '../lib/loginError';
 import './public-header-login.css';
 
@@ -49,16 +50,12 @@ export default function PublicHeaderLogin() {
       const redirectTo = 'https://welinrj.github.io/merl-dashboard/';
       const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
       if (recoveryError) {
-        setError(fr
-          ? 'Impossible d’envoyer le lien de récupération. Veuillez réessayer.'
-          : 'Unable to send the recovery link. Please try again.');
+        setError(recoveryDeliveryError(recoveryError, fr));
         return;
       }
       setRecoverySent(true);
-    } catch {
-      setError(fr
-        ? 'Impossible d’envoyer le lien de récupération. Veuillez réessayer.'
-        : 'Unable to send the recovery link. Please try again.');
+    } catch (sendError) {
+      setError(recoveryDeliveryError(sendError, fr));
     } finally {
       setLoading(false);
     }
