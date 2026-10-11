@@ -9,12 +9,8 @@ import { confirmDialog } from '../lib/confirm';
 import PageHeader from '../components/ui/PageHeader';
 import ActivityManager from '../components/ActivityManager';
 import * as OPT from '../constants/formOptions';
-import { PROVINCE_LIST, AREA_COUNCILS_BY_PROVINCE } from '../constants/vanuatuGeo';
 
 const EDITOR_ROLES = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
-const OFFICIAL_AREA_COUNCIL_REFS = Object.entries(AREA_COUNCILS_BY_PROVINCE)
-  .flatMap(([province_code, names]) => names.map((name) => ({ province_code, name })))
-  .sort((a, b) => a.province_code.localeCompare(b.province_code) || a.name.localeCompare(b.name));
 const toNull = (v) => (v === '' || v === undefined ? null : v);
 const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 const toArr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
@@ -210,12 +206,9 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
   const visibleProjects = showCompletedProjects ? projects : currentProjects(projects);
   const [projectId, setProjectId] = useState('');
-  const [refs, setRefs] = useState([]);
-  const [areas, setAreas] = useState([]);
   const [indicators, setIndicators] = useState([]);
   const [kpis, setKpis] = useState([]);
   const [organizations, setOrganizations] = useState([]);
-  const [areaEdit, setAreaEdit] = useState({ id: null, area_council_name: '', coverage_status: 'active', feasibility_status: 'not_assessed', feasibility_note: '' });
   const [kpiEdit, setKpiEdit] = useState({ id: null, indicator_id: '', short_label: '', display_order: 0, show_target: true, show_progress: true, is_public: false, active: true });
   const [orgEdit, setOrgEdit] = useState({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false });
   const [busy, setBusy] = useState(false);
@@ -227,10 +220,6 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
       .order('code');
     if (pe) { toast.error(dbErrorMessage(pe)); return; }
     setProjects(officialProjects(ps || []));
-    // Use the controlled national reference list in the UI. The database mirror
-    // is maintained by migration, but the dropdown must never fall back to an
-    // obsolete starter list if a database migration is temporarily delayed.
-    setRefs(OFFICIAL_AREA_COUNCIL_REFS);
     setProjectId((old) => {
       const requested = preferredProjectId || routeProjectId;
       const preferred = officialProjects(ps || []).some((p) => p.id === requested) ? requested : '';
@@ -241,44 +230,20 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   }, [preferredProjectId]);
 
   const loadConfig = useCallback(async (pid) => {
-    if (!pid) { setAreas([]); setIndicators([]); setKpis([]); return; }
-    const [a,i,k,o] = await Promise.all([
-      supabase.from('v_project_area_councils').select('*').eq('project_id',pid).order('province_code').order('area_council_name'),
+    if (!pid) { setIndicators([]); setKpis([]); return; }
+    const [i,k,o] = await Promise.all([
       supabase.from('v_project_indicators').select('id,code,name,unit').eq('project_id',pid).order('code'),
       supabase.from('v_dashboard_kpi_config').select('*').eq('project_id',pid).eq('dashboard_scope','project').order('display_order'),
       supabase.from('v_project_organizations').select('*').eq('project_id',pid).order('role').order('name'),
     ]);
-    const err=a.error||i.error||k.error||o.error;
+    const err=i.error||k.error||o.error;
     if (err) { toast.error(dbErrorMessage(err)); return; }
-    setAreas(a.data||[]); setIndicators(i.data||[]); setKpis(k.data||[]); setOrganizations(o.data||[]);
+    setIndicators(i.data||[]); setKpis(k.data||[]); setOrganizations(o.data||[]);
   }, []);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
   useEffect(() => { loadConfig(projectId); }, [projectId, loadConfig]);
 
-  const saveArea = async () => {
-    if (!projectId || !areaEdit.area_council_name) { toast.error('Select an Area Council.'); return; }
-    setBusy(true);
-    const { error } = await supabase.rpc('upsert_project_area_council', {
-      p_id: areaEdit.id, p_project_id: projectId, p_area_council_name: areaEdit.area_council_name,
-      p_coverage_status: areaEdit.coverage_status, p_feasibility_status: areaEdit.feasibility_status,
-      p_feasibility_note: toNull(areaEdit.feasibility_note?.trim()),
-    });
-    setBusy(false);
-    if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success('Area Council coverage saved.');
-    setAreaEdit({ id:null, area_council_name:'', coverage_status:'active', feasibility_status:'not_assessed', feasibility_note:'' });
-    loadConfig(projectId);
-  };
-  const deleteArea = async (id) => {
-    if (!canEdit) return;
-    const row=areas.find((x)=>x.id===id);
-    if (!(await confirmDialog({ title:'Delete Area Council coverage', message:`Remove ${row?.area_council_name || 'this Area Council'} from this project's coverage? This cannot be undone.`, confirmLabel:'Delete' }))) return;
-    const { error } = await supabase.rpc('delete_project_area_council',{ p_id:id });
-    if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success('Area Council coverage deleted.');
-    loadConfig(projectId);
-  };
   const saveKpi = async () => {
     if (!projectId || !kpiEdit.indicator_id) { toast.error('Select an indicator.'); return; }
     setBusy(true);
@@ -343,7 +308,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success('Project deleted.');
     setProjectId('');
-    setAreas([]); setIndicators([]); setKpis([]); setOrganizations([]);
+    setIndicators([]); setKpis([]); setOrganizations([]);
     await loadProjects();
   };
 
@@ -383,18 +348,6 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
         </div>
         <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setOrgEdit({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveOrganization}>Save organization</button></div>
         <div className="ps-mini-table"><table><thead><tr><th>Role</th><th>Organization</th><th>Primary</th><th></th></tr></thead><tbody>{organizations.map(o=><tr key={o.id}><td>{String(o.role||'').replaceAll('_',' ')}</td><td><b>{o.name}</b><small>{o.short_name||o.organization_type||''}</small></td><td>{o.is_primary?'Yes':'No'}</td><td>{canEdit && <><button type="button" onClick={()=>setOrgEdit({ id:o.id, name:o.name||'', short_name:o.short_name||'', organization_type:o.organization_type||'', role:o.role||'implementing_partner', is_primary:!!o.is_primary })}>Edit</button><button type="button" className="danger" onClick={()=>deleteOrganization(o.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
-      </div>
-
-      <div className="ps-config-card">
-        <h3>Area Council Coverage & Feasibility</h3>
-        <div className="ps-config-form">
-          <label><span className="field-label">Area Council</span><select className="field-input" value={areaEdit.area_council_name} onChange={(e)=>setAreaEdit(s=>({...s,area_council_name:e.target.value}))}><option value="">Select</option>{refs.map(r=><option key={`${r.province_code}-${r.name}`} value={r.name}>{r.province_code} — {r.name}</option>)}</select></label>
-          <label><span className="field-label">Coverage</span><select className="field-input" value={areaEdit.coverage_status} onChange={(e)=>setAreaEdit(s=>({...s,coverage_status:e.target.value}))}><option value="planned">Planned</option><option value="active">Active</option><option value="completed">Completed</option><option value="not_covered">Not covered</option></select></label>
-          <label><span className="field-label">Feasibility</span><select className="field-input" value={areaEdit.feasibility_status} onChange={(e)=>setAreaEdit(s=>({...s,feasibility_status:e.target.value}))}><option value="not_assessed">Not assessed</option><option value="under_assessment">Under assessment</option><option value="confirmed">Confirmed</option><option value="conditional">Conditional</option><option value="not_feasible">Not feasible</option></select></label>
-          <label className="full"><span className="field-label">Feasibility note</span><textarea className="field-input" rows={2} value={areaEdit.feasibility_note} onChange={(e)=>setAreaEdit(s=>({...s,feasibility_note:e.target.value}))}/></label>
-        </div>
-        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setAreaEdit({ id:null, area_council_name:'', coverage_status:'active', feasibility_status:'not_assessed', feasibility_note:'' })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveArea}>Save coverage</button></div>
-        <div className="ps-mini-table"><table><thead><tr><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th></th></tr></thead><tbody>{areas.map(r=><tr key={r.id}><td><b>{r.area_council_name}</b><small>{r.province_code||''}</small></td><td>{r.coverage_status.replaceAll('_',' ')}</td><td>{r.feasibility_status.replaceAll('_',' ')}</td><td>{canEdit && <><button type="button" onClick={()=>setAreaEdit({...r,feasibility_note:r.feasibility_note||''})}>Edit</button><button type="button" className="danger" onClick={()=>deleteArea(r.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
       </div>
 
       <div className="ps-config-card">

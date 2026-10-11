@@ -1100,39 +1100,22 @@ export default function ProjectPortfolioAnalysis() {
 
             <Section
               id="ppa-geography"
-              title="Area Council Coverage & Feasibility"
-              description="Coverage reporting stops at Area Council level, in line with the stakeholder consultation."
+              title="Project locations"
+              description="Area Councils associated with this project."
               error={errors.areaCouncils}
               onRetry={() => load(projectId)}
               empty={!errors.areaCouncils && d.areaCouncils.length === 0}
-              emptyTitle="No Area Council coverage recorded"
-              emptyText="Add the project's approved Area Council coverage and feasibility records in Project Setup."
+              emptyTitle="No Area Councils recorded"
+              emptyText="Project locations will appear here when recorded."
             >
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.7rem', marginBottom: '0.9rem' }}>
-                {[
-                  ['Covered', d.areaCouncils.filter((x) => x.coverage_status !== 'not_covered').length],
-                  ['Confirmed', d.areaCouncils.filter((x) => x.feasibility_status === 'confirmed').length],
-                  ['Assessment', d.areaCouncils.filter((x) => x.feasibility_status === 'under_assessment').length],
-                  ['Conditional', d.areaCouncils.filter((x) => x.feasibility_status === 'conditional').length],
-                  ['Not feasible', d.areaCouncils.filter((x) => x.feasibility_status === 'not_feasible').length],
-                ].map(([label, value]) => (
-                  <div key={label} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', padding: '0.55rem 0.65rem' }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-1)' }}>{fmtNum(value)}</div>
-                    <div style={{ fontSize: '0.63rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-                  </div>
-                ))}
-              </div>
               <Scroller>
                 <table className="data-table" style={{ width: '100%', minWidth: 520 }}>
-                  <thead><tr><th>Province</th><th>Area Council</th><th>Coverage</th><th>Feasibility</th><th>Note</th></tr></thead>
+                  <thead><tr><th>Province</th><th>Area Council</th></tr></thead>
                   <tbody>
                     {[...d.areaCouncils].sort((a,b) => String(a.province_code || '').localeCompare(String(b.province_code || '')) || String(a.area_council_name).localeCompare(String(b.area_council_name))).map((row) => (
                       <tr key={row.id}>
                         <td>{row.province_code || '—'}</td>
                         <td style={{ fontWeight: 700 }}>{row.area_council_name}</td>
-                        <td><StatusBadge status={row.coverage_status} /></td>
-                        <td><StatusBadge status={row.feasibility_status} /></td>
-                        <td>{row.feasibility_note || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
