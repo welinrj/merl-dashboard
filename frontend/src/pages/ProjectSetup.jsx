@@ -1,6 +1,7 @@
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
+import ProjectDetailsForm from '../components/ProjectDetailsForm';
 import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { dbErrorMessage, isMissingRpcArgument } from '../lib/dbError';
@@ -28,7 +29,6 @@ const blankProfile = () => ({
   est_direct_beneficiaries: '', est_indirect_beneficiaries: '', expected_primary_outcome: '',
 });
 
-const field = { display: 'flex', flexDirection: 'column', gap: '.3rem' };
 
 const FORM_PREVIEWS = [
   {
@@ -350,19 +350,22 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   return <section className="ps-config">
     <PendingResultsFrameworks projects={projects} user={user} onSelect={id => { setShowCompletedProjects(true); setProjectId(id); }} />
     <div className="ps-config-head">
-      <div><h2>Selected Project</h2>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access</p>}</div>
+      <div><h2>Choose a project</h2>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access</p>}</div>
       <div style={{display:'flex',gap:'.5rem',alignItems:'end',flexWrap:'wrap'}}>
-        <select className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
+        <select aria-label="Choose a project" className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
           <option value="">Select project</option>{visibleProjects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
         </select>
         {projectId && <a className="btn btn-secondary" href={`#/results-framework?project=${encodeURIComponent(projectId)}`}>Results framework</a>}
-        {canEdit && projectId && <button type="button" className="btn btn-secondary" onClick={()=>onEditProject?.(projects.find((p)=>p.id===projectId))} disabled={busy}>Edit profile</button>}
-        {isAdmin && projectId && <button type="button" className="btn btn-secondary" onClick={deleteProject} disabled={busy} style={{color:'var(--red-600)',borderColor:'var(--red-200)'}}>Delete project</button>}
+        {canEdit && projectId && <button type="button" className="btn btn-primary" onClick={()=>onEditProject?.(projects.find((p)=>p.id===projectId))} disabled={busy}>Edit project details</button>}
       </div>
     </div>
     <p className="ps-config-note">{currentProjects(projects).length} projects with results frameworks.</p>
     <label className="ps-config-note"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked) setProjectId(currentProjects(projects)[0]?.id || ''); }} /> Include all registered projects</label>
-    {projectId && <div className="ps-config-grid">
+    {projectId && <div className="ps-project-summary">
+      <h3>{projects.find(p => p.id === projectId)?.name}</h3>
+      <p>{projects.find(p => p.id === projectId)?.description || 'Choose Edit project details to add a description, contacts, funding and locations.'}</p>
+    </div>}
+    {projectId && <details className="ps-settings" key={projectId}><summary>Partners, activities and dashboard settings</summary><div className="ps-config-grid">
       <div className="ps-config-card">
         <h3>Donors & Partners</h3>
         <p className="ps-config-note">Donors and partners are stored separately by role so dashboard filters and reports do not mix funding sources with implementing organisations.</p>
@@ -409,7 +412,8 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
         <div className="ps-mini-table"><table><thead><tr><th>Order</th><th>KPI</th><th>Target</th><th>Progress</th><th></th></tr></thead><tbody>{kpis.map(k=><tr key={k.id}><td>{k.display_order}</td><td><b>{k.short_label}</b></td><td>{k.show_target?'Yes':'No'}</td><td>{k.show_progress?'Yes':'No'}</td><td>{canEdit && <><button type="button" onClick={()=>setKpiEdit({...k})}>Edit</button><button type="button" className="danger" onClick={()=>deleteKpi(k.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
       </div>
       <ActivityManager projectId={projectId} canEdit={canEdit} />
-    </div>}
+    </div></details>}
+    {isAdmin && projectId && <details className="ps-settings"><summary>Delete this project</summary><p>Deleting a project removes it from the register. This action cannot be undone.</p><button type="button" className="btn btn-secondary" onClick={deleteProject} disabled={busy} style={{color:'var(--red-600)',borderColor:'var(--red-200)'}}>Delete project</button></details>}
   </section>;
 }
 
@@ -421,14 +425,8 @@ export default function ProjectSetup({ user }) {
   const [editId, setEditId] = useState(null);
   const [resetKey, setResetKey] = useState(0);
   const [mode, setMode] = useState('manage');
+  const [selectedId, setSelectedId] = useState(null);
   const title = 'Project Register';
-  const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
-  const setMulti = (k) => (e) => setV((s) => ({ ...s, [k]: Array.from(e.target.selectedOptions).map((o) => o.value) }));
-  const dirty = useMemo(() => Object.entries(v).some(([k, value]) => {
-    const base = blankProfile()[k];
-    return Array.isArray(value) ? value.length > 0 : String(value ?? '') !== String(base ?? '');
-  }), [v]);
-
   const beginEditProfile = (project) => {
     if (!project) return;
     const next = blankProfile();
@@ -442,8 +440,10 @@ export default function ProjectSetup({ user }) {
     next.communities = toArr(project.communities);
     setV(next);
     setEditId(project.id);
+    setSelectedId(project.id);
     setRegistered(null);
     setMode('register');
+    document.querySelector('.dsh-scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -516,61 +516,19 @@ export default function ProjectSetup({ user }) {
   return (
     <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }} key={resetKey}>
       <PageHeader title={title} />
-      <div className="ps-mode-tabs" role="tablist" aria-label="Project register sections">
+      {mode === 'manage' && <div className="ps-mode-tabs" aria-label="Project register sections">
         <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => { setEditId(null); setMode('manage'); }}>Projects</button>
         <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setEditId(null); setV(blankProfile()); setMode('register'); }}>Add project</button>
-      </div>
+      </div>}
 
       {registered && mode === 'manage' && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was {registered.action || 'registered'} and is selected below.</div>}
 
-      {mode === 'register' && <form onSubmit={save} id="project-profile">
-        <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem' }}>
-          <h2 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>{editId ? 'Edit Project Profile' : 'Project Profile'}</h2>
-          <div className="ps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '.8rem' }}>
-            <label style={{ ...field, gridColumn: '1 / -1' }}><span className="field-label">Project Title *</span><input className="field-input" value={v.name} onChange={set('name')} required /></label>
-            <label style={field}><span className="field-label">Acronym</span><input className="field-input" value={v.acronym} onChange={set('acronym')} /></label>
-            <label style={field}><span className="field-label">Status</span><select className="field-input" value={v.status} onChange={set('status')}>{OPT.DOCC_PROJECT_STATUS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
-            <label style={{ ...field, gridColumn: '1 / -1' }}><span className="field-label">Description</span><textarea className="field-input" rows={3} value={v.description} onChange={set('description')} /></label>
+      {mode === 'register' && <ProjectDetailsForm values={v} onChange={setV} onSubmit={save} saving={saving} editing={Boolean(editId)} onCancel={() => { setV(blankProfile()); setEditId(null); setMode('manage'); }} />}
 
-            <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Classification</h3>
-            <label style={field}><span className="field-label">Theme / Sector</span><input className="field-input" value={v.category} onChange={set('category')} /></label>
-            <label style={field}><span className="field-label">Project Type</span><input className="field-input" value={v.project_type} onChange={set('project_type')} /></label>
-            <label style={{ ...field, gridColumn: '1 / -1' }}><span className="field-label">Expected Primary Outcome</span><input className="field-input" value={v.expected_primary_outcome} onChange={set('expected_primary_outcome')} /></label>
-
-            <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Institutions</h3>
-            <label style={field}><span className="field-label">Lead Department / Agency</span><input className="field-input" value={v.lead_agency} onChange={set('lead_agency')} /></label>
-            <label style={field}><span className="field-label">Executing Agency</span><input className="field-input" value={v.executing_agency} onChange={set('executing_agency')} /></label>
-            <label style={field}><span className="field-label">Project Manager</span><input className="field-input" value={v.project_manager} onChange={set('project_manager')} /></label>
-            <label style={field}><span className="field-label">DoCC M&E Officer</span><input className="field-input" value={v.me_officer} onChange={set('me_officer')} /></label>
-            <label style={field}><span className="field-label">Finance Officer</span><input className="field-input" value={v.finance_officer} onChange={set('finance_officer')} /></label>
-
-            <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Funding & Timeline</h3>
-            <label style={field}><span className="field-label">Donor / Source of Funding</span><select className="field-input" value={v.donor} onChange={set('donor')}><option value="">Select</option>{OPT.DONOR.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
-            <label style={field}><span className="field-label">Funding Window</span><input className="field-input" value={v.funding_window} onChange={set('funding_window')} /></label>
-            <label style={field}><span className="field-label">Approved Budget</span><input className="field-input" type="number" min="0" value={v.budget_vuv} onChange={set('budget_vuv')} /></label>
-            <label style={field}><span className="field-label">Currency</span><select className="field-input" value={v.currency} onChange={set('currency')}>{OPT.CURRENCY.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
-            <label style={field}><span className="field-label">Start Date</span><input className="field-input" type="date" value={v.start_date} onChange={set('start_date')} /></label>
-            <label style={field}><span className="field-label">End Date</span><input className="field-input" type="date" value={v.end_date} onChange={set('end_date')} /></label>
-            <label style={field}><span className="field-label">Approval Date</span><input className="field-input" type="date" value={v.approval_date} onChange={set('approval_date')} /></label>
-
-            <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Geographic Coverage</h3>
-            <label style={field}><span className="field-label">Coverage Type</span><select className="field-input" value={v.coverage_type} onChange={set('coverage_type')}><option value="">Select</option>{OPT.COVERAGE_TYPE.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
-            <label style={field}><span className="field-label">Provinces</span><select multiple className="field-input" style={{ minHeight: 105 }} value={v.provinces} onChange={setMulti('provinces')}>{PROVINCE_LIST.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-
-            <h3 style={{ gridColumn: '1 / -1', margin: '.8rem 0 0', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)' }}>Expected Beneficiaries</h3>
-            <label style={field}><span className="field-label">Direct Beneficiaries</span><input className="field-input" type="number" min="0" value={v.est_direct_beneficiaries} onChange={set('est_direct_beneficiaries')} /></label>
-            <label style={field}><span className="field-label">Indirect Beneficiaries</span><input className="field-input" type="number" min="0" value={v.est_indirect_beneficiaries} onChange={set('est_indirect_beneficiaries')} /></label>
-          </div>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem', marginTop: '1rem' }}>
-          <button type="button" className="btn btn-secondary" disabled={saving} onClick={() => { setV(blankProfile()); if (editId) { setEditId(null); setMode('manage'); } }}>{editId ? 'Cancel edit' : 'Clear form'}</button>
-          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? (editId ? 'Saving…' : 'Registering…') : (editId ? 'Save profile changes' : 'Register project')}</button>
-        </div>
-      </form>}
-
-      {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} onEditProject={beginEditProfile} user={user} />}
+      {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id || selectedId} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} onEditProject={beginEditProfile} user={user} />}
 
       <style>{`
+        .ps-project-summary{margin-top:1rem;padding:1rem;border-radius:10px;background:var(--surface-1)}.ps-project-summary h3{margin:0 0 .5rem;font-size:1rem}.ps-project-summary p{margin:0;white-space:pre-line;color:var(--text-2);line-height:1.6}.ps-settings{margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem}.ps-settings summary{cursor:pointer;font-weight:700;min-height:44px;line-height:1.5}.ps-settings p{color:var(--text-2)}
         .ps-mode-tabs{display:flex;gap:.45rem;flex-wrap:wrap;margin:0 0 1rem;padding:.35rem;background:var(--surface-1);border:1px solid var(--border);border-radius:10px;width:max-content;max-width:100%}.ps-mode-tabs button{border:0;background:transparent;color:var(--text-2);font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .8rem;border-radius:7px;cursor:pointer}.ps-mode-tabs button.active{background:var(--white);color:var(--green-700);box-shadow:0 1px 2px rgba(15,23,42,.08)}
         .ps-config{margin:0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}.ps-config-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap}.ps-config-head h2{margin:0;font-size:1.08rem}.ps-config-head p{margin:.25rem 0 0;color:var(--text-3);font-size:.78rem;max-width:700px}.ps-config-head select{min-width:300px}.ps-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}.ps-config-card{border:1px solid var(--border);border-radius:10px;padding:.9rem}.ps-config-card h3{margin:0 0 .35rem;font-size:.9rem}.ps-config-note{margin:0 0 .7rem;color:var(--text-3);font-size:.7rem;line-height:1.45}.ps-config-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.ps-config-form label{display:flex;flex-direction:column;gap:.25rem}.ps-config-form .full{grid-column:1/-1}.ps-check{flex-direction:row!important;align-items:center;font-size:.72rem;color:var(--text-2)}.ps-config-actions{display:flex;justify-content:flex-end;gap:.5rem;margin:.65rem 0}.ps-mini-table{overflow:auto;max-height:320px}.ps-mini-table table{width:100%;border-collapse:collapse;font-size:.72rem}.ps-mini-table th,.ps-mini-table td{padding:.45rem;border-top:1px solid var(--border);text-align:left}.ps-mini-table th{font-size:.62rem;text-transform:uppercase;color:var(--text-3)}.ps-mini-table td small{display:block;color:var(--text-3)}.ps-mini-table button{border:0;background:none;color:var(--green-700);font:inherit;cursor:pointer;margin-right:.35rem}.ps-mini-table button.danger{color:#b91c1c}
         .ps-actual{margin:1.2rem 0 0;padding:1rem;background:var(--white);border:1px solid var(--border);border-radius:12px}
