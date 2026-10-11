@@ -1,0 +1,34 @@
+/* Compact branding and grouped navigation for the signed-in workspace. */
+.dsh .dsh-side { --sidebar-coast-height: min(120px, 16dvh); }
+.dsh .dsh-side::before { opacity: .42; }
+.dsh .dsh-side .dsh-brand {
+  grid-template-columns: 36px minmax(0, 1fr);
+  min-height: 76px; padding: 14px 16px; column-gap: 10px;
+}
+.dsh .dsh-side .dsh-brand img { width: 36px; height: 36px; }
+.dsh .dsh-side .dsh-brand::before { width: 36px; height: 36px; }
+.dsh .dsh-side .dsh-brand-title { font-size: 15px !important; line-height: 1.25; }
+.dsh .dsh-side .dsh-brand-dept { font-size: 10px; line-height: 1.4; color: #c9dcf6; letter-spacing: .035em; }
+.dsh .dsh-side .dsh-nav { padding: 12px 12px 16px; gap: 16px; }
+.dsh .dsh-nav-group { display: flex; flex-direction: column; gap: 3px; }
+.dsh .dsh-nav-group + .dsh-nav-group { border-top: 1px solid rgba(255,255,255,.16); padding-top: 12px; }
+.dsh .dsh-nav-group-title { margin: 0 12px 6px; font-size: 11px; font-weight: 700; line-height: 1.4; letter-spacing: .07em; text-transform: uppercase; color: #c9dcf6; }
+.dsh .dsh-side .dsh-nav a { min-height: 46px; padding: 10px 12px; gap: 12px; font-size: 14px !important; line-height: 1.4 !important; color: #f0f6ff; background: transparent; }
+.dsh .dsh-nav-label { flex: 1; min-width: 0; }
+.dsh .dsh-side .dsh-nav a .merl-icon { width: 24px; height: 24px; color: #eef6ff; --merl-icon-blue: #80c4f4; --merl-icon-pale: #d9edff; }
+.dsh .dsh-side .dsh-nav a.active,
+.dsh .dsh-side .dsh-nav a.active:hover { background: rgba(255,255,255,.19); color: #fff; box-shadow: none; font-weight: 700; }
+.dsh .dsh-side .dsh-nav a.active::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: #fff; }
+/* Touch browsers can retain hover after tapping; only the current page is highlighted. */
+.dsh .dsh-side .dsh-nav a:not(.active):hover { background: transparent; }
+@media (hover: hover) and (pointer: fine) {
+  .dsh .dsh-side .dsh-nav a:not(.active):hover { background: rgba(255,255,255,.08); }
+}
+.dsh .dsh-nav-count { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; font-size: 12px; font-weight: 700; color: #664208; background: #ffdf9b; }
+.dsh .dsh-side-close { display: none; }
+@media (max-width: 760px) {
+  .dsh .dsh-side .dsh-brand { padding-right: 56px; }
+  .dsh .dsh-side-close { display: inline-flex; position: absolute; top: 8px; right: 8px; z-index: 3; width: 44px; height: 44px; min-height: 44px; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.22); border-radius: 10px; background: rgba(255,255,255,.07); color: white; font-size: 28px; line-height: 1; cursor: pointer; }
+  .dsh .dsh-side-close:focus-visible { outline: 2px solid white; outline-offset: -4px; }
+}
+@media (max-height: 600px) { .dsh .dsh-side { --sidebar-coast-height: min(64px, 10dvh); } }

@@ -31,7 +31,7 @@ test('branding stays in the header and does not replace access controls', () => 
   const layout = read('src/header-institutional-layout.css');
   const finalBranding = read('src/header-two-logo.css');
   assert.match(app, /<GlobalSearch \/>/);
-  assert.match(app, /<NotificationBell user=\{user\} \/>/);
+  assert.match(app, /<NotificationBell user=\{user\} onReviewCount=\{setReviewCount\} \/>/);
   assert.match(publicPage, /<PublicHeaderLogin\/>/);
   assert.match(css, /object-fit:\s*contain/);
   assert.match(layout, /\.merl-partner-crest/);

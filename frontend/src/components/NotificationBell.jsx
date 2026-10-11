@@ -15,7 +15,7 @@ const REVIEWER = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
 const EDITOR = ['ROLE_ADMIN', 'ROLE_DOCC_MEO', 'ROLE_PROJ_MANAGER'];
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
-export default function NotificationBell({ user }) {
+export default function NotificationBell({ user, onReviewCount }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const nav = useNavigate();
@@ -62,6 +62,8 @@ export default function NotificationBell({ user }) {
     return out.slice(0, 20);
   }, [rows, projById, isReviewer, isEditor, t]);
 
+  const reviewCount = isReviewer ? rows.filter(r => ['submitted', 'reviewed'].includes(r.submission_status)).length : 0;
+  useEffect(() => { onReviewCount?.(reviewCount); }, [reviewCount, onReviewCount]);
   const count = items.length;
 
   return (

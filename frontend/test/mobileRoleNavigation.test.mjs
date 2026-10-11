@@ -14,7 +14,8 @@ test('mobile navigation lives inside the authenticated shell and uses its role-f
   assert.match(app, /visibleNav = NAV_ITEMS\.filter\(n => allowed\.includes\(n\.key\)\)/);
   assert.match(app, /mobileNav = visibleNav\.filter/);
   assert.match(app, /mobileNav\.map\(\(\{ key, path, Icon \}\)/);
-  assert.match(app, /visibleNav\.map\(\(\{ key, path, search, Icon \}\)/);
+  assert.match(app, /visibleNav\.filter\(item => group\.items\.includes\(item\.key\)\)/);
+  assert.match(app, /items\.map\(\(\{ key, path, search, Icon \}\)/);
 });
 
 test('Results Framework deep links check the same permission as the navigation', () => {

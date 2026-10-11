@@ -91,6 +91,12 @@ const NAV_ITEMS: SideItem[] = [
   { key: 'admin', path: '/admin', Icon: Settings },
 ];
 
+const NAV_GROUPS = [
+  { key: 'projectWork', items: ['overview', 'projects', 'results', 'activities'] },
+  { key: 'reporting', items: ['review', 'reports'] },
+  { key: 'system', items: ['admin'] },
+];
+
 const MOBILE_NAV_LABELS: Record<string, Partial<Record<NavKey, string>> & { more: string }> = {
   en: { overview: 'Overview', projects: 'Projects', results: 'Results', reports: 'Reports', more: 'More' },
   bi: { overview: 'Ovaviu', projects: 'Projek', results: 'Risalt', reports: 'Ripot', more: 'Mo' },
@@ -407,6 +413,7 @@ export default function App() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [booting, setBooting] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);   // mobile nav dropdown
+  const [reviewCount, setReviewCount] = useState(0);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   // Every officer can change their own password, from the account menu —
   // the only place that is reachable on a phone as well as a desktop.
@@ -464,14 +471,25 @@ export default function App() {
           <div className="dsh-brand-dept">{t('shell.department')}</div>
           <div className="dsh-brand-title">{t('shell.productName')}</div>
         </div>
+        <button type="button" className="dsh-side-close" aria-label={t('shell.closeMenu')}
+          onClick={() => setSidebarOpen(false)}><span aria-hidden="true">×</span></button>
         <nav className="dsh-nav" aria-label={t('shell.primaryNav')}>
-          {visibleNav.map(({ key, path, search, Icon }) => (
-            <NavLink key={key} to={{ pathname: path, search: search ?? '' }}
-              onClick={() => setSidebarOpen(false)}
-              className={() => (key === activeItem.key ? 'active' : '')}>
-              <Icon size={16} aria-hidden="true" />{t(`nav.${key}`)}
-            </NavLink>
-          ))}
+          {NAV_GROUPS.map(group => {
+            const items = visibleNav.filter(item => group.items.includes(item.key));
+            if (!items.length) return null;
+            return <section className="dsh-nav-group" key={group.key} aria-labelledby={`nav-group-${group.key}`}>
+              <h2 id={`nav-group-${group.key}`} className="dsh-nav-group-title">{t(`shell.${group.key}`)}</h2>
+              {items.map(({ key, path, search, Icon }) => (
+                <NavLink key={key} to={{ pathname: path, search: search ?? '' }}
+                  onClick={() => setSidebarOpen(false)}
+                  aria-current={key === activeItem.key ? 'page' : undefined}
+                  className={() => (key === activeItem.key ? 'active' : '')}>
+                  <Icon size={24} aria-hidden="true" /><span className="dsh-nav-label">{t(`nav.${key}`)}</span>
+                  {key === 'review' && reviewCount > 0 && <span className="dsh-nav-count" aria-label={t('shell.pendingReviews', { count: reviewCount })}>{reviewCount > 99 ? '99+' : reviewCount}</span>}
+                </NavLink>
+              ))}
+            </section>;
+          })}
         </nav>
         {/* Decorative only — hidden from assistive technology. */}
         <svg className="dsh-foliage" viewBox="0 0 240 250" aria-hidden="true" focusable="false">
@@ -505,7 +523,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <NotificationBell user={user} />
+            <NotificationBell user={user} onReviewCount={setReviewCount} />
             <div style={{ position: 'relative' }}>
               <button className="dsh-user" onClick={() => setUserMenuOpen(o => !o)} aria-label={t('shell.accountMenu')}>
                 <span className="dsh-avatar">{initials}</span>

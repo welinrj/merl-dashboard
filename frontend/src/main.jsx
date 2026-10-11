@@ -35,6 +35,7 @@ import './typography-system.css';
 import './header-two-logo.css';
 import './visual-consistency.css';
 import './merl-icons.css';
+import './sidebar-refinement.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
