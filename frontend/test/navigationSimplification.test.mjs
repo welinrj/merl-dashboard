@@ -10,10 +10,10 @@ const resultsFramework = readFileSync(new URL('../src/pages/ResultsWorkspace.jsx
 const navBlock = app.match(/const NAV_ITEMS[\s\S]*?\n\];/)?.[0] || '';
 
 test('sidebar has one task-based entry per destination', () => {
-  for (const key of ['overview', 'projects', 'results', 'activities', 'review', 'reports', 'admin']) {
+  for (const key of ['overview', 'projects', 'projectAnalysis', 'results', 'activities', 'review', 'reports', 'admin']) {
     assert.match(navBlock, new RegExp(`key: '${key}'`));
   }
-  for (const duplicate of ['finances', 'projectAnalysis', 'locations', 'risks', 'documents']) {
+  for (const duplicate of ['finances', 'locations', 'risks', 'documents']) {
     assert.doesNotMatch(navBlock, new RegExp(`key: '${duplicate}'`));
   }
   assert.match(navBlock, /key: 'results', path: '\/results-framework'/);

@@ -85,6 +85,7 @@ async function loadProfile(): Promise<AppUser | null> {
 const NAV_ITEMS: SideItem[] = [
   { key: 'overview', path: '/dashboards', Icon: LayoutDashboard },
   { key: 'projects', path: '/project-setup', Icon: FolderKanban },
+  { key: 'projectAnalysis', path: '/analytics/project-portfolio', Icon: FileBarChart },
   { key: 'results', path: '/results-framework', Icon: Target },
   { key: 'activities', path: '/merl-reporting', Icon: ListChecks },
   { key: 'review', path: '/review', Icon: ClipboardCheck },
@@ -93,7 +94,7 @@ const NAV_ITEMS: SideItem[] = [
 ];
 
 const NAV_GROUPS = [
-  { key: 'projectWork', items: ['overview', 'projects', 'results', 'activities'] },
+  { key: 'projectWork', items: ['overview', 'projects', 'projectAnalysis', 'results', 'activities'] },
   { key: 'reporting', items: ['review', 'reports'] },
   { key: 'system', items: ['admin'] },
 ];

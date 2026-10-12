@@ -1,3 +1,4 @@
+import { scopeProjectReport, initialReportType } from '../lib/projectReportScope';
 import { officialPortfolioData } from '../lib/docc/projectScope';
 // =============================================================================
 // Reports.jsx — DoCC MERL report generators, built directly from the
@@ -119,14 +120,16 @@ export default function Reports() {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const liveRevision = useLiveDashboard();
-  const [d, setD] = useState(null);
+  const requested = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const [sourceD, setD] = useState(null);
+  const [scopeId, setScopeId] = useState(() => requested.get('project') || '');
   const [includeCompletedProjects, setIncludeCompletedProjects] = useState(false);
-  const [type, setType] = useState('full_me');
-  const [projectId, setProjectId] = useState('');
+  const [type, setType] = useState(() => initialReportType(requested, REPORT_TYPES.map(r=>r.key)));
+  const [projectId, setProjectId] = useState(() => requested.get('project') || '');
   const [province, setProvince] = useState('');
   const [donor, setDonor] = useState('');
-  const [periodType, setPeriodType] = useState('quarterly');
-  const [period, setPeriod] = useState('');
+  const [periodType, setPeriodType] = useState(() => PERIOD_TYPES.some(p=>p.value === requested.get('frequency')) ? requested.get('frequency') : 'quarterly');
+  const [period, setPeriod] = useState(() => requested.get('period') || '');
   const [runs, setRuns] = useState([]);
   const [dataError, setDataError] = useState('');
   const [exporting, setExporting] = useState('');
@@ -187,6 +190,7 @@ export default function Reports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang, liveRevision, includeCompletedProjects]);
 
+  const d = scopeProjectReport(sourceD, type === 'project' ? projectId : scopeId);
   if (dataError) return <div className="page-pad"><div role="alert" className="card" style={{ padding: '1rem', color: 'var(--red-700)' }}>{dataError}</div></div>;
   if (!d) return <div className="page-pad"><p style={{ color: 'var(--text-3)' }}>{t('rpt.loading')}</p></div>;
 
@@ -240,7 +244,7 @@ export default function Reports() {
       const { error } = await supabase.rpc('log_report_run', {
         p_report_type: type,
         p_report_label: label,
-        p_project_id: type === 'project' ? (projectId || null) : null,
+        p_project_id: type === 'project' ? (projectId || null) : (scopeId || null),
         p_reporting_period: period || null,
         p_params: { format, period_type: periodType, province: type === 'geographic' ? (province || null) : null, donor: type === 'donor' ? (donor || null) : null },
       });
@@ -357,7 +361,7 @@ export default function Reports() {
       `}</style>
 
       <div className="rp-noprint">
-        <label><input type="checkbox" checked={includeCompletedProjects} onChange={event => { setIncludeCompletedProjects(event.target.checked); setProjectId(''); }} /> Include completed project history</label>
+        <label><input type="checkbox" checked={includeCompletedProjects} onChange={event => { setIncludeCompletedProjects(event.target.checked); setProjectId(''); setScopeId(''); }} /> Include completed project history</label>
         <PageHeader
           title={t('rpt.reports')}
         />
@@ -371,11 +375,12 @@ export default function Reports() {
             {REPORT_TYPES.map((r) => <option key={r.key} value={r.key}>{t(r.label)}</option>)}
           </select>
         </div>
+        {type !== 'project' && <div style={{flex:'1 1 240px',minWidth:0}}><label className="field-label" htmlFor="report-project-scope">Project to include</label><select id="report-project-scope" className="field-input" value={scopeId} onChange={e=>{setScopeId(e.target.value);if(e.target.value)setProjectId(e.target.value);setPeriod('');setPreviewOpen(false);}}><option value="">All projects with results frameworks</option>{sourceD.projects.map(p=><option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}</select></div>}
         {type === 'project' && (
           <div style={{ flex: '1 1 240px' }}>
             <label className="field-label">{t('rpt.project')}</label>
-            <select className="field-input" value={projectId} onChange={(e) => { setProjectId(e.target.value); setPreviewOpen(false); }}>
-              {d.projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+            <select className="field-input" value={projectId} onChange={(e) => { setProjectId(e.target.value); setScopeId(e.target.value); setPeriod(''); setPreviewOpen(false); }}>
+              {sourceD.projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
             </select>
           </div>
         )}
@@ -435,6 +440,7 @@ export default function Reports() {
           <span>{t('rpt.generated')} <b>{fmtDateTime(generatedAt)}</b></span>
           <span>{t('rpt.dataAsAt')} <b>{dataAsAt ? fmtDateTime(dataAsAt) : '—'}</b></span>
         </div>
+        {(type === 'project' ? projectId : scopeId) && <p className="rp-report-scope"><strong>Project:</strong> {d.projects[0]?.name || 'Selected project is not available in your current report scope.'}</p>}
         {type !== 'full_me' && <div className={`rp-assurance${approvalComplete ? ' ok' : ''}`}>
           <b>{approvalComplete ? 'Approved reporting basis.' : 'Reporting status.'}</b> {approvalBasis}
         </div>}

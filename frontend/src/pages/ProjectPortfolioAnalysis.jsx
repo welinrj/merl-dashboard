@@ -746,6 +746,7 @@ export default function ProjectPortfolioAnalysis() {
           </select>
         </label>
       )}
+      {projectId && <a className="btn btn-primary" href={`#/reports?project=${encodeURIComponent(projectId)}&type=project${period ? `&period=${encodeURIComponent(period)}&frequency=${encodeURIComponent(d.periods.find(p=>p.period_label === period)?.period_type || 'quarterly')}` : ''}`}>{lang?.startsWith('fr') ? 'Rapports de ce projet' : 'Generate project reports'}</a>}
       {projectId && (
         <button type="button" onClick={exportReport} className="btn-secondary"
           style={{ marginLeft: 'auto', padding: '0.5rem 0.85rem', borderRadius: 'var(--radius-control)', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>

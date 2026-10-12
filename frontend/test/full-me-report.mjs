@@ -1,3 +1,4 @@
+import { initialReportType } from '../src/lib/projectReportScope';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -6,7 +7,7 @@ const reports = readFileSync(new URL('../src/pages/Reports.jsx', import.meta.url
 const i18n = readFileSync(new URL('../src/i18n.js', import.meta.url), 'utf8');
 
 test('the reporting page defaults to the full portfolio M&E report', () => {
-  assert.match(reports, /useState\('full_me'\)/);
+  assert.equal(initialReportType(new URLSearchParams(), ['full_me','project','financial']), 'full_me');
   assert.match(reports, /<FullMEReport\b/);
   assert.match(reports, /Generate report above/);
 });

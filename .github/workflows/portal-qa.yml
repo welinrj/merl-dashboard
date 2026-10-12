@@ -71,6 +71,12 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/workspace-usability.mjs
 
+      - name: Validate selected project portfolio reports
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/project-portfolio-reports.mjs
+
       - name: Validate role permission matrix
         working-directory: frontend
         env:

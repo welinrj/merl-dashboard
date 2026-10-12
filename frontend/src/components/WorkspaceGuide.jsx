@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import './workspace-guide.css';
 const steps = {
   '/dashboards': ['Read the summary cards. Use filters to focus on a project or location.', 'Choose View projects to read or edit project details.', 'Choose Update progress to record results, or Generate a report to download them.'],
+  '/analytics/project-portfolio': ['Choose your project, then a reporting period or All periods.', 'Read its results, finances, activities, beneficiaries and risks.', 'Choose Generate project reports to switch between progress, financial and indicator reports for this project.'],
   '/project-setup': ['Search for your project and select it.', 'Choose Edit beside the information you want to change.', 'Choose Save changes. Use Goals & activities for indicators and targets.'],
   '/results-framework': ['Choose your project. An indicator is a measure used to track its results.', 'Read the goals, activities, indicators and targets. A target is the result the project aims to reach.', 'If you have editing access, choose Edit beside a row, change the value and save.'],
   '/merl-reporting': ['Choose your project and the reporting period—the dates covered by your update.', 'Choose a section, then Add. Enter what was achieved and save it.', 'Complete the required sections, then Submit for review. Approval is shown separately from saving.'],
@@ -18,6 +19,7 @@ export default function WorkspaceGuide({ user }) {
   const guide = steps[pathname] || ['Choose a view and its filters.', 'Read the results for the selected projects and reporting periods.', 'Use Projects, Update Progress or Reports for your next task.'];
   const french = {
     '/dashboards': ['Consultez les cartes et filtrez par projet ou lieu.', 'Ouvrez Projets pour consulter ou modifier les détails.', 'Ouvrez Saisir les progrès pour ajouter des résultats, ou Générer un rapport.'],
+    '/analytics/project-portfolio': ['Choisissez votre projet et la période.', 'Consultez les résultats, finances, activités, bénéficiaires et risques.', 'Ouvrez les rapports de ce projet pour choisir le type de rapport.'],
     '/project-setup': ['Recherchez et sélectionnez votre projet.', 'Choisissez Modifier à côté des informations concernées.', 'Enregistrez les modifications. Les objectifs et activités sont dans le cadre de résultats.'],
     '/results-framework': ['Choisissez le projet. Un indicateur mesure ses résultats.', 'Consultez les objectifs, activités, indicateurs et cibles.', 'Avec un accès en modification, choisissez Modifier sur une ligne et enregistrez.'],
     '/merl-reporting': ['Choisissez le projet et la période couverte.', 'Choisissez une section, puis Ajouter. Saisissez et enregistrez les résultats.', 'Complétez les sections obligatoires et soumettez pour examen.'],

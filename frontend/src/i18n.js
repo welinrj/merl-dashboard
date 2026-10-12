@@ -7,7 +7,7 @@ const resources = {
     translation: {
       // Project Portfolio Analysis — one project, analysed end to end.
       ppa: {
-        title: 'Project Portfolio Analysis',
+        title: 'Project portfolio',
         subtitle: 'Financial, implementation, results, beneficiary, geographic, risk and reporting performance for one project.',
         reportTitle: 'Project Performance Report',
         reportPeriod: 'Reporting period: {{period}}',
@@ -1385,7 +1385,7 @@ const resources = {
         projects:         'Projects',
         results:          'Results Framework',
         finances:         'Financial Analysis',
-        projectAnalysis:  'Project Portfolio Analysis',
+        projectAnalysis:  'Project portfolio',
         locations:        'Geographic Coverage',
         risks:            'Risk Analysis',
         activities:       'Update Progress',
@@ -1400,7 +1400,7 @@ const resources = {
         projects:         'Projects',
         results:          'Analysis',
         finances:         'Financial Analysis',
-        projectAnalysis:  'Project Portfolio Analysis',
+        projectAnalysis:  'Project portfolio',
         locations:        'Geographic Coverage',
         risks:            'Risk Analysis',
         activities:       'Update Progress',
@@ -2174,7 +2174,7 @@ const resources = {
     translation: {
       // Project Portfolio Analysis — one project, analysed end to end.
       ppa: {
-        title: 'Analyse du portefeuille de projet',
+        title: 'Portefeuille de projet',
         subtitle: 'Performance financière, de mise en œuvre, de résultats, de bénéficiaires, géographique, de risques et de rapportage pour un projet.',
         reportTitle: 'Rapport de performance du projet',
         reportPeriod: 'Période de rapportage : {{period}}',
@@ -3552,7 +3552,7 @@ const resources = {
         projects:         'Projets',
         results:          'Cadre de résultats',
         finances:         'Analyse financière',
-        projectAnalysis:  'Analyse du portefeuille de projet',
+        projectAnalysis:  'Portefeuille de projet',
         locations:        'Couverture géographique',
         risks:            'Analyse des risques',
         activities:       'Mise à jour des progrès',
@@ -3567,7 +3567,7 @@ const resources = {
         projects:         'Projets',
         results:          'Analyse',
         finances:         'Analyse financière',
-        projectAnalysis:  'Analyse du portefeuille de projet',
+        projectAnalysis:  'Portefeuille de projet',
         locations:        'Couverture géographique',
         risks:            'Analyse des risques',
         activities:       'Mise à jour des progrès',
