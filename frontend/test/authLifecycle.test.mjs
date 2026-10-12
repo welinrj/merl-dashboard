@@ -45,7 +45,7 @@ const entry = readFileSync(new URL('../src/PublicEntry.jsx', import.meta.url), '
 const snapshot = readFileSync(new URL('../src/lib/publicSnapshot.js', import.meta.url), 'utf8');
 
 test('logout hands over to the public entry without mounting the standalone login page', () => {
-  assert.match(entry, /<App publicEntryManaged \/>/);
+  assert.match(entry, /<App\b[^>]*publicEntryManaged \/>/);
   assert.match(shell, /if \(!user && publicEntryManaged\) return null;/);
   assert.doesNotMatch(shell, /void supabase\.auth\.signOut\(\); setUser\(null\)/);
   assert.match(entry, /currentValidation !== validationId/);

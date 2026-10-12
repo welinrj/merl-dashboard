@@ -14,6 +14,7 @@ import ResultsWorkspace from './pages/ResultsWorkspace';
 import ProjectPortfolioAnalysis from './pages/ProjectPortfolioAnalysis';
 import ProjectSetup from './pages/ProjectSetup';
 import WorkspaceGuide from './components/WorkspaceGuide';
+import { useBackdropDismiss } from './lib/useBackdropDismiss';
 import MerlReporting from './pages/MerlReporting';
 import Reports from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
@@ -422,6 +423,8 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
   const [passwordOpen, setPasswordOpen] = useState(false);
   const { t, i18n } = useTranslation();
   const location = useLocation();
+  const sidebarBackdrop = useBackdropDismiss(sidebarOpen, () => setSidebarOpen(false));
+  const accountBackdrop = useBackdropDismiss(userMenuOpen, () => setUserMenuOpen(false));
 
   // ── Session restore ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -465,7 +468,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
           (pointer-events: none, and display: none above the drawer breakpoint). */}
       <div
         className={`dsh-overlay${sidebarOpen ? ' open' : ''}`}
-        onClick={() => setSidebarOpen(false)}
+        {...sidebarBackdrop}
         aria-hidden={!sidebarOpen}
       />
 
@@ -539,7 +542,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
               </button>
               {userMenuOpen && (
                 <>
-                  <div onClick={() => setUserMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div className="dsh-account-backdrop" {...accountBackdrop} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                   <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 220, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
                     <div style={{ padding: '0.8rem 1rem', borderBottom: '1px solid var(--border)' }}>
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>

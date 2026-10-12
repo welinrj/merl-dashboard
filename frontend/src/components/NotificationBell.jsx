@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Bell } from './ui/icons';
 import { supabase } from '../supabaseClient';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 import { localised, i18nCols } from '../lib/contentLocale';
 
 const REVIEWER = ['ROLE_ADMIN', 'ROLE_DOCC_MEO'];
@@ -20,6 +21,7 @@ export default function NotificationBell({ user, onReviewCount }) {
   const lang = i18n.resolvedLanguage;
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const backdrop = useBackdropDismiss(open, () => setOpen(false));
   const [rows, setRows] = useState([]);
   const [projById, setProjById] = useState({});
 
@@ -74,7 +76,7 @@ export default function NotificationBell({ user, onReviewCount }) {
       </button>
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+          <div className="dsh-notification-backdrop" {...backdrop} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
           <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 320, maxWidth: '90vw',
             background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
             <div style={{ padding: '0.7rem 0.9rem', borderBottom: '1px solid var(--border)', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>

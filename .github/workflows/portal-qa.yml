@@ -77,6 +77,12 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/project-portfolio-reports.mjs
 
+      - name: Validate phone menus during session renewal
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/mobile-menu-stability.mjs
+
       - name: Validate role permission matrix
         working-directory: frontend
         env:

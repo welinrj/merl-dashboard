@@ -20,24 +20,34 @@ export default function PublicEntry() {
   const { i18n } = useTranslation();
   const [session, setSession] = useState(undefined);
   const [profileValid, setProfileValid] = useState(undefined);
+  const [profileKey, setProfileKey] = useState('');
 
   useEffect(() => {
     let alive = true;
     let validationId = 0;
+    let validatedUserId = null;
     const validate = async (nextSession) => {
       if (!alive) return;
       const currentValidation = ++validationId;
       setSession(nextSession || null);
-      if (!nextSession) { setProfileValid(false); return; }
-      setProfileValid(undefined);
+      if (!nextSession) { validatedUserId = null; setProfileValid(false); return; }
+      // Keep the existing workspace (and its open menus/forms) while renewing
+      // this user's session. A different account must pass the full gate first.
+      if (!validatedUserId || nextSession.user?.id !== validatedUserId) {
+        validatedUserId = null;
+        setProfileValid(undefined);
+      }
       try {
         const { profile } = await loadCurrentProfile();
         const valid = !!profile?.id && !!profile?.role;
         if (!alive || currentValidation !== validationId) return;
+        validatedUserId = valid ? nextSession.user?.id : null;
+        if (valid) setProfileKey(`${profile.id}:${profile.role}`);
         setProfileValid(valid);
         if (!valid) await supabase.auth.signOut();
       } catch {
         if (!alive || currentValidation !== validationId) return;
+        validatedUserId = null;
         setProfileValid(false);
         try { await supabase.auth.signOut(); } catch { /* non-fatal */ }
       }
@@ -62,5 +72,5 @@ export default function PublicEntry() {
   if (!internal) return <Navigate to={DEFAULT_PATH} replace />;
   if (pathname === '/docc-project-register') return <DoCCProjectRegister />;
   if (pathname === '/login') return <Navigate to={DEFAULT_PATH} replace />;
-  return <App publicEntryManaged />;
+  return <App key={profileKey} publicEntryManaged />;
 }
