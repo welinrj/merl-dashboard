@@ -1,5 +1,6 @@
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
 import ProjectDetailsForm from '../components/ProjectDetailsForm';
+import ProjectDetailsSummary from '../components/ProjectDetailsSummary';
 import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -203,6 +204,8 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     } catch { return ''; }
   })();
   const [projects, setProjects] = useState([]);
+  const [search, setSearch] = useState('');
+  const [loadingProjects, setLoadingProjects] = useState(true);
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
   const visibleProjects = showCompletedProjects ? projects : currentProjects(projects);
   const [projectId, setProjectId] = useState('');
@@ -218,6 +221,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
       .from('v_projects')
       .select('id,has_results_framework,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome')
       .order('code');
+    setLoadingProjects(false);
     if (pe) { toast.error(dbErrorMessage(pe)); return; }
     setProjects(officialProjects(ps || []));
     setProjectId((old) => {
@@ -314,22 +318,16 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
 
   return <section className="ps-config">
     <PendingResultsFrameworks projects={projects} user={user} onSelect={id => { setShowCompletedProjects(true); setProjectId(id); }} />
-    <div className="ps-config-head">
-      <div><h2>Choose a project</h2>{!canEdit && <p style={{color:'var(--text-3)',fontSize:'.7rem'}}>Read-only access</p>}</div>
-      <div style={{display:'flex',gap:'.5rem',alignItems:'end',flexWrap:'wrap'}}>
-        <select aria-label="Choose a project" className="field-input" value={projectId} onChange={(e)=>setProjectId(e.target.value)}>
-          <option value="">Select project</option>{visibleProjects.map(p=><option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
-        </select>
-        {projectId && <a className="btn btn-secondary" href={`#/results-framework?project=${encodeURIComponent(projectId)}`}>Results framework</a>}
-        {canEdit && projectId && <button type="button" className="btn btn-primary" onClick={()=>onEditProject?.(projects.find((p)=>p.id===projectId))} disabled={busy}>Edit project details</button>}
+    <div className="pd-finder">
+      <h2>Find your project</h2>
+      <label className="pd-field"><span>Search by project name, short name or code</span><input type="search" className="field-input" value={search} onChange={event => setSearch(event.target.value)} placeholder="For example, VCAP2" /></label>
+      <label className="pd-show-all"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked) setProjectId(currentProjects(projects)[0]?.id || ''); }} /> Show projects without a results framework and completed projects</label>
+      <div className="pd-project-list" aria-label="Choose a project">
+        {loadingProjects ? <p role="status">Loading projects…</p> : visibleProjects.filter(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())).map(p => <button type="button" key={p.id} aria-pressed={p.id === projectId} onClick={() => setProjectId(p.id)}><strong>{p.name}</strong><span>{p.code || p.acronym || 'Open project'}{p.id === projectId ? ' · Selected' : ''}</span></button>)}
+        {!loadingProjects && !visibleProjects.some(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())) && <p role="status">No matching projects. Try another name or choose Show projects above.</p>}
       </div>
     </div>
-    <p className="ps-config-note">{currentProjects(projects).length} projects with results frameworks.</p>
-    <label className="ps-config-note"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked) setProjectId(currentProjects(projects)[0]?.id || ''); }} /> Include all registered projects</label>
-    {projectId && <div className="ps-project-summary">
-      <h3>{projects.find(p => p.id === projectId)?.name}</h3>
-      <p>{projects.find(p => p.id === projectId)?.description || 'Choose Edit project details to add a description, contacts, funding and locations.'}</p>
-    </div>}
+    {projectId && projects.find(p => p.id === projectId) && <ProjectDetailsSummary project={projects.find(p => p.id === projectId)} canEdit={canEdit} onEdit={onEditProject} />}
     {projectId && <details className="ps-settings" key={projectId}><summary>Partners, activities and dashboard settings</summary><div className="ps-config-grid">
       <div className="ps-config-card">
         <h3>Donors & Partners</h3>
@@ -379,8 +377,13 @@ export default function ProjectSetup({ user }) {
   const [resetKey, setResetKey] = useState(0);
   const [mode, setMode] = useState('manage');
   const [selectedId, setSelectedId] = useState(null);
-  const title = 'Project Register';
-  const beginEditProfile = (project) => {
+  const [editSection, setEditSection] = useState('all');
+  const [saveError, setSaveError] = useState('');
+  const title = 'Projects';
+  const beginEditProfile = (project, section = 'all') => {
+    if (!canEdit) return;
+    setEditSection(section);
+    setSaveError('');
     if (!project) return;
     const next = blankProfile();
     Object.keys(next).forEach((key) => {
@@ -411,10 +414,12 @@ export default function ProjectSetup({ user }) {
 
   const save = async (e) => {
     e?.preventDefault();
-    if (!v.name.trim()) { toast.error('Project title is required.'); return; }
+    if (saving) return;
+    setSaveError('');
+    if (!v.name.trim()) { setSaveError('Enter a project name before saving.'); return; }
     const budget = toNum(v.budget_vuv);
-    if (budget != null && budget < 0) { toast.error('Approved budget cannot be negative.'); return; }
-    if (v.start_date && v.end_date && v.end_date < v.start_date) { toast.error('End date cannot be earlier than start date.'); return; }
+    if (budget != null && budget < 0) { setSaveError('The approved budget must be zero or more.'); return; }
+    if (v.start_date && v.end_date && v.end_date < v.start_date) { setSaveError('The end date must be on or after the start date.'); return; }
     setSaving(true);
     const args = {
       p_id: editId,
@@ -437,9 +442,9 @@ export default function ProjectSetup({ user }) {
       p_primary_climate_theme: toNull(v.primary_climate_theme?.trim()),
       p_coverage_type: toNull(v.coverage_type),
       p_provinces: toArr(v.provinces),
-      p_islands: toArr(v.islands),
-      p_area_councils: toArr(v.area_councils),
-      p_communities: toArr(v.communities),
+      p_islands: toArr(v.islands).map(name => String(name).trim()).filter(Boolean),
+      p_area_councils: toArr(v.area_councils).map(name => String(name).trim()).filter(Boolean),
+      p_communities: toArr(v.communities).map(name => String(name).trim()).filter(Boolean),
       p_project_manager_id: toNull(v.project_manager_id),
       p_me_officer_id: toNull(v.me_officer_id),
       p_finance_officer_id: toNull(v.finance_officer_id),
@@ -450,33 +455,36 @@ export default function ProjectSetup({ user }) {
       p_me_officer: toNull(v.me_officer?.trim()),
       p_finance_officer: toNull(v.finance_officer?.trim()),
     };
-    let { data, error } = await supabase.rpc('upsert_project', args);
-    if (isMissingRpcArgument(error, 'p_project_manager')) {
-      const { p_project_manager: _pm, p_me_officer: _me, p_finance_officer: _fo, ...older } = args;
-      ({ data, error } = await supabase.rpc('upsert_project', older));
-    }
-    setSaving(false);
-    if (error) { toast.error(dbErrorMessage(error)); return; }
-    const action = editId ? 'updated' : 'registered';
-    setRegistered({ id: data, name: v.name.trim(), acronym: v.acronym?.trim(), action });
-    setV(blankProfile());
-    setEditId(null);
-    setResetKey((n) => n + 1);
-    toast.success(action === 'updated' ? 'Project profile updated successfully.' : 'Project registered successfully.');
-    setMode('manage');
+    try {
+      let { data, error } = await supabase.rpc('upsert_project', args);
+      if (isMissingRpcArgument(error, 'p_project_manager')) {
+        const { p_project_manager: _pm, p_me_officer: _me, p_finance_officer: _fo, ...older } = args;
+        ({ data, error } = await supabase.rpc('upsert_project', older));
+      }
+      setSaving(false);
+      if (error) { setSaveError(`Your changes were not saved. ${dbErrorMessage(error)}`); return; }
+      const action = editId ? 'updated' : 'registered';
+      setRegistered({ id: data, name: v.name.trim(), acronym: v.acronym?.trim(), action });
+      setV(blankProfile());
+      setEditId(null);
+      setResetKey((n) => n + 1);
+      toast.success(action === 'updated' ? 'Your changes have been saved.' : 'Your project has been added.');
+      setMode('manage');
+    } catch { setSaveError('Your changes were not saved. Check your connection and try again.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <div className="page-pad" style={{ maxWidth: 1180, margin: '0 auto' }} key={resetKey}>
       <PageHeader title={title} />
-      {mode === 'manage' && <div className="ps-mode-tabs" aria-label="Project register sections">
+      {mode === 'manage' && <div className="ps-mode-tabs" aria-label="Projects">
         <button type="button" className={mode === 'manage' ? 'active' : ''} onClick={() => { setEditId(null); setMode('manage'); }}>Projects</button>
-        <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setEditId(null); setV(blankProfile()); setMode('register'); }}>Add project</button>
+        <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setEditId(null); setEditSection('all'); setSaveError(''); setV(blankProfile()); setMode('register'); }}>Add project</button>
       </div>}
 
-      {registered && mode === 'manage' && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> was {registered.action || 'registered'} and is selected below.</div>}
+      {registered && mode === 'manage' && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #16a34a55', background: '#dcece2', borderRadius: 10, color: '#155e34' }}><strong>{registered.acronym ? `${registered.acronym} — ` : ''}{registered.name}</strong> — {registered.action === 'updated' ? 'Your changes have been saved.' : 'Your project has been added.'}</div>}
 
-      {mode === 'register' && <ProjectDetailsForm values={v} onChange={setV} onSubmit={save} saving={saving} editing={Boolean(editId)} onCancel={() => { setV(blankProfile()); setEditId(null); setMode('manage'); }} />}
+      {mode === 'register' && <ProjectDetailsForm values={v} onChange={setV} onSubmit={save} saving={saving} editing={Boolean(editId)} section={editSection} onSectionChange={setEditSection} error={saveError} onCancel={() => { setV(blankProfile()); setEditId(null); setMode('manage'); }} />}
 
       {mode === 'manage' && <ProjectConfiguration preferredProjectId={registered?.id || selectedId} canEdit={canEdit} isAdmin={user?.role === 'ROLE_ADMIN'} onEditProject={beginEditProfile} user={user} />}
 

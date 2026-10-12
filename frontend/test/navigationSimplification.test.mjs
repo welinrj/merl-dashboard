@@ -30,7 +30,7 @@ test('analysis keeps legacy deep links without expanding role access', () => {
 });
 
 test('visible labels describe user tasks without purpose subtitles', () => {
-  for (const label of ['Executive Overview', 'Project Register', 'Results Framework', 'Update Progress', 'Review Queue', 'Reports & Exports']) {
+  for (const label of ['Executive Overview', 'Projects', 'Results Framework', 'Update Progress', 'Review Queue', 'Reports & Exports']) {
     assert.match(i18n, new RegExp(label.replace(/[&]/g, '\\&')));
   }
   assert.doesNotMatch(navBlock, /hasSub: true/);
@@ -38,7 +38,8 @@ test('visible labels describe user tasks without purpose subtitles', () => {
 
 test('results framework remains available from the selected project', () => {
   assert.match(app, /path="\/results-framework"/);
-  assert.match(projectRegister, /Results framework<\/a>/);
-  assert.match(projectRegister, /results-framework\?project=/);
+  const projectDetails = readFileSync(new URL('../src/components/ProjectDetailsSummary.jsx', import.meta.url), 'utf8');
+  assert.match(projectDetails, /Open goals & activities<\/a>/);
+  assert.match(projectDetails, /results-framework\?project=/);
   assert.match(resultsFramework, /new URLSearchParams\(window\.location\.hash\.split\('\?'\)\[1\]/);
 });

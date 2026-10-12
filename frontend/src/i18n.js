@@ -1382,7 +1382,7 @@ const resources = {
       },
       nav: {
         overview:         'Executive Overview',
-        projects:         'Project Register',
+        projects:         'Projects',
         results:          'Results Framework',
         finances:         'Financial Analysis',
         projectAnalysis:  'Project Portfolio Analysis',
@@ -1397,7 +1397,7 @@ const resources = {
       head: {
         overview:         'Executive Overview',
         overviewSub:      'Monitoring, Evaluation, Reporting & Learning',
-        projects:         'Project Register',
+        projects:         'Projects',
         results:          'Analysis',
         finances:         'Financial Analysis',
         projectAnalysis:  'Project Portfolio Analysis',
@@ -3549,7 +3549,7 @@ const resources = {
       },
       nav: {
         overview:         'Vue exécutive',
-        projects:         'Registre des projets',
+        projects:         'Projets',
         results:          'Cadre de résultats',
         finances:         'Analyse financière',
         projectAnalysis:  'Analyse du portefeuille de projet',
@@ -3564,7 +3564,7 @@ const resources = {
       head: {
         overview:         'Vue exécutive',
         overviewSub:      'Suivi, évaluation, rapportage et apprentissage',
-        projects:         'Registre des projets',
+        projects:         'Projets',
         results:          'Analyse',
         finances:         'Analyse financière',
         projectAnalysis:  'Analyse du portefeuille de projet',
