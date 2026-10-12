@@ -22,6 +22,8 @@ import { readEvidenceDocument } from '../lib/localEvidenceReview';
 import { matchEvidenceToIndicator } from '../lib/localEvidenceText';
 import { confirmDialog, promptDialog } from '../lib/confirm';
 import { dbErrorMessage } from '../lib/dbError';
+import StatusBadge from '../components/ui/StatusBadge';
+import { isMainReportField, reportingStatus } from '../lib/reportingUx';
 import PageHeader from '../components/ui/PageHeader';
 import * as OPT from '../constants/formOptions';
 import {
@@ -246,9 +248,6 @@ const btnGhost = (extra = {}) => ({
   fontSize: '0.78rem', fontWeight: 600, borderRadius: 'var(--radius-control)', cursor: 'pointer',
   color: 'var(--text-2)', background: 'none', border: 'none', ...extra,
 });
-const STATUS_TINT = {
-  draft: '#64748b', submitted: '#2563eb', returned: '#d97706', reviewed: '#7c3aed', approved: '#16a34a',
-};
 
 export default function MerlReporting({ user }) {
   const { t, i18n } = useTranslation();
@@ -283,7 +282,7 @@ export default function MerlReporting({ user }) {
   // address bar and the highlighted sidebar entry agree.
   const selectTab = (key) => {
     setTab(key);
-    setSearchParams({ ...(projectId ? { project:projectId } : {}), ...(key === MODULES[0].key ? {} : { module:key }) }, { replace: true });
+    setSearchParams({ ...(projectId ? { project:projectId } : {}), ...(activePeriod ? { period:activePeriod } : {}), ...(key === MODULES[0].key ? {} : { module:key }) }, { replace: true });
   };
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -315,7 +314,8 @@ export default function MerlReporting({ user }) {
     setIndicators(ind.data ?? []);
     setActivities(act.data ?? []);
     setPeriods(per.data ?? []);
-    if ((per.data ?? []).length) setActivePeriod((prev) => prev || per.data[0].period_label);
+    const requestedPeriod = new URLSearchParams(window.location.hash.split('?')[1] || '').get('period');
+    setActivePeriod(prev => (per.data || []).find(p => p.period_label === requestedPeriod)?.period_label || (per.data || []).find(p => p.period_label === prev)?.period_label || per.data?.[0]?.period_label || '');
   }, [lang]);
 
   useEffect(() => { loadContext(projectId); }, [projectId, loadContext]);
@@ -597,7 +597,7 @@ export default function MerlReporting({ user }) {
         </div>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
           <label className="field-label">{t('merl.activePeriod')}</label>
-          <select className="field-input" value={activePeriod} onChange={(e) => setActivePeriod(e.target.value)}>
+          <select className="field-input" value={activePeriod} onChange={(e) => { const period=e.target.value; setActivePeriod(period); setSearchParams(previous=>{const next=new URLSearchParams(previous); if(period) next.set('period',period); else next.delete('period'); return next;},{replace:true}); }}>
             <option value="">{t('merl.noneOption')}</option>
             {periods.map((p) => <option key={p.id} value={p.period_label}>{p.period_label}</option>)}
           </select>
@@ -620,9 +620,7 @@ export default function MerlReporting({ user }) {
           <span style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>
             {t('merl.period')} <strong>{currentPeriodRow.period_label}</strong>
           </span>
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#fff', background: STATUS_TINT[currentPeriodRow.submission_status] || '#64748b', padding: '0.2rem 0.55rem', borderRadius: 9999 }}>
-            {OPT.labelOf(OPT.SUBMISSION_STATUS, currentPeriodRow.submission_status)}
-          </span>
+          <StatusBadge {...reportingStatus(currentPeriodRow.submission_status, lang?.startsWith('fr'))} />
           {currentPeriodRow.submission_status === 'approved' && (
             <span title={t('merl.lockedTitle')}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 700, color: '#155e34', background: '#dcece2', border: '1px solid #16a34a55', padding: '0.2rem 0.55rem', borderRadius: 9999 }}>
@@ -770,7 +768,7 @@ export default function MerlReporting({ user }) {
         {loading ? (
           <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('merl.loading')}</p>
         ) : records.length === 0 ? (
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{t('merl.noRecords')}</p>
+          <p role="status" style={{ color: 'var(--text-3)', fontSize: '1rem' }}>{activeModule.periodScoped && activePeriod ? `Not reported for ${activePeriod}.` : t('merl.noRecords')}</p>
         ) : (
           <>
             <div className="mr-desktop-table" style={{ overflowX: 'auto' }}>
@@ -804,8 +802,8 @@ export default function MerlReporting({ user }) {
                   ))}
                   {canEdit && (
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
-                      <button onClick={() => setEditing(r)} style={btnGhost()}><Pencil size={13} /> {t('merl.edit')}</button>
-                      <button onClick={() => deleteRecord(r)} style={btnGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> {t('merl.deleteLbl')}</button>
+                      <button disabled={periodLocked && activeModule.periodScoped} onClick={() => setEditing(r)} style={btnGhost()}><Pencil size={13} /> {t('merl.edit')}</button>
+                      <button disabled={periodLocked && activeModule.periodScoped} onClick={() => deleteRecord(r)} style={btnGhost({ color: 'var(--red-600)' })}><Trash2 size={13} /> {t('merl.deleteLbl')}</button>
                     </div>
                   )}
                 </div>
@@ -872,7 +870,8 @@ function PeriodForm({ onCancel, onSave }) {
 
 // ── Generic module record form ───────────────────────────────────────────────
 export function RecordForm({ module, initial, draftKey: key, dynamicOptions, indicators, onCancel, onSave, onTranslated, enableFileUpload = false, projectId, reportingPeriod, busy = false }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const fr = i18n.resolvedLanguage?.startsWith('fr');
   const seed = useMemo(() => {
     const base = {};
     for (const f of module.fields) base[f.name] = initial?.[f.name] ?? (f.type === 'checkbox' ? false : '');
@@ -954,20 +953,10 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
     preview.push(['Risk rating', riskRating(v.likelihood, v.impact) || '—']);
   }
 
-  return (
-    <div role="dialog" aria-modal="true" aria-label={`${initial?.id ? t('merl.edit') : t('merl.add')} — ${t(module.label)}`} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}
-      onClick={closeKeepingDraft}>
-      <div style={{ background: 'var(--white)', borderRadius: 12, width: '100%', maxWidth: 720, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }}
-        onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.8rem' }}>
-          <div style={{ minWidth: 0 }}>
-            <strong style={{ fontSize: '1rem' }}>{initial?.id ? t('merl.edit') : t('merl.add')} — {t(module.label)}</strong>
-            <DraftStatus draft={draft} style={{ marginTop: '0.2rem' }} />
-          </div>
-          <button onClick={closeKeepingDraft} aria-label={t('ui.close')} title={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0 }}><X size={18} aria-hidden="true" /></button>
-        </div>
-        <div className="mr-form-grid">
-          {module.fields.filter((f) => !(enableFileUpload && f.name === 'file_url')).map((f) => (
+  const visibleFields = module.fields.filter(f => !(enableFileUpload && f.name === 'file_url'));
+  const mainFields = visibleFields.filter(f => isMainReportField(module,f));
+  const extraFields = visibleFields.filter(f => !isMainReportField(module,f));
+  const renderField = f => (
             <div key={f.name} style={{ gridColumn: f.type === 'textarea' ? '1 / -1' : 'auto' }}>
               <label className="field-label">{t(f.label)}{f.required && ' *'}</label>
               {f.type === 'textarea' ? (
@@ -986,9 +975,27 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
               ) : (
                 <input aria-label={t(f.label)} type={f.type} className="field-input" value={v[f.name] ?? ''} onChange={set(f.name, f.type)} />
               )}
+              {{actual_this_period:'What was achieved during this reporting period.',cumulative_actual:'The total achieved from the start of the project up to the end of this period.',cumulative_expenditure:'The total spent from the start of the project up to the end of this period.'}[f.name] && <small className="mr-help">{{actual_this_period:'What was achieved during this reporting period.',cumulative_actual:'The total achieved from the start of the project up to the end of this period.',cumulative_expenditure:'The total spent from the start of the project up to the end of this period.'}[f.name]}</small>}
             </div>
-          ))}
+  );
+  return (
+    <div className="mr-form-dialog" role="dialog" aria-modal="true" aria-label={`${initial?.id ? t('merl.edit') : t('merl.add')} — ${t(module.label)}`} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem', overflowY: 'auto' }}
+      onClick={closeKeepingDraft}>
+      <div style={{ background: 'var(--white)', borderRadius: 12, width: '100%', maxWidth: 720, padding: '1.2rem', boxShadow: 'var(--shadow-lg)' }}
+        onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.8rem' }}>
+          <div style={{ minWidth: 0 }}>
+            <strong style={{ fontSize: '1rem' }}>{initial?.id ? t('merl.edit') : t('merl.add')} — {t(module.label)}</strong>
+            <DraftStatus draft={draft} style={{ marginTop: '0.2rem' }} />
+          </div>
+          <button onClick={closeKeepingDraft} aria-label={t('ui.close')} title={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', flexShrink: 0 }}><X size={18} aria-hidden="true" /></button>
         </div>
+        <p className="mr-help">Enter the results for {reportingPeriod || 'this update'}. An indicator is a measure of project results; a target is the amount you aim to achieve. Leave an unknown number blank. Enter 0 only when zero was measured.</p>
+        <div className="mr-form-grid">
+          {mainFields.map(renderField)}
+        </div>
+        {extraFields.length > 0 && <details className="mr-extra"><summary>{fr ? 'Autres détails (facultatifs)' : 'More details (optional)'}</summary><div className="mr-form-grid">{extraFields.map(renderField)}</div></details>}
+
         {enableFileUpload && module.key === 'evidence' && initial?.id && (
           <p style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>To preserve the original evidence file, add a new evidence record when submitting a revised document.</p>
         )}
@@ -1079,7 +1086,7 @@ export function RecordForm({ module, initial, draftKey: key, dynamicOptions, ind
             <span>{t('draft.missingRequired', { fields: missingRequired.join(', ') })}</span>
           </p>
         )}
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+        <div className="mr-form-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
           <button style={btn('var(--green-700)')} onClick={() => onSave(v, file)} disabled={busy}>
             {t(initial?.id ? 'merl.saveChanges' : 'merl.addRecord')}
           </button>

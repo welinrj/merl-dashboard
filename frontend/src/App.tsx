@@ -13,6 +13,7 @@ import Dashboards from './pages/Dashboards';
 import ResultsWorkspace from './pages/ResultsWorkspace';
 import ProjectPortfolioAnalysis from './pages/ProjectPortfolioAnalysis';
 import ProjectSetup from './pages/ProjectSetup';
+import WorkspaceGuide from './components/WorkspaceGuide';
 import MerlReporting from './pages/MerlReporting';
 import Reports from './pages/Reports';
 import AdminPanel  from './pages/AdminPanel';
@@ -560,6 +561,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
 
         <div className="dsh-scroll scrollbar-thin">
           <ErrorBoundary key={location.pathname}>
+            <WorkspaceGuide user={user} />
             <Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboards" element={gate('/dashboards') ? <Overview user={user} /> : <Navigate to={defaultPath} replace />} />

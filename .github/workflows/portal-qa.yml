@@ -65,6 +65,12 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/project-details.mjs
 
+      - name: Validate dashboard guides and simple reporting on a phone
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/workspace-usability.mjs
+
       - name: Validate role permission matrix
         working-directory: frontend
         env:

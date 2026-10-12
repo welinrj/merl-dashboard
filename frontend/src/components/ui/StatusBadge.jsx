@@ -29,7 +29,7 @@ const STATUS_MAP = {
   unreported: ['neutral', 'status.no_data'],
   not_reported: ['neutral', 'status.no_data'],
   pending_review: ['warning', 'status.pending'],
-  submitted:  ['warning',    'status.submitted'],   reviewed:  ['info',    'status.under_review'],
+  submitted:  ['warning',    'status.submitted'],   reviewed:  ['warning',    'status.under_review'],
   in_progress:['info',    'status.in_progress'],
 };
 

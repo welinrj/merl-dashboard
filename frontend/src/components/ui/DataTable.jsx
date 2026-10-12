@@ -30,7 +30,7 @@ export default function DataTable({
   columns, rows = [], keyField = 'id',
   searchable, searchPlaceholder = 'Search…',
   pageSizeOptions = [10, 25, 50], pageSize: initialPageSize = 10,
-  loading = false, empty, toolbar, dense = false, minWidth = 720, stickyHeader = true,
+  loading = false, empty, toolbar, dense = false, mobileCards = true, minWidth = 720, stickyHeader = true,
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
@@ -76,7 +76,7 @@ export default function DataTable({
   const cellPad = dense ? '0.4rem 0.6rem' : undefined;
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className={`card${mobileCards ? ' ux-mobile-table' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
       {(searchable || toolbar) && (
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.75rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
           {searchable && (
@@ -91,7 +91,7 @@ export default function DataTable({
         </div>
       )}
 
-      <div style={{ overflowX: 'auto' }} className="scrollbar-thin">
+      <div style={{ overflowX: 'auto' }} className="scrollbar-thin ux-table-desktop">
         <table className="data-table" style={{ minWidth, width: '100%' }}>
           <thead>
             <tr>
@@ -133,6 +133,11 @@ export default function DataTable({
           </tbody>
         </table>
       </div>
+
+      {mobileCards && <div className="ux-table-cards">
+        {columns.some(c => c.sortable) && <div className="ux-card-sort"><label>{t('ui.sortBy',{defaultValue:'Sort by'})}<select className="field-input" value={sortKey || ''} onChange={e=>{setSortKey(e.target.value || null);setSortDir('asc');setPage(1);}}><option value="">{t('ui.defaultOrder',{defaultValue:'Original order'})}</option>{columns.filter(c=>c.sortable).map(c=><option key={c.key} value={c.key}>{c.header}</option>)}</select></label>{sortKey && <button type="button" className="btn-secondary" onClick={()=>setSortDir(dir=>dir === 'asc' ? 'desc' : 'asc')}>{sortDir === 'asc' ? t('ui.ascending',{defaultValue:'Ascending'}) : t('ui.descending',{defaultValue:'Descending'})}</button>}</div>}
+        {loading ? <p role="status">{t('ui.loading')}</p> : !paged.length ? <EmptyState title={empty?.title || (query ? 'No matches' : 'No records')} description={empty?.description} action={empty?.action} /> : paged.map(row => <article className="ux-table-card" key={row[keyField]}><dl>{columns.map(c=><div key={c.key}>{c.header && <dt>{c.header}</dt>}<dd>{c.render ? c.render(row) : row[c.key] ?? '—'}</dd></div>)}</dl></article>)}
+      </div>}
 
       {!loading && total > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.6rem 0.9rem', borderTop: '1px solid var(--border)', fontSize: '0.8rem', color: 'var(--text-3)' }}>

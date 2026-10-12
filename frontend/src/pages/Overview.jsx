@@ -1,5 +1,6 @@
 import { OverviewIcon, ResultsIcon, BudgetUsageIcon, BeneficiariesIcon, ReviewIcon, UpdateProgressIcon } from '../components/ui/MerlIcons';
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
+import ReportingReminders from '../components/ReportingReminders';
 import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
 import { toVuv, sumReported } from '../lib/docc/currency';
 // =============================================================================
@@ -392,6 +393,7 @@ export default function Overview({ user }) {
         </div>
       </section>
 
+      <ReportingReminders periods={data.reporting} projects={unfinishedProjects} user={user} />
       <PendingResultsFrameworks projects={registeredProjects} user={user} />
 
       <section className="ovx-filterbar rp-noprint" aria-label={t('overview.title')}>
