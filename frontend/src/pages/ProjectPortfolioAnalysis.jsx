@@ -1,4 +1,5 @@
 import { ReviewIcon, BudgetUsageIcon, UpdateProgressIcon, ResultsIcon, BeneficiariesIcon } from '../components/ui/MerlIcons';
+import ProjectLocations from '../components/ProjectLocations';
 import { currentProjects } from '../lib/docc/projectScope';
 // =============================================================================
 // ProjectPortfolioAnalysis.jsx — one project, analysed end to end.
@@ -1031,26 +1032,10 @@ export default function ProjectPortfolioAnalysis() {
             <Section
               id="ppa-geography"
               title="Project locations"
-              description="Area Councils associated with this project."
-              error={errors.areaCouncils}
-              onRetry={() => load(projectId)}
-              empty={!errors.areaCouncils && d.areaCouncils.length === 0}
-              emptyTitle="No Area Councils recorded"
-              emptyText="Project locations will appear here when recorded."
+              description="Provinces, islands and local sites recorded for this project."
             >
-              <Scroller>
-                <table className="data-table" style={{ width: '100%', minWidth: 520 }}>
-                  <thead><tr><th>Province</th><th>Area Council</th></tr></thead>
-                  <tbody>
-                    {[...d.areaCouncils].sort((a,b) => String(a.province_code || '').localeCompare(String(b.province_code || '')) || String(a.area_council_name).localeCompare(String(b.area_council_name))).map((row) => (
-                      <tr key={row.id}>
-                        <td>{row.province_code || '—'}</td>
-                        <td style={{ fontWeight: 700 }}>{row.area_council_name}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Scroller>
+              <ProjectLocations project={d.project} areaCouncils={d.areaCouncils}
+                error={errors.areaCouncils} onRetry={() => load(projectId)} />
             </Section>
           </div>
 
