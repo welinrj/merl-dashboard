@@ -209,10 +209,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
   const visibleProjects = showCompletedProjects ? projects : currentProjects(projects);
   const [projectId, setProjectId] = useState('');
-  const [indicators, setIndicators] = useState([]);
-  const [kpis, setKpis] = useState([]);
   const [organizations, setOrganizations] = useState([]);
-  const [kpiEdit, setKpiEdit] = useState({ id: null, indicator_id: '', short_label: '', display_order: 0, show_target: true, show_progress: true, is_public: false, active: true });
   const [orgEdit, setOrgEdit] = useState({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false });
   const [busy, setBusy] = useState(false);
 
@@ -233,46 +230,16 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     });
   }, [preferredProjectId]);
 
-  const loadConfig = useCallback(async (pid) => {
-    if (!pid) { setIndicators([]); setKpis([]); return; }
-    const [i,k,o] = await Promise.all([
-      supabase.from('v_project_indicators').select('id,code,name,unit').eq('project_id',pid).order('code'),
-      supabase.from('v_dashboard_kpi_config').select('*').eq('project_id',pid).eq('dashboard_scope','project').order('display_order'),
-      supabase.from('v_project_organizations').select('*').eq('project_id',pid).order('role').order('name'),
-    ]);
-    const err=i.error||k.error||o.error;
-    if (err) { toast.error(dbErrorMessage(err)); return; }
-    setIndicators(i.data||[]); setKpis(k.data||[]); setOrganizations(o.data||[]);
+  const loadOrganizations = useCallback(async (pid) => {
+    if (!pid) { setOrganizations([]); return; }
+    const { data, error } = await supabase.from('v_project_organizations')
+      .select('*').eq('project_id',pid).order('role').order('name');
+    if (error) { toast.error(dbErrorMessage(error)); return; }
+    setOrganizations(data || []);
   }, []);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
-  useEffect(() => { loadConfig(projectId); }, [projectId, loadConfig]);
-
-  const saveKpi = async () => {
-    if (!projectId || !kpiEdit.indicator_id) { toast.error('Select an indicator.'); return; }
-    setBusy(true);
-    const ind=indicators.find(x=>x.id===kpiEdit.indicator_id);
-    const { error } = await supabase.rpc('upsert_dashboard_kpi_config', {
-      p_id:kpiEdit.id,p_project_id:projectId,p_indicator_id:kpiEdit.indicator_id,p_dashboard_scope:'project',
-      p_short_label:toNull(kpiEdit.short_label?.trim()) || ind?.name || 'Indicator',
-      p_display_order:Number(kpiEdit.display_order)||0,p_show_target:!!kpiEdit.show_target,
-      p_show_progress:!!kpiEdit.show_progress,p_is_public:!!kpiEdit.is_public,p_active:!!kpiEdit.active,
-    });
-    setBusy(false);
-    if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success('Project KPI saved.');
-    setKpiEdit({ id:null, indicator_id:'', short_label:'', display_order:0, show_target:true, show_progress:true, is_public:false, active:true });
-    loadConfig(projectId);
-  };
-  const deleteKpi = async (id) => {
-    if (!canEdit) return;
-    const row=kpis.find((x)=>x.id===id);
-    if (!(await confirmDialog({ title:'Delete KPI card', message:`Remove ${row?.short_label || 'this KPI'} from the dashboard configuration? The indicator itself will not be deleted.`, confirmLabel:'Delete' }))) return;
-    const { error } = await supabase.rpc('delete_dashboard_kpi_config',{ p_id:id });
-    if (error) { toast.error(dbErrorMessage(error)); return; }
-    toast.success('KPI card deleted.');
-    loadConfig(projectId);
-  };
+  useEffect(() => { loadOrganizations(projectId); }, [projectId, loadOrganizations]);
 
   const saveOrganization = async () => {
     if (!projectId || !orgEdit.name.trim()) { toast.error('Organization name is required.'); return; }
@@ -286,7 +253,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success('Donor / partner relationship saved.');
     setOrgEdit({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false });
-    loadConfig(projectId);
+    loadOrganizations(projectId);
   };
   const deleteOrganization = async (id) => {
     if (!canEdit) return;
@@ -295,7 +262,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     const { error } = await supabase.rpc('delete_project_organization',{ p_id:id });
     if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success('Donor / partner relationship deleted.');
-    loadConfig(projectId);
+    loadOrganizations(projectId);
   };
 
   const deleteProject = async () => {
@@ -312,7 +279,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success('Project deleted.');
     setProjectId('');
-    setIndicators([]); setKpis([]); setOrganizations([]);
+    setOrganizations([]);
     await loadProjects();
   };
 
@@ -328,7 +295,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
       </div>
     </div>
     {projectId && projects.find(p => p.id === projectId) && <ProjectDetailsSummary project={projects.find(p => p.id === projectId)} canEdit={canEdit} onEdit={onEditProject} />}
-    {projectId && <details className="ps-settings" key={projectId}><summary>Partners, activities and dashboard settings</summary><div className="ps-config-grid">
+    {projectId && <details className="ps-settings" key={projectId}><summary>Partners & activities</summary><div className="ps-config-grid">
       <div className="ps-config-card">
         <h3>Donors & Partners</h3>
         <p className="ps-config-note">Donors and partners are stored separately by role so dashboard filters and reports do not mix funding sources with implementing organisations.</p>
@@ -348,20 +315,6 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
         <div className="ps-mini-table"><table><thead><tr><th>Role</th><th>Organization</th><th>Primary</th><th></th></tr></thead><tbody>{organizations.map(o=><tr key={o.id}><td>{String(o.role||'').replaceAll('_',' ')}</td><td><b>{o.name}</b><small>{o.short_name||o.organization_type||''}</small></td><td>{o.is_primary?'Yes':'No'}</td><td>{canEdit && <><button type="button" onClick={()=>setOrgEdit({ id:o.id, name:o.name||'', short_name:o.short_name||'', organization_type:o.organization_type||'', role:o.role||'implementing_partner', is_primary:!!o.is_primary })}>Edit</button><button type="button" className="danger" onClick={()=>deleteOrganization(o.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
       </div>
 
-      <div className="ps-config-card">
-        <h3>Project KPI Cards</h3>
-        <div className="ps-config-form">
-          <label className="full"><span className="field-label">Official indicator</span><select className="field-input" value={kpiEdit.indicator_id} onChange={(e)=>{const ind=indicators.find(x=>x.id===e.target.value);setKpiEdit(s=>({...s,indicator_id:e.target.value,short_label:s.short_label||ind?.name||''}));}}><option value="">Select indicator</option>{indicators.map(i=><option key={i.id} value={i.id}>{i.code} — {i.name}</option>)}</select></label>
-          <label><span className="field-label">Card label</span><input className="field-input" value={kpiEdit.short_label} onChange={(e)=>setKpiEdit(s=>({...s,short_label:e.target.value}))}/></label>
-          <label><span className="field-label">Display order</span><input className="field-input" type="number" value={kpiEdit.display_order} onChange={(e)=>setKpiEdit(s=>({...s,display_order:e.target.value}))}/></label>
-          <label className="ps-check"><input type="checkbox" checked={kpiEdit.show_target} onChange={(e)=>setKpiEdit(s=>({...s,show_target:e.target.checked}))}/> Show target</label>
-          <label className="ps-check"><input type="checkbox" checked={kpiEdit.show_progress} onChange={(e)=>setKpiEdit(s=>({...s,show_progress:e.target.checked}))}/> Show progress</label>
-          <label className="ps-check"><input type="checkbox" checked={kpiEdit.is_public} onChange={(e)=>setKpiEdit(s=>({...s,is_public:e.target.checked}))}/> Allow on public dashboard</label>
-          <label className="ps-check"><input type="checkbox" checked={kpiEdit.active} onChange={(e)=>setKpiEdit(s=>({...s,active:e.target.checked}))}/> Active</label>
-        </div>
-        <div className="ps-config-actions"><button className="btn btn-secondary" type="button" onClick={()=>setKpiEdit({ id:null, indicator_id:'', short_label:'', display_order:0, show_target:true, show_progress:true, is_public:false, active:true })}>Clear</button><button className="btn btn-primary" type="button" disabled={busy || !canEdit} onClick={saveKpi}>Save KPI</button></div>
-        <div className="ps-mini-table"><table><thead><tr><th>Order</th><th>KPI</th><th>Target</th><th>Progress</th><th></th></tr></thead><tbody>{kpis.map(k=><tr key={k.id}><td>{k.display_order}</td><td><b>{k.short_label}</b></td><td>{k.show_target?'Yes':'No'}</td><td>{k.show_progress?'Yes':'No'}</td><td>{canEdit && <><button type="button" onClick={()=>setKpiEdit({...k})}>Edit</button><button type="button" className="danger" onClick={()=>deleteKpi(k.id)}>Delete</button></>}</td></tr>)}</tbody></table></div>
-      </div>
       <ActivityManager projectId={projectId} canEdit={canEdit} />
     </div></details>}
     {isAdmin && projectId && <details className="ps-settings"><summary>Delete this project</summary><p>Deleting a project removes it from the register. This action cannot be undone.</p><button type="button" className="btn btn-secondary" onClick={deleteProject} disabled={busy} style={{color:'var(--red-600)',borderColor:'var(--red-200)'}}>Delete project</button></details>}
