@@ -1,0 +1,24 @@
+/* Approved Island resilience identity. Existing institutional header stays intact. */
+.dsh:not(.pbd-root) .dsh-side{background:#153b58!important}
+.dsh:not(.pbd-root) .dsh-side .dsh-brand{display:grid!important;grid-template-columns:64px minmax(0,1fr);padding:16px;gap:4px 12px;text-align:left}
+.dsh:not(.pbd-root) .dsh-side .dsh-brand::before,.dsh:not(.pbd-root) .dsh-side .dsh-brand::after{display:none!important}
+.dsh:not(.pbd-root) .dsh-side .dsh-brand>img.island-logo{display:block!important;grid-column:1;grid-row:1/span 2;width:64px;height:64px;background:#fff;border-radius:50%;padding:4px;box-sizing:border-box}
+.dsh:not(.pbd-root) .dsh-brand-title{grid-column:2;grid-row:1;font-size:20px!important;color:#fff;align-self:end}
+.dsh:not(.pbd-root) .dsh-brand-dept{grid-column:2;grid-row:2;align-self:start;font-size:11px!important}
+.dsh:not(.pbd-root) .dsh-side .dsh-nav a.active,.dsh:not(.pbd-root) .dsh-side .dsh-nav a.active:hover{background:#007f8d!important}
+.dsh:not(.pbd-root) .dsh-side .dsh-nav a .merl-icon{--merl-icon-outline:#effbfc;--merl-icon-blue:#5ab9c3;--merl-icon-pale:#d5f1f2}
+.dsh .merl-card-icon{--merl-icon-blue:#008e9b;--merl-icon-pale:#e0f2f3;--merl-icon-outline:#153b58;background:#edf8f9}
+.pbd-metric.funding,.pbd-metric.beneficiaries,.ovx-kpi-budget,.ovx-kpi-beneficiaries{position:relative}
+.pbd-metric.funding::after,.pbd-metric.beneficiaries::after,.ovx-kpi-budget::after,.ovx-kpi-beneficiaries::after{content:'';position:absolute;bottom:0;left:0;right:0;height:20px;background:url('./assets/island-wave.svg') center bottom/100% 100% no-repeat;pointer-events:none;border-radius:0 0 16px 16px}
+.island-wave{display:block;width:100%;height:72px;pointer-events:none}
+.island-loading{display:block;animation:island-turn 1.8s linear infinite;margin:0 auto 12px}
+@keyframes island-turn{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.island-loading{animation:none}}
+.island-report-cover{position:relative;overflow:hidden;min-height:620px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:40px 32px;margin:-2rem -2rem 2rem;background:#fff;color:#153b58;border-bottom:1px solid #deecee}
+.rp-doc .island-report-cover h2{font-size:clamp(26px,5vw,44px);line-height:1.12;max-width:650px;margin:32px 0 16px}
+.island-report-cover p{font-size:16px;line-height:1.55;max-width:620px}
+.island-cover-brand{display:flex;align-items:center;gap:16px;font-size:22px;font-weight:800}
+.island-cover-art{align-self:flex-end;width:230px;height:auto;position:relative;z-index:1}
+.island-report-cover>.island-wave{position:absolute;bottom:0;left:0;height:100px}
+@media(max-width:640px){.island-report-cover{margin:-1.1rem -1.1rem 1.1rem;padding:28px 20px;min-height:560px}.island-cover-art{width:180px}.dsh:not(.pbd-root) .dsh-side .dsh-brand{padding-right:54px}}
+@media print{.island-report-cover{margin:0;padding:30px;min-height:900px;break-after:page;page-break-after:always;print-color-adjust:exact;-webkit-print-color-adjust:exact}}

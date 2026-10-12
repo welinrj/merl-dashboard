@@ -3,6 +3,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import JSZip from 'jszip';
 const fixture = JSON.parse(readFileSync(process.env.STUB_FILE,'utf8'));
 const HOST='https://ndntvncboeajanipafeq.supabase.co';
 const now=Math.floor(Date.now()/1000),b64=v=>Buffer.from(JSON.stringify(v)).toString('base64url');
@@ -45,5 +46,22 @@ try{
  let report=await page.locator('#report-preview').innerText();assert.match(report,/Selected coastal project/);assert.doesNotMatch(report,/Other project/);assert.doesNotMatch(report,/900/);
  await page.getByRole('combobox').first().selectOption('indicator');
  report=await page.locator('#report-preview').innerText();assert.match(report,/Selected project indicator/);assert.doesNotMatch(report,/Other project indicator/);
+ await page.getByRole('combobox').first().selectOption('full_me');
+ await page.locator('.island-report-cover').waitFor();
+ assert.match(await page.locator('.island-report-cover').innerText(),/Selected coastal project/);
+ assert.equal(await page.locator('.island-report-cover img').first().evaluate(img => img.complete && img.naturalWidth > 0),true);
+ const wordDownloadPromise=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Download Word',exact:true}).click();
+ const wordDownload=await wordDownloadPromise;
+ const wordZip=await JSZip.loadAsync(readFileSync(await wordDownload.path()));
+ const wordXml=await wordZip.file('word/document.xml').async('string');
+ assert.match(wordXml,/MERL PORTAL/);
+ assert.ok(Object.keys(wordZip.files).some(path=>path.startsWith('word/media/') && path.endsWith('.png')));
+ const pdfDownloadPromise=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Download PDF',exact:true}).click();
+ const pdfDownload=await pdfDownloadPromise;
+ const pdf=readFileSync(await pdfDownload.path()).toString('latin1');
+ assert.match(pdf,/MERL PORTAL/);assert.match(pdf,/\/Subtype \/Image/);
+ console.log('PASS Island report cover preview and Word/PDF embedded logo exports');
  console.log('PASS Phone project portfolio entry and multiple report types retain project scope');
 }finally{await browser.close();}

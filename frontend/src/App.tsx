@@ -1,3 +1,4 @@
+import { IslandLogo } from './components/IslandBrand';
 import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
@@ -475,9 +476,9 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
       {/* ── Sidebar ── */}
       <aside className={`dsh-side${sidebarOpen ? ' open' : ''}`}>
         <div className="dsh-brand">
-          <img src={CREST} alt={t('login.crestAlt')} />
+          <IslandLogo />
           <div className="dsh-brand-dept">{t('shell.department')}</div>
-          <div className="dsh-brand-title">{t('shell.productName')}</div>
+          <div className="dsh-brand-title">MERL Portal</div>
         </div>
         <button type="button" className="dsh-side-close" aria-label={t('shell.closeMenu')}
           onClick={() => setSidebarOpen(false)}><span aria-hidden="true">×</span></button>

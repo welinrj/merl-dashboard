@@ -1,3 +1,4 @@
+import { IslandLoading } from '../IslandBrand';
 import i18n from '../../i18n';
 
 // aria-label only; these render inside components that may not have a hook
@@ -49,6 +50,7 @@ export function SkeletonCard({ height = 92 }) {
   return (
     <div className="card" role="status" aria-label={loadingLabel()} style={{ padding: '1rem 1.15rem' }}>
       <Keyframes />
+      <IslandLoading />
       <Skeleton width="45%" height={12} style={{ marginBottom: '0.75rem' }} />
       <Skeleton width="70%" height={height >= 92 ? 26 : 18} />
     </div>

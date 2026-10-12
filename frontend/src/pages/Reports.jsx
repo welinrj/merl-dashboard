@@ -1,3 +1,5 @@
+import IslandReportCover from '../components/IslandReportCover';
+import { wordCover, pdfCover } from '../lib/islandReportCover';
 import { scopeProjectReport, initialReportType } from '../lib/projectReportScope';
 import { officialPortfolioData } from '../lib/docc/projectScope';
 // =============================================================================
@@ -96,6 +98,7 @@ const reportBlocks = () => {
   const blocks = [];
   const walk = (parent) => {
     for (const element of parent.children) {
+      if (element.classList.contains('island-report-cover')) continue;
       if (element.classList.contains('rp-page-break')) { blocks.push({ type: 'pageBreak' }); continue; }
       if (element.matches('h2')) { blocks.push({ type: 'title', text: textOf(element) }); continue; }
       if (element.matches('h3')) { blocks.push({ type: 'heading1', text: textOf(element) }); continue; }
@@ -237,6 +240,12 @@ export default function Reports() {
       ? `${approvedCount} of ${approvalScope.length} matching reporting period${approvalScope.length === 1 ? '' : 's'} approved.`
       : `${approvedCount} of ${approvalScope.length} matching reporting period${approvalScope.length === 1 ? '' : 's'} approved. This report may include draft, submitted, returned or reviewed information.`;
 
+  const cover = {
+    title: periodType === 'annual' ? `Annual ${t(REPORT_TYPES.find(r => r.key === type)?.label || 'rpt.fullMeReport')}` : t(REPORT_TYPES.find(r => r.key === type)?.label || 'rpt.fullMeReport'),
+    period: period || (periodType ? `${humanToken(periodType)} reporting periods` : 'Cumulative · All reporting periods'),
+    project: (type === 'project' ? projectId : scopeId) ? d.projects[0]?.name : '',
+    generated: fmtDateTime(generatedAt), dataAsAt: dataAsAt ? fmtDateTime(dataAsAt) : '',
+  };
   const logGeneration = async (format) => {
     try {
       const labelKey = REPORT_TYPES.find((r) => r.key === type)?.label;
@@ -278,7 +287,8 @@ export default function Reports() {
         const heading = block.type === 'title' ? HeadingLevel.TITLE : block.type === 'heading1' ? HeadingLevel.HEADING_1 : block.type === 'heading2' ? HeadingLevel.HEADING_2 : undefined;
         return new Paragraph({ text: block.text, heading, spacing: { after: heading ? 160 : 100 } });
       });
-      const documentFile = new Document({ sections: [{ properties: {}, children }] });
+      const coverChildren = await wordCover(cover);
+      const documentFile = new Document({ sections: [{ properties: {}, children: [...coverChildren, ...children] }] });
       downloadBlob(await Packer.toBlob(documentFile), reportFilename('docx'));
       void logGeneration('docx');
     } catch (error) {
@@ -290,6 +300,7 @@ export default function Reports() {
     setExporting('pdf'); setExportError('');
     try {
       const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+      await pdfCover(pdf, cover);
       const margin = 42; const width = pdf.internal.pageSize.getWidth() - margin * 2; const bottom = pdf.internal.pageSize.getHeight() - margin;
       let y = margin;
       const ensureSpace = (height = 16) => { if (y + height > bottom) { pdf.addPage(); y = margin; } };
@@ -436,6 +447,7 @@ export default function Reports() {
       </div>
 
       <div id="report-preview" className={`rp-doc rp-print ${previewOpen ? 'rp-preview-open' : 'rp-preview-collapsed'}`}>
+        <IslandReportCover {...cover} />
         <div className="rp-stamp">
           <span>{t('rpt.generated')} <b>{fmtDateTime(generatedAt)}</b></span>
           <span>{t('rpt.dataAsAt')} <b>{dataAsAt ? fmtDateTime(dataAsAt) : '—'}</b></span>

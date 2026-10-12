@@ -1,3 +1,4 @@
+import { IslandLoading } from '../components/IslandBrand';
 import { OverviewIcon, ProjectsIcon, FundingIcon, FundsUsedIcon, BeneficiariesIcon, BudgetUsageIcon, ForestsIcon, UpdateProgressIcon, AdaptationIcon, LossDamageIcon } from '../components/ui/MerlIcons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -284,7 +285,7 @@ export default function PublicDashboard() {
         </div>
         {isFetching && data && <div className="pbd-refresh-status" role="status">{c.refreshing}</div>}
         {isError && data && <div className="pbd-refresh-status pbd-refresh-error" role="alert">{c.stale}<button type="button" onClick={refresh}>{c.retry}</button></div>}
-        {!data ? (isLoading ? <div className="pbd-state" role="status">{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
+        {!data ? (isLoading ? <div className="pbd-state" role="status"><IslandLoading />{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
           <section className="pbd-metrics" aria-label={c.title}>
             <Metric label={c.projects} value={num(filtered.length, lang)} detail={c.projectCount} tone="projects" />
             <Metric label={c.funding} value={fundingTotal} detail={c.fundingSub} tone="funding" />

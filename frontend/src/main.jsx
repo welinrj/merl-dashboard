@@ -36,6 +36,7 @@ import './header-two-logo.css';
 import './visual-consistency.css';
 import './merl-icons.css';
 import './sidebar-refinement.css';
+import './island-resilience.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

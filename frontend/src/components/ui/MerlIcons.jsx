@@ -1,10 +1,10 @@
 // Scalable duotone artwork based on the approved MERL icon sample sheet.
 // Labels belong to the surrounding control; icons are decorative by default.
-const blue = 'var(--merl-icon-blue, #287bc1)';
-const pale = 'var(--merl-icon-pale, #d9eafa)';
+const blue = 'var(--merl-icon-blue, #008e9b)';
+const pale = 'var(--merl-icon-pale, #e0f2f3)';
 function Icon({ size = 24, color, className = '', style, children, ...props }) {
   return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width={size} height={size}
-    fill="none" stroke="var(--merl-icon-outline, #102d50)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    fill="none" stroke="var(--merl-icon-outline, #153b58)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
     aria-hidden="true" focusable="false" className={`merl-icon ${className}`.trim()}
     style={{ ...(color ? { '--merl-icon-outline': color } : {}), ...style }} {...props}>{children}</svg>;
 }
@@ -16,7 +16,7 @@ export function ReviewIcon(props) { return <Icon {...props}><path d="M4 3h15l6 6
 export function ReportsIcon(props) { return <Icon {...props}><path d="M5 3h15l7 7v19H5Z" fill={pale}/><path d="M20 3v7h7M9 9h6m-6 5h5"/><path d="M10 25v-5h3v5m3 0v-9h3v9m3 0V13h3v12" fill={blue} stroke={blue}/></Icon>; }
 export function AdministrationIcon(props) { return <Icon {...props}><path d="m13 2 6 0 1 4 3 1 3-2 4 4-2 3 1 3 3 1v6l-4 1-1 3 2 3-4 4-3-2-3 1-1 4h-6l-1-4-3-1-3 2-4-4 2-3-1-3-4-1v-6l4-1 1-3-2-3 4-4 3 2 3-1Z" transform="translate(1 0) scale(.88)" fill={blue}/><circle cx="16" cy="16" r="5" fill={pale}/></Icon>; }
 export function HelpIcon(props) { return <Icon {...props}><path d="M4 25 2 30l9-3a13 13 0 1 0-7-2Z" fill={pale}/><path d="M12 11a4 4 0 1 1 7 3c-2 1-3 2-3 4" stroke={blue} strokeWidth="3"/><circle cx="16" cy="23" r="1" fill={blue} stroke={blue}/></Icon>; }
-export function FundingIcon(props) { return <Icon {...props}><path d="M7 7V3h23v18h-4" fill={pale}/><path d="M5 10V6h23v18h-4" fill={pale}/><rect x="2" y="10" width="23" height="18" rx="2" fill={pale}/><path d="M5 13h3m-3 0v3m14-3h3v3m-17 7v2h3m11 0h3v-2" stroke={blue}/><circle cx="14" cy="19" r="5" fill={blue} stroke={blue}/><path d="M12 18h4m-4 2h4" stroke="white"/></Icon>; }
+export function FundingIcon(props) { return <Icon {...props}><path d="M5 3h14l7 7v18H5Z" fill={pale}/><path d="M19 3v7h7M9 9h5m-5 5h9m-9 5h6"/><circle cx="23" cy="23" r="8" fill={blue} stroke="white"/><path d="M23 17v12m3-10h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-4" stroke="white"/></Icon>; }
 export function FundsUsedIcon(props) { return <Icon {...props}><path d="m5 9 16-6v7" fill={blue}/><rect x="3" y="9" width="24" height="20" rx="2" fill={blue}/><path d="M3 14h24"/><rect x="19" y="18" width="10" height="7" rx="2" fill={pale}/><circle cx="23" cy="21.5" r=".7" fill="currentColor"/><path d="M24 6h7m-3-3 3 3-3 3"/></Icon>; }
 export function BeneficiariesIcon(props) { return <Icon {...props}><circle cx="16" cy="8" r="4" fill={blue}/><circle cx="6" cy="12" r="3" fill={pale}/><circle cx="26" cy="12" r="3" fill={pale}/><path d="M1 27v-4a5 5 0 0 1 10 0v4Zm20 0v-4a5 5 0 0 1 10 0v4Z" fill={blue}/><path d="M8 29v-6a8 8 0 0 1 16 0v6Z" fill={blue}/></Icon>; }
 export function BudgetUsageIcon(props) { return <Icon {...props}><circle cx="16" cy="16" r="13" fill={pale}/><path d="M16 3a13 13 0 0 1 9.2 22.2L16 16Z" fill={blue}/><circle cx="16" cy="16" r="6" fill="white"/></Icon>; }
