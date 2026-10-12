@@ -28,6 +28,10 @@ try{
  await page.getByRole('button',{name:/Selected coastal project/}).click();
  await page.getByRole('link',{name:'View project portfolio & reports',exact:true}).click();
  await page.getByRole('link',{name:'Generate project reports',exact:true}).waitFor({timeout:20000});
+ await page.locator('#ppa-project').selectOption('pb');
+ assert.equal(await page.locator('#ppa-project option').count(),3);
+ await page.locator('#ppa-project').selectOption('pa');
+ assert.equal(await page.locator('#ppa-project').inputValue(),'pa');
  assert.equal(await page.locator('.dsh-nav').getByRole('link',{name:'Project portfolio',exact:true}).count(),1);
  await page.getByRole('link',{name:'Generate project reports',exact:true}).click();
  await page.locator('#report-preview').waitFor({timeout:20000});

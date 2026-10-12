@@ -124,88 +124,16 @@ const Scroller = ({ children }) => (
 
 // ── Project selector ─────────────────────────────────────────────────────────
 
-/**
- * Searchable project picker. A national portfolio is too long to scroll and an
- * officer usually knows the code or a word of the title, so typing filters and
- * the keyboard works throughout.
- */
+/** Native dropdown supports the phone's built-in project selection menu. */
 function ProjectPicker({ projects, value, onChange, disabled }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [active, setActive] = useState(0);
-  const boxRef = useRef(null);
-
-  const selected = projects.find((p) => p.id === value) ?? null;
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDown = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('pointerdown', onDown);
-    return () => document.removeEventListener('pointerdown', onDown);
-  }, [open]);
-
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter((p) =>
-      `${p.code ?? ''} ${p.name ?? ''} ${p.donor ?? ''}`.toLowerCase().includes(q));
-  }, [projects, query]);
-
-  const choose = (p) => { setOpen(false); setQuery(''); onChange(p.id); };
-
-  const onKeyDown = (e) => {
-    if (!open && (e.key === 'ArrowDown' || e.key === 'Enter')) { setOpen(true); return; }
-    if (!open) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(i + 1, matches.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)); }
-    else if (e.key === 'Enter' && matches[active]) { e.preventDefault(); choose(matches[active]); }
-    else if (e.key === 'Escape') { setOpen(false); }
-  };
-
-  return (
-    <div ref={boxRef} style={{ position: 'relative', flex: '1 1 320px', minWidth: 0 }}>
-      <label htmlFor="ppa-project" style={{ display: 'block', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: '0.2rem' }}>
-        {t('ppa.selectProject')}
-      </label>
-      <input
-        id="ppa-project"
-        className="field-input"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls="ppa-project-list"
-        aria-autocomplete="list"
-        autoComplete="off"
-        disabled={disabled}
-        placeholder={t('ppa.selectProjectPlaceholder')}
-        value={open ? query : (selected ? `${selected.code} — ${selected.name}` : '')}
-        onChange={(e) => { setQuery(e.target.value); setActive(0); setOpen(true); }}
-        onFocus={() => { setQuery(''); setOpen(true); }}
-        onKeyDown={onKeyDown}
-        style={{ fontWeight: selected && !open ? 600 : 400 }}
-      />
-      {open && (
-        <div id="ppa-project-list" role="listbox"
-          style={{ position: 'absolute', zIndex: 40, top: '100%', left: 0, right: 0, marginTop: 4,
-            background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)',
-            boxShadow: 'var(--shadow)', maxHeight: 300, overflowY: 'auto' }}>
-          {matches.length === 0 ? (
-            <p style={{ padding: '0.75rem 0.9rem', fontSize: '0.82rem', color: 'var(--text-3)', margin: 0 }}>
-              {t('ppa.noProjectMatch')}
-            </p>
-          ) : matches.map((p, i) => (
-            <button type="button" key={p.id} role="option" aria-selected={p.id === value}
-              onMouseEnter={() => setActive(i)} onClick={() => choose(p)}
-              style={{ display: 'block', width: '100%', textAlign: 'left', border: 0, cursor: 'pointer',
-                padding: '0.5rem 0.9rem', background: i === active ? 'var(--surface-1)' : 'transparent' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>{p.code}</span>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-2)' }}> — {p.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return <label style={{display:'flex',flexDirection:'column',gap:'.5rem',flex:'1 1 320px',minWidth:0}}>
+    <span style={{fontSize:'1rem',fontWeight:700,color:'var(--text-2)'}}>{t('ppa.selectProject')}</span>
+    <select id="ppa-project" className="field-input" value={value} disabled={disabled} onChange={event=>onChange(event.target.value)} style={{width:'100%',minWidth:0,minHeight:48,fontSize:16}}>
+      <option value="">{t('ppa.selectProject')}</option>
+      {projects.map(project=><option key={project.id} value={project.id}>{project.code ? `${project.code} — ` : ''}{project.name}</option>)}
+    </select>
+  </label>;
 }
 
 // ── Time vs Money vs Results ─────────────────────────────────────────────────
