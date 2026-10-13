@@ -93,6 +93,28 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
   await ctx.close();
 }
 
+// A retried read must clear its earlier failure when the data becomes available.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  let summaryReads = 0;
+  await ctx.route((u) => u.href.startsWith(HOST), (route) => {
+    const url = route.request().url();
+    if (url.includes('public_portal_summary') && ++summaryReads <= 3) {
+      return route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"temporarily unavailable"}' });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json',
+      body: url.includes('public_portal_summary') ? '{"singleton":true,"project_count":0}' : '[]' });
+  });
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/#/dashboards`, { waitUntil: 'domcontentloaded' });
+  await page.locator(GUARD).waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.pbd-metrics').waitFor({ timeout: 20000 });
+  await page.locator(GUARD).waitFor({ state: 'detached', timeout: 10000 });
+  check('successful recovery clears the blocking dialog without reloading', summaryReads > 3);
+  await ctx.unrouteAll({ behavior: 'ignoreErrors' });
+  await ctx.close();
+}
+
 await browser.close();
 console.log(failed ? `\n${failed} check(s) failed` : '\nRead-failure guard behaves correctly in both directions');
 // Set the code and let node exit on its own: process.exit() here would kill the

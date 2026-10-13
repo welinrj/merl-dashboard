@@ -55,7 +55,7 @@ try {
   if (!await publicMenu.getAttribute('aria-label')) throw new Error('Public mobile menu has no accessible label');
   await publicMenu.click();
   await assertHeaderLogin('Mobile menu open');
-  const overlay = page.getByRole('button', { name: 'Close menu' });
+  const overlay = page.locator('.pbd-overlay');
   const box = await overlay.boundingBox();
   const sidebar = await page.locator('.dsh-side.open').boundingBox();
   if (!box || !sidebar || box.x + box.width - 12 <= sidebar.x + sidebar.width) {
