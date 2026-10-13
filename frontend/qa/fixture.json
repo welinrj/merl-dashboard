@@ -349,5 +349,16 @@
       "recent_documents": []
     }
   ],
-  "v_evidence_analysis": []
+  "v_evidence_analysis": [],
+  "public_portal_summary": [
+    {
+      "singleton": true,
+      "project_count": 0
+    }
+  ],
+  "public_portal_projects": [],
+  "public_portal_area_councils": [],
+  "public_portal_kpis": [],
+  "public_portal_indicator_categories": [],
+  "public_portal_indicator_details": []
 }

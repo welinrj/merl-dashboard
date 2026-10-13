@@ -861,7 +861,7 @@ function PeriodForm({ onCancel, onSave }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem' }}>
-        <button style={btn('var(--green-700)')} onClick={() => onSave(v, file)}>{t('merl.create')}</button>
+        <button style={btn('var(--green-700)')} onClick={() => onSave(v)}>{t('merl.create')}</button>
         <button style={btnSecondary()} onClick={onCancel}>{t('merl.cancel')}</button>
       </div>
     </div>
