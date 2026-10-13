@@ -76,7 +76,7 @@ export default function DataTable({
   const cellPad = dense ? '0.4rem 0.6rem' : undefined;
 
   return (
-    <div className={`card${mobileCards ? ' ux-mobile-table' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
+    <div className={`card island-data-table${mobileCards ? ' ux-mobile-table' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
       {(searchable || toolbar) && (
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.75rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
           {searchable && (

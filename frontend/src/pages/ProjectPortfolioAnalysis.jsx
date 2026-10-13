@@ -883,19 +883,20 @@ export default function ProjectPortfolioAnalysis() {
               </div>
 
               {spendSeries.length > 1 ? (
-                <div style={{ height: 210 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                <div style={{ minHeight: 260 }}>
+                  <ResponsiveContainer width="100%" height={210}>
                     <LineChart data={spendSeries} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                      <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'var(--text-3)' }} />
-                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-3)' }} width={62}
+                      <XAxis dataKey="period" tick={{ fontSize: 13, fill: 'var(--text-2)' }} />
+                      <YAxis tick={{ fontSize: 13, fill: 'var(--text-2)' }} width={62}
                         tickFormatter={(v) => fmtAmount(v)} />
                       <Tooltip formatter={(v, n) => [fmtAmount(v), t(n === 'planned' ? 'ppa.planned' : 'ppa.actualSpend')]} />
-                      <Legend formatter={(v) => t(v === 'planned' ? 'ppa.planned' : 'ppa.actualSpend')} wrapperStyle={{ fontSize: 12 }} />
-                      <Line type="monotone" dataKey="planned" stroke="#9a9186" strokeWidth={2} dot={false} connectNulls />
-                      <Line type="monotone" dataKey="actual" stroke="var(--green-600)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                      <Legend formatter={(v) => t(v === 'planned' ? 'ppa.planned' : 'ppa.actualSpend')} wrapperStyle={{ fontSize: 14 }} />
+                      <Line type="monotone" dataKey="planned" stroke="#153b58" strokeDasharray="5 4" strokeWidth={2} dot={false} connectNulls />
+                      <Line type="monotone" dataKey="actual" stroke="#008e9b" strokeWidth={2} dot={{ r: 3 }} connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
+                  <p className="island-chart-help">{lang?.startsWith('fr') ? 'La ligne en pointillés montre le budget prévu ; la ligne continue montre les dépenses déclarées. Les montants sont en vatu.' : 'The dashed line shows the planned budget; the solid line shows reported expenditure. Amounts are in vatu.'}</p>
                 </div>
               ) : (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', margin: 0 }}>{t('ppa.notEnoughPeriods')}</p>

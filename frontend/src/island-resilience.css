@@ -23,3 +23,46 @@
 .island-report-cover>.island-wave{position:absolute;bottom:0;left:0;height:100px}
 @media(max-width:640px){.island-report-cover{margin:-1.1rem -1.1rem 1.1rem;padding:28px 20px;min-height:560px}.island-cover-art{width:180px}.dsh:not(.pbd-root) .dsh-side .dsh-brand{padding-right:54px}}
 @media print{.island-report-cover{margin:0;padding:30px;min-height:900px;break-after:page;page-break-after:always;print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+/* Clear hierarchy, comfortable controls and consistent Island resilience details. */
+.island-page-header h1::after{content:'';display:block;width:56px;height:4px;border-radius:2px;background:#008e9b;margin-top:12px}
+.island-section-heading{display:flex;align-items:flex-start;gap:12px}
+.island-section-heading>div>div:first-child{font-size:1.1rem!important;line-height:1.4}
+.island-section-heading>div>div+div{font-size:.95rem!important;line-height:1.5;margin-top:4px!important}
+.island-section-heading .merl-card-icon{width:40px;height:40px;flex-shrink:0}
+.pd-project-list{max-height:430px;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pd-project-list button{padding:18px;border-radius:14px;border-color:#d7e7e9;gap:8px;background:#fff}
+.pd-project-list button[aria-pressed=true]{background:#edf8f9;border-color:#008e9b;box-shadow:inset 4px 0 #008e9b}
+.pd-project-list button strong{font-size:1.05rem;line-height:1.45}
+.pd-project-list .pd-project-meta{font-size:.9rem;line-height:1.55;text-transform:none}
+.pd-project-list .pd-project-open{color:#006a76;font-size:1rem;font-weight:700;margin-top:4px}
+.pd-section,.pd-summary-section{border-color:#d7e7e9;border-radius:14px;padding:20px}
+.pd-section h3::after,.pd-summary-section h3::after{content:'';display:block;width:36px;height:3px;border-radius:2px;background:#008e9b;margin-top:8px}
+.pd-form .field-input:focus,.mr-form-dialog .field-input:focus{outline:2px solid #008e9b;outline-offset:2px;border-color:#008e9b}
+.pd-form .pd-section-nav button[aria-pressed=true]{background:#153b58;border-color:#153b58}
+.pd-form .pd-actions{box-shadow:0 -6px 18px #153b580a;gap:12px}
+.pd-form .pd-actions .btn-primary{background:#153b58;border-color:#153b58;color:white;font-weight:700}
+.island-data-table .data-table th{background:#edf8f9;color:#153b58;line-height:1.45;padding:14px 16px!important}
+.island-data-table .data-table td{padding:14px 16px!important;line-height:1.55;vertical-align:top}
+.island-data-table .data-table tbody tr:nth-child(even){background:#f7fbfc}
+.island-data-table .data-table tbody tr:hover{background:#eef8f9}
+.island-data-table .ux-table-card{background:#fff;border-color:#d7e7e9;box-shadow:0 4px 16px #153b5806}
+.island-data-table .ux-table-card dl>div+div{padding-top:8px;border-top:1px solid #edf2f3}
+.wg-start a{gap:10px;background:#edf8f9;color:#153b58;border-color:#d7e7e9}
+.wg-guide{border-color:#d7e7e9;border-radius:14px}
+.wg-guide summary>.merl-icon{vertical-align:middle;margin-right:8px}
+.wg-guide ol{list-style:none;counter-reset:guide-step;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:0;margin:16px 0}
+.wg-guide li{counter-increment:guide-step;position:relative;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid #d7e7e9;border-radius:12px;background:#f7fbfc;font-size:1rem;line-height:1.6}
+.wg-guide li::before{content:counter(guide-step);position:absolute;top:16px;right:16px;background:#153b58;color:#fff;border-radius:50%;width:26px;height:26px;text-align:center;font-size:.85rem;line-height:26px;font-weight:700}
+.wg-step-icon{display:flex;align-items:center;justify-content:center;width:42px;height:42px;background:#e2f3f4;border-radius:10px}
+.island-notifications{border-color:#d7e7e9!important}
+.island-notification{gap:12px!important;padding:16px!important;min-height:80px;font:inherit;line-height:1.5}
+.island-notification:hover,.island-notification:focus-visible{background:#edf8f9!important}
+.island-notification-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:40px;height:40px;background:#edf8f9;border-radius:10px}
+.island-notification-action{display:block;margin-top:8px;font-size:.95rem;font-weight:700;color:#006a76}
+.recharts-cartesian-axis-tick-value{font-size:13px;fill:var(--text-2)}
+.recharts-default-tooltip{border-radius:12px!important;border-color:#d7e7e9!important;box-shadow:0 6px 22px #153b5812;font-size:14px;line-height:1.6}
+.recharts-legend-wrapper{font-size:14px}
+@media(max-width:700px){.pd-project-list{grid-template-columns:minmax(0,1fr);max-height:390px}.wg-guide ol{grid-template-columns:minmax(0,1fr)}.wg-guide li{padding-left:72px;min-height:88px}.wg-step-icon{position:absolute;top:16px;left:16px}.wg-guide li::before{position:static;align-self:flex-start;width:24px;height:24px;line-height:24px}.wg-start a{flex-direction:column;gap:6px}.island-data-table .data-table th,.island-data-table .data-table td{padding:12px!important}}
+@media print{.island-page-header h1::after{display:none}.wg-guide{display:none}}
+
+.island-chart-help{font-size:.95rem;line-height:1.5;color:var(--text-2);margin:8px 0 0}

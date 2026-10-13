@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 export default function PageHeader({ title, subtitle, breadcrumb, actions }) {
   const { t } = useTranslation();
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+    <div className="island-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
       gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
       <div style={{ minWidth: 0 }}>
         {Array.isArray(breadcrumb) && breadcrumb.length > 0 && (

@@ -1,3 +1,4 @@
+import { ReviewIcon, UpdateProgressIcon } from './ui/MerlIcons';
 // =============================================================================
 // NotificationBell.jsx — role-aware reporting notifications.
 // Reads the RLS-scoped reporting views and presents only actionable workflow
@@ -46,19 +47,19 @@ export default function NotificationBell({ user, onReviewCount }) {
     const code = (id) => projById[id] || t('notif.project');
     if (isReviewer) {
       rows.filter((r) => ['submitted', 'reviewed'].includes(r.submission_status)).forEach((r) => out.push({
-        id: `rev-${r.id}`, accent: '#4d73a5',
+        id: `rev-${r.id}`, accent: '#b98516', Icon: ReviewIcon, action: 'Review submission',
         title: `${code(r.project_id)} · ${r.period_label}`, note: t('notif.awaiting'), to: '/review',
       }));
     }
     if (isEditor) {
       rows.filter((r) => r.submission_status === 'returned').forEach((r) => out.push({
-        id: `ret-${r.id}`, accent: '#c28a20',
-        title: `${code(r.project_id)} · ${r.period_label}`, note: r.review_comments ? t('notif.returnedWhy', { reason: r.review_comments }) : t('notif.returned'), to: '/merl-reporting',
+        id: `ret-${r.id}`, accent: '#c28a20', Icon: UpdateProgressIcon, action: 'Update report',
+        title: `${code(r.project_id)} · ${r.period_label}`, note: r.review_comments ? t('notif.returnedWhy', { reason: r.review_comments }) : t('notif.returned'), to: `/merl-reporting?project=${encodeURIComponent(r.project_id)}&period=${encodeURIComponent(r.period_label)}`,
       }));
       const today = todayIso();
       rows.filter((r) => r.submission_status !== 'approved' && r.period_end && r.period_end.slice(0, 10) < today).forEach((r) => out.push({
-        id: `od-${r.id}`, accent: '#b3402f',
-        title: `${code(r.project_id)} · ${r.period_label}`, note: t('notif.overdue'), to: '/merl-reporting',
+        id: `od-${r.id}`, accent: '#b3402f', Icon: UpdateProgressIcon, action: 'Open report',
+        title: `${code(r.project_id)} · ${r.period_label}`, note: t('notif.overdue'), to: `/merl-reporting?project=${encodeURIComponent(r.project_id)}&period=${encodeURIComponent(r.period_label)}`,
       }));
     }
     return out.slice(0, 20);
@@ -77,7 +78,7 @@ export default function NotificationBell({ user, onReviewCount }) {
       {open && (
         <>
           <div className="dsh-notification-backdrop" {...backdrop} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 320, maxWidth: '90vw',
+          <div className="island-notifications" style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: 320, maxWidth: '90vw',
             background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
             <div style={{ padding: '0.7rem 0.9rem', borderBottom: '1px solid var(--border)', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>
               {t('notif.title')}{count > 0 && <span style={{ color: 'var(--text-3)', fontWeight: 500 }}> · {count}</span>}
@@ -88,12 +89,13 @@ export default function NotificationBell({ user, onReviewCount }) {
                   {t('notif.none')}
                 </div>
               ) : items.map((it) => (
-                <button key={it.id} onClick={() => { setOpen(false); nav(it.to); }}
+                <button className="island-notification" key={it.id} onClick={() => { setOpen(false); nav(it.to); }}
                   style={{ width: '100%', display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.6rem 0.9rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}>
-                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, marginTop: '0.34rem', background: it.accent }} />
+                  <span className="island-notification-icon" style={{ color: it.accent }}><it.Icon size={28} /></span>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title}</span>
-                    <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.note}</span>
+                    <span style={{ display: 'block', fontSize: '1rem', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal' }}>{it.title}</span>
+                    <span style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal' }}>{it.note}</span>
+                    <span className="island-notification-action">{lang?.startsWith('fr') ? it.action === 'Review submission' ? 'Examiner le rapport' : it.action === 'Update report' ? 'Modifier le rapport' : 'Ouvrir le rapport' : it.action} <span aria-hidden="true">→</span></span>
                   </span>
                 </button>
               ))}

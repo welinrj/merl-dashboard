@@ -1,3 +1,4 @@
+import { ProjectsIcon, UpdateProgressIcon, ReportsIcon, HelpIcon } from './ui/MerlIcons';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import './workspace-guide.css';
@@ -29,10 +30,10 @@ export default function WorkspaceGuide({ user }) {
   };
   return <div className="wg-wrap rp-noprint">
     {pathname === '/dashboards' && <nav className="wg-start" aria-label={fr ? 'Commencer' : 'Start here'}>
-      <a href="#/project-setup">{fr ? 'Voir les projets' : 'View projects'}</a>
-      {canEdit && <a href="#/merl-reporting">{fr ? 'Saisir les progrès' : 'Update progress'}</a>}
-      <a href="#/reports">{fr ? 'Générer un rapport' : 'Generate a report'}</a>
+      <a href="#/project-setup"><ProjectsIcon size={22} />{fr ? 'Voir les projets' : 'View projects'}</a>
+      {canEdit && <a href="#/merl-reporting"><UpdateProgressIcon size={22} />{fr ? 'Saisir les progrès' : 'Update progress'}</a>}
+      <a href="#/reports"><ReportsIcon size={22} />{fr ? 'Générer un rapport' : 'Generate a report'}</a>
     </nav>}
-    <details className="wg-guide" key={pathname}><summary>{fr ? 'Comment utiliser cette page' : 'How to use this page'}</summary><ol>{(fr ? french[pathname] || ['Choisissez une vue et ses filtres.','Consultez les résultats des projets et périodes sélectionnés.','Utilisez Projets ou Rapports pour continuer.'] : guide).map(step=><li key={step}>{step}</li>)}</ol><p>{fr ? 'Les boutons de modification dépendent de votre accès.' : 'Editing buttons depend on your access. A missing result means it has not been reported; it does not mean zero.'}</p></details>
+    <details className="wg-guide" key={pathname}><summary><HelpIcon size={24} /> {fr ? 'Comment utiliser cette page' : 'How to use this page'}</summary><ol>{(fr ? french[pathname] || ['Choisissez une vue et ses filtres.','Consultez les résultats des projets et périodes sélectionnés.','Utilisez Projets ou Rapports pour continuer.'] : guide).map((step,index)=><li key={step}><span className="wg-step-icon" aria-hidden="true">{index === 0 ? <ProjectsIcon size={26} /> : index === 1 ? <UpdateProgressIcon size={26} /> : <ReportsIcon size={26} />}</span><span>{step}</span></li>)}</ol><p>{fr ? 'Les boutons de modification dépendent de votre accès.' : 'Editing buttons depend on your access. A missing result means it has not been reported; it does not mean zero.'}</p></details>
   </div>;
 }
