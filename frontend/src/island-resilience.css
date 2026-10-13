@@ -2,7 +2,7 @@
 .dsh .dsh-side{background:#153b58!important}
 .dsh .dsh-side .dsh-brand{display:grid!important;grid-template-columns:64px minmax(0,1fr);padding:16px;gap:4px 12px;text-align:left}
 .dsh .dsh-side .dsh-brand::before,.dsh .dsh-side .dsh-brand::after{display:none!important}
-.dsh .dsh-side .dsh-brand>img.island-logo{display:block!important;grid-column:1;grid-row:1/span 2;width:64px;height:64px;background:#fff;border-radius:50%;padding:4px;box-sizing:border-box}
+.dsh .dsh-side .dsh-brand>img.island-logo{display:block!important;grid-column:1;grid-row:1/span 2;width:64px;height:64px;background:#fff;border-radius:50%;padding:4px;box-sizing:border-box;filter:none;opacity:1}
 .dsh .dsh-brand-title{grid-column:2;grid-row:1;font-size:20px!important;color:#fff;align-self:end}
 .dsh .dsh-brand-dept{grid-column:2;grid-row:2;align-self:start;font-size:11px!important}
 .dsh .dsh-side .dsh-nav a.active,.dsh .dsh-side .dsh-nav a.active:hover{background:#007f8d!important}

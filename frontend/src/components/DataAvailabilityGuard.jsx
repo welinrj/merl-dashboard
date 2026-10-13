@@ -13,7 +13,7 @@ export default function DataAvailabilityGuard() {
   const [failure, setFailure] = useState(() => getLastSupabaseReadFailure());
 
   useEffect(() => {
-    const onFailure = (event) => setFailure(event.detail || { status: 0 });
+    const onFailure = (event) => setFailure(event.detail ?? null);
     window.addEventListener('merl:supabase-read-error', onFailure);
     const earlyFailure = getLastSupabaseReadFailure();
     if (earlyFailure) setFailure(earlyFailure);

@@ -155,6 +155,7 @@ jobs:
         run: node qa/data-and-ux.mjs
 
       - name: Validate read-failure guard
+        if: ${{ success() || failure() }}
         working-directory: frontend
         run: node qa/read-failure-guard.mjs
 

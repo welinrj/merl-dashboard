@@ -107,7 +107,7 @@ for(const width of [1024,768,390,360,320]) {
     const menu=page.getByRole('button',{name:'Open menu'});
     await menu.click();
     check(`${width}px: mobile menu opens`,await page.locator('.pbd-root .dsh-side.open').count()===1);
-    await page.getByRole('button',{name:'Close menu'}).click();
+    await page.locator('.pbd-root .dsh-side').getByRole('button',{name:'Close menu',exact:true}).click();
     check(`${width}px: mobile menu closes`,await page.locator('.pbd-root .dsh-side.open').count()===0);
   }
 }

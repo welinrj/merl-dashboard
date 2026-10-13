@@ -71,6 +71,7 @@ const OVERVIEW_METRIC_STYLES = `
     grid-row:1!important;
     min-width:0;
     align-self:start;
+    align-items:flex-start;
     text-align:left;
   }
   .dsh .ovx .ovx-kpis .kpi-card-label{

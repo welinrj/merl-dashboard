@@ -52,7 +52,7 @@ test('logout hands over to the public entry without mounting the standalone logi
 });
 
 test('the signed-in entry warms the independent approved-public cache before logout', () => {
-  assert.match(entry, /usePublicSnapshot\(\{ enabled: authorised \}\)/);
+  assert.match(entry, /usePublicSnapshot\(\{ enabled: authorised, background: true \}\)/);
   assert.match(snapshot, /queryKey: PUBLIC_SNAPSHOT_KEY,\s+enabled,/);
   assert.doesNotMatch(snapshot, /from\('v_/);
 });

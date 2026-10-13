@@ -269,7 +269,6 @@ export default function PublicDashboard() {
       <div className="dsh-brand"><IslandLogo /><div className="dsh-brand-dept">Department of Climate Change</div><div className="dsh-brand-title">MERL Portal</div></div>
       <button type="button" className="dsh-side-close" aria-label={lang === 'fr' ? 'Fermer le menu' : 'Close menu'} onClick={() => setMenuOpen(false)}><span aria-hidden="true">×</span></button>
       <nav className="dsh-nav" aria-label={c.overview}><button type="button" className="active" onClick={() => setMenuOpen(false)}><OverviewIcon size={24} />{c.overview}</button></nav>
-      <div className="pbd-sidebar-access"><span>{c.publicOnly}</span></div>
     </aside>
     <div className="dsh-main">
       <header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}><Menu size={18} /></button><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>

@@ -59,9 +59,9 @@ export default function PublicEntry() {
 
   const checking = session === undefined || (!!session && profileValid === undefined);
   const authorised = !!session && profileValid === true;
-  // Warm only the approved public snapshot while officers use the workspace.
-  // Logout can then render the full public overview from its independent cache.
-  usePublicSnapshot({ enabled: authorised });
+  // Warm the public snapshot for smooth logout, but leave failures in that
+  // background query rather than blocking the independent staff workspace.
+  usePublicSnapshot({ enabled: authorised, background: true });
   if (checking) return <div role="status" className="pbd-state">{i18n.resolvedLanguage?.startsWith('fr') ? 'Ouverture de MERL…' : 'Opening MERL…'}</div>;
   if (!authorised) {
     if (pathname !== DEFAULT_PATH) return <Navigate to={DEFAULT_PATH} replace />;
