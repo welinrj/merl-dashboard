@@ -18,6 +18,15 @@ try {
  await context.route('https://services.arcgis.com/**',route=>route.abort());
  const page=await context.newPage();await page.goto('http://localhost:5199/');
  await page.locator('.pbd-root .dsh-hamburger').waitFor({timeout:20000});
+ await page.locator('.pub-leaflet-wrap').waitFor({timeout:20000});
+ await page.locator('.pub-leaflet-wrap').scrollIntoViewIfNeeded();
+ // Exercise the menu over the map, including Leaflet's high-z-index children.
+ await page.locator('.pub-leaflet-wrap').evaluate(el=>{
+  const pane=document.createElement('div');
+  pane.dataset.qa='leaflet-high-pane';
+  pane.style.cssText='position:absolute;inset:0;z-index:1000;background:#acd3de';
+  el.appendChild(pane);
+ });
  await page.locator('.pbd-root .dsh-hamburger').click();
  const sidebar=page.locator('.pbd-root .dsh-side');
  await sidebar.locator('img.island-logo').waitFor();
@@ -32,6 +41,17 @@ try {
  assert.equal(await sidebar.locator('.dsh-nav button.active').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(0, 127, 141)');
  assert.equal(await page.locator('.dsh-head .merl-partner-logos img').count(),2);
  assert.ok(reads.every(name=>name.startsWith('public_portal_')));
+ const stacking=await page.evaluate(()=>{
+  const map=document.querySelector('.pub-leaflet-wrap').getBoundingClientRect();
+  const side=document.querySelector('.pbd-root .dsh-side');
+  const drawer=side.getBoundingClientRect();
+  const y=Math.max(map.top+20,Math.min(map.bottom-20,map.top+map.height/2));
+  const underDrawer=document.elementFromPoint(Math.max(map.left+10,drawer.left+10),y);
+  const underBackdrop=document.elementFromPoint((drawer.right+map.right)/2,y);
+  return {drawer:side.contains(underDrawer),backdrop:underBackdrop?.classList.contains('pbd-overlay')};
+ });
+ assert.equal(stacking.drawer,true,'Sidebar covers high Leaflet panes');
+ assert.equal(stacking.backdrop,true,'Backdrop covers the exposed map and its controls');
  await sidebar.getByRole('button',{name:'Close menu',exact:true}).click();
  assert.equal(await sidebar.evaluate(el=>el.classList.contains('open')),false);
  console.log('PASS Public phone menu uses Island resilience logo, navy/teal styling, close action and public-only navigation');
