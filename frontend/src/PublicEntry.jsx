@@ -6,7 +6,6 @@ import PublicDashboard from './pages/PublicDashboard';
 import DoCCProjectRegister from './pages/DoCCProjectRegister';
 import { supabase } from './supabaseClient';
 import { loadCurrentProfile } from './lib/authProfile';
-import { usePublicSnapshot } from './lib/publicSnapshot';
 import './login-home-link.css';
 import './pages/public-refresh.css';
 import './pages/public-phone.css';
@@ -59,9 +58,8 @@ export default function PublicEntry() {
 
   const checking = session === undefined || (!!session && profileValid === undefined);
   const authorised = !!session && profileValid === true;
-  // Warm only the approved public snapshot while officers use the workspace.
-  // Logout can then render the full public overview from its independent cache.
-  usePublicSnapshot({ enabled: authorised });
+  // The public dashboard loads its own snapshot when shown. Background public
+  // reads must not block an officer's successfully loaded staff workspace.
   if (checking) return <div role="status" className="pbd-state">{i18n.resolvedLanguage?.startsWith('fr') ? 'Ouverture de MERL…' : 'Opening MERL…'}</div>;
   if (!authorised) {
     if (pathname !== DEFAULT_PATH) return <Navigate to={DEFAULT_PATH} replace />;
