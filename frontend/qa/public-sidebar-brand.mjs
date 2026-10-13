@@ -22,6 +22,9 @@ try {
  const sidebar=page.locator('.pbd-root .dsh-side');
  await sidebar.locator('img.island-logo').waitFor();
  await page.waitForFunction(()=>{const img=document.querySelector('.pbd-root .dsh-brand img.island-logo');return img?.complete && img.naturalWidth>0;});
+ assert.equal(await sidebar.locator('img.island-logo').evaluate(el=>getComputedStyle(el).filter),'none');
+ assert.equal(await sidebar.locator('img.island-logo').evaluate(el=>getComputedStyle(el).opacity),'1');
+ assert.equal(await sidebar.locator('.pbd-sidebar-access').count(),0);
  assert.equal(await sidebar.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(21, 59, 88)');
  assert.equal(await sidebar.locator('.dsh-brand').evaluate(el=>getComputedStyle(el,'::before').display),'none');
  assert.equal(await sidebar.locator('.dsh-brand-title').innerText(),'MERL Portal');
