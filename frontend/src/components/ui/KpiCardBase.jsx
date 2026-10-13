@@ -198,7 +198,7 @@ export default function KpiCard({
         type={onClick ? 'button' : undefined}
         onClick={onClick}
         className={cn(
-          'group relative flex w-full min-w-0 flex-col gap-2.5 rounded-[var(--radius-card)] border',
+          'island-metric group relative flex w-full min-w-0 flex-col gap-2.5 rounded-[var(--radius-card)] border',
           'border-[var(--border)] bg-white p-4 text-left transition-all duration-200',
           onClick && 'cursor-pointer hover:border-[var(--border-strong)]',
           className,

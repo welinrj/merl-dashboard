@@ -8,8 +8,9 @@
 .dsh:not(.pbd-root) .dsh-side .dsh-nav a.active,.dsh:not(.pbd-root) .dsh-side .dsh-nav a.active:hover{background:#007f8d!important}
 .dsh:not(.pbd-root) .dsh-side .dsh-nav a .merl-icon{--merl-icon-outline:#effbfc;--merl-icon-blue:#5ab9c3;--merl-icon-pale:#d5f1f2}
 .dsh .merl-card-icon{--merl-icon-blue:#008e9b;--merl-icon-pale:#e0f2f3;--merl-icon-outline:#153b58;background:#edf8f9}
-.pbd-metric.funding,.pbd-metric.beneficiaries,.ovx-kpi-budget,.ovx-kpi-beneficiaries{position:relative}
-.pbd-metric.funding::after,.pbd-metric.beneficiaries::after,.ovx-kpi-budget::after,.ovx-kpi-beneficiaries::after{content:'';position:absolute;bottom:0;left:0;right:0;height:20px;background:url('./assets/island-wave.svg') center bottom/100% 100% no-repeat;pointer-events:none;border-radius:0 0 16px 16px}
+/* Shared treatment for every metric card, including analysis and period summaries. */
+:is(.island-metric,.ovx-period-kpis>div,.ppr-metrics>div,.ppr-public-kpis>div,.geo-metrics>.geo-metric){position:relative;isolation:isolate;overflow:hidden;padding-bottom:1.75rem!important}
+:is(.island-metric,.ovx-period-kpis>div,.ppr-metrics>div,.ppr-public-kpis>div,.geo-metrics>.geo-metric)::after{content:'';position:absolute;bottom:0;left:0;right:0;height:20px;background:url('./assets/island-wave.svg') center bottom/100% 100% no-repeat;pointer-events:none;border-radius:0 0 16px 16px}
 .island-wave{display:block;width:100%;height:72px;pointer-events:none}
 .island-loading{display:block;animation:island-turn 1.8s linear infinite;margin:0 auto 12px}
 @keyframes island-turn{to{transform:rotate(360deg)}}

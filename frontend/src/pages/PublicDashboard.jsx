@@ -151,7 +151,7 @@ const initialFilters = { search: '', status: '', theme: '', province: '' };
 const METRIC_ICONS = { projects: OverviewIcon, funding: FundingIcon, utilised: FundsUsedIcon, beneficiaries: BeneficiariesIcon, rate: BudgetUsageIcon };
 function Metric({ label, value, detail, tone = '' }) {
   const Icon = METRIC_ICONS[tone] || OverviewIcon;
-  return <article className={`pbd-metric ${tone}`}><div className="merl-metric-head"><span className="merl-card-icon"><Icon size={30} /></span><span>{label}</span></div><strong>{value}</strong><small>{detail}</small></article>;
+  return <article className={`pbd-metric island-metric ${tone}`}><div className="merl-metric-head"><span className="merl-card-icon"><Icon size={30} /></span><span>{label}</span></div><strong>{value}</strong><small>{detail}</small></article>;
 }
 
 function ProjectCard({ project, areas, copy, lang }) {

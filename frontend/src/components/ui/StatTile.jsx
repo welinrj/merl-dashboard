@@ -8,7 +8,7 @@ const STATUS_LABEL = { green: 'On track', amber: 'Needs attention', red: 'Critic
 
 export default function StatTile({ label, value, sub, status, placeholder = false, style, icon: Icon }) {
   return (
-    <div className="stat-tile" style={style}>
+    <div className="stat-tile island-metric" style={style}>
       {Icon && <span className="merl-card-icon"><Icon size={26} /></span>}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minHeight: 16 }}>
         {status && (
