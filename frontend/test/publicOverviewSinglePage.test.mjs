@@ -11,7 +11,7 @@ const migration = readFileSync(new URL('../../supabase/migrations/0076_single_pu
 
 test('the anonymous portal exposes one public overview instead of separate pages', () => {
   assert.doesNotMatch(dashboard, /setTab|tab===|PublicProjectCatalogue|PublicProjectResults/);
-  assert.match(dashboard, /<LayoutDashboard[^>]*\/>\{c\.overview\}/);
+  assert.match(dashboard, /<OverviewIcon[^>]*\/>\{c\.overview\}/);
   assert.doesNotMatch(dashboard, /\[\['overview'.*'projects'.*'results'/s);
 });
 
