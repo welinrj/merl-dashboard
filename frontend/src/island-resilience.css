@@ -49,7 +49,11 @@
 .island-data-table .ux-table-card dl>div+div{padding-top:8px;border-top:1px solid #edf2f3}
 .wg-start a{gap:10px;background:#edf8f9;color:#153b58;border-color:#d7e7e9}
 .wg-guide{border-color:#d7e7e9;border-radius:14px}
-.wg-guide summary>.merl-icon{vertical-align:middle;margin-right:8px}
+.wg-guide summary{display:flex;align-items:center;gap:10px;list-style:none}
+.wg-guide summary::-webkit-details-marker{display:none}
+.wg-guide summary::before{content:"";width:7px;height:7px;flex-shrink:0;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);margin-right:3px}
+.wg-guide[open] summary::before{transform:rotate(45deg)}
+.wg-guide summary>.merl-icon{width:24px;height:24px;flex-shrink:0;margin:0}
 .wg-guide ol{list-style:none;counter-reset:guide-step;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:0;margin:16px 0}
 .wg-guide li{counter-increment:guide-step;position:relative;display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid #d7e7e9;border-radius:12px;background:#f7fbfc;font-size:1rem;line-height:1.6}
 .wg-guide li::before{content:counter(guide-step);position:absolute;top:16px;right:16px;background:#153b58;color:#fff;border-radius:50%;width:26px;height:26px;text-align:center;font-size:.85rem;line-height:26px;font-weight:700}
