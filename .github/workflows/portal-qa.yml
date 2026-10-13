@@ -83,6 +83,10 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/mobile-menu-stability.mjs
 
+      - name: Validate public phone sidebar branding
+        working-directory: frontend
+        run: node qa/public-sidebar-brand.mjs
+
       - name: Validate role permission matrix
         working-directory: frontend
         env:

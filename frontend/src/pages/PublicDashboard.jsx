@@ -1,4 +1,4 @@
-import { IslandLoading } from '../components/IslandBrand';
+import { IslandLoading, IslandLogo } from '../components/IslandBrand';
 import { OverviewIcon, ProjectsIcon, FundingIcon, FundsUsedIcon, BeneficiariesIcon, BudgetUsageIcon, ForestsIcon, UpdateProgressIcon, AdaptationIcon, LossDamageIcon } from '../components/ui/MerlIcons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -266,8 +266,9 @@ export default function PublicDashboard() {
   return <div className="dsh pbd-root">
     {menuOpen && <button type="button" className="pbd-overlay" aria-label={c.close} onClick={() => setMenuOpen(false)} />}
     <aside className={`dsh-side${menuOpen ? ' open' : ''}`}>
-      <div className="dsh-brand"><img src={CREST} alt="" /><div className="dsh-brand-dept">Department of Climate Change</div><div className="dsh-brand-title">MERL</div></div>
-      <nav className="dsh-nav" aria-label={c.overview}><button type="button" className="active" onClick={() => setMenuOpen(false)}><LayoutDashboard size={16} aria-hidden="true" />{c.overview}</button></nav>
+      <div className="dsh-brand"><IslandLogo /><div className="dsh-brand-dept">Department of Climate Change</div><div className="dsh-brand-title">MERL Portal</div></div>
+      <button type="button" className="dsh-side-close" aria-label={lang === 'fr' ? 'Fermer le menu' : 'Close menu'} onClick={() => setMenuOpen(false)}><span aria-hidden="true">×</span></button>
+      <nav className="dsh-nav" aria-label={c.overview}><button type="button" className="active" onClick={() => setMenuOpen(false)}><OverviewIcon size={24} />{c.overview}</button></nav>
       <div className="pbd-sidebar-access"><span>{c.publicOnly}</span></div>
     </aside>
     <div className="dsh-main">
