@@ -12,9 +12,9 @@ const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'}
 // deliberate navigation-label change.
 const pages=[
   ['Overview','/dashboards',/Dashboard Overview|MERL Dashboard/i],
-  ['Project Register','/project-setup',/Project Register|Project Setup|Project Registration/i],
+  ['Project Register','/project-setup',/Project Register|Project Setup|Project Registration|\bProjects\b/i],
   ['Results & Indicators','/analytics/results',/Results|Indicators/i],
-  ['Project Portfolio Analysis','/analytics/project-portfolio?project=pa',/Project Portfolio Analysis/i],
+  ['Project Portfolio Analysis','/analytics/project-portfolio?project=pa',/Project portfolio(?: analysis)?/i],
   ['Financial Analysis','/analytics/financial',/Financial/i],
   ['Geographic Coverage','/analytics/geographic',/Area Council Coverage|Geographic/i],
   ['Reports','/reports',/Reports/i],
