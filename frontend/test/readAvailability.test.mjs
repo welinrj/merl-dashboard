@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createReadMonitor } from '../src/lib/readAvailability.js';
+import { createReadMonitor, markBackgroundRead } from '../src/lib/readAvailability.js';
 
 const apiUrl = 'https://example.supabase.co';
 const read = `${apiUrl}/rest/v1/v_projects?select=id`;
 const setup = fetchImpl => createReadMonitor({ apiUrl, fetchImpl, wait: async () => {} });
+
+test('background public cache failures do not block the independent staff workspace', async () => {
+  const controller = new AbortController();
+  markBackgroundRead(controller.signal);
+  const monitor = setup(async () => new Response('{}', { status: 403 }));
+  assert.equal((await monitor.monitoredFetch(read, { signal: controller.signal })).status, 403);
+  assert.equal(monitor.getFailure(), null);
+  await monitor.monitoredFetch(read);
+  assert.equal(monitor.getFailure().status, 403, 'foreground data failures remain protected');
+});
 
 test('temporary network and server failures recover before blocking the page', async () => {
   let calls = 0;

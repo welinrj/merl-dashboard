@@ -1,4 +1,8 @@
 // Track unresolved data reads, rather than permanently latching any fetch error.
+const backgroundSignals = new WeakSet();
+export function markBackgroundRead(signal) {
+  if (signal) backgroundSignals.add(signal);
+}
 export function createReadMonitor({ apiUrl, fetchImpl = (...args) => fetch(...args), onChange = failure => {}, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), retryDelays = [300, 900] }) {
   const failures = new Map();
   const getFailure = () => [...failures.values()].at(-1) ?? null;
@@ -12,6 +16,7 @@ export function createReadMonitor({ apiUrl, fetchImpl = (...args) => fetch(...ar
     const url = new URL(request ? request.url : String(input));
     const method = String(init?.method ?? request?.method ?? 'GET').toUpperCase();
     const signal = init?.signal ?? request?.signal;
+    const background = signal && backgroundSignals.has(signal);
     const isRead = url.origin === new URL(apiUrl).origin && url.pathname.startsWith('/rest/v1/') && ['GET', 'HEAD'].includes(method);
     if (!isRead) return fetchImpl(input, init);
     const key = `${method}:${url.href}`;
@@ -22,7 +27,7 @@ export function createReadMonitor({ apiUrl, fetchImpl = (...args) => fetch(...ar
       } catch (error) {
         if (error?.name === 'AbortError' || signal?.aborted) throw error;
         if (attempt < retryDelays.length) { await wait(retryDelays[attempt]); continue; }
-        update(key, { status: 0, method });
+        if (!background) update(key, { status: 0, method });
         throw error;
       }
       if ((response.status === 429 || response.status >= 500) && attempt < retryDelays.length && !signal?.aborted) {
@@ -37,7 +42,7 @@ export function createReadMonitor({ apiUrl, fetchImpl = (...args) => fetch(...ar
         const body = await response.clone().text().catch(() => '');
         if (/i18n/i.test(body) && (/42703/.test(body) || /does not exist/i.test(body) || /column/i.test(body))) return response;
       }
-      update(key, { status: response.status, method });
+      if (!background) update(key, { status: response.status, method });
       return response;
     }
   };

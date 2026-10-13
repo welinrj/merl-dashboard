@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
+import { markBackgroundRead } from './readAvailability';
 import { normalizePublishedProjects, normalizeProvince } from './publicProvinces';
 
 export const PUBLIC_SNAPSHOT_KEY = ['merl', 'approved-public-snapshot'];
@@ -9,7 +10,8 @@ export const enrichPublishedProject = project => project;
 
 // Never read internal v_* views or use an elevated credential from this module.
 // All reads must succeed before React Query replaces the previously displayed data.
-export async function fetchPublicSnapshot({ signal } = {}) {
+export async function fetchPublicSnapshot({ signal, background = false } = {}) {
+  if (background) markBackgroundRead(signal);
   const [summary, projects, areas, kpis, indicatorCategories, indicatorDetails] = await Promise.all([
     supabase.from('public_portal_summary').select('*').abortSignal(signal).single(),
     supabase.from('public_portal_projects').select('*').order('name').abortSignal(signal),
@@ -37,11 +39,11 @@ export async function fetchPublicSnapshot({ signal } = {}) {
   };
 }
 
-export function usePublicSnapshot({ enabled = true } = {}) {
+export function usePublicSnapshot({ enabled = true, background = false } = {}) {
   return useQuery({
     queryKey: PUBLIC_SNAPSHOT_KEY,
     enabled,
-    queryFn: ({ signal }) => fetchPublicSnapshot({ signal }),
+    queryFn: ({ signal }) => fetchPublicSnapshot({ signal, background }),
     staleTime: 0,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
