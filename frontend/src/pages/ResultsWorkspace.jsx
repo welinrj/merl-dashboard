@@ -32,7 +32,7 @@ const NODE_TYPES = [
 ];
 
 const empty = {
-  projects: [], nodes: [], indicators: [], targets: [], progress: [], narratives: [],
+  projects: [], nodes: [], indicators: [], targets: [], progress: [], narratives: [], activities: [],
 };
 
 const routeProject = () => {
@@ -89,6 +89,7 @@ export default function ResultsWorkspace({ user }) {
   const [reportingPeriods, setReportingPeriods] = useState([]);
   const [error, setError] = useState('');
   const [permissionError, setPermissionError] = useState('');
+  const [activityError, setActivityError] = useState('');
   const [editableIds, setEditableIds] = useState(new Set());
   const [projectFilter, setProjectFilter] = useState(routeProject);
   const [search, setSearch] = useState('');
@@ -174,13 +175,15 @@ export default function ResultsWorkspace({ user }) {
       supabase.from('v_result_narratives').select('*'),
       supabase.rpc('list_results_framework_editable_projects'),
       supabase.from('v_reporting_periods').select('project_id, period_label, period_end'),
+      supabase.from('v_project_activities').select('id,project_id,framework_node_id,code,name,status,physical_progress_pct').order('code'),
     ]).then((responses) => {
       if (!alive) return;
       const failed = [...responses.slice(0, 6), responses[7]].find((r) => r.error);
       if (failed?.error) throw failed.error;
       setReportingPeriods(responses[7].data || []);
       const [projects, nodes, indicators, targets, progress, narratives] = responses.slice(0, 6).map((r) => r.data || []);
-      setData({ projects: currentProjects(projects), nodes, indicators, targets, progress: withReportingDates(progress, responses[7].data || []), narratives });
+      setData({ projects: currentProjects(projects), nodes, indicators, targets, progress: withReportingDates(progress, responses[7].data || []), narratives, activities: responses[8].data || [] });
+      setActivityError(responses[8].error ? 'Linked activities could not be loaded.' : '');
 
       const permission = responses[6];
       setEditableIds(new Set(permission.error ? [] : (permission.data || []).map((r) => r.project_id)));
@@ -376,7 +379,8 @@ export default function ResultsWorkspace({ user }) {
       {!showFullTable && !filtered.length && <p className="rf2-empty">No results-framework rows match the current filters.</p>}
       {!showFullTable && filtered.length > 0 && <FrameworkMobileResults key={`${projectFilter}:${search}`} rows={filtered}
         canEdit={canEdit} editRow={editRow} editNode={editNode} attachIndicator={attachIndicator}
-        status={status} nodeTypeLabel={nodeTypeLabel} onEvidence={setEvidenceIndicator} />}
+        status={status} nodeTypeLabel={nodeTypeLabel} onEvidence={setEvidenceIndicator}
+        activities={data.activities} activityError={activityError} onRetry={reload} />}
     </div>}
 
     {!loading && !error && <p className="rf2-table-help">Scroll across for every column. Headings stay visible as you scroll. Latest results retain their recorded reporting period; a missing figure means no reported result is available.</p>}

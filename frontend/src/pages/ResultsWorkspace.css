@@ -30,3 +30,10 @@
 .rf2-editor-error{padding:10px;background:#fff0ed;border:1px solid #f4c8bf;border-radius:8px;color:#9d271a;font-size:14px;overflow-wrap:anywhere;}
 @media(max-width:800px){.dsh .rf2-page .rf2-tools{grid-template-columns:1fr 1fr;gap:8px;padding:10px;}.dsh .rf2-page .rf2-tools label:first-child,.dsh .rf2-page .rf2-project-context{grid-column:1/-1;}.dsh .rf2-page .rf2-tools .btn{min-height:44px;}.dsh .rf2-page .rf2-tools .field-input{font-size:16px;}.dsh .rf2-page .rf2-table-wrap{max-height:65dvh;}}
 @media(max-width:700px){.dsh .rf2-page .rf2-cell-edit,.dsh .rf2-page .rf2-inline-actions button{min-height:44px;}.dsh .rf2-page .rf2-table-help{display:none;}}
+
+.dsh .rf2-page .rf2-activities{border-top:1px solid #dbe8ec;padding:10px;}
+.dsh .rf2-page .rf2-activities h3{font-size:15px;color:#193157;}
+.dsh .rf2-page .rf2-linked-activities{margin:0;padding-left:18px;overflow-wrap:anywhere;}
+.dsh .rf2-page .rf2-linked-activities li{padding:8px 0;font-size:14px;}
+.dsh .rf2-page .rf2-linked-activities p{font-size:13px;line-height:1.5;}
+.dsh .rf2-page .rf2-linked-activities a{display:inline-block;min-height:44px;align-content:center;color:#14727b;}

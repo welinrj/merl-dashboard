@@ -48,6 +48,7 @@ const nodes = [
   { id: 'op-b', project_id: 'pa', parent_node_id: 'oc-b', node_type: 'output', title: 'Reef restoration', node_code: 'OP2' },
 ];
 await context.route('**/rpc/list_results_framework_editable_projects', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(editable ? [{ project_id: 'pa' }] : []) }));
+await context.route('**/rest/v1/v_project_activities*', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'activity-1', project_id: 'pa', framework_node_id: 'op-a', code: 'ACT-01', name: 'Restore coastal buffer', status: 'in_progress', physical_progress_pct: 25 }]) }));
 await context.route('**/rest/v1/v_framework_nodes*', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(nodes) }));
 await context.route('**/rest/v1/v_project_indicators*', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
   { ...fixture.v_project_indicators[0], framework_node_id: 'op-a' },
@@ -73,6 +74,7 @@ try {
   await page.waitForTimeout(150);
   if (await page.locator('.rf2-result-group[open]').count() !== 1) throw new Error('Opening another outcome should close the previous one');
   await groups.first().locator('summary').first().click();
+  await groups.first().getByText('ACT-01 — Restore coastal buffer', { exact: true }).waitFor();
   const card = groups.first().locator('.rf2-result-card').first();
   await card.getByText('Awaiting approval', { exact: true }).waitFor();
   for (const field of ['Indicator', 'Baseline', 'Mid-term', 'Final target', 'Latest actual', 'Progress', 'Status', 'Narrative', 'Reporting']) {

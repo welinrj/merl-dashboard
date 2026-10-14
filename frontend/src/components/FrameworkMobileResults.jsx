@@ -6,9 +6,24 @@ import * as OPT from '../constants/formOptions';
 const display = value => value === '' || value == null ? '—' : String(value);
 const percent = value => value == null || !Number.isFinite(Number(value)) ? '—' : `${Math.round(Number(value))}%`;
 
-export default function FrameworkMobileResults({ rows, canEdit, editRow, editNode, attachIndicator, status, nodeTypeLabel, onEvidence }) {
+export default function FrameworkMobileResults({ rows, canEdit, editRow, editNode, attachIndicator, status, nodeTypeLabel, onEvidence, activities = [], activityError, onRetry }) {
   const groups = useMemo(() => frameworkGroups(rows), [rows]);
   const [expanded, setExpanded] = useState(null);
+  const projectIds = new Set(rows.map(row => row.project.id));
+  const activityGroups = new Map(groups.map(group => {
+    const nodeIds = new Set(group.rows.flatMap(row => {
+      const start = row.path.findIndex(node => node.id === group.node?.id);
+      return start < 0 ? [] : row.path.slice(start).map(node => node.id);
+    }));
+    return [group.key, activities.filter(activity => activity.project_id === group.project.id && nodeIds.has(activity.framework_node_id))];
+  }));
+  const linkedIds = new Set([...activityGroups.values()].flat().map(activity => activity.id));
+  const otherActivities = activities.filter(activity => projectIds.has(activity.project_id) && !linkedIds.has(activity.id));
+  const activityList = items => <ul className="rf2-linked-activities">{items.map(activity => <li key={activity.id}>
+    <strong>{activity.code ? `${activity.code} — ` : ''}{activity.name}</strong>
+    <p>Status: {activity.status?.replaceAll('_', ' ') || 'Not recorded'}{activity.physical_progress_pct != null ? ` · Progress: ${percent(activity.physical_progress_pct)}` : ''}</p>
+    <a href={`#/project-setup?project=${encodeURIComponent(activity.project_id)}`}>View project activities</a>
+  </li>)}</ul>;
   return <div className="rf2-result-groups">
     <p className="rf2-reading-help">Open an outcome or output to view its indicators. Each figure shows its recorded unit and reporting period.</p>
     {groups.map((group, index) => <details className="rf2-result-group" key={group.key}
@@ -57,7 +72,12 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
             </>}
           </article>;
         })}
+        <section className="rf2-activities"><h3>Linked activities</h3>
+          {activityError ? <p role="alert">{activityError} <button type="button" className="rf2-mobile-edit" onClick={onRetry}>Retry</button></p>
+            : activityGroups.get(group.key).length ? activityList(activityGroups.get(group.key)) : <p>No activities are linked to this result.</p>}
+        </section>
       </div>
     </details>)}
+    {otherActivities.length > 0 && <details className="rf2-result-group"><summary>Other recorded project activities</summary><div className="rf2-group-content">{activityList(otherActivities)}</div></details>}
   </div>;
 }
