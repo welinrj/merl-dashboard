@@ -51,6 +51,7 @@ try {
    await page.waitForURL(url=>url.hash.includes('period=Q3') && url.hash.includes('project=pa'));
    await page.reload();
    await page.getByRole('heading',{name:'Results Framework',exact:true}).waitFor();
+   await page.locator('.rf2-tools select option[value="pa"]:checked').waitFor({state:'attached'});
    assert.equal(await page.locator('.rf2-tools select').inputValue(),'pa');
    await page.locator('.wc-period summary').click();
    await page.locator('#workspace-period').selectOption('Q2 2026');
