@@ -37,6 +37,9 @@ try{
  assert.doesNotMatch(await page.locator('#ppa-geography').innerText(),/Espiritu Santo/);
  assert.equal(await page.locator('#ppa-project option').count(),3);
  await page.locator('#ppa-project').selectOption('pa');
+ // Router navigation commits asynchronously; verify both URL and project data before exporting.
+ await page.waitForURL(url=>url.hash.includes('project=pa'));
+ await page.locator('#ppa-geography').getByText('Espiritu Santo, Epi',{exact:true}).waitFor();
  assert.equal(await page.locator('#ppa-project').inputValue(),'pa');
  assert.equal(await page.locator('.dsh-nav').getByRole('link',{name:'Project portfolio',exact:true}).count(),1);
  await page.getByRole('link',{name:'Generate project reports',exact:true}).click();
