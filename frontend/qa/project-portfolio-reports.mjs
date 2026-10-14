@@ -85,7 +85,12 @@ try{
  const pdfDownload=await pdfDownloadPromise;
  await pdfDownload.saveAs('qa-artifacts/comparison-report.pdf');
  const pdf=readFileSync(await pdfDownload.path()).toString('latin1');
- assert.match(pdf,/MERL PORTAL/);assert.match(pdf,/\/Subtype \/Image/);
+ assert.match(pdf,/\/Subtype \/Image/);
+ const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');
+ const pdfDoc=await getDocument({data:new Uint8Array(readFileSync(await pdfDownload.path()))}).promise;
+ let pdfText='';for(let i=1;i<=pdfDoc.numPages;i++)pdfText+=(await (await pdfDoc.getPage(i)).getTextContent()).items.map(item=>item.str).join(' ')+'\n';
+ assert.match(pdfText,/MERL PORTAL/);assert.match(pdfText,/125%/);assert.match(pdfText,/Page 7/);
+ assert.match(pdfText,/Previous comparable/);await pdfDoc.destroy();
  await page.getByRole('button',{name:'Hide report cover',exact:true}).click();
  for(const width of [360,1366,1920]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`No body overflow at ${width}`);await page.screenshot({path:`qa-artifacts/header-report-${width}.png`,fullPage:true});}
  console.log('PASS Island report cover preview and Word/PDF embedded logo exports');

@@ -1,4 +1,5 @@
 import { indicatorTargets, resultComparison } from '../lib/docc/resultComparison';
+import { loadReportFonts } from '../lib/reportFonts';
 import { renderReportPdf } from '../lib/reportPdf';
 import IslandReportCover from '../components/IslandReportCover';
 import { wordCover, pdfCover } from '../lib/islandReportCover';
@@ -100,6 +101,7 @@ const reportBlocks = () => {
     if (!element) return '';
     const clone = element.cloneNode(true);
     clone.querySelectorAll('br').forEach(node => node.replaceWith('\n'));
+    clone.querySelectorAll('strong').forEach(node => node.append(' '));
     clone.querySelectorAll('small, .rp-result-line').forEach(node => node.prepend('\n'));
     return (clone.textContent || '').trim();
   };
@@ -315,6 +317,7 @@ export default function Reports() {
     setExporting('pdf'); setExportError('');
     try {
       const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+      await loadReportFonts(pdf);
       await pdfCover(pdf, cover);
       renderReportPdf(pdf, reportBlocks(), cover);
       pdf.save(reportFilename('pdf'));

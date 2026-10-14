@@ -52,3 +52,12 @@ test('PDF paginates long table cells and narratives with bounded text and repeat
   assert.ok(calls.every(call => call.y >= 24 && call.y <= 820));
   assert.match(pdf.output(), /120%/);
 });
+
+// Text commands change PDF graphics state even inside BT/ET blocks.
+test('PDF table cells reset their backgrounds after drawing text', () => {
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+  renderReportPdf(pdf, [{ type: 'table', rows: [['Name', 'Actual'], ['Participants', '25']] }]);
+  const stream = pdf.internal.pages[1].join('\n');
+  const rectangles = stream.match(/(?:1\. g|0\.92 0\.95 0\.96 rg)\n[^\n]+ re\nB/g) || [];
+  assert.equal(rectangles.length, 4, 'All four cells have their own light fill before drawing');
+});

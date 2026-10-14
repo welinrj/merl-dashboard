@@ -26,14 +26,15 @@ export async function wordCover({ title, period, project, generated, dataAsAt, s
 }
 export async function pdfCover(pdf, { title, period, project, generated, dataAsAt, status }) {
   const bytes = await imageBytes();
+  const family = pdf.getFontList().ReportSans ? 'ReportSans' : 'helvetica';
   pdf.setTextColor('#153B58'); pdf.addImage(bytes, 'PNG', 42, 42, 65, 61);
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(20); pdf.text('MERL PORTAL', 124, 73);
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(11); pdf.text('Department of Climate Change · Vanuatu', 42, 136);
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(30);
+  pdf.setFont(family, 'bold'); pdf.setFontSize(20); pdf.text('MERL PORTAL', 124, 73);
+  pdf.setFont(family, 'normal'); pdf.setFontSize(11); pdf.text('Department of Climate Change · Vanuatu', 42, 136);
+  pdf.setFont(family, 'bold'); pdf.setFontSize(30);
   const lines = pdf.splitTextToSize(title, 510); pdf.text(lines, 42, 220);
   let y = 230 + lines.length * 35;
   pdf.setFontSize(17); pdf.text(pdf.splitTextToSize(period, 510), 42, y); y += 48;
-  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(12);
+  pdf.setFont(family, 'normal'); pdf.setFontSize(12);
   if (project) { const p = pdf.splitTextToSize(project, 510); pdf.text(p, 42, y); y += p.length * 17 + 25; }
   pdf.setFontSize(10); pdf.text(status || '', 42, y); y += 24; pdf.text(`Generated: ${generated}`, 42, y); pdf.text(`Data as at: ${dataAsAt || 'Not reported'}`, 42, y + 18);
   pdf.setFillColor('#E5F4F5'); pdf.rect(0, 710, 595.28, 132, 'F');

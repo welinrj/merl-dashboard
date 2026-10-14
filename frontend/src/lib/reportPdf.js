@@ -4,10 +4,11 @@ export function renderReportPdf(pdf, blocks, { title = '', status = '' } = {}) {
   const margin = 42, pageWidth = pdf.internal.pageSize.getWidth();
   const width = pageWidth - margin * 2, bottom = pdf.internal.pageSize.getHeight() - 48;
   let y = 52;
+  const family = pdf.getFontList().ReportSans ? 'ReportSans' : 'helvetica';
   const clean = text => String(text ?? '—').replaceAll('→', ' to ').replaceAll('—', '-').replaceAll('–', '-').replaceAll('’', "'").replaceAll('≥', '>=').replaceAll('≤', '<=');
   const nextPage = () => { pdf.addPage(); y = 52; };
   const write = (text, size = 9, bold = false, gap = 7) => {
-    pdf.setFont('helvetica', bold ? 'bold' : 'normal'); pdf.setFontSize(size);
+    pdf.setFont(family, bold ? 'bold' : 'normal'); pdf.setFontSize(size);
     for (const line of pdf.splitTextToSize(clean(text), width)) {
       if (y + size + 3 > bottom) nextPage();
       pdf.text(line, margin, y); y += size + 3;
@@ -23,15 +24,18 @@ export function renderReportPdf(pdf, blocks, { title = '', status = '' } = {}) {
     const lineHeight = 10, padding = 5;
     const wrap = row => row.map((cell, index) => pdf.splitTextToSize(clean(cell || '—'), widths[index] - padding * 2));
     pdf.setFontSize(7.5);
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont(family, 'bold');
     const header = wrap(block.rows[0]);
     const headerHeight = Math.max(...header.map(lines => lines.length)) * lineHeight + padding * 2;
     const draw = (cells, lineCount, isHeader) => {
       const height = lineCount * lineHeight + padding * 2;
       let x = margin;
-      pdf.setFont('helvetica', isHeader ? 'bold' : 'normal'); pdf.setFontSize(7.5);
+      pdf.setFont(family, isHeader ? 'bold' : 'normal'); pdf.setFontSize(7.5);
       pdf.setDrawColor('#D6E0E5'); pdf.setFillColor(isHeader ? '#EAF2F6' : '#FFFFFF');
       for (let i = 0; i < columns; i++) {
+        // jsPDF text emits a fill colour operator. Reset it for every cell,
+        // otherwise the next rectangle inherits black from the preceding text.
+        pdf.setFillColor(isHeader ? '#EAF2F6' : '#FFFFFF');
         pdf.rect(x, y - 7, widths[i], height, 'FD');
         pdf.text(cells[i] || [], x + padding, y + padding);
         x += widths[i];
@@ -42,7 +46,7 @@ export function renderReportPdf(pdf, blocks, { title = '', status = '' } = {}) {
     if (y + headerHeight + 30 > bottom) nextPage();
     repeatHeader();
     for (const row of block.rows.slice(1)) {
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont(family, 'normal');
       const cells = wrap(row);
       const count = Math.max(...cells.map(lines => lines.length));
       const height = count * lineHeight + padding * 2;
@@ -68,7 +72,7 @@ export function renderReportPdf(pdf, blocks, { title = '', status = '' } = {}) {
   }
   const pages = pdf.internal.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
-    pdf.setPage(page); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor('#536577');
+    pdf.setPage(page); pdf.setFont(family, 'normal'); pdf.setFontSize(8); pdf.setTextColor('#536577');
     if (page > 1) pdf.text(pdf.splitTextToSize(clean(title), width)[0] || 'MERL Portal', margin, 27);
     pdf.text(`${clean(status)} · ${page} / ${pages}`, margin, pdf.internal.pageSize.getHeight() - 24);
   }
