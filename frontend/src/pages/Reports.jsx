@@ -1,3 +1,4 @@
+import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { indicatorTargets, resultComparison } from '../lib/docc/resultComparison';
 import { loadReportFonts } from '../lib/reportFonts';
 import { renderReportPdf } from '../lib/reportPdf';
@@ -29,6 +30,7 @@ import { fmtDateTime, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
 
 const PERIOD_TYPES = [
+  { value: '', label: '' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
   { value: 'six_monthly', label: 'Six-monthly' },
@@ -69,9 +71,9 @@ const projectBudgetValue = (project, financial) => {
   if (Number(project?.budget_vuv) > 0 || project?.approved_budget_confirmed === true) return project?.budget_vuv;
   return null;
 };
-const projectExpenditureValue = (project, financial) => {
+const projectExpenditureValue = (project, financial, period) => {
   if (hasValue(financial?.cumulative_expenditure)) return financial.cumulative_expenditure;
-  if (Number(project?.spent_vuv) > 0) return project?.spent_vuv;
+  if (!period && Number(project?.spent_vuv) > 0) return project?.spent_vuv;
   return null;
 };
 function latestByProject(rows) { return latestReportedBy(rows, 'project_id'); }
@@ -142,8 +144,9 @@ export default function Reports() {
   const [projectId, setProjectId] = useState(() => requested.get('project') || '');
   const [province, setProvince] = useState('');
   const [donor, setDonor] = useState('');
-  const [periodType, setPeriodType] = useState(() => PERIOD_TYPES.some(p=>p.value === requested.get('frequency')) ? requested.get('frequency') : 'quarterly');
-  const [period, setPeriod] = useState(() => requested.get('period') || '');
+  const [periodType, setPeriodType] = useState(() => PERIOD_TYPES.some(p=>p.value === requested.get('frequency')) ? requested.get('frequency') : '');
+  const { period, selectPeriod: setPeriod, periodInfo } = useWorkspaceContext();
+  useEffect(() => { if (period) setPeriodType(periodInfo?.period_type || ''); }, [period, periodInfo?.period_type]);
   const [runs, setRuns] = useState([]);
   const [dataError, setDataError] = useState('');
   const [exporting, setExporting] = useState('');
@@ -225,7 +228,7 @@ export default function Reports() {
 
   // "Data as at" (§76): latest timestamp across the datasets this report reads.
   const times = [d.reporting, d.progress, d.financial, d.beneficiaries, d.risks, d.learning, d.activities, d.evidence]
-    .flat().flatMap((r) => [r?.updated_at, r?.created_at]).filter(Boolean).map((ts) => new Date(ts).getTime());
+    .flat().filter(row => !period || periodMatches(row, period)).flatMap((r) => [r?.updated_at, r?.created_at]).filter(Boolean).map((ts) => new Date(ts).getTime());
   const dataAsAt = times.length ? new Date(Math.max(...times)) : null;
   const generatedAt = new Date();
   const reportProjectIds = (() => {
@@ -401,11 +404,11 @@ export default function Reports() {
             {REPORT_TYPES.map((r) => <option key={r.key} value={r.key}>{t(r.label)}</option>)}
           </select>
         </div>
-        {type !== 'project' && <div style={{flex:'1 1 240px',minWidth:0}}><label className="field-label" htmlFor="report-project-scope">Project to include</label><select id="report-project-scope" className="field-input" value={scopeId} onChange={e=>{setScopeId(e.target.value);if(e.target.value)setProjectId(e.target.value);setPeriod('');setPreviewOpen(false);}}><option value="">All projects with results frameworks</option>{sourceD.projects.map(p=><option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}</select></div>}
+        {type !== 'project' && <div style={{flex:'1 1 240px',minWidth:0}}><label className="field-label" htmlFor="report-project-scope">Project to include</label><select id="report-project-scope" className="field-input" value={scopeId} onChange={e=>{setScopeId(e.target.value);if(e.target.value)setProjectId(e.target.value);setPreviewOpen(false);}}><option value="">All projects with results frameworks</option>{sourceD.projects.map(p=><option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}</select></div>}
         {type === 'project' && (
           <div style={{ flex: '1 1 240px' }}>
             <label className="field-label">{t('rpt.project')}</label>
-            <select className="field-input" value={projectId} onChange={(e) => { setProjectId(e.target.value); setScopeId(e.target.value); setPeriod(''); setPreviewOpen(false); }}>
+            <select className="field-input" value={projectId} onChange={(e) => { setProjectId(e.target.value); setScopeId(e.target.value); setPreviewOpen(false); }}>
               {sourceD.projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
             </select>
           </div>
@@ -430,12 +433,13 @@ export default function Reports() {
         <div style={{ flex: '0 1 165px' }}>
           <label className="field-label">Report frequency</label>
           <select className="field-input" value={periodType} onChange={(e) => { setPeriodType(e.target.value); setPeriod(''); setPreviewOpen(false); }}>
-            {PERIOD_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select>
+            {PERIOD_TYPES.map((p) => <option key={p.value} value={p.value}>{p.value ? p.label : t('workspace.allFrequencies')}</option>)}</select>
         </div>
         <div style={{ flex: '0 1 190px' }}>
           <label className="field-label">{t('rpt.reportingPeriod')}</label>
           <select className="field-input" value={period} onChange={(e) => { setPeriod(e.target.value); setPreviewOpen(false); }}>
-            <option value="">All {PERIOD_TYPES.find((p) => p.value === periodType)?.label.toLowerCase()} periods</option>
+            <option value="">{periodType ? `All ${PERIOD_TYPES.find(p => p.value === periodType)?.label.toLowerCase()} periods` : t('workspace.allPeriods')}</option>
+            {period && !periodOptions.some(row => row.period_label === period) && <option value={period}>{period}</option>}
             {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}</select>
         </div>
         <button onClick={showPreview} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
@@ -578,7 +582,7 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
   for (const project of officialProjects) {
     const fin = financial.get(project.id);
     const budget = projectBudgetValue(project, fin);
-    const expenditure = projectExpenditureValue(project, fin);
+    const expenditure = projectExpenditureValue(project, fin, period);
     if (!hasValue(budget)) continue;
     const currency = project.currency || 'VUV';
     const group = byCurrency.get(currency) || { budgets: [], expenditures: [], projects: 0 };
@@ -648,7 +652,7 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
         const learning = d.learning.filter((row) => row.project_id === project.id && inOfficialScope(row)).sort((a, b) => compareReportedRows(b, a))[0] || {};
         const financeRecord = financial.get(project.id);
         const budget = projectBudgetValue(project, financeRecord);
-        const expenditure = projectExpenditureValue(project, financeRecord);
+        const expenditure = projectExpenditureValue(project, financeRecord, period);
         return <div className="rp-project-block" key={project.id}>
           <h4>{project.code} — {project.name}</h4>
           <div className="rp-meta"><div><b>Project status</b> {humanToken(project.status)}</div><div><b>Funding partner</b> {project.donor || 'Not reported'}</div><div><b>Implementing agency</b> {project.executing_agency || project.lead_agency || 'Not reported'}</div><div><b>Duration</b> {project.start_date || '—'} → {project.end_date || '—'}</div><div><b>Budget</b> {knownOrMissing(budget)} {project.currency || 'VUV'}</div><div><b>Expenditure</b> {knownOrMissing(expenditure)} {project.currency || 'VUV'}</div><div><b>Utilisation</b> {fmtPct(utilisationPct(budget, expenditure))}</div><div><b>Direct beneficiaries</b> {portfolioBeneficiaries(projectBeneficiaries) == null ? 'Not reported' : fmtNum(portfolioBeneficiaries(projectBeneficiaries))}</div></div>
@@ -688,7 +692,7 @@ function ProjectProgress({ d, projectId, period, periodType }) {
   const bens = d.beneficiaries.filter((b) => b.project_id === projectId && inScope(b));
   const learn = d.learning.filter((l) => l.project_id === projectId && inScope(l)).sort((a, b) => compareReportedRows(b, a))[0] || {};
   const budget = projectBudgetValue(p, fin);
-  const exp = projectExpenditureValue(p, fin);
+  const exp = projectExpenditureValue(p, fin, period);
   const physAvg = acts.filter((a) => a.physical_progress_pct != null);
   const phys = physAvg.length ? Math.round(physAvg.reduce((a, x) => a + Number(x.physical_progress_pct), 0) / physAvg.length) : null;
   const indLast = (i) => latestReportedBy(prog).get(i.id);
@@ -742,7 +746,7 @@ function Portfolio({ d, period, periodType }) {
   const inScope = (row) => rowMatchesPeriodScope(row, d.reporting, period, periodType);
   const fin = latestByProject(d.financial.filter(inScope));
   const budgets = d.projects.map((p) => projectBudgetValue(p, fin.get(p.id)));
-  const expenditures = d.projects.map((p) => projectExpenditureValue(p, fin.get(p.id)));
+  const expenditures = d.projects.map((p) => projectExpenditureValue(p, fin.get(p.id), period));
   const budget = sumKnown(budgets);
   const exp = sumKnown(expenditures);
   const beneficiaries = portfolioBeneficiaries(d.beneficiaries.filter(inScope));
@@ -751,7 +755,7 @@ function Portfolio({ d, period, periodType }) {
       <div><b>{t('rpt.projectsLbl')}</b> {d.projects.length}</div><div><b>{t('rpt.approvedBudgetLbl')}</b> {fmtAmount(budget)}</div><div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div><div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div><div><b>{t('rpt.totalBeneficiariesLbl')}</b> {fmtNum(beneficiaries)}</div><div><b>{t('rpt.openRisksLbl')}</b> {d.risks.filter((r) => ['open', 'monitoring', 'escalated'].includes(r.status)).length}</div>
     </div>{(!hasValue(budget) || !hasValue(exp)) && <p className="rp-muted">Portfolio financial totals are withheld when one or more included projects have not reported the required value. Missing values are not treated as zero.</p>}</Section>
     <Section n="2" title={t('rpt.projects')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.donor')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th><th>{t('rpt.utilisation')}</th></tr></thead><tbody>
-      {d.projects.map((p) => { const f = fin.get(p.id); const b = projectBudgetValue(p, f); const e = projectExpenditureValue(p, f); return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{p.donor || '—'}</td><td>{fmtAmount(b)}</td><td>{fmtAmount(e)}</td><td>{fmtPct(utilisationPct(b, e))}</td></tr>; })}
+      {d.projects.map((p) => { const f = fin.get(p.id); const b = projectBudgetValue(p, f); const e = projectExpenditureValue(p, f, period); return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{p.donor || '—'}</td><td>{fmtAmount(b)}</td><td>{fmtAmount(e)}</td><td>{fmtPct(utilisationPct(b, e))}</td></tr>; })}
     </tbody></table></Section></div>;
 }
 
@@ -765,7 +769,7 @@ function FinancialReport({ d, period, periodType }) {
   const { t } = useTranslation();
   const inScope = (row) => rowMatchesPeriodScope(row, d.reporting, period, periodType);
   const fin = latestByProject(d.financial.filter(inScope));
-  const rows = d.projects.map((p) => { const f = fin.get(p.id); const b = projectBudgetValue(p, f); const e = projectExpenditureValue(p, f); return { p, b, e, avail: f?.funds_available }; });
+  const rows = d.projects.map((p) => { const f = fin.get(p.id); const b = projectBudgetValue(p, f); const e = projectExpenditureValue(p, f, period); return { p, b, e, avail: f?.funds_available }; });
   const tb = sumKnown(rows.map((row) => row.b));
   const te = sumKnown(rows.map((row) => row.e));
   return <div><h2>{t('rpt.financialPerformanceReport')}</h2><div className="rp-meta"><div><b>{t('rpt.totalApprovedLbl')}</b> {fmtAmount(tb)}</div><div><b>{t('rpt.totalExpenditureLbl')}</b> {fmtAmount(te)}</div><div><b>{t('rpt.remainingLbl')}</b> {fmtAmount(remainingBalance(tb, te))}</div><div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(tb, te))}</div></div>
@@ -796,8 +800,8 @@ function DonorReport({ d, donor, period, periodType }) {
   const fin = latestByProject(d.financial.filter(inScope));
   const ids = new Set(projs.map((p) => p.id));
   const budget = sumKnown(projs.map((p) => projectBudgetValue(p, fin.get(p.id))));
-  const exp = sumKnown(projs.map((p) => projectExpenditureValue(p, fin.get(p.id))));
+  const exp = sumKnown(projs.map((p) => projectExpenditureValue(p, fin.get(p.id), period)));
   const bens = portfolioBeneficiaries(d.beneficiaries.filter((b) => ids.has(b.project_id) && inScope(b)));
   return <div><h2>{donor || 'All Donors'} — Funding Partner Report</h2><Section n="1" title={t('rpt.investmentSummary')}><div className="rp-meta"><div><b>{t('rpt.projectsLbl')}</b> {projs.length}</div><div><b>{t('rpt.investmentLbl')}</b> {fmtAmount(budget)}</div><div><b>{t('rpt.expenditureLbl')}</b> {fmtAmount(exp)}</div><div><b>{t('rpt.utilisationLbl')}</b> {fmtPct(utilisationPct(budget, exp))}</div><div><b>{t('rpt.beneficiariesLbl')}</b> {fmtNum(bens)}</div></div>{(!hasValue(budget) || !hasValue(exp)) && <p className="rp-muted">Funding-partner totals are withheld when one or more included projects have not reported the required financial value.</p>}</Section>
-    <Section n="2" title={t('rpt.projects')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th></tr></thead><tbody>{projs.map((p) => { const f = fin.get(p.id); return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{fmtAmount(projectBudgetValue(p, f))}</td><td>{fmtAmount(projectExpenditureValue(p, f))}</td></tr>; })}</tbody></table></Section></div>;
+    <Section n="2" title={t('rpt.projects')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.project')}</th><th>{t('rpt.status')}</th><th>{t('rpt.budget')}</th><th>{t('rpt.expenditure')}</th></tr></thead><tbody>{projs.map((p) => { const f = fin.get(p.id); return <tr key={p.code}><td>{p.code}</td><td>{p.name}</td><td>{OPT.labelOf(OPT.DOCC_PROJECT_STATUS, p.status)}</td><td>{fmtAmount(projectBudgetValue(p, f))}</td><td>{fmtAmount(projectExpenditureValue(p, f, period))}</td></tr>; })}</tbody></table></Section></div>;
 }

@@ -5,6 +5,7 @@ const resources = {
   // ── English ──────────────────────────────────────────────────────────────
   en: {
     translation: {
+      workspace: { context: 'Account and reporting context', checking: 'Checking project access…', accessError: 'Project access could not be checked. Refresh to retry.', projectCount_one: '{{count}} project with a results framework available', projectCount_other: '{{count}} projects with results frameworks available', noAccess: 'No projects with results frameworks are available to this account. If you expected access, ask an administrator to check your assignments.', period: 'Reporting period', allPeriods: 'All periods', allFrequencies: 'All frequencies', noPeriodResults: 'No results reported for this period', periodBasis: 'This selection carries across Overview, Results, Project portfolio and Reports. Reported results, finance, beneficiaries and approvals use the selected period; project details, plans and risks show current records.' },
       // Project Portfolio Analysis — one project, analysed end to end.
       ppa: {
         title: 'Project portfolio',
@@ -2172,6 +2173,7 @@ const resources = {
   // a small shared subset are provided here; anything missing falls back to EN.
   fr: {
     translation: {
+      workspace: { context: 'Compte et période de rapport', checking: 'Vérification de l’accès aux projets…', accessError: 'Impossible de vérifier l’accès. Actualisez pour réessayer.', projectCount_one: '{{count}} projet avec un cadre de résultats accessible', projectCount_other: '{{count}} projets avec un cadre de résultats accessibles', noAccess: 'Aucun projet avec un cadre de résultats n’est accessible à ce compte. Si vous attendiez un accès, demandez à un administrateur de vérifier vos affectations.', period: 'Période de rapport', allPeriods: 'Toutes les périodes', allFrequencies: 'Toutes les fréquences', noPeriodResults: 'Aucun résultat déclaré pour cette période', periodBasis: 'Cette sélection est conservée dans Vue d’ensemble, Résultats, Portefeuille et Rapports. Les résultats déclarés, finances, bénéficiaires et approbations utilisent la période choisie ; les informations, plans et risques des projets reflètent les données actuelles.' },
       // Project Portfolio Analysis — one project, analysed end to end.
       ppa: {
         title: 'Portefeuille de projet',

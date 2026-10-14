@@ -92,6 +92,10 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/workspace-usability.mjs
 
+      - name: Validate account context and shared reporting periods
+        working-directory: frontend
+        run: node qa/workspace-context.mjs
+
       - name: Validate selected project portfolio reports
         working-directory: frontend
         env:

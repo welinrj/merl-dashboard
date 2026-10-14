@@ -1,3 +1,5 @@
+import { useWorkspaceContext } from '../components/WorkspaceContext';
+import { scopeWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import { OverviewIcon, BeneficiariesIcon, FundingIcon, BudgetUsageIcon, ResultsIcon, UpdateProgressIcon, ReportsIcon } from '../components/ui/MerlIcons';
 import { officialPortfolioData } from '../lib/docc/projectScope';
 import { toVuv, sumReported, recordedExpenditure } from '../lib/docc/currency';
@@ -63,7 +65,12 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
   const [tab, setTab] = useState(initialTab || 'portfolio');
   const liveRevision = useLiveDashboard();
   const [loadError, setLoadError] = useState(null);
-  const [d, setD] = useState(null); // loaded datasets
+  const [sourceD, setD] = useState(null); // loaded datasets
+  const { period } = useWorkspaceContext();
+  const d = useMemo(() => {
+    const scoped = scopeWorkspacePeriod(sourceD, period);
+    return scoped ? { ...scoped, progress: [...latestReportedBy(scoped.progress).values()] } : null;
+  }, [sourceD, period]);
   const [projectId, setProjectId] = useState('');
   const [loading, setLoading] = useState(true);
   const visibleTabs = TABS.filter(({ key }) => allowedTabs.includes(key));
@@ -94,7 +101,7 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
       setD(officialPortfolioData({
         projects: proj.data ?? [], financial: withReportingDates(fin.data ?? [], rep.data ?? []), risks: risk.data ?? [],
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
-        progress: [...latestReportedBy(withReportingDates(prog.data ?? [], rep.data ?? [])).values()], reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
+        progress: withReportingDates(prog.data ?? [], rep.data ?? []), reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [],
       }));
       if ((proj.data ?? []).length && !projectId) setProjectId(officialPortfolioData({ projects: proj.data ?? [] }).projects[0]?.id);

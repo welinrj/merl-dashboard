@@ -1,3 +1,5 @@
+import { useWorkspaceContext } from '../components/WorkspaceContext';
+import { matchesWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import ResultComparison from '../components/ResultComparison';
 import { resultComparison, indicatorTargets } from '../lib/docc/resultComparison';
 import FrameworkMobileResults from '../components/FrameworkMobileResults';
@@ -76,6 +78,7 @@ function latestBy(rows, key, ranker = (r) => r.created_at || r.updated_at || '')
 
 export default function ResultsWorkspace({ user }) {
   const liveRevision = useLiveDashboard();
+  const { period } = useWorkspaceContext();
   const { t, i18n } = useTranslation();
   const [data, setData] = useState(empty);
   const [loading, setLoading] = useState(true);
@@ -198,7 +201,7 @@ export default function ResultsWorkspace({ user }) {
 
   const nodesById = useMemo(() => new Map(data.nodes.map((r) => [r.id, r])), [data.nodes]);
   const targetsByIndicator = useMemo(() => indicatorTargets(data.targets), [data.targets]);
-  const latestProgress = useMemo(() => latestReportedBy(data.progress, 'indicator_id'), [data.progress]);
+  const latestProgress = useMemo(() => latestReportedBy(data.progress.filter(row => matchesWorkspacePeriod(row, period)), 'indicator_id'), [data.progress, period]);
   const narrativeByProgress = useMemo(() => new Map(data.narratives.map((r) => [r.indicator_progress_id, r])), [data.narratives]);
 
   const rows = useMemo(() => {

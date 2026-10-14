@@ -1,3 +1,4 @@
+import WorkspaceContextProvider from './components/WorkspaceContext';
 import { IslandLogo } from './components/IslandBrand';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
@@ -565,6 +566,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
         </header>
 
         <div className="dsh-scroll scrollbar-thin">
+          <WorkspaceContextProvider key={user.id} user={user}>
           <ErrorBoundary key={location.pathname}>
             <WorkspaceGuide user={user} />
             <Suspense fallback={<div role="status" className="page-pad">{t('common.loading')}</div>}><Routes>
@@ -581,6 +583,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
               <Route path="*" element={<Navigate to={defaultPath} replace />} />
             </Routes></Suspense>
           </ErrorBoundary>
+          </WorkspaceContextProvider>
         </div>
       </div>
 

@@ -1,3 +1,5 @@
+import { useWorkspaceContext } from '../components/WorkspaceContext';
+import { scopeWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import { PortfolioCardIcon, ProgressCardIcon, BudgetCardIcon, BeneficiariesCardIcon, AttentionCardIcon, ReportingCardIcon } from '../components/ui/MerlCardIcons';
 import { beneficiaryPublicationState } from '../lib/dataCoverage';
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
@@ -97,7 +99,9 @@ export default function Overview({ user }) {
   const { filters, setFilter, reset } = useDashboardFilters();
 
   const liveRevision = useLiveDashboard();
-  const [data, setData] = useState(null);
+  const [sourceData, setData] = useState(null);
+  const { period, periodInfo } = useWorkspaceContext();
+  const data = scopeWorkspacePeriod(sourceData, period);
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [progressPeriodType, setProgressPeriodType] = useState('quarterly');
@@ -238,10 +242,10 @@ export default function Overview({ user }) {
   const portfolioStatus = inScope(data.portfolioStatus || []);
   const areaCouncils = inScope(data.areaCouncils || []);
   const periodProgress = inScope(data.periodProgress || []);
-  const matchingPeriodRows = periodProgress.filter((r) => r.period_type === progressPeriodType);
+  const matchingPeriodRows = periodProgress.filter((r) => period ? r.period_label === period : r.period_type === progressPeriodType);
   const latestPeriodEnd = matchingPeriodRows.map((r) => r.period_end).filter(Boolean).sort().at(-1) || null;
   const currentPeriodRows = latestPeriodEnd ? matchingPeriodRows.filter((r) => r.period_end === latestPeriodEnd) : [];
-  const currentPeriodLabel = currentPeriodRows[0]?.period_label || 'No reporting period';
+  const currentPeriodLabel = period || currentPeriodRows[0]?.period_label || 'No reporting period';
   const periodProgressValues = currentPeriodRows.filter(r => r.progress_pct != null).map((r) => Number(r.progress_pct)).filter(Number.isFinite);
   const periodPortfolioProgress = periodProgressValues.length
     ? Math.round(periodProgressValues.reduce((a,b) => a+b,0) / periodProgressValues.length)
@@ -296,8 +300,8 @@ export default function Overview({ user }) {
 
   const reportsApproved = reporting.filter((r) => r.submission_status === 'approved').length;
   const reportingCompletion = pct(reportsApproved, reporting.length);
-  const atRiskProjects = portfolioStatus.filter((r) => r.performance_status === 'at_risk').length;
-  const delayedProjects = portfolioStatus.filter((r) => r.schedule_status === 'delayed').length;
+  const atRiskProjects = period ? new Set(progress.filter(row => row.performance_status === 'at_risk').map(row => row.project_id)).size : portfolioStatus.filter((r) => r.performance_status === 'at_risk').length;
+  const delayedProjects = period ? new Set(progress.filter(row => row.schedule_status === 'delayed').map(row => row.project_id)).size : portfolioStatus.filter((r) => r.schedule_status === 'delayed').length;
 
   const approvedDates = [...latestProgress.values()]
     .map((r) => r.period_end || r.date_reported)
@@ -454,8 +458,8 @@ export default function Overview({ user }) {
           className="ovx-kpi"
           label="Needs Attention"
           icon={AttentionCardIcon}
-          value={fmtNum(atRiskProjects + delayedProjects)}
-          sub={`${fmtNum(atRiskProjects)} at risk · ${fmtNum(delayedProjects)} delayed`}
+          value={period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects)}
+          sub={period && !progress.length ? t('workspace.noPeriodResults') : `${fmtNum(atRiskProjects)} at risk · ${fmtNum(delayedProjects)} delayed`}
           linkLabel={t('overview.viewPerformance')}
           onClick={() => nav('/analytics/portfolio')}
         />
@@ -475,7 +479,7 @@ export default function Overview({ user }) {
       <section className="ovx-card ovx-period-card">
         <div className="ovx-period-head">
           <h2>Progress by Reporting Period</h2>
-          <label className="ovx-period-select"><span>Frequency</span><select value={progressPeriodType} onChange={(e)=>setProgressPeriodType(e.target.value)}><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="six_monthly">Six-monthly</option><option value="annual">Annual</option></select></label>
+          <label className="ovx-period-select"><span>Frequency</span><select disabled={Boolean(period)} value={periodInfo?.period_type || progressPeriodType} onChange={(e)=>setProgressPeriodType(e.target.value)}><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="six_monthly">Six-monthly</option><option value="annual">Annual</option></select></label>
         </div>
         <div className="ovx-period-label">{currentPeriodLabel}{latestPeriodEnd ? ` · ending ${fmtDate(latestPeriodEnd)}` : ''}</div>
         <div className="ovx-period-kpis">
