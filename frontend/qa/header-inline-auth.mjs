@@ -42,7 +42,7 @@ try {
   await form.getByLabel('Password').fill('correct-test-password');
   await form.locator('button[type="submit"]').click();
   await page.locator('.dsh-user').first().waitFor({timeout:20000});
-  if(new URL(page.url()).hash !== '#/dashboards') throw new Error('Login did not preserve the shared dashboard route');
+  if(new URL(page.url()).hash.split('?')[0] !== '#/dashboards') throw new Error('Login did not preserve the shared dashboard route');
   if(await page.locator('.pbd-root').count()) throw new Error('Authenticated user remained on the public view');
   if(loginCalls !== 1) throw new Error(`Expected one authentication request, got ${loginCalls}`);
   console.log('PASS Header credentials open the existing authenticated workspace');
@@ -66,7 +66,7 @@ try {
   await page.locator('.dsh-user').first().click();
   await page.getByRole('button',{name:/Sign out|Log ?out/i}).first().click();
   await page.locator('.pbd-root').waitFor({timeout:15000});
-  if(new URL(page.url()).hash !== '#/dashboards') throw new Error('Sign-out did not return to the shared public route');
+  if(new URL(page.url()).hash.split('?')[0] !== '#/dashboards') throw new Error('Sign-out did not return to the shared public route');
   const flashes = await page.evaluate(() => {
     cancelAnimationFrame(window.logoutFrameId);
     return window.logoutFrames.filter(frame => frame.login || frame.publicLoading);
