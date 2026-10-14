@@ -25,7 +25,7 @@ import {
 } from 'recharts';
 import { AlertTriangle, Printer, ArrowRight, Send } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
-import * as OPT from '../constants/formOptions';
+import DashboardFilterPanel from '../components/DashboardFilterPanel';
 import { PROVINCE_LIST } from '../constants/vanuatuGeo';
 import {
   useDashboardFilters, projectMatches, STATUS_BUCKETS, bucketOf,
@@ -93,7 +93,7 @@ export default function Overview({ user }) {
   const lang = i18n.resolvedLanguage;
   const publicationCopy = PUBLICATION_COPY[lang?.startsWith('fr') ? 'fr' : 'en'];
   const nav = useNavigate();
-  const { filters, setFilter, reset, active } = useDashboardFilters();
+  const { filters, setFilter, reset } = useDashboardFilters();
 
   const liveRevision = useLiveDashboard();
   const [data, setData] = useState(null);
@@ -396,23 +396,16 @@ export default function Overview({ user }) {
       <ReportingReminders periods={data.reporting} projects={unfinishedProjects} user={user} />
       <PendingResultsFrameworks projects={registeredProjects} user={user} />
 
-      <section className="ovx-filterbar rp-noprint" aria-label={t('overview.title')}>
-        <FilterSelect label={t('overview.filterFy')} value={filters.fy}
-          onChange={(v) => setFilter('fy', v)} options={years.map((y) => ({ value: String(y), label: String(y) }))} />
-        <FilterSelect label={t('overview.filterStatus')} value={filters.status}
-          onChange={(v) => setFilter('status', v)} options={Object.keys(STATUS_BUCKETS).map((key) => ({ value: key, label: statusLabel(key, t) }))} />
-        <FilterSelect label={t('overview.filterTheme')} value={filters.theme}
-          onChange={(v) => setFilter('theme', v)} options={themes.map((theme) => ({ value: theme, label: theme }))} />
-        <FilterSelect label={t('overview.filterProvince')} value={filters.province}
-          onChange={(v) => setFilter('province', v)} options={PROVINCE_LIST.map((province) => ({ value: province, label: province }))} />
-        <FilterSelect label="Area Council" value={filters.areaCouncil}
-          onChange={(v) => setFilter('areaCouncil', v)} options={areaCouncilOptions.map((name) => ({ value: name, label: name }))} />
-        <FilterSelect label="Donor" value={filters.donor}
-          onChange={(v) => setFilter('donor', v)} options={donors.map((donor) => ({ value: donor, label: donor }))} />
-        <FilterSelect label={t('overview.filterPartner')} value={filters.partner}
-          onChange={(v) => setFilter('partner', v)} options={partners.map((partner) => ({ value: partner, label: partner }))} />
-        <button type="button" className="ovx-reset" onClick={reset} disabled={!active}>{t('ui.reset')}</button>
-      </section>
+      <DashboardFilterPanel filters={filters} setFilter={setFilter} reset={reset} lang={lang}
+        fields={[
+          { key: 'fy', label: t('overview.filterFy'), options: years.map(y => ({ value: String(y), label: String(y) })) },
+          { key: 'status', label: t('overview.filterStatus'), options: Object.keys(STATUS_BUCKETS).map(key => ({ value: key, label: statusLabel(key, t) })) },
+          { key: 'theme', label: t('overview.filterTheme'), options: themes.map(theme => ({ value: theme, label: theme })) },
+          { key: 'province', label: t('overview.filterProvince'), options: PROVINCE_LIST.map(province => ({ value: province, label: province })) },
+          { key: 'areaCouncil', label: lang?.startsWith('fr') ? 'Conseil de zone' : 'Area Council', options: areaCouncilOptions.map(name => ({ value: name, label: name })) },
+          { key: 'donor', label: lang?.startsWith('fr') ? 'Bailleur' : 'Donor', options: donors.map(donor => ({ value: donor, label: donor })) },
+          { key: 'partner', label: t('overview.filterPartner'), options: partners.map(partner => ({ value: partner, label: partner })) },
+        ]} />
 
       <section className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
@@ -588,21 +581,6 @@ export default function Overview({ user }) {
 
       <div className="ovx-updated">{t('overview.subtitle')} <b>{dataAsAt}</b></div>
     </div>
-  );
-}
-
-function FilterSelect({ label, value, onChange, options }) {
-  const { t } = useTranslation();
-  return (
-    <label className="ovx-filter">
-      <span>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
-        <option value="">{t('ui.all')}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{OPT.optionLabel(option)}</option>
-        ))}
-      </select>
-    </label>
   );
 }
 
