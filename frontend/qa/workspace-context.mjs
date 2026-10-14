@@ -70,6 +70,7 @@ try {
    await page.waitForURL(url=>new URLSearchParams(url.hash.split('?')[1]).get('period')==='');
    await page.goBack();
    await page.waitForURL(url=>url.hash.includes('period=Q2'));
+   await page.locator('.wc-period summary').filter({hasText:'Q2 2026'}).waitFor();
    assert.match(await page.locator('.wc-period summary').innerText(),/Q2 2026/);
   }
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
