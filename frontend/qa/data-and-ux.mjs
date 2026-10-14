@@ -72,7 +72,7 @@ check('no raw status tokens shown', !/\bon_track\b|\bnot_started\b|\bin_progress
 console.log('\nANALYTICS FILTERS');
 await go('/analytics/portfolio');
 const before = await body();
-const selects = page.locator('select');
+const selects = page.locator('select:visible');
 const nSel = await selects.count();
 check(`filter controls present (${nSel})`, nSel > 0);
 if (nSel > 0) {

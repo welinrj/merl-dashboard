@@ -19,7 +19,7 @@ export default function WorkspaceContextProvider({ user, children }) {
   const location = useLocation();
   const [, setParams] = useSearchParams();
   const revision = useLiveDashboard();
-  const periodPage = ['/dashboards', '/results-framework', '/reports', '/analytics/project-portfolio'].includes(location.pathname);
+  const periodPage = ['/dashboards', '/results-framework', '/reports'].includes(location.pathname) || location.pathname.startsWith('/analytics/');
   const [period, setPeriod] = useState(() => readPeriod(user.id, location.search));
   const [access, setAccess] = useState({ loading: true, error: false, projects: [], periods: [] });
   // The account key prevents a previous user's stored selection leaking into a new session.
