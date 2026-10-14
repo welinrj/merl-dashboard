@@ -39,7 +39,7 @@ await context.route(`${HOST}/**`, async (route) => {
 
 try {
   const page = await context.newPage();
-  for (const [width, height] of [[1440, 900], [1024, 768], [768, 1024], [390, 844], [360, 780]]) {
+  for (const [width, height] of [[2560, 1440], [1920, 1080], [1440, 900], [1024, 768], [768, 1024], [390, 844], [360, 780]]) {
     await page.setViewportSize({ width, height });
     await page.goto('http://127.0.0.1:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
     await page.locator('.ovx-kpis .ovx-kpi').first().waitFor({ timeout: 15000 });
@@ -64,7 +64,14 @@ try {
           const p = rect(path);
           const number = Number(value.textContent.replace(/[^0-9.]/g, ''));
           const offset = Number(path.getAttribute('stroke-dashoffset'));
-          gaugeValid = value.closest('.k21-gauge-copy') !== null && fits(n, g)
+          const compact = gauge.querySelector('.k21-compact-track');
+          const compactVisible = getComputedStyle(compact).display !== 'none';
+          const fill = compact.querySelector('.k21-compact-fill');
+          const trackBox = rect(compact), fillBox = rect(fill);
+          gaugeValid = compactVisible
+            ? fits(n, g) && trackBox.width > 0 && trackBox.height >= 8
+              && Math.abs(fillBox.width / trackBox.width * 100 - number) <= 1
+            : value.closest('.k21-gauge-copy') !== null && fits(n, g)
             && n.top > g.top + g.height * .3
             && p.width > 0 && p.height > 0 && getComputedStyle(path).stroke !== 'none'
             && Math.abs(offset - (100 - number)) <= 1;
@@ -73,7 +80,8 @@ try {
         }
         return { title: title.textContent.trim(), value: value.textContent.trim(), cardTop: a.top,
           titleTop: t.top, hierarchy, withinCard, gaugeValid, hasGauge: !!gauge,
-          duplicateValue: card.querySelectorAll('.kpi-card-value').length !== 1 };
+          iconValid: (() => { const icon = card.querySelector('.merl-card-icon img'); return !!icon && icon.complete && icon.naturalWidth > 0 && fits(rect(icon), rect(icon.parentElement)); })(),
+          cardHeight: a.height, duplicateValue: card.querySelectorAll('.kpi-card-value').length !== 1 };
       });
       const groups = [];
       for (const record of records) {
@@ -83,10 +91,11 @@ try {
       const aligned = groups.every((row) => row.every((record) => Math.abs(record.titleTop - row[0].titleTop) <= 1));
       return { count: cards.length, records, aligned, gaugeCount: records.filter((r) => r.hasGauge).length };
     });
-    if (result.count !== 6 || !result.aligned || result.gaugeCount !== 3 || result.records.some((r) => !r.hierarchy || !r.withinCard || !r.gaugeValid || r.duplicateValue)) {
+    if (result.count !== 6 || !result.aligned || result.gaugeCount !== 3 || result.records.some((r) => !r.hierarchy || !r.withinCard || !r.gaugeValid || !r.iconValid || r.duplicateValue)) {
       throw new Error(`${width}px KPI hierarchy failure: ${JSON.stringify(result)}`);
     }
-    console.log(`✓ ${width}px: title → visual/number → context → action; three visible score gauges`);
+    if (width <= 390 && result.records.some(r => r.cardHeight > 270)) throw new Error(`Phone cards should stay compact: ${JSON.stringify(result.records)}`);
+    console.log(`✓ ${width}px: title → visual/number → context → action; three responsive progress visuals`);
   }
 } finally {
   await browser.close();

@@ -712,8 +712,8 @@ function OverviewStyles() {
       .ovx-heading p{margin:.3rem 0 0;color:#91899f;font-size:.82rem}
       .ovx-heading p b{color:#736a84;font-weight:700}
       .ovx-heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:.55rem;flex-wrap:wrap}
-      .ovx-publish{display:inline-flex;align-items:center;justify-content:center;gap:.48rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#174f98;color:#fff;font:inherit;font-size:.79rem;font-weight:750;cursor:pointer;box-shadow:0 8px 18px rgba(23,79,152,.16)}
-      .ovx-publish:hover:not(:disabled){background:#123f7b}.ovx-publish:disabled{opacity:.62;cursor:wait;box-shadow:none}
+      .ovx-publish{display:inline-flex;align-items:center;justify-content:center;gap:.48rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#14727b;color:#fff;font:inherit;font-size:.79rem;font-weight:750;cursor:pointer;box-shadow:0 8px 18px rgba(23,79,152,.16)}
+      .ovx-publish:hover:not(:disabled){background:#105c64}.ovx-publish:disabled{opacity:.62;cursor:wait;box-shadow:none}
       .ovx-export{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:42px;padding:.65rem 1rem;border:0;border-radius:11px;background:#5b4692;color:#fff;font:inherit;font-size:.79rem;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(74,55,125,.14)}
       .ovx-export:hover{background:#4b377d}
 
@@ -723,6 +723,9 @@ function OverviewStyles() {
       .ovx-filter select{width:100%;min-height:40px;padding:.5rem .7rem;border:1px solid #e4dfed;border-radius:9px;background:#fff;color:#41374f;font:inherit;font-size:.8rem;outline:none}
       .ovx-filter select:focus{border-color:#7a66aa;box-shadow:0 0 0 3px rgba(91,70,146,.1)}
       .ovx-reset{min-height:40px;padding:.5rem .85rem;border:1px solid #e6e1ef;border-radius:9px;background:#f9f8fc;color:#7f778c;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer}
+      .dsh .ovx .ovx-heading-actions button,.dsh .ovx .ovx-reset{min-height:44px;border-radius:9px;}
+      .dsh .ovx .ovx-export,.dsh .ovx .ovx-reset{border:1px solid #c7dfe2;background:#f1f8f8;color:#14727b;}
+      .dsh .ovx button:focus-visible,.dsh .ovx select:focus-visible{outline:3px solid #168c96;outline-offset:3px;}
       .ovx-reset:disabled{opacity:.45;cursor:not-allowed}
 
       .ovx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;margin-bottom:.9rem}
