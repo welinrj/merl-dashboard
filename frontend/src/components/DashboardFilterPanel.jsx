@@ -4,12 +4,12 @@ import './DashboardFilterPanel.css';
 const COPY = {
   en: {
     title: 'Filter dashboard', hide: 'Hide filters', all: 'All', clear: 'Clear all',
-    none: 'No filters applied', applied: 'filters applied', results: 'Show results',
+    none: 'No filters applied', applied: 'filters applied', appliedOne: 'filter applied', results: 'Show results',
     remove: 'Remove filter',
   },
   fr: {
     title: 'Filtrer le tableau de bord', hide: 'Masquer les filtres', all: 'Tous', clear: 'Tout effacer',
-    none: 'Aucun filtre appliqué', applied: 'filtres appliqués', results: 'Afficher les résultats',
+    none: 'Aucun filtre appliqué', applied: 'filtres appliqués', appliedOne: 'filtre appliqué', results: 'Afficher les résultats',
     remove: 'Supprimer le filtre',
   },
 };
@@ -34,7 +34,7 @@ export default function DashboardFilterPanel({ fields, filters, setFilter, reset
       </button>
       <button type="button" className="dashboard-filters-clear" disabled={!selected.length} onClick={reset}>{c.clear}</button>
     </div>
-    <p className="dashboard-filters-status" role="status">{selected.length ? `${selected.length} ${c.applied}` : c.none}</p>
+    <p className="dashboard-filters-status" role="status">{selected.length ? `${selected.length} ${selected.length === 1 ? c.appliedOne : c.applied}` : c.none}</p>
     {selected.length > 0 && <ul className="dashboard-filter-selections" aria-label={c.applied}>
       {selected.map(field => {
         const value = field.options.find(option => option.value === filters[field.key])?.label ?? filters[field.key];
