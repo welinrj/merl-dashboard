@@ -20,7 +20,7 @@ Changes cover the audited production revision `7ef3953`.
 
 ## Verification
 
-- 244 unit tests pass; type checking and production build pass.
+- 245 unit tests pass; type checking and production build pass.
 - Full dependency audit: zero reported vulnerabilities.
 - Live database rollback test: incomplete submission blocked, unassigned manager denied, complete submission succeeds, manager approval denied, reviewer approval succeeds, approved finance locked, reopened period editable, viewer submission denied, retired document endpoint not client-executable. All fixtures and test audit entries roll back.
 - New database migrations applied to the existing dashboard backend. Reviewed VCAP2 coverage is the only implementation-location data restored.

@@ -21,7 +21,7 @@ import { IndicatorProgressCard } from '../components/ui/indicator-progress-card'
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
-import { fundingCoverage } from '../lib/dataCoverage';
+import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { aggregateIndicatorCategories, projectThemes, thematicAreaCategory } from '../lib/publicPortfolioCategories';
 import './public-dashboard.css';
@@ -124,19 +124,6 @@ const moneyTotals = (projects, field, lang, fallback = '—') => {
     totalVuv += converted;
   }
   return hasValue ? money(totalVuv, 'VUV', lang) : fallback;
-};
-const comparableFinancialUtilisation = projects => {
-  let investment = 0;
-  let utilised = 0;
-  let hasInvestment = false;
-  let hasUtilised = false;
-  for (const project of projects) {
-    const budgetVuv = toVuv(project.budget_vuv, project.currency);
-    const utilisedVuv = toVuv(project.cumulative_expenditure_vuv, project.currency);
-    if (positive(budgetVuv)) { investment += budgetVuv; hasInvestment = true; }
-    if (positive(utilisedVuv)) { utilised += utilisedVuv; hasUtilised = true; }
-  }
-  return hasInvestment && hasUtilised && investment > 0 ? Math.round(utilised / investment * 1000) / 10 : null;
 };
 const list = value => Array.isArray(value) ? value : [];
 const themesOf = projectThemes;
