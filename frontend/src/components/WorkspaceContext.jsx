@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
@@ -46,7 +46,7 @@ export default function WorkspaceContextProvider({ user, children }) {
     }).catch(() => { if (alive) setAccess({ loading: false, error: true, projects: [], periods: [] }); });
     return () => { alive = false; };
   }, [user.id, revision, i18n.resolvedLanguage]);
-  const selectPeriod = value => {
+  const selectPeriod = useCallback(value => {
     setPeriod(value);
     setParams(prev => {
       const next = new URLSearchParams(prev);
@@ -55,9 +55,9 @@ export default function WorkspaceContextProvider({ user, children }) {
       next.delete('frequency');
       return next;
     });
-  };
+  }, [setParams]);
   const value = useMemo(() => ({ period, selectPeriod, periods: access.periods,
-    periodInfo: access.periods.find(row => row.period_label === period) }), [period, access.periods, location.search]);
+    periodInfo: access.periods.find(row => row.period_label === period) }), [period, access.periods, selectPeriod]);
   return <Context.Provider value={value}>
     <section className="wc-context" aria-label={t('workspace.context')}>
       <div className="wc-account"><strong>{user.name}</strong><span>{t(`roles.${user.role}`)}</span>
