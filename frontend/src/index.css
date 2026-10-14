@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* Preserve the existing border default while upgrading the CSS compiler. */
+@layer base { *, ::before, ::after { border-color: var(--color-gray-200, #e5e7eb); } }
 
 /* ── Design Tokens ─────────────────────────────────────────────────────── */
 :root {

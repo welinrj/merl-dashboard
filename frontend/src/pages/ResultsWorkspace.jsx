@@ -367,6 +367,7 @@ export default function ResultsWorkspace({ user }) {
       <button type="button" className="btn btn-secondary" onClick={() => { chooseProject('all'); setSearch(''); }}>Reset</button>
       <p className="rf2-project-context"><strong>Viewing:</strong> {projectFilter === 'all' ? 'All projects' : data.projects.find(project => project.id === projectFilter)?.name || 'Selected project'} · {filtered.filter(row => row.indicator).length} {filtered.filter(row => row.indicator).length === 1 ? 'indicator' : 'indicators'}</p>
     </section>
+    {!loading && !error && data.projects.filter(project => (projectFilter === 'all' || project.id === projectFilter) && data.nodes.some(node => node.project_id === project.id) && !data.indicators.some(indicator => indicator.project_id === project.id)).map(project => <div key={project.id} className="rf2-note" role="status"><strong>{project.name}</strong> — {i18n.resolvedLanguage?.startsWith('fr') ? 'Structure du cadre enregistrée ; indicateurs formels non encore définis. Les activités du plan de travail ne constituent pas des résultats mesurés. Ajoutez uniquement des indicateurs issus d’un cadre validé.' : 'Framework structure recorded; formal indicators are not yet defined. Workplan activities are not measured indicator results. Add indicators only from a verified framework.'}</div>)}
     {saveFeedback && <div className="rf2-save-feedback" role="status">{saveFeedback}</div>}
 
     {permissionError && <div className="rf2-note" role="alert">{permissionError}</div>}

@@ -1,5 +1,5 @@
 import { IslandLogo } from './components/IslandBrand';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, Target, ListChecks,
@@ -9,17 +9,17 @@ import {
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES } from './i18n';
 
-import Overview from './pages/Overview';
-import Dashboards from './pages/Dashboards';
-import ResultsWorkspace from './pages/ResultsWorkspace';
-import ProjectPortfolioAnalysis from './pages/ProjectPortfolioAnalysis';
-import ProjectSetup from './pages/ProjectSetup';
+const Overview = lazy(() => import('./pages/Overview'));
+const Dashboards = lazy(() => import('./pages/Dashboards'));
+const ResultsWorkspace = lazy(() => import('./pages/ResultsWorkspace'));
+const ProjectPortfolioAnalysis = lazy(() => import('./pages/ProjectPortfolioAnalysis'));
+const ProjectSetup = lazy(() => import('./pages/ProjectSetup'));
 import WorkspaceGuide from './components/WorkspaceGuide';
 import { useBackdropDismiss } from './lib/useBackdropDismiss';
-import MerlReporting from './pages/MerlReporting';
-import Reports from './pages/Reports';
-import AdminPanel  from './pages/AdminPanel';
-import ReviewApproval from './pages/ReviewApproval';
+const MerlReporting = lazy(() => import('./pages/MerlReporting'));
+const Reports = lazy(() => import('./pages/Reports'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const ReviewApproval = lazy(() => import('./pages/ReviewApproval'));
 import ErrorBoundary from './components/ErrorBoundary';
 import GlobalSearch from './components/GlobalSearch';
 import HeaderPartnerLogos from './components/HeaderPartnerLogos';
@@ -567,7 +567,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
         <div className="dsh-scroll scrollbar-thin">
           <ErrorBoundary key={location.pathname}>
             <WorkspaceGuide user={user} />
-            <Routes>
+            <Suspense fallback={<div role="status" className="page-pad">{t('common.loading')}</div>}><Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboards" element={gate('/dashboards') ? <Overview user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/analytics/project-portfolio" element={allowed.includes('projectAnalysis') ? <ProjectPortfolioAnalysis /> : <Navigate to={defaultPath} replace />} />
@@ -579,7 +579,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
               <Route path="/review" element={gate('/review') ? <ReviewApproval user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/admin" element={gate('/admin') ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="*" element={<Navigate to={defaultPath} replace />} />
-            </Routes>
+            </Routes></Suspense>
           </ErrorBoundary>
         </div>
       </div>

@@ -73,7 +73,7 @@ page.on('dialog', (d) => d.dismiss().catch(() => {}));
 const SELECTOR = 'button:visible:not([disabled]), a[href]:visible, [role=tab]:visible, [role=option]:visible';
 
 const findings = [];
-let clicked = 0, routesOk = 0;
+let clicked = 0, attempted = 0, routesOk = 0;
 
 for (const route of ROUTES) {
   await page.goto(`http://localhost:5199/#${route}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
@@ -89,15 +89,24 @@ for (const route of ROUTES) {
   }
 
   for (let i = 0; i < n; i += 1) {
+    // Each action starts from the same route: earlier clicks must not shift the target index.
+    if (i > 0) {
+      await page.goto(`http://localhost:5199/#${route}`, { waitUntil: 'domcontentloaded' });
+      await page.locator('main').waitFor();
+      await page.waitForTimeout(350);
+    }
     errs = [];
     const before = page.url();
     const el = page.locator(SELECTOR).nth(i);
-    if (!(await el.isVisible().catch(() => false))) continue;
+    attempted += 1;
+    if (!(await el.isVisible().catch(() => false))) { findings.push(`${route} :: control ${i} is no longer available`); continue; }
     const label = labels[i] || '(icon)';
 
-    await el.click({ timeout: 3000, force: false }).catch(() => {});
+    let succeeded = false;
+    try { await el.click({ timeout: 3000 }); succeeded = true; }
+    catch (error) { findings.push(`${route} :: ${label} -> click failed: ${String(error.message).split('\n')[0]}`); }
     await page.waitForTimeout(450);
-    clicked += 1;
+    if (succeeded) clicked += 1;
 
     // Did the app survive?
     const alive = await page.evaluate(() => document.body.innerText.trim().length > 50).catch(() => false);
@@ -115,13 +124,14 @@ for (const route of ROUTES) {
     }
   }
   routesOk += 1;
-  console.log(`  ${route.padEnd(42)} ${n} controls clicked`);
+  console.log(`  ${route.padEnd(42)} ${n} controls inspected`);
 }
 
-console.log(`\nroutes swept: ${routesOk}/${ROUTES.length}   controls clicked: ${clicked}`);
+console.log(`\nroutes swept: ${routesOk}/${ROUTES.length}   successful clicks: ${clicked}/${attempted}`);
 console.log(`\nfindings (${findings.length}):`);
 for (const f of [...new Set(findings)]) console.log(`  ${f}`);
 console.log(`\nnetwork failures (${[...new Set(netFail)].length}):`);
 for (const f of [...new Set(netFail)].slice(0, 15)) console.log(`  ${f}`);
 
 await b.close();
+if (findings.length || netFail.length || clicked !== attempted) process.exitCode = 1;
