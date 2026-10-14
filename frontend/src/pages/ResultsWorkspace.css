@@ -39,3 +39,11 @@
 .dsh .rf2-page .rf2-linked-activities a{display:inline-block;min-height:44px;align-content:center;color:#14727b;}
 
 .rf2-form-grid label{align-content:start;}
+
+.result-comparison{margin:.5rem 0;text-align:left;font-size:.78rem;white-space:normal;min-width:0}
+.result-comparison summary{cursor:pointer;min-height:40px;display:flex;align-items:center;color:var(--green-800);font-weight:600}
+.result-comparison dl{display:grid;grid-template-columns:1fr;gap:.35rem;margin:.5rem 0}
+.result-comparison dl>div{display:block;padding:.35rem;border-radius:5px;background:var(--surface-2,#f3f7f9)}
+.result-comparison dt{font-size:.7rem;color:var(--text-3)}
+.result-comparison dd{margin:0;overflow-wrap:anywhere}
+.result-comparison p{font-size:.72rem;line-height:1.5;color:var(--text-3)}

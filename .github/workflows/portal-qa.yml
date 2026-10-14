@@ -98,6 +98,17 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/project-portfolio-reports.mjs
 
+      - name: Retain report export samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-export-samples
+          path: |
+            frontend/qa-artifacts/comparison-report.docx
+            frontend/qa-artifacts/comparison-report.pdf
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Validate phone menus during session renewal
         working-directory: frontend
         env:

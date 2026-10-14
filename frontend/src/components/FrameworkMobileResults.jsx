@@ -1,3 +1,4 @@
+import ResultComparison from './ResultComparison';
 import { useMemo, useState } from 'react';
 import { frameworkGroups } from '../lib/docc/frameworkGroups';
 import { frameworkTargetValue } from '../lib/docc/frameworkTarget';
@@ -46,7 +47,7 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
             ['mid_term', 'Mid-term', display(frameworkTargetValue(row.targets.mid_term))],
             ['final', 'Final target', display(frameworkTargetValue(row.targets.final, indicator.target_value))],
             ['actual', 'Latest actual', display(row.progress?.cumulative_actual ?? row.progress?.actual_this_period)],
-            ['progress', 'Progress', percent(row.progress?.achievement_pct)],
+            ['progress', 'Progress', percent(row.comparison?.achievement)],
           ] : [];
           return <article className="rf2-result-card" key={indicator?.id || row.node.id}>
             <small>{row.project.name}</small>
@@ -62,6 +63,7 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
               <p><strong>Unit:</strong> {indicator.unit || 'Not recorded'}</p>
               <p className="rf2-period-context"><strong>Reporting period:</strong> {row.progress?.reporting_period || 'No reported result yet'}</p>
               <dl>{cells.map(([field, label, value]) => <div key={field}><dt>{label}</dt><dd>{value}</dd>{edit(field, label)}</div>)}</dl>
+              <ResultComparison result={row.comparison} />
               <div className="rf2-mobile-status">{status(row)}{edit('status', 'Status')}</div>
               <div className="rf2-mobile-update"><h3>Reported update</h3><p>{row.narrative?.progress_summary || row.progress?.narrative || 'No narrative recorded.'}</p>{edit('narrative', 'Narrative')}</div>
               <p><strong>Reporting frequency:</strong> {OPT.labelOf(OPT.REPORTING_FREQUENCY, indicator.official_reporting_frequency || indicator.frequency) || 'Not recorded'}</p>

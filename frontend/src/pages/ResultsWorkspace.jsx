@@ -1,3 +1,5 @@
+import ResultComparison from '../components/ResultComparison';
+import { resultComparison, indicatorTargets } from '../lib/docc/resultComparison';
 import FrameworkMobileResults from '../components/FrameworkMobileResults';
 import './ResultsWorkspace.css';
 import { FRAMEWORK_COLUMNS, frameworkColumns } from '../lib/docc/frameworkColumns';
@@ -69,16 +71,6 @@ function latestBy(rows, key, ranker = (r) => r.created_at || r.updated_at || '')
     if (!prev || ranker(row) > ranker(prev)) out.set(k, row);
   }
   return out;
-}
-
-function targetLookup(targets) {
-  const map = new Map();
-  for (const row of targets || []) {
-    if (!map.has(row.indicator_id)) map.set(row.indicator_id, {});
-    const bag = map.get(row.indicator_id);
-    if (!bag[row.target_type]) bag[row.target_type] = row;
-  }
-  return map;
 }
 
 export default function ResultsWorkspace({ user }) {
@@ -174,7 +166,7 @@ export default function ResultsWorkspace({ user }) {
       localised(() => supabase.from('v_indicator_progress').select('*')),
       supabase.from('v_result_narratives').select('*'),
       supabase.rpc('list_results_framework_editable_projects'),
-      supabase.from('v_reporting_periods').select('project_id, period_label, period_end'),
+      supabase.from('v_reporting_periods').select('project_id, period_label, period_end, period_start, period_type, submission_status'),
       supabase.from('v_project_activities').select('id,project_id,framework_node_id,code,name,status,physical_progress_pct').order('code'),
     ]).then((responses) => {
       if (!alive) return;
@@ -204,7 +196,7 @@ export default function ResultsWorkspace({ user }) {
   }, [i18n.resolvedLanguage, reloadKey, user?.id, liveRevision]);
 
   const nodesById = useMemo(() => new Map(data.nodes.map((r) => [r.id, r])), [data.nodes]);
-  const targetsByIndicator = useMemo(() => targetLookup(data.targets), [data.targets]);
+  const targetsByIndicator = useMemo(() => indicatorTargets(data.targets), [data.targets]);
   const latestProgress = useMemo(() => latestReportedBy(data.progress, 'indicator_id'), [data.progress]);
   const narrativeByProgress = useMemo(() => new Map(data.narratives.map((r) => [r.indicator_progress_id, r])), [data.narratives]);
 
@@ -222,6 +214,7 @@ export default function ResultsWorkspace({ user }) {
         indicator,
         progress,
         narrative,
+        comparison: resultComparison(indicator, progress, data.progress, targetsByIndicator.get(indicator.id), reportingPeriods),
         targets: targetsByIndicator.get(indicator.id) || {},
       };
     }).filter((r) => r.project);
@@ -248,7 +241,7 @@ export default function ResultsWorkspace({ user }) {
         )
         || (a.indicator?.code || '').localeCompare(b.indicator?.code || '');
     });
-  }, [data.projects, data.nodes, data.indicators, nodesById, latestProgress, narrativeByProgress, targetsByIndicator]);
+  }, [data.projects, data.nodes, data.indicators, nodesById, latestProgress, narrativeByProgress, targetsByIndicator, data.progress, reportingPeriods]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -439,8 +432,8 @@ export default function ResultsWorkspace({ user }) {
               <td className="rf2-num">{row.indicator ? display(baseline) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Baseline: ${row.indicator.code}`} onClick={() => editRow(row, 'baseline')}>Edit</button>}</td>
               <td className="rf2-num">{row.indicator ? display(mid) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Mid-term: ${row.indicator.code}`} onClick={() => editRow(row, 'mid_term')}>Edit</button>}</td>
               <td className="rf2-num">{row.indicator ? display(finalTarget) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Final target: ${row.indicator.code}`} onClick={() => editRow(row, 'final')}>Edit</button>}</td>
-              <td className="rf2-num">{row.indicator ? display(actual) : '—'}{row.indicator?.unit && <small className="rf2-period-label">{row.indicator.unit}</small>}{row.progress?.reporting_period && <small className="rf2-period-label">{row.progress.reporting_period}</small>}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Latest actual: ${row.indicator.code}`} onClick={() => editRow(row, 'actual')}>Edit</button>}</td>
-              <td className="rf2-num">{row.indicator ? pct(row.progress?.achievement_pct) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Progress: ${row.indicator.code}`} onClick={() => editRow(row, 'progress')}>Edit</button>}</td>
+              <td className="rf2-num">{row.indicator ? display(actual) : '—'}{row.indicator?.unit && <small className="rf2-period-label">{row.indicator.unit}</small>}{row.progress?.reporting_period && <small className="rf2-period-label">{row.progress.reporting_period}</small>}{row.indicator && <ResultComparison result={row.comparison} />}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Latest actual: ${row.indicator.code}`} onClick={() => editRow(row, 'actual')}>Edit</button>}</td>
+              <td className="rf2-num">{row.indicator ? pct(row.comparison?.achievement) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Progress: ${row.indicator.code}`} onClick={() => editRow(row, 'progress')}>Edit</button>}</td>
               <td className="rf2-status">{row.indicator ? status(row) : <span className="rf2-pill neutral">{row.node?.status || 'draft'}</span>}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Status: ${row.indicator.code}`} onClick={() => editRow(row, 'status')}>Edit</button>}</td>
               <td className="rf2-narrative">
                 {narrative
