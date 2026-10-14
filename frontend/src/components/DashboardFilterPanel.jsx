@@ -47,7 +47,7 @@ export default function DashboardFilterPanel({ fields, filters, setFilter, reset
     <div id="overview-filter-fields" className="dashboard-filter-fields">
       {fields.map(field => <label className="dashboard-filter-field" key={field.key}>
         <span>{field.label}</span>
-        <select value={filters[field.key]} onChange={event => setFilter(field.key, event.target.value)}>
+        <select aria-label={field.label} value={filters[field.key]} onChange={event => setFilter(field.key, event.target.value)}>
           <option value="">{c.all}</option>
           {filters[field.key] && !field.options.some(option => option.value === filters[field.key]) &&
             <option value={filters[field.key]}>{filters[field.key]}</option>}
