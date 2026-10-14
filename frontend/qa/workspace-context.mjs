@@ -44,6 +44,18 @@ try {
    await page.locator('.dsh-mobile-nav').getByRole('link',{name:'Results',exact:true}).click();
    await page.getByRole('heading',{name:'Results Framework',exact:true}).waitFor();
    assert.match(await account.locator('summary').innerText(),/Q2 2026/);
+   await page.locator('.rf2-tools select').selectOption('pa');
+   await page.waitForURL(url=>url.hash.includes('project=pa'));
+   await account.locator('summary').click();
+   await page.locator('#workspace-period').selectOption('Q3 2026');
+   await page.waitForURL(url=>url.hash.includes('period=Q3') && url.hash.includes('project=pa'));
+   await page.reload();
+   await page.getByRole('heading',{name:'Results Framework',exact:true}).waitFor();
+   assert.equal(await page.locator('.rf2-tools select').inputValue(),'pa');
+   await page.locator('.wc-period summary').click();
+   await page.locator('#workspace-period').selectOption('Q2 2026');
+   await page.waitForURL(url=>url.hash.includes('period=Q2'));
+   await page.locator('.wc-period summary').click();
    await page.locator('.dsh-mobile-nav').getByRole('link',{name:'Reports',exact:true}).click();
    await page.locator('#report-preview').waitFor();
    assert.match(await account.locator('summary').innerText(),/Q2 2026/);
