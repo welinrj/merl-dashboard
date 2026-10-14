@@ -92,7 +92,7 @@ for (const route of ROUTES) {
     // Each action starts from the same route: earlier clicks must not shift the target index.
     if (i > 0) {
       await page.goto(`http://localhost:5199/#${route}`, { waitUntil: 'domcontentloaded' });
-      await page.locator('main').waitFor();
+      await page.locator('.dsh-scroll').waitFor();
       await page.waitForTimeout(350);
     }
     errs = [];
