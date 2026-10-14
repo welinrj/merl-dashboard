@@ -34,7 +34,7 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
       }}>
       <summary><span><small>{group.project.code || group.project.acronym || group.project.name} · {group.node ? nodeTypeLabel(group.node.node_type) : 'Unlinked indicators'}</small>
         <strong>{group.node ? `${group.node.node_code ? `${group.node.node_code} — ` : ''}${group.node.title}` : group.project.name}</strong>
-        <small>{group.rows.filter(row => row.indicator).length} indicators</small></span></summary>
+        <small>{group.rows.filter(row => row.indicator).length} {group.rows.filter(row => row.indicator).length === 1 ? 'indicator' : 'indicators'}</small></span></summary>
       <div className="rf2-group-content">
         {group.rows.map(row => {
           const editable = canEdit(row.project.id);

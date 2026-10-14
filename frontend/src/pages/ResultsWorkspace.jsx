@@ -289,12 +289,12 @@ export default function ResultsWorkspace({ user }) {
       else if (editor.mode === 'add') result = await supabase.rpc('create_results_framework_indicator',{p_project_id:editor.projectId,p_fields:{framework_node_id:editor.nodeId,name:editor.value,unit:editor.unit || null}});
       else result = await supabase.rpc('patch_results_framework_row',{p_indicator_id:editor.id,p_changes:cellChanges(editor),p_progress_id:editor.row.progress?.id || null});
       if (result?.error) throw result.error;
-      toast.success('Changes saved.');
+      toast.success('Changes saved.', { id: 'rf2-editor-save' });
       const draft = editor.mode === 'cell' && !editor.row.progress && ['actual', 'progress', 'status', 'narrative'].includes(editor.field);
       setSaveFeedback(`${editor.label}: changes saved.${draft ? ' New progress is saved as a draft. Submit it through Update Progress before it appears as a reported result.' : ''}`);
       setEditor(null);
       reload();
-    } catch (err) { setEditorError(`Could not save. ${dbErrorMessage(err)} Your changes are still here. Try again.`); toast.error('Could not save. Your changes are still here.'); }
+    } catch (err) { setEditorError(`Could not save. ${dbErrorMessage(err)} Your changes are still here. Try again.`); toast.error('Could not save. Your changes are still here.', { id: 'rf2-editor-save' }); }
     finally { setSaving(false); }
   };
 
@@ -365,7 +365,7 @@ export default function ResultsWorkspace({ user }) {
         <input className="field-input" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Result, indicator, narrative…" />
       </label>
       <button type="button" className="btn btn-secondary" onClick={() => { chooseProject('all'); setSearch(''); }}>Reset</button>
-      <p className="rf2-project-context"><strong>Viewing:</strong> {projectFilter === 'all' ? 'All projects' : data.projects.find(project => project.id === projectFilter)?.name || 'Selected project'} · {filtered.filter(row => row.indicator).length} indicators</p>
+      <p className="rf2-project-context"><strong>Viewing:</strong> {projectFilter === 'all' ? 'All projects' : data.projects.find(project => project.id === projectFilter)?.name || 'Selected project'} · {filtered.filter(row => row.indicator).length} {filtered.filter(row => row.indicator).length === 1 ? 'indicator' : 'indicators'}</p>
     </section>
     {saveFeedback && <div className="rf2-save-feedback" role="status">{saveFeedback}</div>}
 

@@ -26,7 +26,7 @@
 .dsh .rf2-page .rf2-table th{font-size:11px;line-height:1.4;}
 .dsh .rf2-page .rf2-table small.rf2-period-label{display:block;font-size:11px;color:#60718b;margin-top:6px;}
 .rf2-editor-context{font-size:13px;line-height:1.5;color:#60718b;margin:0 0 10px;overflow-wrap:anywhere;}
-.rf2-form .rf2-form-grid{border:0;margin:0;min-inline-size:0;}
+.rf2-form .rf2-form-grid{border:0;margin:0;min-inline-size:0;align-content:start;}
 .rf2-editor-error{padding:10px;background:#fff0ed;border:1px solid #f4c8bf;border-radius:8px;color:#9d271a;font-size:14px;overflow-wrap:anywhere;}
 @media(max-width:800px){.dsh .rf2-page .rf2-tools{grid-template-columns:1fr 1fr;gap:8px;padding:10px;}.dsh .rf2-page .rf2-tools label:first-child,.dsh .rf2-page .rf2-project-context{grid-column:1/-1;}.dsh .rf2-page .rf2-tools .btn{min-height:44px;}.dsh .rf2-page .rf2-tools .field-input{font-size:16px;}.dsh .rf2-page .rf2-table-wrap{max-height:65dvh;}}
 @media(max-width:700px){.dsh .rf2-page .rf2-cell-edit,.dsh .rf2-page .rf2-inline-actions button{min-height:44px;}.dsh .rf2-page .rf2-table-help{display:none;}}
@@ -37,3 +37,5 @@
 .dsh .rf2-page .rf2-linked-activities li{padding:8px 0;font-size:14px;}
 .dsh .rf2-page .rf2-linked-activities p{font-size:13px;line-height:1.5;}
 .dsh .rf2-page .rf2-linked-activities a{display:inline-block;min-height:44px;align-content:center;color:#14727b;}
+
+.rf2-form-grid label{align-content:start;}
