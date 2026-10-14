@@ -94,7 +94,7 @@ try {
     if (result.count !== 6 || !result.aligned || result.gaugeCount !== 3 || result.records.some((r) => !r.hierarchy || !r.withinCard || !r.gaugeValid || !r.iconValid || r.duplicateValue)) {
       throw new Error(`${width}px KPI hierarchy failure: ${JSON.stringify(result)}`);
     }
-    if (width <= 390 && result.records.some(r => r.cardHeight > 270)) throw new Error('Phone cards should stay compact');
+    if (width <= 390 && result.records.some(r => r.cardHeight > 270)) throw new Error(`Phone cards should stay compact: ${JSON.stringify(result.records)}`);
     console.log(`✓ ${width}px: title → visual/number → context → action; three responsive progress visuals`);
   }
 } finally {

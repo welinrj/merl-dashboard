@@ -193,9 +193,12 @@ const OVERVIEW_METRIC_STYLES = `
   }
   @container(max-width:519px){
     .dsh .ovx .ovx-kpis{grid-template-columns:1fr!important;}
-    .dsh .ovx .ovx-kpis .ovx-kpi{min-height:0!important;grid-template-rows:auto 64px auto auto!important;gap:.55rem!important;}
-    .dsh .ovx .ovx-kpis .kpi-card-visual{min-height:64px;}
-    .dsh .ovx .ovx-kpis .kpi-card-sub{min-height:0;}
+    .dsh .ovx .ovx-kpis .ovx-kpi{min-height:0!important;height:auto!important;align-self:start;grid-template-rows:auto 64px auto auto!important;gap:8px!important;padding:14px 14px 24px!important;}
+    .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-visual{min-height:64px!important;}
+    .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-sub{min-height:0!important;font-size:13px!important;line-height:1.4!important;}
+    .dsh .ovx .ovx-kpis .kpi-card-label{font-size:14px!important;}
+    .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-link{font-size:13px!important;padding:8px!important;box-sizing:border-box;}
+    .dsh .ovx .ovx-kpis .kpi-card-value,.dsh .ovx .ovx-kpis .k21-gauge-copy .kpi-card-value{font-size:28px!important;}
     .k21-gauge{width:100%;height:64px;aspect-ratio:auto;display:flex;flex-direction:column;justify-content:center;gap:10px;}
     .k21-gauge svg{display:none;}
     .k21-gauge-copy{position:static;}
