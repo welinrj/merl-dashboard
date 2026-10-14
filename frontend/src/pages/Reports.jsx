@@ -316,10 +316,11 @@ export default function Reports() {
   const exportPdf = async () => {
     setExporting('pdf'); setExportError('');
     try {
+      const blocks = reportBlocks();
       const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
       await loadReportFonts(pdf);
       await pdfCover(pdf, cover);
-      renderReportPdf(pdf, reportBlocks(), cover);
+      renderReportPdf(pdf, blocks, cover);
       pdf.save(reportFilename('pdf'));
       void logGeneration('pdf');
     } catch (error) {

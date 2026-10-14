@@ -1,11 +1,12 @@
 import ResultComparison from './ResultComparison';
+import { fmtNum } from '../lib/locale';
 import { useMemo, useState } from 'react';
 import { frameworkGroups } from '../lib/docc/frameworkGroups';
 import { frameworkTargetValue } from '../lib/docc/frameworkTarget';
 import * as OPT from '../constants/formOptions';
 
 const display = value => value === '' || value == null ? '—' : String(value);
-const percent = value => value == null || !Number.isFinite(Number(value)) ? '—' : `${Math.round(Number(value))}%`;
+const percent = value => value == null || !Number.isFinite(Number(value)) ? '—' : `${fmtNum(Number(value))}%`;
 
 export default function FrameworkMobileResults({ rows, canEdit, editRow, editNode, attachIndicator, status, nodeTypeLabel, onEvidence, activities = [], activityError, onRetry }) {
   const groups = useMemo(() => frameworkGroups(rows), [rows]);

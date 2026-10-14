@@ -80,8 +80,17 @@ try{
  assert.match(wordXml,/tblHeader/);
  assert.ok(wordZip.file('word/footer1.xml'));
  assert.ok(Object.keys(wordZip.files).some(path=>path.startsWith('word/media/') && path.endsWith('.png')));
+ // Delay font loading, then change the screen's report type while exporting.
+ // The downloaded report must retain the original cover and result snapshot.
+ let notifyFonts,releaseFonts;
+ const fontsStarted=new Promise(resolve=>{notifyFonts=resolve;});
+ const fontsReleased=new Promise(resolve=>{releaseFonts=resolve;});
+ await context.route('**/*ReportSans*.ttf',async route=>{notifyFonts();await fontsReleased;await route.continue();});
  const pdfDownloadPromise=page.waitForEvent('download');
  await page.getByRole('button',{name:'Download PDF',exact:true}).click();
+ await fontsStarted;
+ await page.getByRole('combobox').first().selectOption('financial');
+ releaseFonts();
  const pdfDownload=await pdfDownloadPromise;
  await pdfDownload.saveAs('qa-artifacts/comparison-report.pdf');
  const pdf=readFileSync(await pdfDownload.path()).toString('latin1');
@@ -91,6 +100,8 @@ try{
  let pdfText='';for(let i=1;i<=pdfDoc.numPages;i++)pdfText+=(await (await pdfDoc.getPage(i)).getTextContent()).items.map(item=>item.str).join(' ')+'\n';
  assert.match(pdfText,/MERL PORTAL/);assert.match(pdfText,/125%/);assert.match(pdfText,/Page 7/);
  assert.match(pdfText,/Previous comparable/);await pdfDoc.destroy();
+ await page.getByRole('combobox').first().selectOption('full_me');
+ await page.getByRole('button',{name:'View full report',exact:true}).click();
  await page.getByRole('button',{name:'Hide report cover',exact:true}).click();
  for(const width of [360,1366,1920]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`No body overflow at ${width}`);await page.screenshot({path:`qa-artifacts/header-report-${width}.png`,fullPage:true});}
  console.log('PASS Island report cover preview and Word/PDF embedded logo exports');

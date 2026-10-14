@@ -8,6 +8,7 @@ import { currentProjects } from '../lib/docc/projectScope';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cellChanges } from '../lib/docc/frameworkCellEditor';
+import { fmtNum } from '../lib/locale';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { latestReportedBy, withReportingDates } from '../lib/docc/progressSelection';
@@ -44,7 +45,7 @@ const routeProject = () => {
 };
 
 const display = (v) => v === '' || v == null ? '—' : String(v);
-const pct = (v) => v == null || Number.isNaN(Number(v)) ? '—' : `${Math.round(Number(v))}%`;
+const pct = (v) => v == null || Number.isNaN(Number(v)) ? '—' : `${fmtNum(Number(v))}%`;
 
 function nodeTypeLabel(value) {
   return NODE_TYPES.find(([v]) => v === value)?.[1] || value || 'Result';
