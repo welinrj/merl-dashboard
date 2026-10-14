@@ -155,7 +155,7 @@ function ProjectCard({ project, areas, copy, lang }) {
       <div><dt>{copy.budget}</dt><dd>{recordedMoney(project.budget_vuv, project.currency, lang, copy.unknown)}</dd></div>
       <div><dt>{copy.spent}</dt><dd>{recordedMoney(project.cumulative_expenditure_vuv, project.currency, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
       <div><dt>{copy.reached}</dt><dd>{project.published_beneficiaries != null ? num(project.published_beneficiaries, lang) : copy.noFinance}</dd></div>
-      <div><dt>{copy.theme}</dt><dd>{ThemeIcon && <ThemeIcon size={16} style={{ marginRight: 4 }} />}{themeOf(project) || copy.unknown}</dd></div>
+      <div><dt>{copy.theme}</dt><dd>{ThemeIcon && <ThemeIcon size={16} style={{ marginRight: 4 }} />}{themesOf(project).map(theme => lang === 'fr' ? ({'Loss and Damage':'Pertes et préjudices',Mitigation:'Atténuation'}[theme] || theme) : theme).join(', ') || copy.unknown}</dd></div>
     </dl>
     {project.expected_primary_outcome && <div className="pbd-project-outcome"><strong>{copy.outcome}</strong><p>{project.expected_primary_outcome}</p></div>}
   </FeatureCardGradient>;
