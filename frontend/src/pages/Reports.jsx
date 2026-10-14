@@ -1,3 +1,6 @@
+import { indicatorTargets, resultComparison } from '../lib/docc/resultComparison';
+import { loadReportFonts } from '../lib/reportFonts';
+import { renderReportPdf } from '../lib/reportPdf';
 import IslandReportCover from '../components/IslandReportCover';
 import { wordCover, pdfCover } from '../lib/islandReportCover';
 import { scopeProjectReport, initialReportType } from '../lib/projectReportScope';
@@ -11,7 +14,7 @@ import { officialPortfolioData } from '../lib/docc/projectScope';
 // Financial Performance, Geographic/Provincial, Funding Partner/Donor.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Document, HeadingLevel, Packer, PageBreak, Paragraph, Table, TableCell, TableRow, WidthType } from 'docx';
+import { Document, HeadingLevel, Packer, PageBreak, Paragraph, Table, TableCell, TableRow, WidthType, TextRun, Footer, PageNumber, AlignmentType } from 'docx';
 import { jsPDF } from 'jspdf';
 import { Download, FileText, Printer } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
@@ -77,7 +80,7 @@ const isOfficialProject = (project) => project?.code !== 'AUDIT-2026'
   && !/non-production staging|do not use for official reporting/i.test(project?.description || '');
 const pctOf = (value, total) => total > 0 ? `${Math.round((value / total) * 100)}%` : '—';
 const knownOrMissing = (value, suffix = '') => hasValue(value) ? `${fmtAmount(value)}${suffix}` : 'Not reported';
-const reportFilename = (extension) => `DoCC-Full-ME-Report-${new Date().toISOString().slice(0, 10)}.${extension}`;
+
 const downloadBlob = (blob, filename) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -94,11 +97,18 @@ const downloadBlob = (blob, filename) => {
 const reportBlocks = () => {
   const root = document.getElementById('report-preview');
   if (!root) throw new Error('The report preview is not available.');
-  const textOf = (element) => (element?.textContent || '').trim();
+  const textOf = element => {
+    if (!element) return '';
+    const clone = element.cloneNode(true);
+    clone.querySelectorAll('br').forEach(node => node.replaceWith('\n'));
+    clone.querySelectorAll('strong').forEach(node => node.append(' '));
+    clone.querySelectorAll('small, .rp-result-line').forEach(node => node.prepend('\n'));
+    return (clone.textContent || '').trim();
+  };
   const blocks = [];
   const walk = (parent) => {
     for (const element of parent.children) {
-      if (element.classList.contains('island-report-cover')) continue;
+      if (element.classList.contains('island-report-cover') || element.classList.contains('rp-noprint')) continue;
       if (element.classList.contains('rp-page-break')) { blocks.push({ type: 'pageBreak' }); continue; }
       if (element.matches('h2')) { blocks.push({ type: 'title', text: textOf(element) }); continue; }
       if (element.matches('h3')) { blocks.push({ type: 'heading1', text: textOf(element) }); continue; }
@@ -112,6 +122,7 @@ const reportBlocks = () => {
         [...element.children].forEach((child) => blocks.push({ type: 'paragraph', text: textOf(child) }));
         continue;
       }
+      if (!element.children.length && textOf(element)) { blocks.push({ type: 'paragraph', text: textOf(element) }); continue; }
       walk(element);
     }
   };
@@ -138,6 +149,7 @@ export default function Reports() {
   const [exporting, setExporting] = useState('');
   const [exportError, setExportError] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [showCover, setShowCover] = useState(false);
 
   // Report Library (§48-51): recent official report generations, portfolio-wide.
   const loadRuns = useCallback(async () => {
@@ -156,7 +168,7 @@ export default function Reports() {
       setDataError('');
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
-      const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn, evidence] = await Promise.all([
+      const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn, evidence, targets, analyses] = await Promise.all([
         q('v_projects', '*'),
         q('v_financial_progress', '*'),
         q('v_risks_issues', '*'),
@@ -172,9 +184,11 @@ export default function Reports() {
         q('v_project_portfolio_status', '*'),
         q('v_learning_updates', '*'),
         q('v_evidence', '*'),
+        q('v_indicator_targets', '*'),
+        q('v_evidence_analysis', '*'),
       ]);
-      const results = [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn, evidence];
-      const names = ['projects', 'financial progress', 'risks and issues', 'beneficiaries', 'activities', 'indicators', 'indicator progress', 'reporting periods', 'framework nodes', 'Area Council coverage', 'organizations', 'result narratives', 'portfolio status', 'learning updates', 'evidence'];
+      const results = [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn, evidence, targets, analyses];
+      const names = ['projects', 'financial progress', 'risks and issues', 'beneficiaries', 'activities', 'indicators', 'indicator progress', 'reporting periods', 'framework nodes', 'Area Council coverage', 'organizations', 'result narratives', 'portfolio status', 'learning updates', 'evidence', 'indicator targets', 'evidence source references'];
       const failures = results.map((result, index) => result.error ? names[index] : null).filter(Boolean);
       if (failures.length) {
         setD(null);
@@ -186,7 +200,8 @@ export default function Reports() {
         beneficiaries: ben.data ?? [], activities: act.data ?? [], indicators: ind.data ?? [],
         progress: withReportingDates(prog.data ?? [], rep.data ?? []), reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [], narratives: narr.data ?? [],
-        portfolioStatus: status.data ?? [], learning: withReportingDates(learn.data ?? [], rep.data ?? []), evidence: evidence.data ?? [],
+        portfolioStatus: status.data ?? [], learning: withReportingDates(learn.data ?? [], rep.data ?? []), evidence: evidence.data ?? [], analyses: analyses.data ?? [],
+        targets: (targets.data ?? []).map(row => ({ ...row, project_id: (ind.data ?? []).find(i => i.id === row.indicator_id)?.project_id })),
       }, includeCompletedProjects));
       if ((proj.data ?? []).length) setProjectId(current => current || officialPortfolioData({ projects: proj.data ?? [] }).projects[0]?.id);
     })();
@@ -243,9 +258,11 @@ export default function Reports() {
   const cover = {
     title: periodType === 'annual' ? `Annual ${t(REPORT_TYPES.find(r => r.key === type)?.label || 'rpt.fullMeReport')}` : t(REPORT_TYPES.find(r => r.key === type)?.label || 'rpt.fullMeReport'),
     period: period || (periodType ? `${humanToken(periodType)} reporting periods` : 'Cumulative · All reporting periods'),
-    project: (type === 'project' ? projectId : scopeId) ? d.projects[0]?.name : '',
+    project: (type === 'project' ? projectId : scopeId) ? d.projects[0]?.name : type === 'geographic' && province ? province : type === 'donor' && donor ? donor : t('resultDetail.portfolio'),
+    status: t(approvalComplete ? 'resultDetail.approved' : 'resultDetail.working'),
     generated: fmtDateTime(generatedAt), dataAsAt: dataAsAt ? fmtDateTime(dataAsAt) : '',
   };
+  const reportFilename = extension => `DoCC-${type}-${period || periodType}-${new Date().toISOString().slice(0, 10)}.${extension}`.replace(/[^a-zA-Z0-9_.-]/g, '-');
   const logGeneration = async (format) => {
     try {
       const labelKey = REPORT_TYPES.find((r) => r.key === type)?.label;
@@ -282,13 +299,13 @@ export default function Reports() {
         if (block.type === 'pageBreak') return new Paragraph({ children: [new PageBreak()] });
         if (block.type === 'table') return new Table({
           width: { size: 100, type: WidthType.PERCENTAGE },
-          rows: block.rows.map((row) => new TableRow({ children: row.map((cell) => new TableCell({ children: [new Paragraph(cell || '—')] })) })),
+          rows: block.rows.map((row, index) => new TableRow({ tableHeader: index === 0, children: row.map(cell => new TableCell({ shading: index === 0 ? { fill: 'EAF2F6' } : undefined, margins: { top: 80, bottom: 80, left: 80, right: 80 }, children: String(cell || '—').split('\n').map(text => new Paragraph({ children: [new TextRun({ text, bold: index === 0, size: 18 })], spacing: { after: 40 } })) })) })),
         });
         const heading = block.type === 'title' ? HeadingLevel.TITLE : block.type === 'heading1' ? HeadingLevel.HEADING_1 : block.type === 'heading2' ? HeadingLevel.HEADING_2 : undefined;
-        return new Paragraph({ text: block.text, heading, spacing: { after: heading ? 160 : 100 } });
+        return new Paragraph({ text: block.text, heading, keepNext: Boolean(heading), spacing: { after: heading ? 160 : 100 } });
       });
       const coverChildren = await wordCover(cover);
-      const documentFile = new Document({ sections: [{ properties: {}, children: [...coverChildren, ...children] }] });
+      const documentFile = new Document({ styles: { default: { document: { run: { font: 'Calibri', size: 22, color: '1A1A1A' } } } }, sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 720, bottom: 720, left: 720, right: 720 } } }, footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${cover.status} · `, size: 16 }), new TextRun({ children: [PageNumber.CURRENT], size: 16 }), new TextRun({ text: ' / ', size: 16 }), new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16 })] })] }) }, children: [...coverChildren, ...children] }] });
       downloadBlob(await Packer.toBlob(documentFile), reportFilename('docx'));
       void logGeneration('docx');
     } catch (error) {
@@ -299,25 +316,11 @@ export default function Reports() {
   const exportPdf = async () => {
     setExporting('pdf'); setExportError('');
     try {
+      const blocks = reportBlocks();
       const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+      await loadReportFonts(pdf);
       await pdfCover(pdf, cover);
-      const margin = 42; const width = pdf.internal.pageSize.getWidth() - margin * 2; const bottom = pdf.internal.pageSize.getHeight() - margin;
-      let y = margin;
-      const ensureSpace = (height = 16) => { if (y + height > bottom) { pdf.addPage(); y = margin; } };
-      const write = (text, size = 9, bold = false, gap = 7) => {
-        pdf.setFont('helvetica', bold ? 'bold' : 'normal'); pdf.setFontSize(size);
-        const lines = pdf.splitTextToSize(String(text || '—'), width);
-        const height = lines.length * (size + 3); ensureSpace(height);
-        pdf.text(lines, margin, y); y += height + gap;
-      };
-      for (const block of reportBlocks()) {
-        if (block.type === 'pageBreak') { if (y > margin) pdf.addPage(); y = margin; continue; }
-        if (block.type === 'table') { for (const row of block.rows) write(row.join('  |  '), 7.5, row === block.rows[0], 3); y += 5; continue; }
-        if (block.type === 'title') write(block.text, 17, true, 12);
-        else if (block.type === 'heading1') write(block.text, 13, true, 8);
-        else if (block.type === 'heading2') write(block.text, 10.5, true, 5);
-        else write(block.text, 9, false, 6);
-      }
+      renderReportPdf(pdf, blocks, cover);
       pdf.save(reportFilename('pdf'));
       void logGeneration('pdf');
     } catch (error) {
@@ -326,7 +329,7 @@ export default function Reports() {
   };
 
   return (
-    <div className="page-pad" style={{ maxWidth: 960, margin: '0 auto' }}>
+    <div className="page-pad" style={{ maxWidth: 1280, margin: '0 auto' }}>
       <style>{`
         .rp-doc{background:#fff;border:1px solid var(--border);border-radius:12px;padding:2rem;margin-top:1rem;color:#1a1a1a;transition:max-height .25s ease}
         .rp-doc h2{font-family:var(--font-display);font-size:1.4rem;margin:0 0 .2rem}
@@ -348,13 +351,21 @@ export default function Reports() {
         .rp-kpi strong{display:block;font-size:1.35rem;color:#174d91}
         .rp-kpi span{font-size:.7rem;color:#607086;text-transform:uppercase;letter-spacing:.03em}
         .rp-note{padding:.65rem .75rem;background:#f5f7f9;border-left:4px solid #1f5fbf;font-size:.8rem;line-height:1.45;margin:.6rem 0}
-        .rp-project-block{break-inside:avoid;margin-bottom:1rem}
+        .rp-project-block{margin-bottom:1.5rem}
         .rp-preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-top:1rem;padding:.7rem .85rem;border:1px solid var(--border);border-radius:10px;background:var(--surface-1,#fff)}
         .rp-preview-toolbar strong{font-size:.9rem}
         .rp-preview-toolbar span{display:block;font-size:.76rem;color:var(--text-3);margin-top:.15rem}
         .rp-preview-collapsed{max-height:430px;overflow:hidden;position:relative}
         .rp-preview-collapsed::after{content:'';position:absolute;left:0;right:0;bottom:0;height:110px;pointer-events:none;background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 78%)}
         .rp-preview-open{max-height:none;overflow:visible}
+        .rp-doc:not(.rp-show-cover) .island-report-cover{display:none}
+        .rp-t{display:block;overflow-x:auto;max-width:100%;white-space:normal}
+        .rp-t td{min-width:75px;vertical-align:top;overflow-wrap:anywhere;white-space:pre-line}
+        .rp-result-line{display:block;margin-top:.25rem}
+        .rp-result-line b{color:#364f63}
+        .rp-doc h2,.rp-doc h3,.rp-doc h4{overflow-wrap:anywhere}
+        .rp-preview-toolbar button{min-height:40px}
+        .rp-doc p{overflow-wrap:anywhere}
         .rl-t{width:100%;border-collapse:collapse;font-size:.82rem}
         .rl-t th,.rl-t td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
         .rl-t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);background:var(--green-50)}
@@ -367,7 +378,11 @@ export default function Reports() {
           .rp-print::after{display:none!important}
           .rp-noprint{display:none !important}
           .rp-page-break{break-before:page;page-break-before:always}
-          .rp-project-block{break-inside:avoid;page-break-inside:avoid}
+          .rp-doc .island-report-cover{display:flex!important}
+          .rp-t{display:table;overflow:visible}
+          .rp-t thead{display:table-header-group}
+          .rp-t tr{break-inside:avoid}
+          .rp-doc h3,.rp-doc h4{break-after:avoid}
         }
       `}</style>
 
@@ -426,14 +441,15 @@ export default function Reports() {
         <button onClick={showPreview} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
           <FileText size={16} /> Preview report
         </button>
-        {type === 'full_me' ? <>
+        {<>
           <button onClick={exportWord} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
             <Download size={16} /> {exporting === 'word' ? 'Generating Word…' : 'Download Word'}
           </button>
           <button onClick={exportPdf} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: exporting ? 'wait' : 'pointer', color: '#fff', background: 'var(--green-700)' }}>
             <Download size={16} /> {exporting === 'pdf' ? 'Generating PDF…' : 'Download PDF'}
           </button>
-        </> : <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
+        </>}
+        {type !== 'full_me' && <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> {t('rpt.generateReport')}
         </button>}
       </div>
@@ -446,15 +462,16 @@ export default function Reports() {
         </button>
       </div>
 
-      <div id="report-preview" className={`rp-doc rp-print ${previewOpen ? 'rp-preview-open' : 'rp-preview-collapsed'}`}>
+      <button type="button" className="rp-noprint" onClick={() => setShowCover(value => !value)} style={{ minHeight:40, marginTop:8, border:0, background:'transparent', color:'var(--green-800)' }}>{t(showCover ? 'resultDetail.hideCover' : 'resultDetail.showCover')}</button>
+      <div id="report-preview" className={`rp-doc rp-print ${previewOpen ? 'rp-preview-open' : 'rp-preview-collapsed'} ${showCover ? 'rp-show-cover' : ''}`}>
         <IslandReportCover {...cover} />
         <div className="rp-stamp">
           <span>{t('rpt.generated')} <b>{fmtDateTime(generatedAt)}</b></span>
           <span>{t('rpt.dataAsAt')} <b>{dataAsAt ? fmtDateTime(dataAsAt) : '—'}</b></span>
         </div>
         {(type === 'project' ? projectId : scopeId) && <p className="rp-report-scope"><strong>Project:</strong> {d.projects[0]?.name || 'Selected project is not available in your current report scope.'}</p>}
-        {type !== 'full_me' && <div className={`rp-assurance${approvalComplete ? ' ok' : ''}`}>
-          <b>{approvalComplete ? 'Approved reporting basis.' : 'Reporting status.'}</b> {approvalBasis}
+        {<div className={`rp-assurance${approvalComplete ? ' ok' : ''}`}>
+          <p><b>{cover.status}.</b> {approvalBasis}</p>
         </div>}
         {type === 'full_me' && <FullMEReport d={d} period={period} periodType={periodType} dataAsAt={dataAsAt} />}
         {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} periodType={periodType} />}
@@ -496,6 +513,42 @@ const Section = ({ n, title, children }) => <div><h3>{n}. {title}</h3>{children}
 function Narr({ text }) {
   const { t } = useTranslation();
   return text ? <p className="rp-narr">{text}</p> : <p className="rp-muted">{t('rpt.notReported')}</p>;
+}
+
+function IndicatorResults({ d, indicators, currentRows }) {
+  const { t } = useTranslation();
+  const targets = indicatorTargets(d.targets), latest = latestReportedBy(currentRows);
+  const value = v => v == null || v === '' ? t('resultDetail.missing') : typeof v === 'number' ? fmtNum(v) : String(v);
+  const line = (key, text) => <span className="rp-result-line"><b>{t(`resultDetail.${key}`)}:</b> {text}</span>;
+  return <><p className="rp-muted">{t('resultDetail.methodNote')}</p><table className="rp-t rp-result-table"><thead><tr>{['indicator', 'context', 'observations', 'performance', 'source'].map(key => <th key={key}>{t(`resultDetail.${key}`)}</th>)}</tr></thead><tbody>{indicators.map(indicator => {
+    const current = latest.get(indicator.id);
+    const r = resultComparison(indicator, current, d.progress, targets.get(indicator.id), d.reporting);
+    const sources = d.evidence.filter(e => e.indicator_id === indicator.id && (!e.reporting_period || e.reporting_period === r.period));
+    const narrative = d.narratives.find(n => n.indicator_progress_id === current?.id)?.progress_summary || current?.narrative;
+    return <tr key={indicator.id}>
+      <td><strong>{indicator.code} — {indicator.name}</strong>{line('unit', value(indicator.unit))}{line('officer', value(indicator.responsible_officer))}</td>
+      <td>{line('baseline', value(r.baseline))}{line('finalTarget', value(r.finalTarget))}{line('periodTarget', value(current?.period_target))}{line('target', value(r.target))}</td>
+      <td>{line('period', value(r.period))}{line('basis', t(`resultDetail.${r.basis === 'period' ? 'periodBasis' : 'cumulative'}`))}{line('actual', value(r.actual))}{line('periodActual', value(current?.actual_this_period))}{line('previous', r.previous ? `${value(r.previousActual)} · ${r.previous.reporting_period}` : t('resultDetail.noPrevious'))}{narrative && line('narrative', narrative)}</td>
+      <td>{line('achievement', r.achievement == null ? t('resultDetail.missing') : `${value(r.achievement)}%`)}{line('change', value(r.change))}{line('gap', value(r.gap))}{line('direction', t(`resultDetail.${r.direction}`, { defaultValue: r.direction }))}{line('status', OPT.labelOf(OPT.PERFORMANCE_STATUS, current?.performance_status) || t('resultDetail.missing'))}{line('approval', value(r.approval?.replaceAll('_', ' ')))}</td>
+      <td>{sources.length ? sources.map(e => `${e.code || e.id} · ${e.title} · ${e.document_date || t('resultDetail.missing')} · ${e.verification_status}`).join('\n') : t('resultDetail.noEvidence')}</td>
+    </tr>;
+  })}{!indicators.length && <tr><td colSpan={5}>{t('rpt.noIndicators')}</td></tr>}</tbody></table></>;
+}
+function ReportEvidence({ d, rows }) {
+  const { t } = useTranslation();
+  const missing = t('resultDetail.missing');
+  if (!rows.length) return <p className="rp-muted">{t('resultDetail.noEvidence')}</p>;
+  return <table className="rp-t"><thead><tr>{['document', 'indicator', 'date', 'location', 'verification', 'analysis'].map(key => <th key={key}>{t(`resultDetail.${key}`)}</th>)}</tr></thead><tbody>{rows.map(e => {
+    const analysis = (d.analyses || []).filter(a => a.evidence_id === e.id && a.review_state !== 'superseded').sort((a, b) => compareReportedRows(b, a))[0];
+    const indicator = d.indicators.find(i => i.id === e.indicator_id);
+    const safeUrl = /^https?:\/\//i.test(e.file_url || '') ? e.file_url : null;
+    return <tr key={e.id}><td>{e.code || e.id} — {e.title}{safeUrl && <span className="rp-result-line"><a href={safeUrl} target="_blank" rel="noopener noreferrer">{safeUrl}</a></span>}</td><td>{indicator ? `${indicator.code} — ${indicator.name}` : missing}</td><td>{e.document_date || missing}<span className="rp-result-line">{e.reporting_period || missing}</span></td><td>{analysis?.source_location || missing}</td><td>{humanToken(e.verification_status)}</td><td>{analysis ? [humanToken(analysis.review_state), analysis.reviewed_by_name, analysis.reviewed_at].filter(Boolean).join(' · ') : missing}</td></tr>;
+  })}</tbody></table>;
+}
+function ReportActions({ activities }) {
+  const { t } = useTranslation();
+  const actions = activities.filter(a => a.next_action);
+  return <><h4>{t('resultDetail.actions')}</h4><table className="rp-t"><thead><tr>{['action', 'officer', 'due'].map(key => <th key={key}>{t(`resultDetail.${key}`)}</th>)}</tr></thead><tbody>{actions.map(a => <tr key={a.id}><td>{a.code} — {a.name}<span className="rp-result-line">{a.next_action}</span></td><td>{a.responsible_officer_name || a.responsible_officer || a.responsible_org || t('resultDetail.missing')}</td><td>{a.next_action_due || t('resultDetail.missing')}</td></tr>)}{!actions.length && <tr><td colSpan={3}>{t('resultDetail.missing')}</td></tr>}</tbody></table></>;
 }
 
 function FullMEReport({ d, period, periodType, dataAsAt }) {
@@ -603,7 +656,7 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
           <Narr text={project.description || project.objective} />
           <table className="rp-t"><thead><tr><th>Code</th><th>Result level</th><th>Expected result</th></tr></thead><tbody>{projectNodes.map((row) => <tr key={row.id}><td>{row.node_code || '—'}</td><td>{humanToken(row.node_type)}</td><td>{row.title}</td></tr>)}{projectNodes.length === 0 && <tr><td colSpan={3}>Not reported</td></tr>}</tbody></table>
           <h4>Indicator results</h4>
-          <table className="rp-t"><thead><tr><th>Indicator</th><th>Baseline</th><th>Target</th><th>Current result</th><th>Achievement</th></tr></thead><tbody>{projectIndicators.map((indicator) => { const latest = latestReportedBy(projectProgress).get(indicator.id); return <tr key={indicator.id}><td>{indicator.code} — {indicator.name}</td><td>{indicator.baseline_value ?? 'Not reported'}</td><td>{indicator.target_value ?? 'Not reported'}</td><td>{latest?.cumulative_actual ?? 'Not reported'}</td><td>{fmtPct(latest?.achievement_pct)}</td></tr>; })}{projectIndicators.length === 0 && <tr><td colSpan={5}>Not reported</td></tr>}</tbody></table>
+          <IndicatorResults d={d} indicators={projectIndicators} currentRows={projectProgress} />
           <h4>Activity implementation</h4>
           <table className="rp-t"><thead><tr><th>Activity</th><th>Status</th><th>Progress</th><th>Planned budget</th><th>Expenditure</th></tr></thead><tbody>{projectActivities.map((row) => <tr key={row.id || row.code}><td>{row.code ? `${row.code} — ` : ''}{row.name}</td><td>{humanToken(row.status)}</td><td>{row.physical_progress_pct == null ? 'Not reported' : `${row.physical_progress_pct}%`}</td><td>{knownOrMissing(row.planned_budget)}</td><td>{knownOrMissing(row.actual_expenditure)}</td></tr>)}{projectActivities.length === 0 && <tr><td colSpan={5}>Not reported</td></tr>}</tbody></table>
           <h4>Achievements and major results</h4><Narr text={[learning.key_achievements, learning.major_results].filter(Boolean).join('\n\n')} />
@@ -612,7 +665,7 @@ function FullMEReport({ d, period, periodType, dataAsAt }) {
           <h4>Geographic implementation</h4><p className="rp-narr">{projectAreas.length ? projectAreas.map((row) => [row.province_code, row.area_council_name].filter(Boolean).join(' — ')).join('; ') : 'Not reported'}</p>
           <h4>Lessons learned</h4><Narr text={learning.lessons_learned} />
           <h4>Next-period priorities and recommendations</h4><Narr text={[learning.next_period_priorities, learning.recommendations].filter(Boolean).join('\n\n')} />
-          <h4>Supporting evidence</h4><p className="rp-narr">{projectEvidence.length ? `${projectEvidence.length} evidence record${projectEvidence.length === 1 ? '' : 's'} linked to this project.` : 'Not reported'}</p>
+          <ReportActions activities={projectActivities} /><h4>Supporting evidence</h4><ReportEvidence d={d} rows={projectEvidence} />
         </div>;
       })}
     </Section>
@@ -657,10 +710,7 @@ function ProjectProgress({ d, projectId, period, periodType }) {
     <Section n="3" title={t('rpt.progressAgainst')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.level')}</th><th>{t('rpt.statement')}</th></tr></thead><tbody>
       {d.frameworkNodes.filter((o) => o.project_id === projectId).sort((a,b) => (Number(a.sort_order)||0)-(Number(b.sort_order)||0) || String(a.node_code||'').localeCompare(String(b.node_code||''))).map((o) => <tr key={o.id}><td>{o.node_code || '—'}</td><td>{String(o.node_type || 'result').replaceAll('_',' ')}</td><td>{o.title}</td></tr>)}
     </tbody></table></Section>
-    <Section n="4" title={t('rpt.indicatorPerformance')}><table className="rp-t"><thead><tr><th>{t('rpt.indicator')}</th><th>{t('rpt.baseline')}</th><th>{t('rpt.periodTarget')}</th><th>{t('rpt.current')}</th><th>{t('rpt.finalTarget')}</th><th>{t('rpt.achievementPct')}</th><th>{t('rpt.status')}</th></tr></thead><tbody>
-      {inds.map((i) => { const l = indLast(i); return <tr key={i.code}><td>{i.code} {i.name}</td><td>{i.baseline_value ?? '—'}</td><td>{l?.period_target ?? '—'}</td><td>{l?.cumulative_actual ?? '—'}</td><td>{i.target_value ?? '—'}</td><td>{fmtPct(l?.achievement_pct)}</td><td>{OPT.labelOf(OPT.PERFORMANCE_STATUS, l?.performance_status) || '—'}</td></tr>; })}
-      {inds.length === 0 && <tr><td colSpan={7} className="rp-muted">{t('rpt.noIndicators')}</td></tr>}
-    </tbody></table></Section>
+    <Section n="4" title={t('rpt.indicatorPerformance')}><IndicatorResults d={d} indicators={inds} currentRows={prog} /></Section>
     <Section n="5" title={t('rpt.activityImplementation')}><table className="rp-t"><thead><tr><th>{t('rpt.code')}</th><th>{t('rpt.activity')}</th><th>{t('rpt.status')}</th><th>{t('rpt.progress')}</th><th>{t('rpt.plannedBudget')}</th><th>{t('rpt.actualExp')}</th></tr></thead><tbody>
       {acts.map((a) => <tr key={a.code}><td>{a.code}</td><td>{a.name}</td><td>{OPT.labelOf(OPT.ACTIVITY_STATUS, a.status)}</td><td>{a.physical_progress_pct != null ? `${a.physical_progress_pct}%` : '—'}</td><td>{fmtAmount(a.planned_budget)}</td><td>{fmtAmount(a.actual_expenditure)}</td></tr>)}
       {acts.length === 0 && <tr><td colSpan={6} className="rp-muted">{t('rpt.noActivities')}</td></tr>}
@@ -683,7 +733,7 @@ function ProjectProgress({ d, projectId, period, periodType }) {
       {risks.map((r) => <tr key={r.code}><td>{r.code}</td><td>{OPT.labelOf(OPT.RISK_TYPE, r.type)}</td><td>{r.description}</td><td>{r.risk_rating || '—'}</td><td>{OPT.labelOf(OPT.RISK_STATUS, r.status)}</td><td>{r.mitigation || '—'}</td></tr>)}
       {risks.length === 0 && <tr><td colSpan={6} className="rp-muted">No risks or issues have been recorded. Risk status is unassessed rather than automatically low.</td></tr>}
     </tbody></table></Section>
-    <Section n="11" title={t('rpt.lessonsLearned')}><Narr text={learn.lessons_learned} /></Section><Section n="12" title={t('rpt.nextPeriodPriorities')}><Narr text={learn.next_period_priorities} /></Section><Section n="13" title={t('rpt.recommendations')}><Narr text={learn.recommendations} /></Section><Section n="14" title={t('rpt.supportingEvidence')}><p className="rp-muted">{t('rpt.evidenceNote')}</p></Section>
+    <Section n="11" title={t('rpt.lessonsLearned')}><Narr text={learn.lessons_learned} /></Section><Section n="12" title={t('rpt.nextPeriodPriorities')}><Narr text={learn.next_period_priorities} /></Section><Section n="13" title={t('rpt.recommendations')}><Narr text={learn.recommendations} /></Section><Section n="14" title={t('rpt.supportingEvidence')}><ReportEvidence d={d} rows={d.evidence.filter(row => row.project_id === projectId && inScope(row))} /></Section><ReportActions activities={acts} />
   </div>;
 }
 
@@ -707,11 +757,8 @@ function Portfolio({ d, period, periodType }) {
 
 function IndicatorReport({ d, period, periodType }) {
   const { t } = useTranslation();
-  const rows = d.progress.filter((r) => rowMatchesPeriodScope(r, d.reporting, period, periodType));
-  return <div><h2>{t('rpt.indicatorPerformanceReport')}</h2><div className="rp-muted">{period || `All ${PERIOD_TYPES.find((x)=>x.value===periodType)?.label.toLowerCase() || ''} periods`}</div><table className="rp-t"><thead><tr><th>{t('rpt.indicator')}</th><th>{t('rpt.period')}</th><th>{t('rpt.periodTarget')}</th><th>{t('rpt.current')}</th><th>{t('rpt.finalTarget')}</th><th>{t('rpt.achievementPct')}</th><th>{t('rpt.status')}</th></tr></thead><tbody>
-    {rows.map((r, i) => <tr key={i}><td>{r.indicator_code} {r.indicator_name}</td><td>{r.reporting_period}</td><td>{r.period_target ?? '—'}</td><td>{r.cumulative_actual ?? '—'}</td><td>{r.final_target ?? '—'}</td><td>{fmtPct(r.achievement_pct)}</td><td>{OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status) || '—'}</td></tr>)}
-    {rows.length === 0 && <tr><td colSpan={7} className="rp-muted">{t('rpt.noIndicatorProgress')}</td></tr>}
-  </tbody></table></div>;
+  const rows = d.progress.filter(r => rowMatchesPeriodScope(r, d.reporting, period, periodType));
+  return <div><h2>{t('rpt.indicatorPerformanceReport')}</h2><p className="rp-muted">{period || `All ${PERIOD_TYPES.find(x => x.value === periodType)?.label.toLowerCase() || ''} periods`}</p><IndicatorResults d={d} indicators={d.indicators} currentRows={rows} /></div>;
 }
 
 function FinancialReport({ d, period, periodType }) {

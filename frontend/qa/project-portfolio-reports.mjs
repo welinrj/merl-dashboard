@@ -2,7 +2,7 @@
 // All authentication and writes are mocked; no real project data is edited.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import JSZip from 'jszip';
 const fixture = JSON.parse(readFileSync(process.env.STUB_FILE,'utf8'));
 const HOST='https://ndntvncboeajanipafeq.supabase.co';
@@ -12,6 +12,13 @@ const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'}
 const projects=[{id:'pa',code:'VCAP2',name:'Selected coastal project',has_results_framework:true,status:'active',currency:'VUV',budget_vuv:100,provinces:['SANMA'],islands:['Espiritu Santo','Epi'],area_councils:[],communities:[]},{id:'pb',code:'OTHER',name:'Other project',has_results_framework:true,status:'active',currency:'VUV',budget_vuv:900,provinces:[]}];
 const rows={v_projects:projects,v_financial_progress:[{id:'fa',project_id:'pa',approved_budget:100,cumulative_expenditure:40,reporting_period:'Q3 2026'},{id:'fb',project_id:'pb',approved_budget:900,cumulative_expenditure:600,reporting_period:'Q3 2026'}],v_reporting_periods:projects.map(p=>({id:'period-'+p.id,project_id:p.id,period_type:'quarterly',period_label:'Q3 2026',submission_status:'approved',period_end:'2026-09-30'})),v_project_indicators:[{id:'ia',project_id:'pa',code:'CI1',name:'Selected project indicator',target_value:10},{id:'ib',project_id:'pb',code:'OTHER-IND',name:'Other project indicator',target_value:999}]};
 rows.v_indicator_progress=projects.map(p=>({id:'progress-'+p.id,project_id:p.id,indicator_id:p.id==='pa'?'ia':'ib',indicator_code:p.id==='pa'?'CI1':'OTHER-IND',indicator_name:p.id==='pa'?'Selected project indicator':'Other project indicator',reporting_period:'Q3 2026',cumulative_actual:p.id==='pa'?5:999,final_target:p.id==='pa'?10:999,date_reported:'2026-09-30',review_status:'approved'}));
+rows.v_indicator_targets=[{id:'target-ia',indicator_id:'ia',target_type:'final',numeric_value:20,created_at:'2026-01-01'}];
+rows.v_evidence=[{id:'ev-ia',project_id:'pa',indicator_id:'ia',code:'EV-1',title:'Coastal delivery monitoring',document_date:'2026-09-30',reporting_period:'Q3 2026',verification_status:'verified'}];
+rows.v_evidence_analysis=[{id:'analysis-ia',project_id:'pa',indicator_id:'ia',evidence_id:'ev-ia',source_location:'Page 7',review_state:'accepted',reviewed_by_name:'Review officer',created_at:'2026-10-01'}];
+rows.v_indicator_progress[0].achievement_pct=125;
+rows.v_indicator_progress[0].final_target=20;
+rows.v_indicator_progress.push({id:'previous-ia',project_id:'pa',indicator_id:'ia',reporting_period:'Q2 2026',cumulative_actual:2,date_reported:'2026-06-30',review_status:'approved'});
+rows.v_reporting_periods.push({id:'prev-period-pa',project_id:'pa',period_type:'quarterly',period_label:'Q2 2026',submission_status:'approved',period_end:'2026-06-30'});
 try{
  const context=await browser.newContext({viewport:{width:390,height:844}});
  await context.addInitScript(({token,now})=>{localStorage.setItem('merl.lang','en');localStorage.setItem('sb-ndntvncboeajanipafeq-auth-token',JSON.stringify({access_token:token,refresh_token:'mock-refresh',token_type:'bearer',expires_at:now+3600,user:{id:'u1',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{}}}));},{token,now});
@@ -50,21 +57,53 @@ try{
  await page.getByRole('combobox').first().selectOption('indicator');
  report=await page.locator('#report-preview').innerText();assert.match(report,/Selected project indicator/);assert.doesNotMatch(report,/Other project indicator/);
  await page.getByRole('combobox').first().selectOption('full_me');
+ assert.equal(await page.locator('.island-report-cover').isVisible(),false);
+ await page.getByRole('button',{name:'View full report',exact:true}).click();
+ assert.match(await page.locator('.rp-result-table').innerText(),/Target minus actual/);
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ mkdirSync('qa-artifacts',{recursive:true});
+ await page.screenshot({path:'qa-artifacts/header-report-phone.png',fullPage:true});
+ await page.getByRole('button',{name:'Show report cover',exact:true}).click();
  await page.locator('.island-report-cover').waitFor();
  assert.match(await page.locator('.island-report-cover').innerText(),/Selected coastal project/);
  assert.equal(await page.locator('.island-report-cover img').first().evaluate(img => img.complete && img.naturalWidth > 0),true);
  const wordDownloadPromise=page.waitForEvent('download');
  await page.getByRole('button',{name:'Download Word',exact:true}).click();
  const wordDownload=await wordDownloadPromise;
+ await wordDownload.saveAs('qa-artifacts/comparison-report.docx');
  const wordZip=await JSZip.loadAsync(readFileSync(await wordDownload.path()));
  const wordXml=await wordZip.file('word/document.xml').async('string');
  assert.match(wordXml,/MERL PORTAL/);
+ assert.match(wordXml,/Target minus actual/);
+ assert.match(wordXml,/125%/);assert.match(wordXml,/Page 7/);assert.match(wordXml,/Coastal delivery monitoring/);
+ assert.match(wordXml,/Previous comparable period/);assert.match(wordXml,/Q2 2026/);
+ assert.match(wordXml,/tblHeader/);
+ assert.ok(wordZip.file('word/footer1.xml'));
  assert.ok(Object.keys(wordZip.files).some(path=>path.startsWith('word/media/') && path.endsWith('.png')));
+ // Delay font loading, then change the screen's report type while exporting.
+ // The downloaded report must retain the original cover and result snapshot.
+ let notifyFonts,releaseFonts;
+ const fontsStarted=new Promise(resolve=>{notifyFonts=resolve;});
+ const fontsReleased=new Promise(resolve=>{releaseFonts=resolve;});
+ await context.route('**/*ReportSans*.ttf',async route=>{notifyFonts();await fontsReleased;await route.continue();});
  const pdfDownloadPromise=page.waitForEvent('download');
  await page.getByRole('button',{name:'Download PDF',exact:true}).click();
+ await fontsStarted;
+ await page.getByRole('combobox').first().selectOption('financial');
+ releaseFonts();
  const pdfDownload=await pdfDownloadPromise;
+ await pdfDownload.saveAs('qa-artifacts/comparison-report.pdf');
  const pdf=readFileSync(await pdfDownload.path()).toString('latin1');
- assert.match(pdf,/MERL PORTAL/);assert.match(pdf,/\/Subtype \/Image/);
+ assert.match(pdf,/\/Subtype \/Image/);
+ const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');
+ const pdfDoc=await getDocument({data:new Uint8Array(readFileSync(await pdfDownload.path()))}).promise;
+ let pdfText='';for(let i=1;i<=pdfDoc.numPages;i++)pdfText+=(await (await pdfDoc.getPage(i)).getTextContent()).items.map(item=>item.str).join(' ')+'\n';
+ assert.match(pdfText,/MERL PORTAL/);assert.match(pdfText,/125%/);assert.match(pdfText,/Page 7/);
+ assert.match(pdfText,/Previous comparable/);await pdfDoc.destroy();
+ await page.getByRole('combobox').first().selectOption('full_me');
+ await page.getByRole('button',{name:'View full report',exact:true}).click();
+ await page.getByRole('button',{name:'Hide report cover',exact:true}).click();
+ for(const width of [360,1366,1920]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`No body overflow at ${width}`);await page.screenshot({path:`qa-artifacts/header-report-${width}.png`,fullPage:true});}
  console.log('PASS Island report cover preview and Word/PDF embedded logo exports');
  console.log('PASS Phone project portfolio entry and multiple report types retain project scope');
 }finally{await browser.close();}

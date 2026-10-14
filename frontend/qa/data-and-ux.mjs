@@ -129,12 +129,12 @@ await go('/reports');
 const downloads = page.getByRole('button', { name: /Download (Word|PDF)/i });
 check('full M&E report offers Word and PDF downloads', await downloads.count() === 2);
 
-// Every other report type still goes through the browser print path. Switch to
-// one and confirm print is what its control actually does.
+// Other report types offer downloads plus the browser print action. Select
+// that explicit action so the new Download PDF button is not mistaken for it.
 await page.locator('select.field-input').first().selectOption('project');
 await page.waitForTimeout(800);
 await page.evaluate(() => { window.__printed = false; window.print = () => { window.__printed = true; }; });
-const printBtn = page.getByRole('button', { name: /print|pdf|export|generate/i }).first();
+const printBtn = page.getByRole('button', { name: 'Generate Report / PDF', exact: true });
 if (await printBtn.count()) {
   await printBtn.click(); await page.waitForTimeout(1200);
   check('report generation triggers print', await page.evaluate(() => window.__printed === true));
