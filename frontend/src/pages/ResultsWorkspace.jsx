@@ -1,7 +1,9 @@
+import FrameworkMobileResults from '../components/FrameworkMobileResults';
+import './ResultsWorkspace.css';
 import { FRAMEWORK_COLUMNS, frameworkColumns } from '../lib/docc/frameworkColumns';
 import { standaloneFrameworkNodes } from '../lib/docc/frameworkRows';
 import { currentProjects } from '../lib/docc/projectScope';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cellChanges } from '../lib/docc/frameworkCellEditor';
 import { useTranslation } from 'react-i18next';
@@ -109,6 +111,40 @@ export default function ResultsWorkspace({ user }) {
     };
   }, [editorOpen]);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  savingRef.current = saving;
+  const [saveFeedback, setSaveFeedback] = useState('');
+  const [editorError, setEditorError] = useState('');
+  useEffect(() => { setEditorError(''); }, [editor?.id, editor?.field, editor?.mode]);
+  useEffect(() => {
+    if (!editorOpen) return;
+    const previous = document.activeElement;
+    const dialog = document.querySelector('.rf2-edit-dialog');
+    const fields = () => [...dialog.querySelectorAll('input, textarea, select, button')].filter(el => !el.disabled && el.offsetParent !== null);
+    fields()[0]?.focus();
+    const handleKey = event => {
+      if (event.key === 'Escape' && !savingRef.current) { event.preventDefault(); setEditor(null); }
+      if (event.key === 'Tab') {
+        const available = fields();
+        const first = available[0], last = available.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      if (previous?.isConnected) previous.focus();
+      else document.querySelector('.rf2-tools select')?.focus();
+    };
+  }, [editorOpen]);
+  const chooseProject = value => {
+    setProjectFilter(value);
+    const [path, query = ''] = window.location.hash.split('?');
+    const params = new URLSearchParams(query);
+    if (value === 'all') params.delete('project'); else params.set('project', value);
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${path}${params.size ? `?${params}` : ''}`);
+  };
   const [showFullTable, setShowFullTable] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [evidence, setEvidence] = useState(() => new Map());
@@ -242,16 +278,20 @@ export default function ResultsWorkspace({ user }) {
     e.preventDefault();
     if (!editor || saving || !editableIds.has(editor.projectId)) return;
     setSaving(true);
+    setEditorError('');
+    setSaveFeedback('');
     try {
       let result;
       if (editor.mode === 'node') result = await supabase.rpc('patch_results_framework_node',{p_id:editor.id,p_changes:{title:editor.value,node_code:editor.code || null,description:editor.description || null}});
       else if (editor.mode === 'add') result = await supabase.rpc('create_results_framework_indicator',{p_project_id:editor.projectId,p_fields:{framework_node_id:editor.nodeId,name:editor.value,unit:editor.unit || null}});
       else result = await supabase.rpc('patch_results_framework_row',{p_indicator_id:editor.id,p_changes:cellChanges(editor),p_progress_id:editor.row.progress?.id || null});
       if (result?.error) throw result.error;
-      toast.success('Saved.');
+      toast.success('Changes saved.');
+      const draft = editor.mode === 'cell' && !editor.row.progress && ['actual', 'progress', 'status', 'narrative'].includes(editor.field);
+      setSaveFeedback(`${editor.label}: changes saved.${draft ? ' New progress is saved as a draft. Submit it through Update Progress before it appears as a reported result.' : ''}`);
       setEditor(null);
       reload();
-    } catch (err) { toast.error(dbErrorMessage(err)); }
+    } catch (err) { setEditorError(`Could not save. ${dbErrorMessage(err)} Your changes are still here. Try again.`); toast.error('Could not save. Your changes are still here.'); }
     finally { setSaving(false); }
   };
 
@@ -293,7 +333,7 @@ export default function ResultsWorkspace({ user }) {
     const schedule = row.progress.schedule_status || 'on_schedule';
     return <div className="rf2-status-stack">
       <span className={`rf2-pill ${performance}`}>{performance.replaceAll('_', ' ')}</span>
-      <span className={`rf2-pill ${['submitted', 'pending', 'pending_review'].includes(row.progress.review_status) ? 'pending' : 'neutral'}`}>{row.progress.review_status || 'Unreviewed'}</span>
+      <span className={`rf2-pill ${['submitted', 'pending', 'pending_review'].includes(row.progress.review_status) ? 'pending' : 'neutral'}`}>{({submitted:'Awaiting approval',under_review:'Under review',resubmitted:'Awaiting approval',pending:'Awaiting approval',pending_review:'Awaiting approval',approved:'Approved',published:'Published',locked:'Locked',draft:'Draft',returned:'Returned for changes'})[row.progress.review_status] || row.progress.review_status || 'Unreviewed'}</span>
       {schedule === 'delayed' && <span className="rf2-pill delayed">Delayed</span>}
     </div>;
   };
@@ -313,7 +353,7 @@ export default function ResultsWorkspace({ user }) {
 
     <section className="rf2-tools">
       <label>Project
-        <select className="field-input" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+        <select aria-label="Project" className="field-input" value={projectFilter} onChange={(e) => chooseProject(e.target.value)}>
           <option value="all">All projects</option>
           {data.projects.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ''}{p.name}</option>)}
         </select>
@@ -321,8 +361,10 @@ export default function ResultsWorkspace({ user }) {
       <label>Search framework
         <input className="field-input" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Result, indicator, narrative…" />
       </label>
-      <button type="button" className="btn btn-secondary" onClick={() => { setProjectFilter('all'); setSearch(''); }}>Reset</button>
+      <button type="button" className="btn btn-secondary" onClick={() => { chooseProject('all'); setSearch(''); }}>Reset</button>
+      <p className="rf2-project-context"><strong>Viewing:</strong> {projectFilter === 'all' ? 'All projects' : data.projects.find(project => project.id === projectFilter)?.name || 'Selected project'} · {filtered.filter(row => row.indicator).length} indicators</p>
     </section>
+    {saveFeedback && <div className="rf2-save-feedback" role="status">{saveFeedback}</div>}
 
     {permissionError && <div className="rf2-note" role="alert">{permissionError}</div>}
 
@@ -332,22 +374,13 @@ export default function ResultsWorkspace({ user }) {
     {!loading && !error && <div className="rf2-mobile-results">
       <button type="button" className="btn btn-secondary" aria-pressed={showFullTable} onClick={() => setShowFullTable(v => !v)}>{showFullTable ? 'View results list' : 'View full framework table'}</button>
       {!showFullTable && !filtered.length && <p className="rf2-empty">No results-framework rows match the current filters.</p>}
-      {!showFullTable && filtered.map(row => <article className="rf2-result-card" key={row.indicator?.id || row.node.id}>
-        <small>{row.project.code || row.project.acronym} · {row.project.name}</small>
-        <h2>{row.indicator?.name || row.node.title}</h2>
-        {row.indicator && <>
-          {row.node && <p><strong>Output:</strong> {row.node.title}</p>}
-          <dl><div><dt>Latest actual</dt><dd>{display(row.progress?.cumulative_actual ?? row.progress?.actual_this_period)}</dd></div><div><dt>Final target</dt><dd>{display(frameworkTargetValue(row.targets.final, row.indicator.target_value))}</dd></div><div><dt>Progress</dt><dd>{pct(row.progress?.achievement_pct)}</dd></div></dl>
-          {status(row)}
-          {row.progress?.reporting_period && <p><strong>Reporting period:</strong> {row.progress.reporting_period}</p>}
-          {(row.narrative?.progress_summary || row.progress?.narrative) && <details><summary>Reported update</summary><p>{row.narrative?.progress_summary || row.progress.narrative}</p></details>}
-          {canEdit(row.project.id) && <button type="button" className="btn btn-secondary" onClick={() => editRow(row)}>Edit result</button>}
-        </>}
-        {!row.indicator && <p>No indicator or reported progress is attached to this output.</p>}
-      </article>)}
+      {!showFullTable && filtered.length > 0 && <FrameworkMobileResults key={`${projectFilter}:${search}`} rows={filtered}
+        canEdit={canEdit} editRow={editRow} editNode={editNode} attachIndicator={attachIndicator}
+        status={status} nodeTypeLabel={nodeTypeLabel} onEvidence={setEvidenceIndicator} />}
     </div>}
 
-    {!loading && !error && <div className={`rf2-table-wrap${showFullTable ? ' rf2-show-table' : ''}`}>
+    {!loading && !error && <p className="rf2-table-help">Scroll across for every column. Headings stay visible as you scroll. Latest results retain their recorded reporting period; a missing figure means no reported result is available.</p>}
+    {!loading && !error && <div role="region" aria-label="Results framework table" tabIndex={0} className={`rf2-table-wrap${showFullTable ? ' rf2-show-table' : ''}`}>
       <table className="rf2-table">
         <thead><tr>
           <th scope="col">Project</th>{FRAMEWORK_COLUMNS.map(column => <th scope="col" key={column.key}>{column.label}</th>)}<th scope="col">Indicator</th>
@@ -401,7 +434,7 @@ export default function ResultsWorkspace({ user }) {
               <td className="rf2-num">{row.indicator ? display(baseline) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Baseline: ${row.indicator.code}`} onClick={() => editRow(row, 'baseline')}>Edit</button>}</td>
               <td className="rf2-num">{row.indicator ? display(mid) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Mid-term: ${row.indicator.code}`} onClick={() => editRow(row, 'mid_term')}>Edit</button>}</td>
               <td className="rf2-num">{row.indicator ? display(finalTarget) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Final target: ${row.indicator.code}`} onClick={() => editRow(row, 'final')}>Edit</button>}</td>
-              <td className="rf2-num">{row.indicator ? display(actual) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Latest actual: ${row.indicator.code}`} onClick={() => editRow(row, 'actual')}>Edit</button>}</td>
+              <td className="rf2-num">{row.indicator ? display(actual) : '—'}{row.indicator?.unit && <small className="rf2-period-label">{row.indicator.unit}</small>}{row.progress?.reporting_period && <small className="rf2-period-label">{row.progress.reporting_period}</small>}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Latest actual: ${row.indicator.code}`} onClick={() => editRow(row, 'actual')}>Edit</button>}</td>
               <td className="rf2-num">{row.indicator ? pct(row.progress?.achievement_pct) : '—'}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Progress: ${row.indicator.code}`} onClick={() => editRow(row, 'progress')}>Edit</button>}</td>
               <td className="rf2-status">{row.indicator ? status(row) : <span className="rf2-pill neutral">{row.node?.status || 'draft'}</span>}{row.indicator && canEdit(row.project.id) && <button type="button" className="rf2-cell-edit" aria-label={`Edit Status: ${row.indicator.code}`} onClick={() => editRow(row, 'status')}>Edit</button>}</td>
               <td className="rf2-narrative">
@@ -445,7 +478,12 @@ export default function ResultsWorkspace({ user }) {
       <div className="rf2-edit-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${editor.label}`}>
         <form className="rf2-form" onSubmit={saveEditor}>
           <h3>{editor.mode === 'add' ? 'Add' : 'Edit'} {editor.label}</h3>
-          <div className="rf2-form-grid">
+          <p className="rf2-editor-context">{data.projects.find(project => project.id === editor.projectId)?.name}
+            {editor.row?.indicator && <> · {editor.row.indicator.code}: {editor.row.indicator.name}</>}
+            {editor.row?.progress?.reporting_period && <> · {editor.row.progress.reporting_period}</>}
+          </p>
+          {editorError && <p className="rf2-editor-error" role="alert">{editorError}</p>}
+          <fieldset className="rf2-form-grid" disabled={saving}>
             {(editor.mode === 'node' || editor.field === 'indicator') && <label className="full">Code<input className="field-input" value={editor.code} onChange={e=>setEditor({...editor,code:e.target.value})} /></label>}
             {editor.field === 'status' ? <>
               <label className="full">Status<select aria-label="Status" className="field-input" value={editor.performance} onChange={e=>setEditor({...editor,performance:e.target.value})}>{[['no_data','No data'],['on_track','On track'],['attention_required','Needs attention'],['at_risk','At risk'],['target_achieved','Target achieved']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
@@ -454,7 +492,7 @@ export default function ResultsWorkspace({ user }) {
             {(editor.field === 'indicator' || editor.mode === 'add') && <label className="full">Unit<input className="field-input" value={editor.unit} onChange={e=>setEditor({...editor,unit:e.target.value})} /></label>}
             {editor.mode === 'node' && <label className="full">Details<textarea className="field-input" rows={3} value={editor.description} onChange={e=>setEditor({...editor,description:e.target.value})} /></label>}
             {['actual','progress','status','narrative'].includes(editor.field) && !editor.row.progress && <label className="full">Reporting period<select aria-label="Reporting period" className="field-input" value={editor.period} onChange={e=>setEditor({...editor,period:e.target.value})} required><option value="">Choose period</option>{reportingPeriods.filter(p=>p.project_id===editor.projectId).map(p=><option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}</select></label>}
-          </div>
+          </fieldset>
           <div className="rf2-form-actions"><button type="button" className="btn btn-secondary" disabled={saving} onClick={()=>setEditor(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></div>
         </form>
       </div>

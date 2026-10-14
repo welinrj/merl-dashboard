@@ -1,0 +1,32 @@
+.dsh .rf2-page .rf2-tools{position:sticky;top:0;z-index:8;box-shadow:0 4px 14px #1931570b;grid-template-columns:minmax(240px,1.2fr) minmax(180px,1fr) auto;}
+.dsh .rf2-page .rf2-tools .field-input{width:100%;min-width:0;min-height:44px;box-sizing:border-box;}
+.dsh .rf2-page .rf2-tools label{min-width:0;font-size:13px;color:#193157;}
+.dsh .rf2-page .rf2-project-context{grid-column:1/-1;margin:0;padding-top:8px;border-top:1px solid #dbe8ec;color:#193157;font-size:13px;overflow-wrap:anywhere;}
+.dsh .rf2-page .rf2-save-feedback{padding:12px 14px;border-radius:9px;background:#e9f7f4;color:#145d4d;margin-bottom:12px;overflow-wrap:anywhere;}
+.dsh .rf2-page .rf2-reading-help{font-size:13px;line-height:1.5;color:#60718b;}
+.dsh .rf2-page .rf2-result-group{border:1px solid #d2e4e8;border-radius:12px;background:#fff;margin-bottom:12px;min-width:0;}
+.dsh .rf2-page .rf2-result-group>summary{padding:14px;cursor:pointer;min-height:48px;color:#193157;}
+.dsh .rf2-page .rf2-result-group>summary>span{display:inline-grid;gap:6px;width:calc(100% - 22px);vertical-align:top;overflow-wrap:anywhere;}
+.dsh .rf2-page .rf2-result-group>summary small{color:#60718b;font-size:12px;}
+.dsh .rf2-page .rf2-result-group>summary strong{font-size:15px;line-height:1.45;}
+.dsh .rf2-page .rf2-group-content{padding:0 10px 10px;display:grid;gap:12px;}
+.dsh .rf2-page .rf2-result-card h2{overflow-wrap:anywhere;}
+.dsh .rf2-page .rf2-result-card dl{grid-template-columns:repeat(2,minmax(0,1fr));}
+.dsh .rf2-page .rf2-result-card dl>div{padding:10px;background:#f2f8f9;border-radius:8px;}
+.dsh .rf2-page .rf2-result-card dd{font-size:18px;}
+.dsh .rf2-page .rf2-mobile-edit{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;margin:4px 6px 4px 0;border:1px solid #c7dfe2;border-radius:8px;background:#f1f8f8;color:#14727b;font:inherit;font-size:13px;font-weight:700;cursor:pointer;}
+.dsh .rf2-page .rf2-mobile-path{border-bottom:1px solid #dbe8ec;margin:8px 0;}
+.dsh .rf2-page .rf2-mobile-path>div{padding:6px 0;border-top:1px solid #e4edef;}
+.dsh .rf2-page .rf2-mobile-update h3{font-size:14px;margin:14px 0 0;}
+.dsh .rf2-page .rf2-period-context{padding:8px;border-left:3px solid #168c96;background:#f1f8f8;}
+.dsh .rf2-page .rf2-table-help{margin:0 0 8px;color:#60718b;font-size:13px;}
+.dsh .rf2-page .rf2-table-wrap:focus-visible{outline:3px solid #168c96;outline-offset:2px;}
+.dsh .rf2-page .rf2-cell-edit,.dsh .rf2-page .rf2-inline-actions button{min-height:36px;color:#14727b;border-color:#c7dfe2;}
+.dsh .rf2-page .rf2-inline-actions button.danger{color:#b91c1c;}
+.dsh .rf2-page .rf2-table th{font-size:11px;line-height:1.4;}
+.dsh .rf2-page .rf2-table small.rf2-period-label{display:block;font-size:11px;color:#60718b;margin-top:6px;}
+.rf2-editor-context{font-size:13px;line-height:1.5;color:#60718b;margin:0 0 10px;overflow-wrap:anywhere;}
+.rf2-form .rf2-form-grid{border:0;margin:0;min-inline-size:0;}
+.rf2-editor-error{padding:10px;background:#fff0ed;border:1px solid #f4c8bf;border-radius:8px;color:#9d271a;font-size:14px;overflow-wrap:anywhere;}
+@media(max-width:800px){.dsh .rf2-page .rf2-tools{grid-template-columns:1fr 1fr;gap:8px;padding:10px;}.dsh .rf2-page .rf2-tools label:first-child,.dsh .rf2-page .rf2-project-context{grid-column:1/-1;}.dsh .rf2-page .rf2-tools .btn{min-height:44px;}.dsh .rf2-page .rf2-tools .field-input{font-size:16px;}.dsh .rf2-page .rf2-table-wrap{max-height:65dvh;}}
+@media(max-width:700px){.dsh .rf2-page .rf2-cell-edit,.dsh .rf2-page .rf2-inline-actions button{min-height:44px;}.dsh .rf2-page .rf2-table-help{display:none;}}

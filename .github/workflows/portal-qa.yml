@@ -48,6 +48,12 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate Results Framework reading and editing on phones
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/results-framework-usability.mjs
+
       - name: Validate labelled dashboard filters on phones and desktop
         working-directory: frontend
         env:
