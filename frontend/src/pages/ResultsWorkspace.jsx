@@ -1,3 +1,6 @@
+import { useSearchParams } from 'react-router-dom';
+import { useWorkspaceContext } from '../components/WorkspaceContext';
+import { matchesWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import ResultComparison from '../components/ResultComparison';
 import { resultComparison, indicatorTargets } from '../lib/docc/resultComparison';
 import FrameworkMobileResults from '../components/FrameworkMobileResults';
@@ -76,6 +79,8 @@ function latestBy(rows, key, ranker = (r) => r.created_at || r.updated_at || '')
 
 export default function ResultsWorkspace({ user }) {
   const liveRevision = useLiveDashboard();
+  const { period } = useWorkspaceContext();
+  const [routeParams, setRouteParams] = useSearchParams();
   const { t, i18n } = useTranslation();
   const [data, setData] = useState(empty);
   const [loading, setLoading] = useState(true);
@@ -85,6 +90,7 @@ export default function ResultsWorkspace({ user }) {
   const [activityError, setActivityError] = useState('');
   const [editableIds, setEditableIds] = useState(new Set());
   const [projectFilter, setProjectFilter] = useState(routeProject);
+  useEffect(() => { setProjectFilter(routeParams.get('project') || 'all'); }, [routeParams]);
   const [search, setSearch] = useState('');
   const [editor, setEditor] = useState(null);
   const [editorViewport, setEditorViewport] = useState(null);
@@ -134,10 +140,11 @@ export default function ResultsWorkspace({ user }) {
   }, [editorOpen]);
   const chooseProject = value => {
     setProjectFilter(value);
-    const [path, query = ''] = window.location.hash.split('?');
-    const params = new URLSearchParams(query);
-    if (value === 'all') params.delete('project'); else params.set('project', value);
-    window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${path}${params.size ? `?${params}` : ''}`);
+    setRouteParams(previous => {
+      const params = new URLSearchParams(previous);
+      if (value === 'all') params.delete('project'); else params.set('project', value);
+      return params;
+    }, { replace: true });
   };
   const [showFullTable, setShowFullTable] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -198,7 +205,7 @@ export default function ResultsWorkspace({ user }) {
 
   const nodesById = useMemo(() => new Map(data.nodes.map((r) => [r.id, r])), [data.nodes]);
   const targetsByIndicator = useMemo(() => indicatorTargets(data.targets), [data.targets]);
-  const latestProgress = useMemo(() => latestReportedBy(data.progress, 'indicator_id'), [data.progress]);
+  const latestProgress = useMemo(() => latestReportedBy(data.progress.filter(row => matchesWorkspacePeriod(row, period)), 'indicator_id'), [data.progress, period]);
   const narrativeByProgress = useMemo(() => new Map(data.narratives.map((r) => [r.indicator_progress_id, r])), [data.narratives]);
 
   const rows = useMemo(() => {

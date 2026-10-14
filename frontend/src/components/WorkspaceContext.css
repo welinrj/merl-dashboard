@@ -1,0 +1,11 @@
+.wc-context { margin: 16px 24px 0; padding: 12px 16px; background: #fff; border: 1px solid #dce5ec; border-radius: 12px; color: #203b55; }
+.wc-account { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 13px; }
+.wc-account strong { font-size: 14px; overflow-wrap: anywhere; }
+.wc-account span { color: #52667b; }
+.wc-period summary { min-height: 40px; padding: 10px 0; cursor: pointer; font-size: 13px; overflow-wrap: anywhere; }
+.wc-period label { display: block; font-size: 13px; margin: 4px 0; }
+.wc-period-select { width: 100%; max-width: 420px; min-height: 44px; border: 1px solid #95aabf; border-radius: 8px; padding: 8px; background: white; color: #203b55; font: inherit; }
+.wc-note { margin: 8px 0 0; color: #52667b; font-size: 13px; line-height: 1.5; }
+.wc-context :focus-visible { outline: 3px solid #315fc1; outline-offset: 3px; }
+@media (max-width: 640px) { .wc-context { margin: 12px 16px 0; padding: 10px 12px; } }
+@media print { .wc-context { display: none; } }

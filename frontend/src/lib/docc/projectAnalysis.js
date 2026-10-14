@@ -647,10 +647,10 @@ export function analyseProject(d, period = '', asOf = new Date()) {
   const buckets = activityBuckets(activities, today);
   const implementation = implementationProgress(activities);
   const results = resultsPerformance(indicators, withReportingDates(d.progress ?? [], d.periods ?? []), period, today);
-  const financial = financialSummary(project, withReportingDates((d.financial ?? []).filter(row => !period || row.reporting_period === period), d.periods ?? []), asOf);
+  const financial = financialSummary(period ? { ...project, spent_vuv: null } : project, withReportingDates((d.financial ?? []).filter(row => !period || row.reporting_period === period), d.periods ?? []), asOf);
   const beneficiaries = beneficiarySummary(project, d.beneficiaries ?? [], period);
   const risks = riskSummary(d.risks ?? [], today);
-  const reporting = reportingCompliance(d.periods ?? [], today);
+  const reporting = reportingCompliance((d.periods ?? []).filter(row => !period || row.period_label === period), today);
   const completeness = dataCompleteness(d);
   const commitments = activityCommitments(activities, today);
 

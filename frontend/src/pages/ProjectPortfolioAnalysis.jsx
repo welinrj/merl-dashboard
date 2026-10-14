@@ -1,3 +1,4 @@
+import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { ReviewIcon, BudgetUsageIcon, UpdateProgressIcon, ResultsIcon, BeneficiariesIcon } from '../components/ui/MerlIcons';
 import ProjectLocations from '../components/ProjectLocations';
 import { currentProjects } from '../lib/docc/projectScope';
@@ -477,7 +478,7 @@ export default function ProjectPortfolioAnalysis() {
   // browser's Back button both land the reader back on the same project. The
   // session copy is the fallback when the page is opened without a project.
   const projectId = params.get('project') ?? '';
-  const period = params.get('period') ?? '';
+  const { period, selectPeriod } = useWorkspaceContext();
   const focus = params.get('focus') ?? '';
   const focusRecord = params.get('record') ?? '';
   const handledFocus = useRef('');
@@ -662,15 +663,16 @@ export default function ProjectPortfolioAnalysis() {
   const picker = (
     <div className="card rp-noprint" style={{ padding: '0.85rem 0.95rem', display: 'flex', gap: '0.9rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
       <ProjectPicker projects={projects} value={projectId} disabled={projectsLoading}
-        onChange={(id) => setContext({ project: id, period: '' })} />
+        onChange={(id) => setContext({ project: id })} />
       {projectId && periodOptions.length > 0 && (
         <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
           <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
             {t('ppa.reportingPeriod')}
           </span>
-          <select className="field-input" value={period} onChange={(e) => setContext({ period: e.target.value })}
+          <select className="field-input" value={period} onChange={(e) => selectPeriod(e.target.value)}
             style={{ width: 'auto', minWidth: 170, padding: '0.45rem 0.55rem', fontSize: '0.85rem' }}>
             <option value="">{t('ppa.allPeriods')}</option>
+            {period && !periodOptions.some(row => (typeof row === 'string' ? row : row.period_label) === period) && <option value={period}>{period}</option>}
             {periodOptions.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </label>
