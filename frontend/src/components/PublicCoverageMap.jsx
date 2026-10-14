@@ -68,7 +68,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const { i18n } = useTranslation();
   const fr = i18n.resolvedLanguage?.startsWith('fr');
   const copy = fr ? {
-    one:'projet', many:'projets', none:'aucun lieu de mise en œuvre enregistré',
+    zoomIn:'Agrandir',zoomOut:'Réduire',layers:'Couches',street:'Plan',satellite:'Satellite',one:'projet', many:'projets', none:'aucun lieu de mise en œuvre enregistré',
     noneDetail:'Aucun lieu de mise en œuvre n’est enregistré pour ce conseil de zone. Cela ne signifie pas nécessairement qu’il n’y a aucune activité de projet.',
     unavailable:'Carte temporairement indisponible.', keyTitle:'Zones par thème officiel',
     keyBody:'Les zones non colorées n’ont pas de lieu de mise en œuvre enregistré.',
@@ -76,7 +76,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     areaOne:'zone',areaMany:'zones',
     aria:'Carte publique de la couverture des projets',
   } : {
-    one:'project', many:'projects', none:'no recorded implementation location',
+    zoomIn:'Zoom in',zoomOut:'Zoom out',layers:'Layers',street:'Street map',satellite:'Satellite',one:'project', many:'projects', none:'no recorded implementation location',
     noneDetail:'No implementation location is recorded for this Area Council. This does not necessarily mean there is no project activity.',
     unavailable:'Map temporarily unavailable.', keyTitle:'Areas by official thematic area',
     keyBody:'Uncoloured areas have no recorded implementation location.',
@@ -93,16 +93,19 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   useEffect(()=>{let alive=true;Promise.all([leaflet(),boundaries()]).then(([L,data])=>{
     if(!alive||!ref.current)return;
     dataRef.current=data;
-    const map=L.map(ref.current,{center:[-16.3,167.6],zoom:6,minZoom:5,maxZoom:18,scrollWheelZoom:true});
+    const map=L.map(ref.current,{center:[-16.3,167.6],zoom:6,zoomControl:false,minZoom:5,maxZoom:18,scrollWheelZoom:true});
+    L.control.zoom({zoomInTitle:copy.zoomIn,zoomOutTitle:copy.zoomOut}).addTo(map);
     const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
     const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery &copy; Esri'});
-    L.control.layers({'Street map':street,'Satellite':sat},{},{position:'topright',collapsed:true}).addTo(map);
+    const layers=L.control.layers({[copy.street]:street,[copy.satellite]:sat},{},{position:'topright',collapsed:true}).addTo(map);
+    const toggle=layers.getContainer().querySelector('.leaflet-control-layers-toggle');
+    if(toggle){toggle.title=copy.layers;toggle.setAttribute('aria-label',copy.layers);}
     L.control.scale({imperial:false,position:'bottomright'}).addTo(map);
     mapRef.current=map;setErr('');setReady(true);
     const b=L.geoJSON(data).getBounds();if(b.isValid())map.fitBounds(b,{padding:[12,12]});
   }).catch(()=>alive&&setErr(copyRef.current.unavailable));
   return()=>{alive=false;if(mapRef.current){mapRef.current.remove();mapRef.current=null;}layerRef.current=null;dataRef.current=null;};
-  },[]);
+  },[fr]);
   useEffect(()=>{
     if(!ready||!mapRef.current||!dataRef.current||!window.L)return;
     const L=window.L,map=mapRef.current,c=copyRef.current;

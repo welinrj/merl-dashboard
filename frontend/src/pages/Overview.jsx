@@ -1,4 +1,5 @@
 import { PortfolioCardIcon, ProgressCardIcon, BudgetCardIcon, BeneficiariesCardIcon, AttentionCardIcon, ReportingCardIcon } from '../components/ui/MerlCardIcons';
+import { beneficiaryPublicationState } from '../lib/dataCoverage';
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
 import ReportingReminders from '../components/ReportingReminders';
 import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
@@ -133,7 +134,7 @@ export default function Overview({ user }) {
           q('v_projects', 'id,has_results_framework, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
           q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, reporting_period, created_at, updated_at'),
           q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
-          q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability'),
+          q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, reporting_period, double_counting_check'),
           q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
           q('v_project_indicators', 'project_id, id'),
           q('v_indicator_progress', 'id, project_id, indicator_id, achievement_pct, performance_status, review_status, reporting_period, date_reported, created_at, updated_at'),
@@ -282,6 +283,7 @@ export default function Overview({ user }) {
   // Reduced per project under the shared double-counting rule, so this KPI
   // agrees with the per-project figure on Project Analysis.
   const totalBeneficiaries = portfolioBeneficiaries(beneficiaries);
+  const beneficiaryState = beneficiaryPublicationState(beneficiaries, reporting);
   const hasField = (field) => beneficiaries.some((b) => b[field] != null);
   const fieldSum = (field) => hasField(field)
     ? beneficiaries.reduce((a, b) => a + (b[field] != null ? Number(b[field]) : 0), 0)
@@ -320,13 +322,13 @@ export default function Overview({ user }) {
   const assuranceSignals = [
     { key: 'locations', value: projects.filter((project) => !project.areaCouncils.length).length,
       label: frenchAssurance ? 'Projets sans conseil de zone' : 'Projects without an Area Council',
-      source: frenchAssurance ? 'Couverture géographique' : 'Area Council coverage', to: '/analytics/portfolio' },
+      source: frenchAssurance ? 'Couverture géographique' : 'Area Council coverage', to: '/project-setup' },
     { key: 'progress', value: indicators.filter((indicator) => !latestProgress.has(indicator.id)).length,
       label: frenchAssurance ? 'Indicateurs sans progrès enregistré' : 'Indicators without recorded progress',
       source: frenchAssurance ? 'Suivi des indicateurs' : 'Indicator progress records', to: '/analytics/results' },
     { key: 'finance', value: projects.filter((project) => !latestFinance.has(project.id)).length,
       label: frenchAssurance ? 'Projets sans suivi financier' : 'Projects without a financial record',
-      source: frenchAssurance ? 'Suivi financier' : 'Financial progress records', to: '/reports' },
+      source: frenchAssurance ? 'Saisir les dépenses vérifiées' : 'Enter verified expenditure', to: '/merl-reporting?module=financial_progress' },
     { key: 'reporting', value: projects.filter((project) => !reporting.some((row) => row.project_id === project.id)).length,
       label: frenchAssurance ? 'Projets sans période de rapport' : 'Projects without a reporting period',
       source: frenchAssurance ? 'Périodes de rapport' : 'Reporting period records', to: '/analytics/reporting' },
@@ -377,7 +379,7 @@ export default function Overview({ user }) {
       <section className="ovx-heading rp-noprint">
         <div>
           <h1>{t('overview.title')}</h1>
-          <p>{unfinishedProjects.length} projects with results frameworks. Filters apply to this portfolio.</p>
+          <p>{lang?.startsWith('fr') ? `${unfinishedProjects.length} projets avec un cadre de résultats, y compris les projets achevés. Les filtres portent sur ce périmètre.` : `${unfinishedProjects.length} projects with results frameworks, including completed projects. Filters apply to this scope.`}</p>
           <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
           {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
         </div>
@@ -444,7 +446,7 @@ export default function Overview({ user }) {
           icon={BeneficiariesCardIcon}
           label="Beneficiaries Reached"
           value={totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries)}
-          sub={genderSummary || 'Latest approved beneficiary records'}
+          sub={[genderSummary, beneficiaryState.periods.join(' · '), beneficiaryState.unpublished ? (lang?.startsWith('fr') ? 'Inclut des rapports non approuvés ; exclus du total public.' : 'Includes unapproved reports; excluded from the public total.') : null, beneficiaryState.unchecked ? (lang?.startsWith('fr') ? 'Vérification des doubles comptes requise.' : 'Double-counting verification required.') : null].filter(Boolean).join(' · ') || (lang?.startsWith('fr') ? 'Aucun bénéficiaire enregistré' : 'No beneficiary records')}
           linkLabel="View project analysis"
           onClick={() => nav('/analytics/project')}
         />
@@ -490,8 +492,8 @@ export default function Overview({ user }) {
             <span className="ovx-assurance-eyebrow">{frenchAssurance ? 'ASSURANCE DU PORTEFEUILLE' : 'PORTFOLIO ASSURANCE'}</span>
             <h2 id="ovx-assurance-title">{frenchAssurance ? 'Couverture des données à vérifier' : 'Data coverage to verify'}</h2>
             <p>{frenchAssurance
-              ? 'Décompte transparent des enregistrements absents dans le périmètre filtré — ce ne sont pas des résultats générés par IA.'
-              : 'Transparent counts of missing records in the filtered scope—not AI-generated findings.'}</p>
+              ? 'Complétez ces enregistrements à partir de sources vérifiées. Les comptes suivent les filtres sélectionnés.'
+              : 'Complete these records using verified sources. Counts follow the selected filters.'}</p>
           </div>
           <span className={`ovx-assurance-total${assuranceTotal ? ' has-gaps' : ''}`}>
             {fmtNum(assuranceTotal)} {frenchAssurance ? 'éléments à vérifier' : 'records to verify'}

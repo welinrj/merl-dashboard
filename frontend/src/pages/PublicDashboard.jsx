@@ -21,6 +21,7 @@ import { IndicatorProgressCard } from '../components/ui/indicator-progress-card'
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
+import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { aggregateIndicatorCategories, projectThemes, thematicAreaCategory } from '../lib/publicPortfolioCategories';
 import './public-dashboard.css';
@@ -44,7 +45,7 @@ const COPY = {
     title: 'Public Overview', subtitle: 'Department of Climate Change project portfolio', overview: 'Public Overview',
     search: 'Search projects…', status: 'Status', theme: 'Theme', province: 'Province', all: 'All', reset: 'Reset', filters: 'Filters',
     refresh: 'Refresh', refreshing: 'Checking for updates…', projects: 'DoCC Projects', projectCount: 'Projects under the Department of Climate Change',
-    funding: 'Total Project Funding', fundingSub: 'All recorded project budgets converted to VUV using Reserve Bank of Vanuatu rates dated 25 Sep 2026', utilised: 'Funds Utilised', utilisedSub: 'Latest approved cumulative expenditure',
+    funding: 'Recorded Project Funding', fundingSub: 'All recorded project budgets converted to VUV using Reserve Bank of Vanuatu rates dated 25 Sep 2026', utilised: 'Funds Utilised', utilisedSub: 'Latest approved cumulative expenditure',
     beneficiaries: 'Total Beneficiaries', beneficiariesSub: 'Direct beneficiaries from approved reports', utilisation: 'Financial Utilisation',
     utilisationSub: 'Approved expenditure as a share of total funding', portfolio: 'Project portfolio', portfolioIntro: 'Projects coordinated by the Department of Climate Change and the information currently recorded for public view.',
     locations: 'Where projects are implementing activities', locationsIntro: 'Recorded provinces and Area Councils for projects in the selected view.',
@@ -54,7 +55,7 @@ const COPY = {
     activityCategoryLabels: {ecosystems:'Ecosystems & nature-based solutions',livelihoods:'Livelihoods, food & agriculture','climate-risk':'Climate information & disaster risk',infrastructure:'Infrastructure & technology',governance:'Governance, policy & planning',capacity:'Capacity, awareness & inclusion',finance:'Climate finance & fund systems','learning-delivery':'Learning, monitoring & project delivery',beneficiaries:'Beneficiaries & resilience outcomes',other:'Other recorded outcomes'},
     manager: 'Project Manager', implementation: 'Implementation locations', budget: 'Project funding', spent: 'Utilised',
     reached: 'Beneficiaries', outcome: 'Expected outcome', noDescription: 'Project information has not yet been recorded.', unknown: 'Not recorded',
-    noFinance: 'Not yet reported', noProjects: 'No projects match these filters.', noLocations: 'No implementation location is recorded for this selection.',
+    noFinance: 'Not yet reported', noProjects: 'No projects match these filters.', noLocations: 'No Area Council assignments are recorded for this selection. Province coverage may still be recorded.',
     areaCouncils: 'Area Councils', clearArea: 'Clear area selection', selectedArea: 'Showing projects recorded in', pauseAreaScroll: 'Pause', resumeAreaScroll: 'Resume',
     publicOnly: 'Public overview', source: 'Project profiles and implementation locations come from the DoCC MERL project register. Beneficiary and expenditure figures are shown only from approved reporting periods.',
     updated: 'Data refreshed', ongoing: 'Ongoing', completed: 'Completed', upcoming: 'Upcoming', other: 'Other',
@@ -65,7 +66,7 @@ const COPY = {
     title: 'Vue publique', subtitle: 'Portefeuille de projets du Département du changement climatique', overview: 'Vue publique',
     search: 'Rechercher des projets…', status: 'État', theme: 'Thème', province: 'Province', all: 'Tous', reset: 'Réinitialiser', filters: 'Filtres',
     refresh: 'Actualiser', refreshing: 'Recherche de mises à jour…', projects: 'Projets du DoCC', projectCount: 'Projets relevant du Département du changement climatique',
-    funding: 'Financement total des projets', fundingSub: 'Tous les budgets enregistrés sont convertis en VUV selon les taux de la Banque de Réserve du Vanuatu du 25 sept. 2026', utilised: 'Fonds utilisés', utilisedSub: 'Dernières dépenses cumulées approuvées',
+    funding: 'Financement enregistré des projets', fundingSub: 'Tous les budgets enregistrés sont convertis en VUV selon les taux de la Banque de Réserve du Vanuatu du 25 sept. 2026', utilised: 'Fonds utilisés', utilisedSub: 'Dernières dépenses cumulées approuvées',
     beneficiaries: 'Total des bénéficiaires', beneficiariesSub: 'Bénéficiaires directs issus des rapports approuvés', utilisation: 'Utilisation financière',
     utilisationSub: 'Dépenses approuvées en proportion du financement total', portfolio: 'Portefeuille de projets', portfolioIntro: 'Projets coordonnés par le Département du changement climatique et informations actuellement enregistrées pour le public.',
     locations: 'Où les projets mettent en œuvre des activités', locationsIntro: 'Provinces et conseils de zone enregistrés pour les projets sélectionnés.',
@@ -75,7 +76,7 @@ const COPY = {
     activityCategoryLabels: {ecosystems:'Écosystèmes et solutions fondées sur la nature',livelihoods:'Moyens de subsistance, alimentation et agriculture','climate-risk':'Information climatique et risques de catastrophe',infrastructure:'Infrastructures et technologie',governance:'Gouvernance, politiques et planification',capacity:'Capacités, sensibilisation et inclusion',finance:'Finance climatique et systèmes de fonds','learning-delivery':'Apprentissage, suivi et mise en œuvre',beneficiaries:'Bénéficiaires et résultats de résilience',other:'Autres résultats enregistrés'},
     manager: 'Chef de projet', implementation: 'Lieux de mise en œuvre', budget: 'Financement du projet', spent: 'Utilisé',
     reached: 'Bénéficiaires', outcome: 'Résultat attendu', noDescription: 'Les informations du projet ne sont pas encore enregistrées.', unknown: 'Non renseigné',
-    noFinance: 'Pas encore déclaré', noProjects: 'Aucun projet ne correspond à ces filtres.', noLocations: 'Aucun lieu de mise en œuvre n’est enregistré pour cette sélection.',
+    noFinance: 'Pas encore déclaré', noProjects: 'Aucun projet ne correspond à ces filtres.', noLocations: 'Aucune affectation à un conseil de zone n’est enregistrée pour cette sélection. Des provinces peuvent être renseignées.',
     areaCouncils: 'Conseils de zone', clearArea: 'Effacer la sélection de zone', selectedArea: 'Projets enregistrés à', pauseAreaScroll: 'Suspendre', resumeAreaScroll: 'Reprendre',
     publicOnly: 'Vue publique', source: 'Les profils des projets et les lieux de mise en œuvre proviennent du registre MERL du DoCC. Les bénéficiaires et les dépenses proviennent uniquement des périodes de rapportage approuvées.',
     updated: 'Données actualisées', ongoing: 'En cours', completed: 'Achevé', upcoming: 'À venir', other: 'Autre',
@@ -111,31 +112,18 @@ const money = (value, currency, lang, fallback = '—') => {
 };
 const recordedMoney = (value, currency, lang, fallback = '—') => {
   const converted = toVuv(value, currency);
-  return positive(converted) ? money(converted, 'VUV', lang, fallback) : fallback;
+  return converted != null && Number.isFinite(Number(converted)) && Number(converted) >= 0 ? money(converted, 'VUV', lang, fallback) : fallback;
 };
 const moneyTotals = (projects, field, lang, fallback = '—') => {
   let hasValue = false;
   let totalVuv = 0;
   for (const project of projects) {
     const converted = toVuv(project?.[field], project?.currency);
-    if (!positive(converted)) continue;
+    if (converted == null || !Number.isFinite(Number(converted)) || Number(converted) < 0) continue;
     hasValue = true;
     totalVuv += converted;
   }
   return hasValue ? money(totalVuv, 'VUV', lang) : fallback;
-};
-const comparableFinancialUtilisation = projects => {
-  let investment = 0;
-  let utilised = 0;
-  let hasInvestment = false;
-  let hasUtilised = false;
-  for (const project of projects) {
-    const budgetVuv = toVuv(project.budget_vuv, project.currency);
-    const utilisedVuv = toVuv(project.cumulative_expenditure_vuv, project.currency);
-    if (positive(budgetVuv)) { investment += budgetVuv; hasInvestment = true; }
-    if (positive(utilisedVuv)) { utilised += utilisedVuv; hasUtilised = true; }
-  }
-  return hasInvestment && hasUtilised && investment > 0 ? Math.round(utilised / investment * 1000) / 10 : null;
 };
 const list = value => Array.isArray(value) ? value : [];
 const themesOf = projectThemes;
@@ -167,7 +155,7 @@ function ProjectCard({ project, areas, copy, lang }) {
       <div><dt>{copy.budget}</dt><dd>{recordedMoney(project.budget_vuv, project.currency, lang, copy.unknown)}</dd></div>
       <div><dt>{copy.spent}</dt><dd>{recordedMoney(project.cumulative_expenditure_vuv, project.currency, lang, copy.noFinance)}{finite(project.utilisation_pct) ? ` · ${pct(project.utilisation_pct)}` : ''}</dd></div>
       <div><dt>{copy.reached}</dt><dd>{project.published_beneficiaries != null ? num(project.published_beneficiaries, lang) : copy.noFinance}</dd></div>
-      <div><dt>{copy.theme}</dt><dd>{ThemeIcon && <ThemeIcon size={16} style={{ marginRight: 4 }} />}{themeOf(project) || copy.unknown}</dd></div>
+      <div><dt>{copy.theme}</dt><dd>{ThemeIcon && <ThemeIcon size={16} style={{ marginRight: 4 }} />}{themesOf(project).map(theme => lang === 'fr' ? ({'Loss and Damage':'Pertes et préjudices',Mitigation:'Atténuation'}[theme] || theme) : theme).join(', ') || copy.unknown}</dd></div>
     </dl>
     {project.expected_primary_outcome && <div className="pbd-project-outcome"><strong>{copy.outcome}</strong><p>{project.expected_primary_outcome}</p></div>}
   </FeatureCardGradient>;
@@ -279,16 +267,17 @@ export default function PublicDashboard() {
           <label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={event => setFilters(value => ({ ...value, search: event.target.value }))} placeholder={c.search} /></label>
           <button type="button" className="pbd-filter-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}>{c.filters}{!allScope && <span aria-label="active"> •</span>}</button>
           <label><span>{c.status}</span><select value={filters.status} onChange={event => setFilters(value => ({ ...value, status: event.target.value }))}><option value="">{c.all}</option>{['ongoing', 'upcoming', 'completed', 'other'].map(key => <option key={key} value={key}>{c[key]}</option>)}</select></label>
-          <label><span>{c.theme}</span><select value={filters.theme} onChange={event => setFilters(value => ({ ...value, theme: event.target.value }))}><option value="">{c.all}</option>{themes.map(theme => <option key={theme}>{theme}</option>)}</select></label>
+          <label><span>{c.theme}</span><select value={filters.theme} onChange={event => setFilters(value => ({ ...value, theme: event.target.value }))}><option value="">{c.all}</option>{themes.map(theme => <option key={theme} value={theme}>{lang === 'fr' ? ({'Loss and Damage':'Pertes et préjudices',Mitigation:'Atténuation'}[theme] || theme) : theme}</option>)}</select></label>
           <label><span>{c.province}</span><select value={filters.province} onChange={event => setFilters(value => ({ ...value, province: event.target.value }))}><option value="">{c.all}</option>{PROVINCES.map(province => <option key={province}>{province}</option>)}</select></label>
           <button type="button" className="pbd-reset" disabled={allScope} onClick={reset}>{c.reset}</button><button type="button" className="pbd-refresh" disabled={isFetching} onClick={refresh}>{c.refresh}</button>
         </div>
         {isFetching && data && <div className="pbd-refresh-status" role="status">{c.refreshing}</div>}
         {isError && data && <div className="pbd-refresh-status pbd-refresh-error" role="alert">{c.stale}<button type="button" onClick={refresh}>{c.retry}</button></div>}
         {!data ? (isLoading ? <div className="pbd-state" role="status"><IslandLoading />{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
+          {lang === 'fr' && <p className="pbd-refresh-status">Les intitulés et descriptions des projets et indicateurs sont affichés dans leur langue source lorsqu’une traduction validée n’est pas disponible.</p>}
           <section className="pbd-metrics" aria-label={c.title}>
             <Metric label={c.projects} value={num(filtered.length, lang)} detail={c.projectCount} tone="projects" />
-            <Metric label={c.funding} value={fundingTotal} detail={c.fundingSub} tone="funding" />
+            <Metric label={c.funding} value={fundingTotal} detail={`${fundingCoverage(filtered).known} / ${filtered.length} ${lang === 'fr' ? 'projets avec un financement renseigné. ' : 'projects with recorded funding. '}${c.fundingSub}`} tone="funding" />
             <Metric label={c.utilised} value={utilisedTotal} detail={c.utilisedSub} tone="utilised" />
             <Metric label={c.beneficiaries} value={totals.beneficiaries == null ? c.noFinance : num(totals.beneficiaries, lang)} detail={c.beneficiariesSub} tone="beneficiaries" />
             <Metric label={c.utilisation} value={pct(comparableUtilisation)} detail={c.utilisationSub} tone="rate" />
