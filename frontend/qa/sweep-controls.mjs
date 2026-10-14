@@ -21,6 +21,8 @@ const ROUTES = [
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
 await ctx.addInitScript(([ref, tok, exp]) => {
+  // Each document starts from the same disposable fixture state.
+  localStorage.clear(); sessionStorage.clear();
   localStorage.setItem('merl.lang', 'en');
   localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify({
     access_token: tok, token_type: 'bearer', expires_in: 99999, expires_at: exp, refresh_token: 'r',
@@ -72,12 +74,24 @@ page.on('dialog', (d) => d.dismiss().catch(() => {}));
 // A control is worth clicking if a user can see and press it.
 const SELECTOR = 'button:visible:not([disabled]), a[href]:visible, [role=tab]:visible, [role=option]:visible';
 
+async function openRoute(route, expectedCount) {
+  await page.goto(`http://localhost:5199/#${route}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  // Hash-only navigation does not run init scripts or clear React state. Reload explicitly.
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('.dsh-scroll').waitFor();
+  if (expectedCount == null) { await page.waitForTimeout(1500); return; }
+  for (let retry=0; retry<60; retry++) {
+    if (await page.locator(SELECTOR).count() === expectedCount) return;
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`Fixture did not restore ${expectedCount} controls on ${route}; got ${await page.locator(SELECTOR).count()}`);
+}
+
 const findings = [];
 let clicked = 0, attempted = 0, routesOk = 0;
 
 for (const route of ROUTES) {
-  await page.goto(`http://localhost:5199/#${route}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await page.waitForTimeout(2200);
+  await openRoute(route);
   errs = [];
 
   const n = await page.locator(SELECTOR).count();
@@ -91,9 +105,7 @@ for (const route of ROUTES) {
   for (let i = 0; i < n; i += 1) {
     // Each action starts from the same route: earlier clicks must not shift the target index.
     if (i > 0) {
-      await page.goto(`http://localhost:5199/#${route}`, { waitUntil: 'domcontentloaded' });
-      await page.locator('.dsh-scroll').waitFor();
-      await page.waitForTimeout(350);
+      await openRoute(route, n);
     }
     errs = [];
     const before = page.url();
@@ -110,7 +122,6 @@ for (const route of ROUTES) {
 
     // Did the app survive?
     const alive = await page.evaluate(() => document.body.innerText.trim().length > 50).catch(() => false);
-    const navigated = page.url() !== before;
 
     if (errs.length) findings.push(`${route} :: "${label}" -> ${errs[0]}`);
     if (!alive) findings.push(`${route} :: "${label}" -> BLANK PAGE after click`);
@@ -118,10 +129,6 @@ for (const route of ROUTES) {
     // Close anything modal the click opened, and get back to a known state.
     await page.keyboard.press('Escape').catch(() => {});
     await page.waitForTimeout(120);
-    if (navigated || !alive) {
-      await page.goto(`http://localhost:5199/#${route}`, { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(1400);
-    }
   }
   routesOk += 1;
   console.log(`  ${route.padEnd(42)} ${n} controls inspected`);
