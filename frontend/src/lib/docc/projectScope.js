@@ -5,8 +5,8 @@ export const isCompletedProject = project => ['completed', 'closed'].includes(St
 export const hasResultsFramework = project => project.has_results_framework === true;
 // Dashboard scope follows available framework records, including completed projects.
 export const currentProjects = projects => officialProjects(projects).filter(hasResultsFramework);
-export function officialPortfolioData(data, includeCompleted = false) {
-  const projects = includeCompleted ? officialProjects(data.projects || []) : currentProjects(data.projects || []);
+export function officialPortfolioData(data) {
+  const projects = currentProjects(data.projects || []);
   const ids = new Set(projects.map(project => String(project.id)));
   return Object.fromEntries(Object.entries({ ...data, projects }).map(([key, value]) => [key,
     key === 'projects' || !Array.isArray(value) ? value : value.filter(row => row.project_id == null || ids.has(String(row.project_id))),

@@ -22,3 +22,12 @@ test('period choices use only projects visible in the account framework scope', 
   assert.deepEqual(visiblePeriodOptions([], rows), []);
   assert.notEqual(workspacePeriodKey('manager'), workspacePeriodKey('admin'));
 });
+
+import { resolveReportingPeriod } from '../src/lib/docc/workspacePeriod.js';
+test('reporting deep links preserve missing periods rather than switching context', () => {
+  const periods = [{period_label:'Q2 2026'}];
+  assert.equal(resolveReportingPeriod('Q1 2026','',periods),'Q1 2026');
+  assert.equal(resolveReportingPeriod(null,'Q1 2026',periods),'Q1 2026');
+  assert.equal(resolveReportingPeriod('', 'Q1 2026',periods),'');
+  assert.equal(resolveReportingPeriod(null,'',periods),'Q2 2026');
+});

@@ -1,3 +1,4 @@
+import ProjectAssignmentManager from '../components/ProjectAssignmentManager';
 // =============================================================================
 // ReviewApproval.jsx — DoCC M&E Officer Review & Approval workspace (spec §19-21).
 // Portfolio-wide queue of reporting-period submissions with Review / Return /
@@ -132,6 +133,8 @@ export default function ReviewApproval({ user }) {
           <AlertTriangle size={16} style={{ flexShrink: 0 }} aria-hidden="true" /> {t('merl.reviewRestricted')}
         </div>
       )}
+
+      {canReview && <ProjectAssignmentManager />}
 
       {/* KPI cards */}
       <div className="grid-kpi" style={{ marginBottom: '1rem' }}>
