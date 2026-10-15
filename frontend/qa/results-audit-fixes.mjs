@@ -102,9 +102,11 @@ try {
  await dialog.getByLabel('Content',{exact:true}).fill('1,000.5');
  await dialog.getByRole('button',{name:'Close',exact:true}).click();
  await page.locator('.rf2-result-card').first().getByRole('button',{name:'Edit Final target: IND-01',exact:true}).click();
+ await page.waitForFunction(() => document.querySelector('.rf2-edit-dialog textarea')?.value === '1,000.5',null,{timeout:5000});
  if(await dialog.getByLabel('Content',{exact:true}).inputValue()!=='1,000.5')throw new Error('Closing lost local draft');
  await page.reload();await page.locator('.rf2-result-card').first().waitFor();
  await page.locator('.rf2-result-card').first().getByRole('button',{name:'Edit Final target: IND-01',exact:true}).click();
+ await page.waitForFunction(() => document.querySelector('.rf2-edit-dialog textarea')?.value === '1,000.5',null,{timeout:5000});
  if(await dialog.getByLabel('Content',{exact:true}).inputValue()!=='1,000.5')throw new Error('Reload lost local draft');
  await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
  if(saves.at(-1).p_changes.targets[0].numeric_value!==1000.5)throw new Error('Formatted target not numeric');
