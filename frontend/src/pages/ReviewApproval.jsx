@@ -6,8 +6,9 @@ import ProjectAssignmentManager from '../components/ProjectAssignmentManager';
 // codes) and drives the SECURITY DEFINER workflow RPCs, which enforce that only
 // the DoCC M&E Officer (or System Admin) may act.
 // =============================================================================
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, RotateCcw, Eye, Unlock, AlertTriangle, X, FileText } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
@@ -50,6 +51,13 @@ export default function ReviewApproval({ user }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('queue'); // queue | all | approved
   const [busy, setBusy] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const closeDetail = () => {
+    setDetail(null);
+    const next = new URLSearchParams(searchParams);
+    ['project','period','submission'].forEach(key => next.delete(key));
+    setSearchParams(next, {replace:true});
+  };
   const [detail, setDetail] = useState(null); // reporting-period row open in the review drawer
 
   const load = useCallback(async () => {
@@ -65,6 +73,15 @@ export default function ReviewApproval({ user }) {
     setLoading(false);
   }, [lang]);
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (loading || !canReview) return;
+    const project = searchParams.get('project'), period = searchParams.get('period'), id = searchParams.get('submission');
+    if (!project || !period) return;
+    const target = rows.find(row => row.project_id === project && row.period_label === period
+      && (!id || row.id === id) && ['submitted','reviewed'].includes(row.submission_status));
+    if (target) setDetail(target);
+  }, [loading, rows, canReview, searchParams]);
 
   const kpi = useMemo(() => {
     const k = { submitted: 0, reviewed: 0, returned: 0, approved: 0, overdue: 0, reopened: 0 };
@@ -95,7 +112,7 @@ export default function ReviewApproval({ user }) {
     setBusy(null);
     if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success(okMsg);
-    setDetail(null);
+    closeDetail();
     load();
   };
 
@@ -241,7 +258,7 @@ export default function ReviewApproval({ user }) {
           project={projById[detail.project_id]}
           canReview={canReview}
           busy={busy === detail.id}
-          onClose={() => setDetail(null)}
+          onClose={closeDetail}
           onReview={() => doReview(detail)}
           onReturn={() => doReturn(detail)}
           onApprove={() => doApprove(detail)}
@@ -258,6 +275,17 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const [data, setData] = useState(null);
+  const dialog = useRef(null);
+  useEffect(() => {
+    const previous = document.activeElement, overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialog.current.showModal();
+    return () => {
+      dialog.current?.close();
+      document.body.style.overflow = overflow;
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -274,8 +302,8 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
   const status = row.submission_status;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t('merl.periodDetail')}
-      style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
+    <dialog ref={dialog} aria-label={t('merl.periodDetail')} onCancel={event => { event.preventDefault(); onClose(); }}
+      style={{ position:'fixed', inset:0, zIndex:60, display:'flex', justifyContent:'flex-end', width:'100%', maxWidth:'none', height:'100%', maxHeight:'none', margin:0, padding:0, border:0, background:'transparent', color:'var(--text-1)' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.4)' }} />
       <div style={{ position: 'relative', width: 'min(560px, 100%)', maxWidth: '100%', height: '100%', background: 'var(--surface-1, var(--white))',
         boxShadow: '-8px 0 24px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}>
@@ -289,7 +317,7 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
               <StatusBadge status={status} />
             </div>
           </div>
-          <button onClick={onClose} aria-label={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4, flexShrink: 0 }}>
+          <button onClick={onClose} aria-label={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4, minWidth:44, minHeight:44, flexShrink: 0 }}>
             <X size={20} />
           </button>
         </div>
@@ -354,7 +382,7 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
           </div>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }
 

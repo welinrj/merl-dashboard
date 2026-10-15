@@ -48,6 +48,10 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate personal tasks and guided reporting
+        working-directory: frontend
+        run: node qa/my-tasks-checklist.mjs
+
       - name: Validate role workflow remediations
         working-directory: frontend
         run: node qa/role-workflow-regressions.mjs

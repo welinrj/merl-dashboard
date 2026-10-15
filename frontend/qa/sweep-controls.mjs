@@ -30,6 +30,12 @@ await ctx.addInitScript(([ref, tok, exp]) => {
   }));
 }, [REF, jwt, now + 99999]);
 
+// The control sweep tests navigation, not the external tile provider. Keep its
+// imagery deterministic so leaving a map cannot create cancelled-network noise.
+await ctx.route('https://*.tile.openstreetmap.org/**', route => route.fulfill({
+  status:200, contentType:'image/png', body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGN49+X7fwAJhgPZDkVesQAAAABJRU5ErkJggg==','base64'),
+}));
+
 const netFail = [];
 await ctx.route(`${HOST}/**`, async (r) => {
   const u = new URL(r.request().url()), p = u.pathname;
