@@ -5,6 +5,47 @@ const resources = {
   // ── English ──────────────────────────────────────────────────────────────
   en: {
     translation: {
+"figure":{"explain": "Explain", "explainMetric": "Explain: {{metric}}", "value": "Displayed value", "current": "Current project register", "calculation": "How this figure is calculated", "sources": "Source records", "sourceCount": "Source records in this selection: {{count}}", "missing": "Missing inputs: {{count}}. Missing values are not recorded zeroes.", "noSources": "No source records are available for this selection.", "approval": "Reporting-period approval", "review": "Result review", "openSource": "View source", "currency": "Amounts use the dashboard’s fixed conversion rates dated 25 September 2026. Unknown currencies are excluded, rather than treated as VUV.", "budgetTerms": "Recorded expenditure: {{spent}} VUV. Recorded project budgets: {{budget}} VUV. Incomplete coverage can make this a partial portfolio figure.", "metrics": {"projects": "Projects in Portfolio", "progress": "Overall Progress", "budget": "Budget Utilisation", "beneficiaries": "Beneficiaries Reached", "attention": "Needs Attention", "reporting": "Reporting Completion"}, "formulas": {"projects": "Count of accessible, non-audit projects with a results framework that match the dashboard filters. This is the current project register, including completed framework projects; selecting a reporting period does not remove projects.", "progress": "Use the latest eligible result per indicator in the selected period, or across all periods when none is selected. Only reported achievement percentages with a valid number contribute. Cap each contribution at 100%, average indicators within each project, then average those project scores with equal project weights. Missing results do not become zero. Draft and returned results are excluded.", "budget": "Recorded expenditure divided by recorded project budgets, multiplied by 100 and rounded to a whole percentage. Use the latest financial record per project in the selected period and convert both amounts to VUV. Missing financial updates or unknown currencies mean coverage is incomplete.", "beneficiaries": "Reduce direct-beneficiary records separately for each project: add records when every record confirms a double-counting check, or when there is only one record; otherwise use the largest reported total. Then add the project totals. This is reported reach, not proof of unique people across projects. Demographic categories can overlap and must not be added together.", "attention": "Add the number of at-risk projects to the number of delayed projects. Each flag counts a project once, but a project with both flags counts twice. A selected period uses its reported result flags; All periods uses the current portfolio status view.", "reporting": "Approved reporting-period records divided by all configured reporting-period records in the selected scope, multiplied by 100 and rounded to a whole percentage. Draft, returned and pending periods remain in the denominator. No configured period is missing information, not 0% completion."}, "status": {"approved": "Approved", "draft": "Draft", "submitted": "Submitted", "under_review": "Under review", "resubmitted": "Resubmitted", "returned": "Returned", "published": "Published", "locked": "Locked", "reviewed": "Reviewed", "unknown": "Not recorded"}},"readiness":{
+  "title": "Report readiness check",
+  "empty": "Select an accessible project before downloading.",
+  "attention": "{{count}} checks need attention",
+  "passed": "No gaps found by the automated checks",
+  "scope": "Projects: {{projects}} · Approved reporting periods: {{approved}} / {{periods}}",
+  "basis": "These checks inspect records in the selected report scope. They do not approve a report or verify the underlying evidence. Reports with gaps remain available as working information.",
+  "review": "Review issues and next steps",
+  "open": "Open relevant records",
+  "issues": {
+    "noProjects": "There are no accessible projects in this report selection.",
+    "noPeriod": "No matching reporting period is configured.",
+    "pendingApproval": "{{count}} reporting-period records are awaiting approval.",
+    "missingFinance": "No financial record with reported expenditure matches this scope.",
+    "missingBudget": "The approved budget is missing or unconfirmed.",
+    "noIndicators": "No indicators are configured for this project.",
+    "missingResults": "{{count}} indicators have no eligible actual result in this scope.",
+    "unverifiedEvidence": "{{count}} reported indicators have no verified evidence linked for their reporting period.",
+    "unreviewedResults": "{{count}} eligible indicator results have no recorded approval.",
+    "missingBeneficiaries": "No direct-beneficiary total is reported in this scope.",
+    "beneficiaryChecks": "{{count}} beneficiary records have no confirmed double-counting check.",
+    "beneficiaryMismatch": "{{count}} beneficiary records have gender counts exceeding the reported direct total.",
+    "missingLocations": "No province or Area Council coverage is recorded for this project.",
+    "pendingApproval_one": "1 reporting-period record is awaiting approval.",
+    "pendingApproval_other": "{{count}} reporting-period records are awaiting approval.",
+    "missingResults_one": "1 indicator has no eligible actual result in this scope.",
+    "missingResults_other": "{{count}} indicators have no eligible actual result in this scope.",
+    "unverifiedEvidence_one": "1 reported indicator has no verified evidence linked for its reporting period.",
+    "unverifiedEvidence_other": "{{count}} reported indicators have no verified evidence linked for their reporting period.",
+    "unreviewedResults_one": "1 eligible indicator result has no recorded approval.",
+    "unreviewedResults_other": "{{count}} eligible indicator results have no recorded approval.",
+    "beneficiaryChecks_one": "1 beneficiary record has no confirmed double-counting check.",
+    "beneficiaryChecks_other": "{{count}} beneficiary records have no confirmed double-counting check.",
+    "beneficiaryMismatch_one": "1 beneficiary record has gender counts exceeding the reported direct total.",
+    "beneficiaryMismatch_other": "{{count}} beneficiary records have gender counts exceeding the reported direct total."
+  },
+  "exportTitle": "Reporting qualifications",
+  "exportBasis": "Read the figures alongside these limitations for the selected projects and reporting period. Approval status is stated separately.",
+  "attention_one": "1 check needs attention",
+  "attention_other": "{{count}} checks need attention"
+},
       workspace: { context: 'Account and reporting context', checking: 'Checking project access…', accessError: 'Project access could not be checked. Refresh to retry.', projectCount_one: '{{count}} project with a results framework available', projectCount_other: '{{count}} projects with results frameworks available', noAccess: 'No projects with results frameworks are available to this account. If you expected access, ask an administrator to check your assignments.', period: 'Reporting period', allPeriods: 'All periods', allFrequencies: 'All frequencies', noPeriodResults: 'No results reported for this period', periodBasis: 'This selection carries across Overview, Results, Project portfolio and Reports. Reported results, finance, beneficiaries and approvals use the selected period; project details, plans and risks show current records.' },
       // Project Portfolio Analysis — one project, analysed end to end.
       ppa: {
@@ -2173,6 +2214,47 @@ const resources = {
   // a small shared subset are provided here; anything missing falls back to EN.
   fr: {
     translation: {
+"figure":{"explain": "Expliquer", "explainMetric": "Expliquer : {{metric}}", "value": "Valeur affichée", "current": "Registre actuel des projets", "calculation": "Méthode de calcul", "sources": "Données sources", "sourceCount": "Enregistrements dans cette sélection : {{count}}", "missing": "Données manquantes : {{count}}. Une valeur manquante ne représente pas un zéro déclaré.", "noSources": "Aucune donnée source pour cette sélection.", "approval": "Approbation de la période", "review": "Examen du résultat", "openSource": "Voir la source", "currency": "Les montants utilisent les taux fixes du tableau de bord datés du 25 septembre 2026. Les devises inconnues sont exclues et ne sont pas assimilées au VUV.", "budgetTerms": "Dépenses déclarées : {{spent}} VUV. Budgets de projet enregistrés : {{budget}} VUV. Une couverture incomplète peut produire un total partiel.", "metrics": {"projects": "Projets du portefeuille", "progress": "Avancement global", "budget": "Utilisation du budget", "beneficiaries": "Bénéficiaires atteints", "attention": "Points à surveiller", "reporting": "Achèvement des rapports"}, "formulas": {"projects": "Nombre de projets accessibles, hors audit, disposant d’un cadre de résultats et correspondant aux filtres. Le registre actuel comprend les projets terminés avec un cadre de résultats ; le choix d’une période ne supprime pas les projets.", "progress": "Prendre le dernier résultat admissible de chaque indicateur pour la période choisie, ou toutes les périodes si aucune n’est choisie. Seuls les pourcentages déclarés valides contribuent au calcul. Plafonner chaque contribution à 100 %, calculer la moyenne par projet, puis la moyenne des projets avec un poids égal. Les données manquantes ne deviennent pas des zéros. Les brouillons et résultats retournés sont exclus.", "budget": "Dépenses déclarées divisées par les budgets de projet enregistrés, multipliées par 100 et arrondies à un pourcentage entier. Utiliser le dernier enregistrement financier par projet pour la période choisie et convertir les montants en VUV. Des mises à jour manquantes ou devises inconnues rendent la couverture incomplète.", "beneficiaries": "Traiter les bénéficiaires directs séparément pour chaque projet : additionner les enregistrements si chacun confirme un contrôle de double comptage, ou s’il n’en existe qu’un ; sinon retenir le plus grand total déclaré. Additionner ensuite les totaux des projets. Il s’agit de bénéficiaires déclarés, sans preuve d’unicité entre projets. Les catégories démographiques peuvent se chevaucher et ne doivent pas être additionnées.", "attention": "Additionner le nombre de projets à risque et de projets en retard. Chaque indicateur compte un projet une fois, mais un projet présentant les deux est compté deux fois. Une période choisie utilise les indicateurs des résultats déclarés ; Toutes les périodes utilise la situation actuelle du portefeuille.", "reporting": "Nombre de périodes approuvées divisé par le nombre de périodes configurées dans la sélection, multiplié par 100 et arrondi à un pourcentage entier. Les brouillons, périodes retournées et en attente restent au dénominateur. L’absence de période configurée signifie une donnée manquante, pas un achèvement de 0 %."}, "status": {"approved": "Approuvé", "draft": "Brouillon", "submitted": "Soumis", "under_review": "En cours d’examen", "resubmitted": "Soumis à nouveau", "returned": "Retourné", "published": "Publié", "locked": "Verrouillé", "reviewed": "Examiné", "unknown": "Non renseigné"}},"readiness":{
+  "title": "Vérification du rapport",
+  "empty": "Sélectionnez un projet accessible avant le téléchargement.",
+  "attention": "{{count}} vérifications nécessitent votre attention",
+  "passed": "Aucune lacune détectée par les vérifications automatiques",
+  "scope": "Projets : {{projects}} · Périodes approuvées : {{approved}} / {{periods}}",
+  "basis": "Ces vérifications examinent les données de la sélection. Elles n’approuvent pas le rapport et ne vérifient pas les preuves sous-jacentes. Les rapports incomplets restent disponibles comme documents de travail.",
+  "review": "Examiner les problèmes et les étapes suivantes",
+  "open": "Ouvrir les données concernées",
+  "issues": {
+    "noProjects": "Aucun projet accessible dans cette sélection.",
+    "noPeriod": "Aucune période correspondante n’est configurée.",
+    "pendingApproval": "{{count}} périodes attendent une approbation.",
+    "missingFinance": "Aucun enregistrement financier avec des dépenses déclarées ne correspond à la sélection.",
+    "missingBudget": "Le budget approuvé est manquant ou non confirmé.",
+    "noIndicators": "Aucun indicateur n’est configuré pour ce projet.",
+    "missingResults": "{{count}} indicateurs n’ont aucun résultat réel admissible dans la sélection.",
+    "unverifiedEvidence": "{{count}} indicateurs déclarés n’ont aucune preuve vérifiée liée à leur période de rapport.",
+    "unreviewedResults": "{{count}} résultats admissibles n’ont aucune approbation enregistrée.",
+    "missingBeneficiaries": "Aucun total de bénéficiaires directs n’est déclaré dans la sélection.",
+    "beneficiaryChecks": "{{count}} enregistrements de bénéficiaires n’ont aucun contrôle confirmé de double comptage.",
+    "beneficiaryMismatch": "{{count}} enregistrements présentent des effectifs par genre supérieurs au total direct déclaré.",
+    "missingLocations": "Aucune province ni couverture par conseil de zone n’est enregistrée pour ce projet.",
+    "pendingApproval_one": "1 période attend une approbation.",
+    "pendingApproval_other": "{{count}} périodes attendent une approbation.",
+    "missingResults_one": "1 indicateur n’a aucun résultat réel admissible dans la sélection.",
+    "missingResults_other": "{{count}} indicateurs n’ont aucun résultat réel admissible dans la sélection.",
+    "unverifiedEvidence_one": "1 indicateur déclaré n’a aucune preuve vérifiée liée à sa période de rapport.",
+    "unverifiedEvidence_other": "{{count}} indicateurs déclarés n’ont aucune preuve vérifiée liée à leur période de rapport.",
+    "unreviewedResults_one": "1 résultat admissible n’a aucune approbation enregistrée.",
+    "unreviewedResults_other": "{{count}} résultats admissibles n’ont aucune approbation enregistrée.",
+    "beneficiaryChecks_one": "1 enregistrement de bénéficiaires n’a aucun contrôle confirmé de double comptage.",
+    "beneficiaryChecks_other": "{{count}} enregistrements de bénéficiaires n’ont aucun contrôle confirmé de double comptage.",
+    "beneficiaryMismatch_one": "1 enregistrement présente des effectifs par genre supérieurs au total direct déclaré.",
+    "beneficiaryMismatch_other": "{{count}} enregistrements présentent des effectifs par genre supérieurs au total direct déclaré."
+  },
+  "exportTitle": "Réserves relatives au rapport",
+  "exportBasis": "Interprétez les chiffres en tenant compte de ces limites pour les projets et la période sélectionnés. Le statut d’approbation est indiqué séparément.",
+  "attention_one": "1 vérification nécessite votre attention",
+  "attention_other": "{{count}} vérifications nécessitent votre attention"
+},
       workspace: { context: 'Compte et période de rapport', checking: 'Vérification de l’accès aux projets…', accessError: 'Impossible de vérifier l’accès. Actualisez pour réessayer.', projectCount_one: '{{count}} projet avec un cadre de résultats accessible', projectCount_other: '{{count}} projets avec un cadre de résultats accessibles', noAccess: 'Aucun projet avec un cadre de résultats n’est accessible à ce compte. Si vous attendiez un accès, demandez à un administrateur de vérifier vos affectations.', period: 'Période de rapport', allPeriods: 'Toutes les périodes', allFrequencies: 'Toutes les fréquences', noPeriodResults: 'Aucun résultat déclaré pour cette période', periodBasis: 'Cette sélection est conservée dans Vue d’ensemble, Résultats, Portefeuille et Rapports. Les résultats déclarés, finances, bénéficiaires et approbations utilisent la période choisie ; les informations, plans et risques des projets reflètent les données actuelles.' },
       // Project Portfolio Analysis — one project, analysed end to end.
       ppa: {

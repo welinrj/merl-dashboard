@@ -1,3 +1,5 @@
+import ReportReadiness, { ReadinessExportSummary } from '../components/ReportReadiness';
+import { reportReadiness, rowMatchesReportScope } from '../lib/docc/reportReadiness';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { indicatorTargets, resultComparison } from '../lib/docc/resultComparison';
 import { loadReportFonts } from '../lib/reportFonts';
@@ -58,14 +60,7 @@ const humanToken = (value) => value
   ? String(value).replaceAll('_', ' ').replace(/\b\w/g, (m) => m.toUpperCase())
   : '—';
 const periodMatches = (row, period) => !period || row?.reporting_period === period || row?.period_label === period;
-const rowMatchesPeriodScope = (row, reporting, period, periodType) => {
-  if (period) return periodMatches(row, period);
-  if (!periodType) return true;
-  const label = row?.reporting_period ?? row?.period_label;
-  if (!label) return true;
-  return reporting.some((candidate) => candidate.project_id === row?.project_id
-    && candidate.period_label === label && candidate.period_type === periodType);
-};
+const rowMatchesPeriodScope = rowMatchesReportScope;
 const projectBudgetValue = (project, financial) => {
   if (hasValue(financial?.approved_budget)) return financial.approved_budget;
   if (Number(project?.budget_vuv) > 0 || project?.approved_budget_confirmed === true) return project?.budget_vuv;
@@ -132,7 +127,7 @@ const reportBlocks = () => {
   return blocks.filter((block) => block.type === 'pageBreak' || block.rows?.length || block.text);
 };
 
-export default function Reports() {
+export default function Reports({ user }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const liveRevision = useLiveDashboard();
@@ -246,12 +241,14 @@ export default function Reports() {
     }
     return new Set(d.projects.map((project) => project.id));
   })();
+  const readiness = reportReadiness(d, { type, projectIds: reportProjectIds, period, frequency: periodType });
   const approvalScope = d.reporting.filter((row) =>
     periodMatches(row, period)
     && (!periodType || row.period_type === periodType)
     && reportProjectIds.has(row.project_id));
   const approvedCount = approvalScope.filter((row) => row.submission_status === 'approved').length;
-  const approvalComplete = approvalScope.length > 0 && approvedCount === approvalScope.length;
+  const approvalComplete = approvalScope.length > 0 && approvedCount === approvalScope.length
+    && [...reportProjectIds].every(id => approvalScope.some(row => row.project_id === id));
   const approvalBasis = approvalScope.length === 0
     ? 'No matching reporting-period approval record is configured for this report scope. Treat the report as working information, not approved reporting.'
     : approvalComplete
@@ -396,6 +393,7 @@ export default function Reports() {
         />
       </div>
 
+      <ReportReadiness result={readiness} period={period} readOnly={user?.role === 'ROLE_VIEWER'} />
       {/* Controls */}
       <div className="rp-noprint" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ flex: '1 1 220px' }}>
@@ -442,18 +440,18 @@ export default function Reports() {
             {period && !periodOptions.some(row => row.period_label === period) && <option value={period}>{period}</option>}
             {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}</select>
         </div>
-        <button onClick={showPreview} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
+        <button onClick={showPreview} disabled={Boolean(exporting) || readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
           <FileText size={16} /> Preview report
         </button>
         {<>
-          <button onClick={exportWord} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
+          <button onClick={exportWord} disabled={Boolean(exporting) || readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
             <Download size={16} /> {exporting === 'word' ? 'Generating Word…' : 'Download Word'}
           </button>
-          <button onClick={exportPdf} disabled={Boolean(exporting)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: exporting ? 'wait' : 'pointer', color: '#fff', background: 'var(--green-700)' }}>
+          <button onClick={exportPdf} disabled={Boolean(exporting) || readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: exporting ? 'wait' : 'pointer', color: '#fff', background: 'var(--green-700)' }}>
             <Download size={16} /> {exporting === 'pdf' ? 'Generating PDF…' : 'Download PDF'}
           </button>
         </>}
-        {type !== 'full_me' && <button onClick={generate} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
+        {type !== 'full_me' && <button onClick={generate} disabled={readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> {t('rpt.generateReport')}
         </button>}
       </div>
@@ -484,6 +482,7 @@ export default function Reports() {
         {type === 'financial' && <FinancialReport d={d} period={period} periodType={periodType} />}
         {type === 'geographic' && <GeographicReport d={d} province={province} period={period} periodType={periodType} />}
         {type === 'donor' && <DonorReport d={d} donor={donor} period={period} periodType={periodType} />}
+        <ReadinessExportSummary result={readiness} />
       </div>
 
       {/* Report Library (§48-51): audit trail of official reports generated */}

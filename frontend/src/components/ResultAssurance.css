@@ -1,0 +1,27 @@
+.report-readiness { border: 1px solid #c9dfe3; background: #f4fafb; padding: 16px; border-radius: 12px; margin: 16px 0; color: #203b55; }
+.report-readiness h2 { font-size: 1rem; margin: 0 0 8px; }
+.report-readiness p { font-size: .85rem; line-height: 1.5; margin: 6px 0; }
+.report-readiness summary { cursor: pointer; min-height: 44px; padding: 12px 0; font-weight: 650; }
+.report-readiness ul { list-style: none; padding: 0; margin: 0; }
+.report-readiness li { display: flex; align-items: start; flex-wrap: wrap; gap: 8px 16px; padding: 12px 0; border-top: 1px solid #d7e5e9; overflow-wrap: anywhere; }
+.report-readiness li div { flex: 1 1 240px; min-width: 0; }
+.report-readiness a { min-height: 44px; display: inline-flex; align-items: center; font-size: .85rem; font-weight: 650; text-decoration: underline; }
+.figure-dialog { box-sizing: border-box; width: min(680px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 24px; border: 1px solid #cadbe2; border-radius: 16px; color: #203b55; background: white; overflow: auto; }
+.figure-dialog::backdrop { background: rgba(15,35,55,.5); }
+.figure-dialog header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.figure-dialog h2 { font-size: clamp(1.1rem, 3vw, 1.4rem); margin: 0; }
+.figure-dialog h3 { font-size: 1rem; margin: 20px 0 8px; }
+.figure-dialog button { min-height: 44px; min-width: 44px; border: 1px solid #c9dbe1; border-radius: 8px; padding: 8px; background: white; color: #203b55; cursor: pointer; }
+.figure-dialog p, .figure-dialog li { font-size: .9rem; line-height: 1.6; overflow-wrap: anywhere; }
+.figure-dialog dl { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr); gap: 8px 16px; font-size: .9rem; margin: 16px 0; }
+.figure-dialog dd { margin: 0; overflow-wrap: anywhere; font-weight: 650; }
+.figure-dialog ul { padding-left: 20px; }
+.figure-dialog li { padding: 10px 0; border-bottom: 1px solid #e2e9ee; }
+.figure-dialog li span { display: block; font-size: .8rem; color: #53677a; }
+.figure-dialog a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; font-weight: 650; }
+.kpi-card-explain { flex-shrink: 0; margin-left: auto; min-height: 40px; padding: 6px; border: 0; background: transparent; color: #14727b; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.figure-dialog :focus-visible, .report-readiness :focus-visible, .kpi-card-explain:focus-visible { outline: 3px solid #315fc1; outline-offset: 3px; }
+@media (max-width: 480px) { .figure-dialog { padding: 16px; }.figure-dialog dl { grid-template-columns: 1fr; gap: 4px; }.figure-dialog dd { margin-bottom: 8px; } }
+@media print { .report-readiness, .figure-dialog { display: none; } }
+
+.ovx-kpi .kpi-card-head { display: flex; gap: 8px; }.ovx-kpi .kpi-card-label { min-width: 0; flex: 1; }.ovx-kpi button.kpi-card-link { font-family: inherit; cursor: pointer; }

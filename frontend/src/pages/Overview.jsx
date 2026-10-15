@@ -1,3 +1,4 @@
+import FigureExplanation from '../components/FigureExplanation';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { scopeWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import { PortfolioCardIcon, ProgressCardIcon, BudgetCardIcon, BeneficiariesCardIcon, AttentionCardIcon, ReportingCardIcon } from '../components/ui/MerlCardIcons';
@@ -106,6 +107,7 @@ export default function Overview({ user }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [progressPeriodType, setProgressPeriodType] = useState('quarterly');
   const [publishingPublic, setPublishingPublic] = useState(false);
+  const [explainedMetric, setExplainedMetric] = useState(null);
   const canPublishPublic = user?.role === 'ROLE_ADMIN';
 
   const publishPublicPortal = async () => {
@@ -138,9 +140,9 @@ export default function Overview({ user }) {
           q('v_projects', 'id,has_results_framework, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
           q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, reporting_period, created_at, updated_at'),
           q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
-          q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, reporting_period, double_counting_check'),
+          q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, indirect, reporting_period, double_counting_check'),
           q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
-          q('v_project_indicators', 'project_id, id'),
+          q('v_project_indicators', 'project_id, id, code, name'),
           q('v_indicator_progress', 'id, project_id, indicator_id, achievement_pct, performance_status, review_status, reporting_period, date_reported, created_at, updated_at'),
           q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
           supabase.from('v_project_organizations').select('project_id, role, name'),
@@ -413,9 +415,14 @@ export default function Overview({ user }) {
           { key: 'partner', label: t('overview.filterPartner'), options: partners.map(partner => ({ value: partner, label: partner })) },
         ]} />
 
+      {explainedMetric && <FigureExplanation metric={explainedMetric} period={period} readOnly={user?.role === 'ROLE_VIEWER'} onClose={() => setExplainedMetric(null)}
+        value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
+        data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
+
       <section className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
           className="ovx-kpi ovx-kpi-projects"
+          onExplain={() => setExplainedMetric('projects')}
           icon={PortfolioCardIcon}
           label="Projects in Portfolio"
           value={fmtNum(total)}
@@ -425,6 +432,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-progress"
+          onExplain={() => setExplainedMetric('progress')}
           icon={ProgressCardIcon}
           label={t('overview.overallProgress')}
           value={overallProgress == null ? '—' : `${overallProgress}%`}
@@ -436,6 +444,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-budget"
+          onExplain={() => setExplainedMetric('budget')}
           icon={BudgetCardIcon}
           label="Budget Utilisation"
           value={budgetUtilisation == null ? '—' : `${budgetUtilisation}%`}
@@ -447,6 +456,8 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-beneficiaries"
+          onExplain={() => setExplainedMetric('beneficiaries')}
+          beneficiaryData={{ projects, beneficiaries }}
           icon={BeneficiariesCardIcon}
           label="Beneficiaries Reached"
           value={totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries)}
@@ -457,6 +468,7 @@ export default function Overview({ user }) {
         <KpiCard
           className="ovx-kpi"
           label="Needs Attention"
+          onExplain={() => setExplainedMetric('attention')}
           icon={AttentionCardIcon}
           value={period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects)}
           sub={period && !progress.length ? t('workspace.noPeriodResults') : `${fmtNum(atRiskProjects)} at risk · ${fmtNum(delayedProjects)} delayed`}
@@ -466,6 +478,7 @@ export default function Overview({ user }) {
         <KpiCard
           className="ovx-kpi"
           label="Reporting Completion"
+          onExplain={() => setExplainedMetric('reporting')}
           icon={ReportingCardIcon}
           value={`${reportingCompletion}%`}
           sub={`${fmtNum(reportsApproved)} / ${fmtNum(reporting.length)} approved periods`}
