@@ -8,7 +8,9 @@ export default function AssignProjectsModal({ user, onClose }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const dialog = useRef(null);
+  const opener = useRef(document.activeElement);
   useEffect(() => { dialog.current?.showModal(); }, []);
+  const close = () => { dialog.current?.close(); onClose(); opener.current?.focus?.(); };
   const [projects, setProjects] = useState([]);
   const [assigned, setAssigned] = useState(new Set());
   const [loading, setLoading]   = useState(true);
@@ -40,7 +42,7 @@ export default function AssignProjectsModal({ user, onClose }) {
   };
 
   return createPortal(
-    <dialog ref={dialog} aria-label={t('adm.assignedProjects')} onCancel={onClose} className="fixed inset-0 p-4 overflow-y-auto" style={{ width: '100%', maxWidth: 'none', height: '100%', maxHeight: 'none', margin: 0, border: 0, background: 'rgba(0,0,0,.4)' }} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <dialog ref={dialog} aria-label={t('adm.assignedProjects')} onCancel={event => { event.preventDefault(); close(); }} className="fixed inset-0 p-4 overflow-y-auto" style={{ width: '100%', maxWidth: 'none', height: '100%', maxHeight: 'none', margin: 0, border: 0, background: 'rgba(0,0,0,.4)' }} onClick={event => { if (event.target === event.currentTarget) close(); }}>
       <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 mt-12 mx-auto" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-gray-900">{t('adm.assignedProjects')}</h3>
         <p className="text-sm text-gray-500 mt-1">
@@ -68,7 +70,7 @@ export default function AssignProjectsModal({ user, onClose }) {
         </div>
         <div className="mt-4 flex justify-between items-center">
           <span className="text-xs text-gray-400">{t('roleWorkflow.assignedCount', { count: assigned.size })}</span>
-          <button onClick={onClose} className="bg-green-700 text-white text-sm font-semibold rounded-lg px-5 py-2 hover:bg-green-800">{t('adm.done')}</button>
+          <button onClick={close} className="bg-green-700 text-white text-sm font-semibold rounded-lg px-5 py-2 hover:bg-green-800">{t('adm.done')}</button>
         </div>
       </div>
     </dialog>, document.body
