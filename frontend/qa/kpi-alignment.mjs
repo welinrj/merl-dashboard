@@ -98,8 +98,8 @@ try {
     if (width <= 390 && result.records.some(r => r.cardHeight > 270)) throw new Error(`Phone cards should stay compact: ${JSON.stringify(result.records)}`);
     if ([360,1440,1920].includes(width)) {
       await page.locator('.ovx-kpi').first().scrollIntoViewIfNeeded();
-      await page.screenshot({path:`qa-artifacts/header-visual-kpis-${width}.png`});
-      await page.locator('.ovx-kpi-progress').screenshot({path:`qa-artifacts/header-visual-progress-${width}.png`});
+      await page.screenshot({animations:'disabled',path:`qa-artifacts/header-visual-kpis-${width}.png`});
+      await page.locator('.ovx-kpi-progress').screenshot({animations:'disabled',path:`qa-artifacts/header-visual-progress-${width}.png`});
     }
     console.log(`✓ ${width}px: title → visual/number → context → action; three responsive progress visuals`);
   }

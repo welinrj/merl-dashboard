@@ -424,9 +424,9 @@ export default function Overview({ user }) {
           className="ovx-kpi ovx-kpi-projects"
           onExplain={() => setExplainedMetric('projects')}
           icon={PortfolioCardIcon}
-          label="Projects in Portfolio"
+          label={t('visual.cards.projects')}
           value={fmtNum(total)}
-          sub={`${fmtNum(lifecycleCounts.active)} active · ${fmtNum(lifecycleCounts.planned)} planned · ${fmtNum(lifecycleCounts.completed)} completed`}
+          sub={t('visual.cards.projectStatus',{active:fmtNum(lifecycleCounts.active),planned:fmtNum(lifecycleCounts.planned),completed:fmtNum(lifecycleCounts.completed)})}
           linkLabel={t('overview.viewProjects')}
           onClick={() => nav('/project-setup')}
         />
@@ -436,7 +436,7 @@ export default function Overview({ user }) {
           icon={ProgressCardIcon}
           label={t('overview.overallProgress')}
           value={overallProgress == null ? '—' : `${overallProgress}%`}
-          sub="MERL calculated from latest indicator results"
+          sub={t('visual.cards.resultsBasis')}
           progress={overallProgress}
           progressColor={C.violet}
           linkLabel={t('overview.viewPerformance')}
@@ -446,12 +446,12 @@ export default function Overview({ user }) {
           className="ovx-kpi ovx-kpi-budget"
           onExplain={() => setExplainedMetric('budget')}
           icon={BudgetCardIcon}
-          label="Budget Utilisation"
+          label={t('visual.cards.budget')}
           value={budgetUtilisation == null ? '—' : `${budgetUtilisation}%`}
-          sub={totalExpenditure == null ? 'No financial update reported' : `${fmtVUV(totalExpenditure)} spent`}
+          sub={totalExpenditure == null ? t('visual.cards.noFinancial') : t('visual.cards.spent',{amount:fmtVUV(totalExpenditure)})}
           progress={budgetUtilisation}
           progressColor={C.amber}
-          linkLabel="View reports"
+          linkLabel={t('visual.cards.reports')}
           onClick={() => nav('/reports')}
         />
         <KpiCard
@@ -459,32 +459,32 @@ export default function Overview({ user }) {
           onExplain={() => setExplainedMetric('beneficiaries')}
           beneficiaryData={{ projects, beneficiaries }}
           icon={BeneficiariesCardIcon}
-          label="Beneficiaries Reached"
+          label={t('visual.cards.beneficiaries')}
           value={totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries)}
           sub={[genderSummary, beneficiaryState.periods.join(' · '), beneficiaryState.unpublished ? (lang?.startsWith('fr') ? 'Inclut des rapports non approuvés ; exclus du total public.' : 'Includes unapproved reports; excluded from the public total.') : null, beneficiaryState.unchecked ? (lang?.startsWith('fr') ? 'Vérification des doubles comptes requise.' : 'Double-counting verification required.') : null].filter(Boolean).join(' · ') || (lang?.startsWith('fr') ? 'Aucun bénéficiaire enregistré' : 'No beneficiary records')}
-          linkLabel="View project analysis"
+          linkLabel={t('visual.cards.projectAnalysis')}
           onClick={() => nav('/analytics/project')}
         />
         <KpiCard
           className="ovx-kpi"
-          label="Needs Attention"
+          label={t('visual.cards.attention')}
           onExplain={() => setExplainedMetric('attention')}
           icon={AttentionCardIcon}
           value={period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects)}
-          sub={period && !progress.length ? t('workspace.noPeriodResults') : `${fmtNum(atRiskProjects)} at risk · ${fmtNum(delayedProjects)} delayed`}
+          sub={period && !progress.length ? t('workspace.noPeriodResults') : t('visual.cards.attentionCounts',{risk:fmtNum(atRiskProjects),delayed:fmtNum(delayedProjects)})}
           linkLabel={t('overview.viewPerformance')}
           onClick={() => nav('/analytics/portfolio')}
         />
         <KpiCard
           className="ovx-kpi"
-          label="Reporting Completion"
+          label={t('visual.cards.reporting')}
           onExplain={() => setExplainedMetric('reporting')}
           icon={ReportingCardIcon}
           value={`${reportingCompletion}%`}
-          sub={`${fmtNum(reportsApproved)} / ${fmtNum(reporting.length)} approved periods`}
+          sub={t('visual.cards.approvedPeriods',{approved:fmtNum(reportsApproved),total:fmtNum(reporting.length)})}
           progress={reportingCompletion}
           progressColor={C.green}
-          linkLabel="View reporting analysis"
+          linkLabel={t('visual.cards.reportAnalysis')}
           onClick={() => nav('/analytics/reporting')}
         />
       </section>

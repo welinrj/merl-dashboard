@@ -58,15 +58,15 @@ try {
     });
   }));
   assert.ok(textFits,'French card labels and actions are fully visible');
-  await page.locator('.ovx-kpi').first().screenshot({path:'qa-artifacts/header-visual-kpis-fr-360.png'});
-  await page.locator('.ovx-kpi-progress').screenshot({path:'qa-artifacts/header-visual-progress-fr-360.png'});
+  await page.locator('.ovx-kpi').first().screenshot({animations:'disabled',path:'qa-artifacts/header-visual-kpis-fr-360.png'});
+  await page.locator('.ovx-kpi-progress').screenshot({animations:'disabled',path:'qa-artifacts/header-visual-progress-fr-360.png'});
   await page.locator('.dsh-lang button[lang=en]').click();
   await page.goto('http://localhost:5199/#/review');
   await page.locator('.merl-status-badge:visible').first().waitFor();
   for(const badge of await page.locator('.merl-status-badge:visible').all()){
     assert.ok((await badge.innerText()).trim().length>0);assert.equal(await badge.locator('svg[aria-hidden=true]').count(),1);
   }
-  await fits();await page.screenshot({path:'qa-artifacts/header-visual-review-360.png'});
+  await fits();await page.screenshot({animations:'disabled',path:'qa-artifacts/header-visual-review-360.png'});
   await page.goto('http://localhost:5199/#/project-setup');
   await page.getByRole('heading',{name:'Find your project',exact:true}).waitFor();
   await page.getByRole('button',{name:/Community Coastal Resilience/}).click();
@@ -77,7 +77,8 @@ try {
   assert.ok(await input.evaluate(element=>getComputedStyle(element).outlineStyle!=='none'),'Keyboard focus remains visible');
   for(const width of [360,1440,1920]){
     await page.setViewportSize({width,height:900});await fits();
-    await page.locator('.pd-form').screenshot({path:`qa-artifacts/header-visual-form-${width}.png`});
+    await input.scrollIntoViewIfNeeded();
+    await page.screenshot({animations:'disabled',path:`qa-artifacts/header-visual-form-${width}.png`});
   }
   await page.getByRole('button',{name:'Cancel',exact:true}).click();
   await page.goto('http://localhost:5199/#/reports');
@@ -86,12 +87,12 @@ try {
   for(const width of [360,1440]){
     await page.setViewportSize({width,height:900});await fits();
     await page.locator('#report-preview').scrollIntoViewIfNeeded();
-    await page.screenshot({path:`qa-artifacts/header-visual-report-${width}.png`});
-    await page.locator('.rp-t').first().screenshot({path:`qa-artifacts/header-visual-report-table-${width}.png`});
+    await page.screenshot({animations:'disabled',path:`qa-artifacts/header-visual-report-${width}.png`});
+    await page.locator('.rp-t').first().screenshot({animations:'disabled',path:`qa-artifacts/header-visual-report-table-${width}.png`});
   }
   assert.ok(await page.locator('.rp-t').count()>0,'Report tables remain visible');
   await page.getByRole('button',{name:'Show report cover',exact:true}).click();
-  await page.locator('.island-report-cover').screenshot({path:'qa-artifacts/header-visual-report-cover.png'});
+  await page.locator('.island-report-cover').screenshot({animations:'disabled',path:'qa-artifacts/header-visual-report-cover.png'});
   assert.deepEqual(errors,[]);
   console.log('PASS: French card text, status symbols with labels, phone inputs and focus, forms and report tables at phone/desktop widths');
-}catch(error){if(page)await page.screenshot({path:'qa-artifacts/header-visual-failure.png'});throw error;}finally{await browser.close();}
+}catch(error){if(page)await page.screenshot({animations:'disabled',path:'qa-artifacts/header-visual-failure.png'});throw error;}finally{await browser.close();}
