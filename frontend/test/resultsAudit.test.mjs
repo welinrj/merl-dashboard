@@ -34,6 +34,9 @@ test('English and French numeric target and observation edits parse grouping and
     assert.equal(cellChanges({row,field:'actual',value,language}).progress.cumulative_actual,expected);
   }
   for(const value of ['1,5','1,00','1..5','abc']) assert.throws(()=>cellChanges({row:{targets:{final:{id:'t',numeric_value:1}}},field:'final',value,language:'en'}));
+  assert.throws(()=>cellChanges({row:{targets:{},indicator:{target_value:10}},field:'final',value:'Not a number',language:'en'}));
+  assert.throws(()=>cellChanges({row:{targets:{final:{id:'t',ordinal_value:2}}},field:'final',value:'2.5',language:'fr'}));
+  assert.equal(cellChanges({row:{targets:{final:{id:'t',ordinal_value:2}}},field:'final',value:'Niveau 3',language:'fr'}).targets[0].ordinal_value,3);
 });
 
 test('target effective date and revision ordering match the save routine', () => {

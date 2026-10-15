@@ -27,8 +27,10 @@ export function cellChanges(editor) {
     const raw = String(value).trim();
     const number = frameworkNumber(raw, editor.language);
     const numeric = raw !== '' && Number.isFinite(number);
-    const ordinal = existing?.ordinal_value != null && raw.match(/^(?:Scale\s+)?(-?\d+)$/i);
-    if (raw && !ordinal && !numeric && (existing?.numeric_value != null || existing?.ordinal_value != null || /^[\d+\-.,\s]+$/.test(raw))) throw new Error(i18n.t('rf.numberError'));
+    const ordinal = existing?.ordinal_value != null && raw.match(/^(?:(?:Scale|Niveau)\s+)?(-?\d+)$/i);
+    const fallback = field === 'baseline' ? row.indicator?.baseline_value : field === 'final' ? row.indicator?.target_value : null;
+    const expectsNumber = existing?.numeric_value != null || (!existing && fallback != null && Number.isFinite(Number(fallback)) && !row.indicator?.is_qualitative);
+    if (raw && ((existing?.ordinal_value != null && !ordinal) || (!ordinal && !numeric && (expectsNumber || /^[\d+\-.,\s]+$/.test(raw))))) throw new Error(i18n.t('rf.numberError'));
     return {targets:[{...(existing ? {id:existing.id} : {target_type:field,period_label:{baseline:'Baseline',mid_term:'Mid-term',final:'Final'}[field]}),numeric_value:ordinal ? null : numeric ? number : null,text_value:ordinal || numeric || raw === '' ? null : value,ordinal_value:ordinal ? Number(ordinal[1]) : null}]};
   }
   if (!row.progress && !editor.period) throw new Error(i18n.t('rf.choosePeriod'));
