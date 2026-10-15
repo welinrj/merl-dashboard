@@ -127,7 +127,7 @@ const reportBlocks = () => {
   return blocks.filter((block) => block.type === 'pageBreak' || block.rows?.length || block.text);
 };
 
-export default function Reports() {
+export default function Reports({ user }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const liveRevision = useLiveDashboard();
@@ -393,7 +393,7 @@ export default function Reports() {
         />
       </div>
 
-      <ReportReadiness result={readiness} period={period} />
+      <ReportReadiness result={readiness} period={period} readOnly={user?.role === 'ROLE_VIEWER'} />
       {/* Controls */}
       <div className="rp-noprint" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ flex: '1 1 220px' }}>

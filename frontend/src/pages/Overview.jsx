@@ -415,7 +415,7 @@ export default function Overview({ user }) {
           { key: 'partner', label: t('overview.filterPartner'), options: partners.map(partner => ({ value: partner, label: partner })) },
         ]} />
 
-      {explainedMetric && <FigureExplanation metric={explainedMetric} period={period} onClose={() => setExplainedMetric(null)}
+      {explainedMetric && <FigureExplanation metric={explainedMetric} period={period} readOnly={user?.role === 'ROLE_VIEWER'} onClose={() => setExplainedMetric(null)}
         value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 

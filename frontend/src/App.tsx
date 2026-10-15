@@ -577,7 +577,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
               <Route path="/project-setup" element={gate('/project-setup') ? <ProjectSetup user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/results-framework" element={gate('/results-framework') ? <ResultsWorkspace user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/merl-reporting" element={gate('/merl-reporting') ? <MerlReporting user={user} /> : <Navigate to={defaultPath} replace />} />
-              <Route path="/reports" element={gate('/reports') ? <Reports /> : <Navigate to={defaultPath} replace />} />
+              <Route path="/reports" element={gate('/reports') ? <Reports user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/review" element={gate('/review') ? <ReviewApproval user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="/admin" element={gate('/admin') ? <AdminPanel user={user} /> : <Navigate to={defaultPath} replace />} />
               <Route path="*" element={<Navigate to={defaultPath} replace />} />

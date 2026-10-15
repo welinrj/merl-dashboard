@@ -74,11 +74,11 @@ export function reportReadiness(data, { type, projectIds, period = '', frequency
   return { issues, projectCount: projects.length, empty: projects.length === 0, periodCount: periods.length,
     approvedCount: periods.filter(row => row.submission_status === 'approved').length };
 }
-export function readinessAction(issue, period = '') {
+export function readinessAction(issue, period = '', readOnly = false) {
   const params = new URLSearchParams();
   if (issue.projectId) params.set('project', issue.projectId);
   if (period) params.set('period', period);
-  if (issue.module && issue.module !== 'reporting_periods') params.set('module', issue.module);
-  const path = issue.key === 'noIndicators' ? '/results-framework' : issue.module ? '/merl-reporting' : '/project-setup';
+  if (!readOnly && issue.module && issue.module !== 'reporting_periods') params.set('module', issue.module);
+  const path = issue.key === 'noIndicators' ? '/results-framework' : readOnly ? '/analytics/project-portfolio' : issue.module ? '/merl-reporting' : '/project-setup';
   return `#${path}${params.size ? `?${params}` : ''}`;
 }

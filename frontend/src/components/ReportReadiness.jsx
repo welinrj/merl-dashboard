@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { readinessAction } from '../lib/docc/reportReadiness';
 import './ResultAssurance.css';
-export default function ReportReadiness({ result, period }) {
+export default function ReportReadiness({ result, period, readOnly = false }) {
   const { t } = useTranslation();
   return <section className="report-readiness rp-noprint" aria-labelledby="report-readiness-title">
     <h2 id="report-readiness-title">{t('readiness.title')}</h2>
@@ -10,7 +10,7 @@ export default function ReportReadiness({ result, period }) {
     <p>{t('readiness.basis')}</p>
     {result.issues.length > 0 && <details><summary>{t('readiness.review')}</summary><ul>{result.issues.map((issue, index) => <li key={`${issue.key}-${issue.projectId || index}`}>
       <div><strong>{issue.projectName}</strong><p>{t(`readiness.issues.${issue.key}`, { count: issue.count })}</p></div>
-      {!result.empty && <a href={readinessAction(issue, period)}>{t('readiness.open')}</a>}
+      {!result.empty && <a href={readinessAction(issue, period, readOnly)}>{t('readiness.open')}</a>}
     </li>)}</ul></details>}
   </section>;
 }

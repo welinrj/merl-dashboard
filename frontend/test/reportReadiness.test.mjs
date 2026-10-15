@@ -53,3 +53,8 @@ test('actions preserve project and period without inventing a reporting module',
   const href=readinessAction({key:'pendingApproval',projectId:'a',module:'reporting_periods'},'Q3 2026');
   assert.ok(href.startsWith('#/merl-reporting?'));assert.ok(href.includes('project=a'));assert.ok(href.includes('period=Q3+2026'));assert.ok(!href.includes('module='));
 });
+
+test('read-only users receive accessible portfolio links instead of editing forms',()=>{
+  const href=readinessAction({key:'missingFinance',projectId:'a',module:'financial_progress'},'Q3',true);
+  assert.ok(href.startsWith('#/analytics/project-portfolio?'));assert.ok(href.includes('project=a'));assert.ok(href.includes('period=Q3'));assert.ok(!href.includes('module='));
+});

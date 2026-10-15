@@ -6,7 +6,7 @@ import { toVuv, sumReported } from '../lib/docc/currency';
 import { fmtNum } from '../lib/locale';
 import './ResultAssurance.css';
 const statuses = new Set(['approved','draft','submitted','under_review','resubmitted','returned','published','locked','reviewed']);
-export default function FigureExplanation({ metric, value, data, period, onClose }) {
+export default function FigureExplanation({ metric, value, data, period, readOnly = false, onClose }) {
   const { t } = useTranslation();
   const dialog = useRef(null), titleId = useId();
   useEffect(() => {
@@ -30,14 +30,14 @@ export default function FigureExplanation({ metric, value, data, period, onClose
   const missing = metric === 'progress' ? data.indicators.filter(indicator => !progress.some(row => row.indicator_id === indicator.id)).length
     : metric === 'budget' ? data.projects.filter(project => !finance.some(row => row.project_id === project.id && toVuv(row.cumulative_expenditure, project.currency) != null)).length
     : metric === 'beneficiaries' ? data.projects.filter(project => !data.beneficiaries.some(row => row.project_id === project.id && row.total_direct != null)).length : 0;
-  const route = metric === 'projects' ? '/project-setup' : metric === 'progress' ? '/results-framework' : metric === 'attention' ? '/analytics/portfolio' : '/merl-reporting';
+  const route = metric === 'projects' ? '/project-setup' : metric === 'progress' ? '/results-framework' : metric === 'attention' || readOnly ? '/analytics/project-portfolio' : '/merl-reporting';
   const sourceHref = row => {
     const params = new URLSearchParams();
     if (row.project_id) params.set('project', row.project_id);
     const label = row.reporting_period || row.period_label;
     if (!current && (label || period)) params.set('period', label || period);
-    if (metric === 'budget') params.set('module','financial_progress');
-    if (metric === 'beneficiaries') params.set('module','beneficiaries');
+    if (!readOnly && metric === 'budget') params.set('module','financial_progress');
+    if (!readOnly && metric === 'beneficiaries') params.set('module','beneficiaries');
     return `#${route}${params.size ? `?${params}` : ''}`;
   };
   const statusText = status => t(`figure.status.${statuses.has(status) ? status : 'unknown'}`);

@@ -12,11 +12,12 @@ const rows={v_projects:projects,v_reporting_periods:[{project_id:'pa',period_lab
  v_financial_progress:[{project_id:'pa',approved_budget:100,cumulative_expenditure:90,reporting_period:'Q2 2026'}],
  v_beneficiaries:[{project_id:'pa',total_direct:30,female:15,male:15,reporting_period:'Q2 2026',double_counting_check:false},{project_id:'pa',total_direct:20,female:10,male:10,reporting_period:'Q3 2026',double_counting_check:false}]};
 try {
+ let profileRole='system_admin';
  const context=await browser.newContext({viewport:{width:390,height:844}});
  await context.addInitScript(({token,now})=>{localStorage.setItem('merl.lang','en');localStorage.setItem('sb-ndntvncboeajanipafeq-auth-token',JSON.stringify({access_token:token,refresh_token:'mock',token_type:'bearer',expires_at:now+3600,user:{id:'u1',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{}}}));},{token,now});
  await context.route(`${HOST}/**`,async route=>{
   const req=route.request(),url=new URL(req.url()),path=url.pathname,json=body=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
-  if(path.endsWith('/rpc/current_profile'))return json([{id:'u1',full_name:'Test officer',role:'system_admin'}]);
+  if(path.endsWith('/rpc/current_profile'))return json([{id:'u1',full_name:'Test officer',role:profileRole}]);
   if(path==='/auth/v1/user')return json({id:'u1',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{}});
   if(path.startsWith('/rest/v1/')){let body=rows[path.split('/').pop()]||[];for(const [key,value]of url.searchParams)if(value.startsWith('eq.'))body=body.filter(row=>String(row[key])===value.slice(3));return json((req.headers().accept||'').includes('vnd.pgrst.object')?body[0]||null:body);}
   return json([]);
@@ -47,6 +48,13 @@ try {
  await page.reload();await page.locator('#report-preview').waitFor();await page.getByRole('combobox').first().selectOption('financial');await page.getByLabel('Project to include',{exact:true}).selectOption('pa');
  await page.locator('.report-readiness').getByText('No gaps found by the automated checks',{exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Download Word',exact:true}).isEnabled(),true);
+ profileRole='viewer';
+ await page.goto('http://localhost:5199/#/dashboards?period=Q3+2026');await page.reload();
+ await page.getByRole('button',{name:'Explain: Budget Utilisation',exact:true}).waitFor({timeout:20000});
+ await page.getByRole('button',{name:'Explain: Budget Utilisation',exact:true}).click();await dialog.waitFor();
+ assert.match(await dialog.getByRole('link',{name:'View source',exact:true}).first().getAttribute('href'),/^#\/analytics\/project-portfolio\?/);
+ await dialog.getByRole('link',{name:'View source',exact:true}).first().click();
+ await page.getByRole('heading',{name:'Project portfolio',exact:true}).waitFor();
  assert.deepEqual(errors,[]);console.log('PASS: figure explanation, Escape/focus, period-matched beneficiaries, phone/desktop widths, scoped readiness, Word qualifications and valid zero expenditure');
  await context.close();
 } finally {await browser.close();}
