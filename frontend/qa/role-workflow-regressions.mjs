@@ -7,6 +7,7 @@ const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'}
 mkdirSync('qa-artifacts',{recursive:true});
 const projects=[{id:'pa',code:'COAST',name:'Coastal project',has_results_framework:true,status:'active'}, {id:'pb',code:'NO-FRAMEWORK',name:'Unconfigured project',has_results_framework:false,status:'active'}];
 const rows={v_projects:projects,v_reporting_periods:[{id:'period1',project_id:'pa',period_label:'Q2 2026',period_end:'2026-06-30',period_type:'quarterly',submission_status:'draft'}],v_project_indicators:[{id:'ia',project_id:'pa',code:'CI1',name:'Households protected',target_value:10}],v_user_project_assignments:[]};
+let currentPage;
 try {
  for(const role of ['docc_me_officer','project_manager','viewer']) {
   const writes=[],errors=[];
@@ -21,14 +22,15 @@ try {
    if(path.startsWith('/rest/v1/')){let body=rows[path.split('/').pop()]||[];for(const [key,value]of url.searchParams)if(value.startsWith('eq.'))body=body.filter(row=>String(row[key])===value.slice(3));return json((req.headers().accept||'').includes('vnd.pgrst.object')?body[0]||null:body);}
    return json([]);
   });
-  const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
+  const page=await context.newPage();currentPage=page;page.on('pageerror',error=>errors.push(error.message));
   if(role==='docc_me_officer'){
    await page.goto('http://localhost:5199/#/review');
    await page.getByRole('heading',{name:'Project assignments',exact:true}).waitFor();
    await page.getByLabel('Project manager',{exact:true}).selectOption('manager1');
    const manage=page.getByRole('button',{name:'Manage project assignments',exact:true});await manage.click();
    const dialog=page.getByRole('dialog');await dialog.getByRole('checkbox').first().waitFor();
-   await dialog.getByRole('checkbox').first().check();assert.equal(writes.length,1);assert.equal(writes[0].p_user_id,'manager1');assert.equal(writes[0].p_project_id,'pa');
+   const saved=page.waitForResponse(response=>response.url().endsWith('/rpc/assign_user_project') && response.request().method()==='POST');
+   await dialog.getByRole('checkbox').first().click();await saved;await page.waitForFunction(()=>document.querySelector('dialog input[type=checkbox]')?.checked);assert.equal(writes.length,1);assert.equal(writes[0].p_user_id,'manager1');assert.equal(writes[0].p_project_id,'pa');
    for(const width of [360,1440,1920]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`qa-artifacts/role-assignments-${width}.png`});}
    await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});assert.equal(await manage.evaluate(el=>el===document.activeElement),true);
    await page.goto('http://localhost:5199/#/merl-reporting?project=pa&period=Q1+2026&module=evidence');
@@ -54,4 +56,4 @@ try {
   assert.deepEqual(errors,[]);await context.close();
  }
  console.log('PASS: M&E assignment workflow, mobile/wide dialog and focus, missing-period guard, manager evidence verification and viewer report scope');
-}finally{await browser.close();}
+}catch(error){if(currentPage)await currentPage.screenshot({path:'qa-artifacts/role-assignments-failure.png'});throw error;}finally{await browser.close();}
