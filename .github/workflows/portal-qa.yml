@@ -48,6 +48,18 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate executive KPI alignment and score gauges
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/kpi-alignment.mjs
+
+      - name: Validate shared visual styles
+        working-directory: frontend
+        env:
+          STUB_FILE: qa/fixture.json
+        run: node qa/visual-polish.mjs
+
       - name: Validate personal tasks and guided reporting
         working-directory: frontend
         run: node qa/my-tasks-checklist.mjs
@@ -167,12 +179,6 @@ jobs:
       - name: Validate administration role row colours
         working-directory: frontend
         run: node qa/admin-role-colors.mjs
-
-      - name: Validate executive KPI alignment and score gauges
-        working-directory: frontend
-        env:
-          STUB_FILE: qa/fixture.json
-        run: node qa/kpi-alignment.mjs
 
       - name: Audit core dashboard pages
         working-directory: frontend

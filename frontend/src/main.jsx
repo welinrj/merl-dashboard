@@ -37,6 +37,7 @@ import './visual-consistency.css';
 import './merl-icons.css';
 import './sidebar-refinement.css';
 import './island-resilience.css';
+import './visual-polish.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -5,6 +5,7 @@ const resources = {
   // ── English ──────────────────────────────────────────────────────────────
   en: {
     translation: {
+      visual: {"fullScale": "Out of 100%", "cards": {"projects": "Projects in Portfolio", "projectStatus": "{{active}} active · {{planned}} planned · {{completed}} completed", "resultsBasis": "Based on the latest reported results", "budget": "Budget Utilisation", "noFinancial": "No financial update reported", "spent": "{{amount}} spent", "reports": "View reports", "beneficiaries": "Beneficiaries Reached", "projectAnalysis": "View project analysis", "attention": "Needs Attention", "attentionCounts": "{{risk}} at risk · {{delayed}} delayed", "reporting": "Reporting Completion", "approvedPeriods": "{{approved}} / {{total}} approved periods", "reportAnalysis": "View reporting analysis"}},
       tasks: {
   "title": "My tasks",
   "scope": "For the projects and reporting period shown here.",
@@ -2257,6 +2258,7 @@ roleWorkflow: {"assignments": "Project assignments", "manager": "Project manager
   // a small shared subset are provided here; anything missing falls back to EN.
   fr: {
     translation: {
+      visual: {"fullScale": "Sur une échelle de 100 %", "cards": {"projects": "Projets du portefeuille", "projectStatus": "En cours : {{active}} · Prévus : {{planned}} · Terminés : {{completed}}", "resultsBasis": "Basé sur les derniers résultats déclarés", "budget": "Utilisation du budget", "noFinancial": "Aucune dépense déclarée", "spent": "{{amount}} dépensés", "reports": "Voir les rapports", "beneficiaries": "Bénéficiaires touchés", "projectAnalysis": "Voir l’analyse du projet", "attention": "Points à surveiller", "attentionCounts": "À risque : {{risk}} · En retard : {{delayed}}", "reporting": "Rapports approuvés", "approvedPeriods": "{{approved}} / {{total}} périodes approuvées", "reportAnalysis": "Voir le suivi des rapports"}},
       tasks: {
   "title": "Mes tâches",
   "scope": "Pour les projets et la période affichés ici.",

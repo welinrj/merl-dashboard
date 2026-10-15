@@ -1,7 +1,7 @@
 // Regression for the user-approved 21st.dev hierarchy: title, chart with its
 // value inside, context, and destination. No production data is modified.
 import { chromium } from 'playwright';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 
 const REF = 'ndntvncboeajanipafeq';
 const HOST = `https://${REF}.supabase.co`;
@@ -37,6 +37,7 @@ await context.route(`${HOST}/**`, async (route) => {
   return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
 });
 
+mkdirSync('qa-artifacts',{recursive:true});
 try {
   const page = await context.newPage();
   for (const [width, height] of [[2560, 1440], [1920, 1080], [1440, 900], [1024, 768], [768, 1024], [390, 844], [360, 780]]) {
@@ -95,6 +96,11 @@ try {
       throw new Error(`${width}px KPI hierarchy failure: ${JSON.stringify(result)}`);
     }
     if (width <= 390 && result.records.some(r => r.cardHeight > 270)) throw new Error(`Phone cards should stay compact: ${JSON.stringify(result.records)}`);
+    if ([360,1440,1920].includes(width)) {
+      await page.locator('.ovx-kpi').first().scrollIntoViewIfNeeded();
+      await page.screenshot({animations:'disabled',path:`qa-artifacts/header-visual-kpis-${width}.png`});
+      await page.locator('.ovx-kpi-progress').screenshot({animations:'disabled',path:`qa-artifacts/header-visual-progress-${width}.png`});
+    }
     console.log(`✓ ${width}px: title → visual/number → context → action; three responsive progress visuals`);
   }
 } finally {

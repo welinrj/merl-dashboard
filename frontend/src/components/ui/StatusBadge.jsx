@@ -3,13 +3,9 @@
 // application metadata rather than a decorative dashboard pill.
 import { useTranslation } from 'react-i18next';
 
-const TONES = {
-  success: { col: '#16a34a', bg: '#dcfce7', txt: '#166534' },
-  warning: { col: '#d97706', bg: '#fef3c7', txt: '#92400e' },
-  danger:  { col: '#b3402f', bg: '#fbf1ef', txt: '#8c3529' },
-  neutral: { col: '#6b7280', bg: '#f3f4f6', txt: '#4b5563' },
-  info:    { col: '#4d73a5', bg: '#f0f4f9', txt: '#3f6088' },
-};
+import { CheckCircle2, AlertTriangle, Info, RotateCcw } from './icons';
+
+const TONES = new Set(['success','warning','danger','neutral','info']);
 
 const STATUS_MAP = {
   on_track:   ['success', 'status.on_track'],    green:     ['success', 'status.on_track'],
@@ -33,7 +29,7 @@ const STATUS_MAP = {
   in_progress:['info',    'status.in_progress'],
 };
 
-export default function StatusBadge({ status, tone, label, size = 'sm' }) {
+export default function StatusBadge({ status, tone, label, size = 'sm', className = '' }) {
   const { t } = useTranslation();
   let resolvedTone = tone, l = label;
   if (status && (!resolvedTone || !l)) {
@@ -42,17 +38,12 @@ export default function StatusBadge({ status, tone, label, size = 'sm' }) {
     if (hit) { resolvedTone = resolvedTone || hit[0]; l = l || t(hit[1]); }
     else { resolvedTone = resolvedTone || 'neutral'; l = l || String(status); }
   }
-  const m = TONES[resolvedTone] || TONES.neutral;
-  const pad = size === 'md' ? '0.24rem 0.52rem' : '0.18rem 0.44rem';
-  const fs = size === 'md' ? '0.75rem' : '0.7rem';
+  const semanticTone = TONES.has(resolvedTone) ? resolvedTone : 'neutral';
+  const Icon = status === 'returned' ? RotateCcw : semanticTone === 'success' ? CheckCircle2
+    : semanticTone === 'danger' || ['at_risk','amber','attention','overdue'].includes(status) ? AlertTriangle : Info;
   return (
-    <span className="merl-status-badge" data-tone={resolvedTone || 'neutral'} style={{
-      display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: m.bg, color: m.txt,
-      border: `1px solid ${m.col}26`, borderRadius: 4, padding: pad, fontSize: fs,
-      fontWeight: 650, letterSpacing: 0, textTransform: 'none', whiteSpace: 'nowrap',
-    }}>
-      <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', background: m.col }} />
-      {l}
+    <span className={`merl-status-badge ${className}`} data-tone={semanticTone} data-size={size}>
+      <Icon size={14} aria-hidden="true" /><span>{l}</span>
     </span>
   );
 }
