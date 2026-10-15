@@ -29,7 +29,7 @@ const STATUS_MAP = {
   in_progress:['info',    'status.in_progress'],
 };
 
-export default function StatusBadge({ status, tone, label, size = 'sm' }) {
+export default function StatusBadge({ status, tone, label, size = 'sm', className = '' }) {
   const { t } = useTranslation();
   let resolvedTone = tone, l = label;
   if (status && (!resolvedTone || !l)) {
@@ -42,7 +42,7 @@ export default function StatusBadge({ status, tone, label, size = 'sm' }) {
   const Icon = status === 'returned' ? RotateCcw : semanticTone === 'success' ? CheckCircle2
     : semanticTone === 'danger' || ['at_risk','amber','attention','overdue'].includes(status) ? AlertTriangle : Info;
   return (
-    <span className="merl-status-badge" data-tone={semanticTone} data-size={size}>
+    <span className={`merl-status-badge ${className}`} data-tone={semanticTone} data-size={size}>
       <Icon size={14} aria-hidden="true" /><span>{l}</span>
     </span>
   );

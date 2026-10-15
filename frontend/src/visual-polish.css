@@ -100,6 +100,22 @@
   .dsh .ovx .ovx-kpis .kpi-card-label { flex:1 1 140px; }
   .dsh .ovx .ovx-kpis .kpi-card-explain { margin-left:auto; }
 }
+/* Public Overview uses the same card geometry and labelled status vocabulary. */
+.dsh.pbd-root .pbd-metric { border-color:var(--visual-border)!important;border-radius:var(--visual-radius)!important;background:#fff!important;box-shadow:var(--visual-shadow)!important;gap:10px;padding:16px 16px 24px!important; }
+.dsh.pbd-root .pbd-metric .merl-metric-head { flex-direction:row;align-items:flex-start;gap:8px;min-width:0; }
+.dsh.pbd-root .pbd-metric .merl-metric-head>span:last-child { color:var(--visual-ink);font-size:.875rem;line-height:1.4;font-weight:650;overflow-wrap:anywhere; }
+.dsh.pbd-root .pbd-metric .merl-card-icon { width:32px;height:32px;flex-shrink:0;border-radius:8px; }
+.dsh.pbd-root .pbd-metric .merl-card-icon .merl-icon { width:24px;height:24px; }
+.dsh.pbd-root .pbd-metric>strong { color:var(--visual-ink);font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere; }
+.dsh.pbd-root .pbd-metric>small { color:var(--visual-muted);font-size:.8125rem!important;line-height:1.5!important; }
+.dsh.pbd-root .pbd-section,.dsh.pbd-root .pbd-project-card { border-color:var(--visual-border);border-radius:var(--visual-radius);box-shadow:var(--visual-shadow); }
+.dsh.pbd-root .pbd-filters :is(input,select) { border-color:var(--visual-control-border);border-radius:var(--visual-control-radius); }
+.dsh.pbd-root .pbd-filters :is(input,select,button):focus-visible { outline:3px solid #007f8d;outline-offset:2px; }
+@media(max-width:560px) {
+  .dsh.pbd-root .pbd-metric { gap:8px;padding:14px 14px 22px!important; }
+  .dsh.pbd-root .pbd-metric .merl-metric-head>span:last-child { font-size:.8125rem; }
+  .dsh.pbd-root .pbd-project-card .pbd-status { font-size:.75rem!important; }
+}
 @media(prefers-reduced-motion:reduce) { .dsh :is(.btn,.kpi-card-explain) { transition:none; } }
 @media print {
   .dsh .rp-doc { box-shadow:none;border:0; }

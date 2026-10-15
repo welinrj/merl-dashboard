@@ -1,3 +1,4 @@
+import StatusBadge from '../components/ui/StatusBadge';
 import { IslandLoading, IslandLogo } from '../components/IslandBrand';
 import { OverviewIcon, ProjectsIcon, FundingIcon, FundsUsedIcon, BeneficiariesIcon, BudgetUsageIcon, ForestsIcon, UpdateProgressIcon, AdaptationIcon, LossDamageIcon } from '../components/ui/MerlIcons';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -147,7 +148,7 @@ function ProjectCard({ project, areas, copy, lang }) {
   const ThemeIcon = /loss.*damage/i.test(themeOf(project)) ? LossDamageIcon : /adaptation/i.test(themeOf(project)) ? AdaptationIcon : null;
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
   return <FeatureCardGradient className="pbd-project-card">
-    <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><span className={`pbd-status pbd-status-${statusOf(project)}`}>{copy[statusOf(project)]}</span></header>
+    <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><StatusBadge className={`pbd-status pbd-status-${statusOf(project)}`} label={copy[statusOf(project)]} tone={statusOf(project) === 'upcoming' ? 'warning' : statusOf(project) === 'other' ? 'neutral' : 'success'} /></header>
     <p className="pbd-project-description">{project.description || project.expected_primary_outcome || copy.noDescription}</p>
     <dl className="pbd-project-facts">
       <div><dt>{copy.manager}</dt><dd>{project.project_manager || copy.unknown}</dd></div>
