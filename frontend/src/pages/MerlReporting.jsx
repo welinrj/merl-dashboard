@@ -567,22 +567,22 @@ export default function MerlReporting({ user }) {
     submitLock.current = true;
     setSubmitting(true);
     try {
-    if (!sectionReady) { toast.error(t('tasks.checkFailed')); return; }
-    if (missingRequired.length) {
-      toast.error(t('merl.submitBlocked', { sections: missingRequired.map((m) => t(m.label)).join(', ') }));
-      selectTab(missingRequired[0].key);
-      return;
-    }
-    const pending = MODULES.filter((m) => moduleHasDraft(m));
-    if (pending.length) {
-      const ok = await confirmDialog({
-        title: t('merl.submitDraftsTitle'),
-        message: t('merl.submitDrafts', { sections: pending.map((m) => t(m.label)).join(', ') }),
-        confirmLabel: t('merl.submitAnyway'), cancelLabel: t('merl.backToDrafts'), danger: false,
-      });
-      if (!ok) { selectTab(pending[0].key); return; }
-    }
-    await periodAction('submit_reporting_period', currentPeriodRow.id);
+      if (!sectionReady) { toast.error(t('tasks.checkFailed')); return; }
+      if (missingRequired.length) {
+        toast.error(t('merl.submitBlocked', { sections: missingRequired.map((m) => t(m.label)).join(', ') }));
+        selectTab(missingRequired[0].key);
+        return;
+      }
+      const pending = MODULES.filter((m) => moduleHasDraft(m));
+      if (pending.length) {
+        const ok = await confirmDialog({
+          title: t('merl.submitDraftsTitle'),
+          message: t('merl.submitDrafts', { sections: pending.map((m) => t(m.label)).join(', ') }),
+          confirmLabel: t('merl.submitAnyway'), cancelLabel: t('merl.backToDrafts'), danger: false,
+        });
+        if (!ok) { selectTab(pending[0].key); return; }
+      }
+      await periodAction('submit_reporting_period', currentPeriodRow.id);
     } finally { submitLock.current = false; setSubmitting(false); }
   };
 

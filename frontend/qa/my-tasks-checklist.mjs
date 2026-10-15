@@ -67,7 +67,7 @@ try {
     assert.equal(await page.locator('#reporting-records').evaluate(el=>el===document.activeElement),true);
     await page.getByRole('button',{name:'Add',exact:true}).click();
     const dialog=page.getByRole('dialog');await dialog.waitFor();await dialog.getByLabel(/Cumulative Expenditure/i).fill('25');
-    await dialog.getByRole('button',{name:/Save changes/i}).click();await dialog.waitFor({state:'hidden'});
+    await dialog.getByRole('button',{name:'Add record',exact:true}).click();await dialog.waitFor({state:'hidden'});
     await checklist.getByText('Required sections saved: 3 of 3',{exact:true}).waitFor();
     assert.equal(writes[0].data.p_project_id,'pa');assert.equal(writes[0].data.p_reporting_period,'Q3 2026');
     assert.equal(await checklist.getByText('Draft on this device',{exact:true}).count(),0);
