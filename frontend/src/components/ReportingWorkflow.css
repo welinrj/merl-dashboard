@@ -1,0 +1,12 @@
+.my-tasks,.reporting-checklist{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-card,12px);padding:clamp(14px,2vw,20px);margin:16px 0;color:var(--text-1);min-width:0;overflow-wrap:anywhere}
+.my-tasks header{display:flex;align-items:center;gap:12px}.my-tasks h2,.reporting-checklist h2{font-size:1rem;margin:0}.my-tasks header>span{font-weight:700;color:var(--text-2)}
+.workflow-note{font-size:.8rem;line-height:1.5;color:var(--text-2);margin:8px 0 12px}.task-list,.checklist-list{list-style:none;padding:0;margin:0}
+.task-list li,.checklist-list li{display:flex;gap:12px;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding:12px 0}
+.task-list li>div,.checklist-list li>div{min-width:0;flex:1}.task-list strong,.checklist-list strong{display:block;font-size:.88rem}.task-list p{font-size:.8rem;margin:4px 0;color:var(--text-2);line-height:1.5}
+.task-kind{display:block;font-size:.75rem;font-weight:700;color:var(--green-700);margin-bottom:4px}.task-correct{color:#8a5412}.task-feedback{border-left:3px solid #bd954b;padding-left:10px}
+.my-tasks .btn,.reporting-checklist .btn{min-height:44px;white-space:normal;text-align:center;flex-shrink:0;max-width:100%}
+.my-tasks summary,.reporting-checklist summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:.85rem;font-weight:650}
+.checklist-list li span{display:block;font-size:.78rem;margin-top:4px;color:var(--text-2)}.checklist-list li .checklist-saved{color:var(--green-700);font-weight:650}.checklist-next{border-top:1px solid var(--border);margin-top:12px;padding-top:12px;font-size:.85rem}
+#reporting-records{scroll-margin-top:16px}#reporting-records:focus{outline:3px solid var(--green-600);outline-offset:3px}
+@media(max-width:480px){.task-list li{align-items:stretch;flex-direction:column}.task-list .btn{align-self:flex-start}.checklist-list li{align-items:start}.checklist-list .btn{max-width:40%}.checklist-next .btn{width:100%}}
+@media print{.my-tasks,.reporting-checklist{display:none}}

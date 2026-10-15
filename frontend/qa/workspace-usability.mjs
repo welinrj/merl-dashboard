@@ -29,9 +29,8 @@ try {
  await page.getByRole('navigation',{name:'Start here'}).waitFor({timeout:20000});
  await page.getByText('How to use this page',{exact:true}).click();
  assert.equal(await page.locator('.wg-guide li').count(),3);
- await page.getByText('Reports needing attention (1)',{exact:true}).waitFor();
- await page.getByText('Reports needing attention (1)',{exact:true}).click();
- await page.getByRole('link',{name:'Continue report',exact:true}).click();
+ await page.getByRole('heading',{name:'My tasks',exact:true}).waitFor();
+ await page.getByRole('link',{name:'Make corrections',exact:true}).click();
  await page.locator('.mr-tabs').waitFor({timeout:15000});
  await page.getByRole('button',{name:/Financial Progress/i}).last().click();
  await page.locator('.mr-cards').getByRole('button',{name:'Edit',exact:true}).click();

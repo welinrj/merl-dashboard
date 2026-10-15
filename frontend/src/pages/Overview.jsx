@@ -4,7 +4,7 @@ import { scopeWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import { PortfolioCardIcon, ProgressCardIcon, BudgetCardIcon, BeneficiariesCardIcon, AttentionCardIcon, ReportingCardIcon } from '../components/ui/MerlCardIcons';
 import { beneficiaryPublicationState } from '../lib/dataCoverage';
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
-import ReportingReminders from '../components/ReportingReminders';
+import MyTasks from '../components/MyTasks';
 import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
 import { toVuv, sumReported } from '../lib/docc/currency';
 // =============================================================================
@@ -144,7 +144,7 @@ export default function Overview({ user }) {
           q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
           q('v_project_indicators', 'project_id, id, code, name'),
           q('v_indicator_progress', 'id, project_id, indicator_id, achievement_pct, performance_status, review_status, reporting_period, date_reported, created_at, updated_at'),
-          q('v_reporting_periods', 'project_id, period_label, period_end, submission_status, approved_at, reporting_officer_name, updated_at'),
+          q('v_reporting_periods', 'id, project_id, period_label, period_start, period_end, submission_status, review_comments, approved_at, reporting_officer_name, updated_at'),
           supabase.from('v_project_organizations').select('project_id, role, name'),
           supabase.from('v_project_area_councils').select('project_id, province_code, area_council_name, coverage_status, feasibility_status'),
           supabase.from('v_project_portfolio_status').select('project_id, progress_pct, performance_status, schedule_status, reporting_completion_pct, area_councils_covered, feasibility_confirmed, at_risk_results, delayed_results'),
@@ -401,7 +401,7 @@ export default function Overview({ user }) {
         </div>
       </section>
 
-      <ReportingReminders periods={data.reporting} projects={unfinishedProjects} user={user} />
+      <MyTasks periods={reporting} projects={projects} user={user} />
       <PendingResultsFrameworks projects={registeredProjects} user={user} />
 
       <DashboardFilterPanel filters={filters} setFilter={setFilter} reset={reset} lang={lang}

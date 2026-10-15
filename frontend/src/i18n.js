@@ -5,6 +5,48 @@ const resources = {
   // ── English ──────────────────────────────────────────────────────────────
   en: {
     translation: {
+      tasks: {
+  "title": "My tasks",
+  "scope": "For the projects and reporting period shown here.",
+  "more": "Show {{count}} more tasks",
+  "none": "No reports need your action in this selection.",
+  "kind": {
+    "correct": "Corrections requested",
+    "review": "Waiting for your review",
+    "finish": "Report to finish"
+  },
+  "action": {
+    "correct": "Make corrections",
+    "review": "Review report",
+    "finish": "Continue report"
+  },
+  "feedback": "What needs changing",
+  "periodEnd": "Period end: {{date}}",
+  "checklistTitle": "Prepare your report",
+  "checking": "Checking saved entries…",
+  "checkFailed": "We could not check the saved sections. Try again before sending.",
+  "retry": "Check again",
+  "requiredSaved": "Required sections saved: {{done}} of {{total}}",
+  "savedBasis": "Only entries saved to the report count here. A draft kept on this device is not submitted.",
+  "sections": {
+    "indicator_progress": "Project results",
+    "financial_progress": "Spending",
+    "learning_updates": "Achievements and lessons",
+    "beneficiaries": "People reached",
+    "evidence": "Supporting files"
+  },
+  "saved": "Saved to report",
+  "notSaved": "Not saved yet",
+  "optionalMissing": "Not added",
+  "deviceDraft": "Draft on this device",
+  "openSection": "Open section",
+  "optional": "Other information (optional)",
+  "optionalBasis": "Add this when relevant. These sections do not stop you from sending the report.",
+  "approved": "This report is approved. Ask a reviewer to reopen it before changing its entries.",
+  "awaiting": "This report has been sent and is waiting for review.",
+  "next": "Continue with {{section}}",
+  "reviewBeforeSend": "The required sections have saved entries. Check that all the information is included before sending."
+},
 roleWorkflow: {"assignments": "Project assignments", "manager": "Project manager", "chooseManager": "Select a project manager", "manageAssignments": "Manage project assignments", "assignmentHint": "{{name}} can access only the projects checked below.", "assignedCount": "Projects assigned: {{count}}", "reportScope": "Reports include accessible projects with results frameworks, including completed projects.", "unavailable": "Unavailable for this project", "missingPeriod": "{{period}} is not configured for this project. Select an available period or create this period before entering data.", "chooseAvailablePeriod": "Select an available reporting period before saving.", "evidenceReview": "Evidence is saved as pending. A DoCC M&E Officer or System Administrator verifies it."},
 "figure":{"explain": "Explain", "explainMetric": "Explain: {{metric}}", "value": "Number shown", "current": "Projects listed now", "calculation": "How we work it out", "sources": "Projects and reports used", "sourceCount": "See the information used ({{count}})", "missing": "Some information has not been reported yet. This does not mean the result is zero.", "noSources": "There is no information to show for this selection yet.", "approval": "Report status", "review": "Result status", "openSource": "Open this project or report", "currency": "Amounts are shown in Vatu. Other currencies use exchange rates dated 25 September 2026. An amount is left out if its currency cannot be converted.", "budgetTerms": "Reported spending: {{spent}} VT. Project budgets on record: {{budget}} VT.", "metrics": {"projects": "Projects in Portfolio", "progress": "Overall Progress", "budget": "Budget Utilisation", "beneficiaries": "Beneficiaries Reached", "attention": "Needs Attention", "reporting": "Reporting Completion"}, "formulas": {"projects": "We count the projects you are allowed to view that have a results plan and match your filters. Finished projects are included too. Choosing a reporting period does not change this project list.", "progress": "We use the latest reported result for each thing a project measures, within your selected period. We leave out drafts, reports returned for correction and missing figures. First we average the results for each project. Then we average the project scores. Each project counts equally. Scores above 100% count as 100%, so extra progress in one project does not hide slower progress elsewhere.", "budget": "We divide reported spending by the budgets on record, then turn the answer into a percentage. We use the latest spending report for each project within your selected period and show all amounts in Vatu. A missing spending report is not treated as zero spending.", "beneficiaries": "For each project, we add its reported totals only when all entries have been checked for people being counted more than once. Otherwise, we use its largest reported total. We then add the project totals together. A person can still appear in more than one project. Groups such as women, young people and people with disabilities may overlap and should not be added together.", "attention": "A project marked at risk counts once. A project marked delayed counts once. If it has both warnings, it counts twice. When you choose a period, we use the warnings reported for that period. Otherwise, we use the current project warnings.", "reporting": "We count the reporting periods with approved reports, divide by all reporting periods set up for the projects shown, and turn the answer into a percentage. Reports still being prepared or waiting for approval are not counted as approved. If no periods are set up, there is not enough information to measure completion."}, "status": {"approved": "Approved", "draft": "Draft", "submitted": "Submitted", "under_review": "Under review", "resubmitted": "Resubmitted", "returned": "Returned", "published": "Published", "locked": "Locked", "reviewed": "Reviewed", "unknown": "Not recorded"}, "basis": "Based on", "meaning": {"projects": "How many projects are shown on your dashboard.", "progress": "How far the projects have progressed towards their goals.", "budget": "How much of the project budgets has been spent.", "beneficiaries": "People reported as directly helped by the projects.", "attention": "Projects that may need extra help or follow-up.", "reporting": "How much of the reporting has been approved."}, "summary": {"projects": "These projects have a results plan: a list of what they aim to achieve. Your filters decide which projects appear here.", "progress": "We combine the latest reported progress for the projects shown. Each project has an equal share in this percentage.", "budget": "We compare reported spending with the budgets of the projects shown. Missing spending reports can make this picture incomplete.", "beneficiaries": "This combines the numbers reported by the projects. The same person may be counted by more than one project.", "attention": "We add projects marked at risk and projects marked delayed. A project marked both is counted twice.", "reporting": "This is the share of reporting periods with an approved report. For example, 50% means half have been approved."}},"readiness":{
   "title": "Report readiness check",
@@ -2215,6 +2257,48 @@ roleWorkflow: {"assignments": "Project assignments", "manager": "Project manager
   // a small shared subset are provided here; anything missing falls back to EN.
   fr: {
     translation: {
+      tasks: {
+  "title": "Mes tâches",
+  "scope": "Pour les projets et la période affichés ici.",
+  "more": "Afficher {{count}} tâches de plus",
+  "none": "Aucun rapport ne demande votre intervention dans cette sélection.",
+  "kind": {
+    "correct": "Corrections demandées",
+    "review": "À examiner",
+    "finish": "Rapport à terminer"
+  },
+  "action": {
+    "correct": "Apporter les corrections",
+    "review": "Examiner le rapport",
+    "finish": "Continuer le rapport"
+  },
+  "feedback": "Modifications demandées",
+  "periodEnd": "Fin de la période : {{date}}",
+  "checklistTitle": "Préparer votre rapport",
+  "checking": "Vérification des informations enregistrées…",
+  "checkFailed": "Impossible de vérifier les rubriques enregistrées. Réessayez avant d’envoyer le rapport.",
+  "retry": "Vérifier à nouveau",
+  "requiredSaved": "Rubriques obligatoires enregistrées : {{done}} sur {{total}}",
+  "savedBasis": "Seules les informations enregistrées dans le rapport sont comptées ici. Un brouillon conservé sur cet appareil n’est pas envoyé.",
+  "sections": {
+    "indicator_progress": "Résultats du projet",
+    "financial_progress": "Dépenses",
+    "learning_updates": "Réalisations et enseignements",
+    "beneficiaries": "Personnes touchées",
+    "evidence": "Pièces justificatives"
+  },
+  "saved": "Enregistré dans le rapport",
+  "notSaved": "Pas encore enregistré",
+  "optionalMissing": "Non ajouté",
+  "deviceDraft": "Brouillon sur cet appareil",
+  "openSection": "Ouvrir la rubrique",
+  "optional": "Autres informations (facultatives)",
+  "optionalBasis": "Ajoutez ces informations si nécessaire. Ces rubriques ne bloquent pas l’envoi du rapport.",
+  "approved": "Ce rapport est approuvé. Demandez à un responsable de le rouvrir avant de modifier ses informations.",
+  "awaiting": "Ce rapport a été envoyé et attend un examen.",
+  "next": "Continuer : {{section}}",
+  "reviewBeforeSend": "Les rubriques obligatoires contiennent des informations enregistrées. Vérifiez que toutes les informations sont présentes avant l’envoi."
+},
 roleWorkflow: {"assignments": "Affectations aux projets", "manager": "Chef de projet", "chooseManager": "Sélectionnez un chef de projet", "manageAssignments": "Gérer les affectations aux projets", "assignmentHint": "{{name}} peut accéder uniquement aux projets cochés ci-dessous.", "assignedCount": "Projets affectés : {{count}}", "reportScope": "Les rapports incluent les projets accessibles disposant d’un cadre de résultats, y compris les projets terminés.", "unavailable": "Indisponible pour ce projet", "missingPeriod": "{{period}} n’est pas configurée pour ce projet. Sélectionnez une période disponible ou créez cette période avant de saisir des données.", "chooseAvailablePeriod": "Sélectionnez une période disponible avant d’enregistrer.", "evidenceReview": "Les pièces justificatives sont enregistrées en attente. Un agent S&E du DoCC ou un administrateur système les vérifie."},
 "figure":{"explain": "Expliquer", "explainMetric": "Expliquer : {{metric}}", "value": "Nombre affiché", "current": "Projets actuellement inscrits", "calculation": "Comment nous obtenons ce chiffre", "sources": "Projets et rapports utilisés", "sourceCount": "Voir les informations utilisées ({{count}})", "missing": "Certaines informations ne sont pas encore renseignées. Cela ne signifie pas que le résultat est zéro.", "noSources": "Aucune information n’est encore disponible pour cette sélection.", "approval": "État du rapport", "review": "État du résultat", "openSource": "Ouvrir ce projet ou rapport", "currency": "Les montants sont affichés en vatus. Les autres devises utilisent les taux de change du 25 septembre 2026. Un montant est exclu si sa devise ne peut pas être convertie.", "budgetTerms": "Dépenses déclarées : {{spent}} VT. Budgets enregistrés : {{budget}} VT.", "metrics": {"projects": "Projets du portefeuille", "progress": "Avancement global", "budget": "Utilisation du budget", "beneficiaries": "Bénéficiaires atteints", "attention": "Points à surveiller", "reporting": "Achèvement des rapports"}, "formulas": {"projects": "Nous comptons les projets que vous êtes autorisé à consulter, qui disposent d’un plan de résultats et qui correspondent à vos filtres. Les projets terminés sont également inclus. Choisir une période ne change pas cette liste de projets.", "progress": "Nous utilisons le dernier résultat déclaré pour chaque élément mesuré par un projet, dans la période choisie. Les brouillons, les rapports renvoyés pour correction et les chiffres manquants sont exclus. Nous calculons d’abord la moyenne de chaque projet, puis celle des scores des projets. Chaque projet compte autant. Les scores supérieurs à 100 % comptent pour 100 %, afin qu’un projet en avance ne masque pas les progrès plus lents ailleurs.", "budget": "Nous divisons les dépenses déclarées par les budgets enregistrés, puis exprimons le résultat en pourcentage. Nous utilisons le dernier rapport de dépenses de chaque projet pour la période choisie et convertissons les montants en vatus. Un rapport manquant ne signifie pas que les dépenses sont nulles.", "beneficiaries": "Pour chaque projet, nous additionnons les totaux déclarés seulement si toutes les entrées ont été vérifiées pour éviter de compter plusieurs fois les mêmes personnes. Sinon, nous utilisons le plus grand total déclaré. Nous additionnons ensuite les totaux des projets. Une personne peut encore figurer dans plusieurs projets. Les groupes comme les femmes, les jeunes et les personnes handicapées peuvent se chevaucher et ne doivent pas être additionnés.", "attention": "Un projet à risque compte une fois. Un projet en retard compte une fois. Un projet avec les deux alertes compte deux fois. Si vous choisissez une période, nous utilisons les alertes déclarées pour cette période. Sinon, nous utilisons les alertes actuelles des projets.", "reporting": "Nous comptons les périodes dont le rapport est approuvé, divisons par toutes les périodes configurées pour les projets affichés et exprimons le résultat en pourcentage. Les rapports en préparation ou en attente ne sont pas considérés comme approuvés. Sans période configurée, il n’y a pas assez d’informations pour mesurer l’avancement des rapports."}, "status": {"approved": "Approuvé", "draft": "Brouillon", "submitted": "Soumis", "under_review": "En cours d’examen", "resubmitted": "Soumis à nouveau", "returned": "Retourné", "published": "Publié", "locked": "Verrouillé", "reviewed": "Examiné", "unknown": "Non renseigné"}, "basis": "Basé sur", "meaning": {"projects": "Le nombre de projets affichés sur votre tableau de bord.", "progress": "Les progrès des projets vers leurs objectifs.", "budget": "La part des budgets des projets qui a été dépensée.", "beneficiaries": "Les personnes que les projets déclarent avoir directement aidées.", "attention": "Les projets pouvant avoir besoin d’aide ou de suivi.", "reporting": "La part des rapports qui a été approuvée."}, "summary": {"projects": "Ces projets disposent d’un plan de résultats : la liste de ce qu’ils souhaitent réaliser. Vos filtres déterminent les projets affichés ici.", "progress": "Nous réunissons les derniers progrès déclarés pour les projets affichés. Chaque projet compte autant dans ce pourcentage.", "budget": "Nous comparons les dépenses déclarées aux budgets des projets affichés. Des rapports de dépenses manquants peuvent rendre cette vue incomplète.", "beneficiaries": "Ce total réunit les nombres déclarés par les projets. Une même personne peut être comptée dans plusieurs projets.", "attention": "Nous ajoutons les projets signalés à risque et ceux signalés en retard. Un projet ayant les deux alertes est compté deux fois.", "reporting": "C’est la part des périodes disposant d’un rapport approuvé. Par exemple, 50 % signifie que la moitié a été approuvée."}},"readiness":{
   "title": "Vérification du rapport",

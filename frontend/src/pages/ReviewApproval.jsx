@@ -8,6 +8,7 @@ import ProjectAssignmentManager from '../components/ProjectAssignmentManager';
 // =============================================================================
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, RotateCcw, Eye, Unlock, AlertTriangle, X, FileText } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
 import { confirmDialog, promptDialog } from '../lib/confirm';
@@ -50,6 +51,13 @@ export default function ReviewApproval({ user }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('queue'); // queue | all | approved
   const [busy, setBusy] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const closeDetail = () => {
+    setDetail(null);
+    const next = new URLSearchParams(searchParams);
+    ['project','period','submission'].forEach(key => next.delete(key));
+    setSearchParams(next, {replace:true});
+  };
   const [detail, setDetail] = useState(null); // reporting-period row open in the review drawer
 
   const load = useCallback(async () => {
@@ -65,6 +73,15 @@ export default function ReviewApproval({ user }) {
     setLoading(false);
   }, [lang]);
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (loading || !canReview) return;
+    const project = searchParams.get('project'), period = searchParams.get('period'), id = searchParams.get('submission');
+    if (!project || !period) return;
+    const target = rows.find(row => row.project_id === project && row.period_label === period
+      && (!id || row.id === id) && ['submitted','reviewed'].includes(row.submission_status));
+    if (target) setDetail(target);
+  }, [loading, rows, canReview, searchParams]);
 
   const kpi = useMemo(() => {
     const k = { submitted: 0, reviewed: 0, returned: 0, approved: 0, overdue: 0, reopened: 0 };
@@ -95,7 +112,7 @@ export default function ReviewApproval({ user }) {
     setBusy(null);
     if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success(okMsg);
-    setDetail(null);
+    closeDetail();
     load();
   };
 
@@ -241,7 +258,7 @@ export default function ReviewApproval({ user }) {
           project={projById[detail.project_id]}
           canReview={canReview}
           busy={busy === detail.id}
-          onClose={() => setDetail(null)}
+          onClose={closeDetail}
           onReview={() => doReview(detail)}
           onReturn={() => doReturn(detail)}
           onApprove={() => doApprove(detail)}

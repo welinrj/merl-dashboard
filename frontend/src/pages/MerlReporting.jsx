@@ -1,3 +1,4 @@
+import ReportingChecklist from '../components/ReportingChecklist';
 import { resolveReportingPeriod } from '../lib/docc/workspacePeriod';
 // =============================================================================
 // MerlReporting.jsx — DoCC Standardised MERL Reporting workspace.
@@ -343,14 +344,21 @@ export default function MerlReporting({ user }) {
   // in each period-scoped module for this project + period.
   const [sections, setSections] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sectionCheck, setSectionCheck] = useState({scope:'',loading:true,error:false});
+  const sectionScope = JSON.stringify([projectId,activePeriod]);
+  const sectionReady = sectionCheck.scope === sectionScope && !sectionCheck.loading && !sectionCheck.error;
   useEffect(() => {
     if (!projectId || !activePeriod) { setSections({}); return undefined; }
     let alive = true;
+    setSections({});
+    const scope = JSON.stringify([projectId,activePeriod]);
+    setSectionCheck({scope,loading:true,error:false});
     const scoped = MODULES.filter((mm) => mm.periodScoped);
     Promise.all(scoped.map((mm) => supabase.from(mm.view).select('id', { count: 'exact', head: true })
       .eq('project_id', projectId).eq('reporting_period', activePeriod)
-      .then(({ count }) => [mm.key, count || 0])))
-      .then((entries) => { if (alive) setSections(Object.fromEntries(entries)); });
+      .then(({ count, error }) => { if (error || count == null) throw error || new Error('Missing section counts'); return [mm.key,count]; })))
+      .then(entries => { if (alive) { setSections(Object.fromEntries(entries)); setSectionCheck({scope,loading:false,error:false}); } })
+      .catch(() => { if (alive) setSectionCheck({scope,loading:false,error:true}); });
     return () => { alive = false; };
   }, [projectId, activePeriod, refreshKey]);
 
@@ -553,6 +561,7 @@ export default function MerlReporting({ user }) {
   // section with only a draft in it is not filled in, so it is turned back here
   // with the officer sent straight to the section that needs work.
   const submitPeriod = async () => {
+    if (!sectionReady) { toast.error(t('tasks.checkFailed')); return; }
     if (missingRequired.length) {
       toast.error(t('merl.submitBlocked', { sections: missingRequired.map((m) => t(m.label)).join(', ') }));
       selectTab(missingRequired[0].key);
@@ -642,14 +651,6 @@ export default function MerlReporting({ user }) {
             <span style={{ fontSize: '0.72rem', color: '#8a6416' }}>{t('merl.reviewNoteLbl')} {currentPeriodRow.review_comments}</span>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-            {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && (
-              <button style={btn('var(--green-600)')} onClick={submitPeriod}
-                title={missingRequired.length
-                  ? t('merl.submitBlocked', { sections: missingRequired.map((m) => t(m.label)).join(', ') })
-                  : undefined}>
-                <Send size={14} /> {t('merl.submit')}
-              </button>
-            )}
             {canApprove && ['submitted', 'reviewed'].includes(currentPeriodRow.submission_status) && (
               <>
                 <button style={btn('var(--green-600)')} onClick={() => periodAction('review_reporting_period', currentPeriodRow.id, 'approve')}>
@@ -678,61 +679,11 @@ export default function MerlReporting({ user }) {
         </div>
       )}
 
-      {/* Period completion overview (§40) — which sections have data for this period */}
-      {currentPeriodRow && (
-        <div style={{ marginTop: '0.75rem', padding: '0.8rem 0.9rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--white)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
-            <div>
-              <strong style={{ fontSize: '0.85rem', color: 'var(--text-1)' }}>{t('merl.periodCompletion')}</strong>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginLeft: '0.4rem' }}>
-                {t('merl.sectionsWithData', { done: completion.done, total: completion.total })}
-                {' · '}
-                {t('merl.requiredSectionsDone', {
-                  done: completion.requiredDone, total: completion.requiredTotal,
-                })}
-              </span>
-            </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 800, color: completion.pct === 100 ? '#16a34a' : 'var(--text-1)' }}>
-              {completion.pct}%
-            </span>
-          </div>
-          <div style={{ height: 8, borderRadius: 9999, background: 'var(--green-50)', overflow: 'hidden', marginBottom: '0.7rem' }}>
-            <div style={{ width: `${completion.pct}%`, height: '100%', borderRadius: 9999, background: completion.pct === 100 ? '#16a34a' : 'var(--green-600)', transition: 'width .3s' }} />
-          </div>
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-            {scopedModules.map((m) => {
-              const has = (sections[m.key] || 0) > 0;
-              // A required section still missing its data is what holds the
-              // submission up, so it is called out rather than left neutral.
-              const blocking = !has && m.requiredForSubmission;
-              return (
-                <button key={m.key} onClick={() => selectTab(m.key)}
-                  title={has ? `${sections[m.key]} record(s) this period` : 'No data yet for this period'}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.6rem', minHeight: 32, borderRadius: 9999,
-                    fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
-                    border: `1px solid ${has ? '#16a34a55' : blocking ? '#d9a62966' : 'var(--border)'}`,
-                    background: has ? '#dcece2' : blocking ? '#fdf3dc' : 'var(--white)',
-                    color: has ? '#155e34' : blocking ? '#8a6416' : 'var(--text-3)' }}>
-                  {has
-                    ? <CheckCircle2 size={13} />
-                    : <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: '50%', border: `1.5px solid ${blocking ? '#8a6416' : 'var(--text-3)'}`, display: 'inline-block' }} />}
-                  {t(m.label)}
-                  {m.requiredForSubmission && (
-                    <span style={{ fontWeight: 700, opacity: 0.75 }}>· {t('merl.requiredSection')}</span>
-                  )}
-                  {moduleHasDraft(m) && <DraftChip />}
-                </button>
-              );
-            })}
-          </div>
-          {canEdit && ['draft', 'returned'].includes(currentPeriodRow.submission_status) && completion.done < completion.total && (
-            <p style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', fontSize: '0.72rem', color: 'var(--text-2)', margin: '0.7rem 0 0' }}>
-              <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
-              <span>{t('merl.submitAnyTime')}</span>
-            </p>
-          )}
-        </div>
-      )}
+      {currentPeriodRow && <ReportingChecklist modules={scopedModules} counts={sections} hasDraft={moduleHasDraft}
+        loading={sectionCheck.scope !== sectionScope || sectionCheck.loading} error={sectionCheck.error}
+        status={currentPeriodRow.submission_status} editable={canEdit}
+        onRetry={() => setRefreshKey(value=>value+1)} onSubmit={submitPeriod}
+        onOpen={key => { selectTab(key); requestAnimationFrame(() => { const records=document.getElementById('reporting-records'); records?.focus(); records?.scrollIntoView({block:'start'}); }); }} />}
 
       {newPeriodOpen && (
         <PeriodForm onCancel={() => setNewPeriodOpen(false)} onSave={createPeriod} />
@@ -752,7 +703,7 @@ export default function MerlReporting({ user }) {
       {activeModule.key === 'evidence' && !APPROVER_ROLES.includes(user?.role) && <p>{t('roleWorkflow.evidenceReview')}</p>}
 
       {/* Records */}
-      <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.9rem' }}>
+      <div id="reporting-records" tabIndex={-1} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.9rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
           <div>
             <strong style={{ fontSize: '0.95rem' }}>{t(activeModule.label)}</strong>
