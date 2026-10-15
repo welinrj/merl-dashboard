@@ -170,6 +170,8 @@ export const isTranslatedView = (lang = i18n.resolvedLanguage) => !isSourceLangu
  * is fine; translating the province inside it is not.
  */
 export const TRANSLATABLE_FIELDS = {
+  framework_nodes:    ['title', 'description'],
+  result_narratives:   ['progress_summary', 'key_achievements', 'variance_explanation', 'challenges', 'corrective_actions', 'next_period_priorities', 'public_summary'],
   projects:           ['name', 'description', 'review_note'],
   objectives:         ['statement', 'notes'],
   outcomes:           ['statement'],

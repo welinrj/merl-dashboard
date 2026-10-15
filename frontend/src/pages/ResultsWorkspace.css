@@ -47,3 +47,8 @@
 .result-comparison dt{font-size:.7rem;color:var(--text-3)}
 .result-comparison dd{margin:0;overflow-wrap:anywhere}
 .result-comparison p{font-size:.72rem;line-height:1.5;color:var(--text-3)}
+
+.dsh .rf2-working{margin:.6rem 0;padding:12px;border:1px solid #d9bc72;border-radius:8px;background:#fffbef;min-width:180px;max-width:100%;overflow-wrap:anywhere;font-size:14px;white-space:normal}
+.dsh .rf2-working summary{cursor:pointer;min-height:44px;font-weight:700}
+.dsh .rf2-desktop-activities{margin-top:16px;border:1px solid var(--border);border-radius:10px;background:var(--white)}
+.dsh .rf2-form-actions{flex-wrap:wrap}.dsh .rf2-form-actions button{min-height:44px}

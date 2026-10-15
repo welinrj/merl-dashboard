@@ -54,6 +54,10 @@ jobs:
           STUB_FILE: qa/fixture.json
         run: node qa/kpi-alignment.mjs
 
+      - name: Validate Results audit fixes
+        working-directory: frontend
+        run: node qa/results-audit-fixes.mjs
+
       - name: Validate shared visual styles
         working-directory: frontend
         env:
