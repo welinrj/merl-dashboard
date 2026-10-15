@@ -475,7 +475,6 @@ export default function Reports({ user }) {
         {<div className={`rp-assurance${approvalComplete ? ' ok' : ''}`}>
           <p><b>{cover.status}.</b> {approvalBasis}</p>
         </div>}
-        <ReadinessExportSummary result={readiness} />
         {type === 'full_me' && <FullMEReport d={d} period={period} periodType={periodType} dataAsAt={dataAsAt} />}
         {type === 'project' && <ProjectProgress d={d} projectId={projectId} period={period} periodType={periodType} />}
         {type === 'portfolio' && <Portfolio d={d} period={period} periodType={periodType} />}
@@ -483,6 +482,7 @@ export default function Reports({ user }) {
         {type === 'financial' && <FinancialReport d={d} period={period} periodType={periodType} />}
         {type === 'geographic' && <GeographicReport d={d} province={province} period={period} periodType={periodType} />}
         {type === 'donor' && <DonorReport d={d} donor={donor} period={period} periodType={periodType} />}
+        <ReadinessExportSummary result={readiness} />
       </div>
 
       {/* Report Library (§48-51): audit trail of official reports generated */}

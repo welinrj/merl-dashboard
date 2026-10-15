@@ -58,3 +58,8 @@ test('read-only users receive accessible portfolio links instead of editing form
   const href=readinessAction({key:'missingFinance',projectId:'a',module:'financial_progress'},'Q3',true);
   assert.ok(href.startsWith('#/analytics/project-portfolio?'));assert.ok(href.includes('project=a'));assert.ok(href.includes('period=Q3'));assert.ok(!href.includes('module='));
 });
+
+test('an invalid budget in the financial record is flagged rather than hidden by a profile budget',()=>{
+  const source=data();source.financial[0].approved_budget=-1;
+  assert.ok(reportReadiness(source,scope).issues.some(issue=>issue.key==='missingBudget'));
+});

@@ -34,7 +34,7 @@ export function reportReadiness(data, { type, projectIds, period = '', frequency
     if (financeRequired) {
       const row = finance.get(project.id);
       if (!row || !nonNegative(row.cumulative_expenditure)) add('missingFinance', project, 1, 'financial_progress');
-      const budget = nonNegative(row?.approved_budget) ? row.approved_budget : project.budget_vuv;
+      const budget = numeric(row?.approved_budget) ? row.approved_budget : project.budget_vuv;
       if (!nonNegative(budget) || (Number(budget) === 0 && project.approved_budget_confirmed !== true && !nonNegative(row?.approved_budget))) add('missingBudget', project, 1, 'financial_progress');
     }
     if (resultsRequired) {
