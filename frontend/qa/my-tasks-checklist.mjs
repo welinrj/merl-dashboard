@@ -18,7 +18,10 @@ try {
   await context.addInitScript(({token,now})=>{
    localStorage.setItem('merl.lang','en');
    localStorage.setItem('sb-ndntvncboeajanipafeq-auth-token',JSON.stringify({access_token:token,refresh_token:'mock',token_type:'bearer',expires_at:now+3600,user:{id:'u1',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{}}}));
-   localStorage.setItem('merl.draft.v1:merl|u1|pa|Q3 2026|financial_progress|new',JSON.stringify({savedAt:Date.now(),values:{cumulative_expenditure:'25'}}));
+   if (!localStorage.getItem('qa.draft-seeded')) {
+    localStorage.setItem('merl.draft.v1:merl|u1|pa|Q3 2026|financial_progress|new',JSON.stringify({savedAt:Date.now(),values:{cumulative_expenditure:'25'}}));
+    localStorage.setItem('qa.draft-seeded','true');
+   }
   },{token,now});
   await context.route(`${HOST}/**`,async route=>{
    const req=route.request(),url=new URL(req.url()),path=url.pathname,json=body=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
