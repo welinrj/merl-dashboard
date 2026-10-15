@@ -1,3 +1,4 @@
+import { resolveReportingPeriod } from '../lib/docc/workspacePeriod';
 // =============================================================================
 // MerlReporting.jsx — DoCC Standardised MERL Reporting workspace.
 // One project-scoped screen implementing the periodic reporting modules of the
@@ -290,7 +291,11 @@ export default function MerlReporting({ user }) {
   const [newPeriodOpen, setNewPeriodOpen] = useState(false);
 
   const project = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
-  const activeModule = useMemo(() => MODULES.find((m) => m.key === tab), [tab]);
+  const activeModule = useMemo(() => {
+    const module = MODULES.find(m => m.key === tab);
+    return module?.key === 'evidence' && !APPROVER_ROLES.includes(user?.role)
+      ? { ...module, fields: module.fields.filter(field => field.name !== 'verification_status') } : module;
+  }, [tab, user?.role]);
 
   // ── Load projects once ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -315,7 +320,7 @@ export default function MerlReporting({ user }) {
     setActivities(act.data ?? []);
     setPeriods(per.data ?? []);
     const requestedPeriod = new URLSearchParams(window.location.hash.split('?')[1] || '').get('period');
-    setActivePeriod(prev => (per.data || []).find(p => p.period_label === requestedPeriod)?.period_label || (per.data || []).find(p => p.period_label === prev)?.period_label || per.data?.[0]?.period_label || '');
+    setActivePeriod(prev => resolveReportingPeriod(requestedPeriod, prev, per.data || []));
   }, [lang]);
 
   useEffect(() => { loadContext(projectId); }, [projectId, loadContext]);
@@ -376,6 +381,7 @@ export default function MerlReporting({ user }) {
   // required field is filled. Anything short of that stays a draft.
   const saveRecord = async (values, file = null) => {
     const m = activeModule;
+    if (m.periodScoped && (!activePeriod || !periods.some(p => p.period_label === activePeriod))) { toast.error(t('roleWorkflow.chooseAvailablePeriod')); return; }
     const missing = m.fields
       .filter((f) => f.required && (values[f.name] === '' || values[f.name] == null))
       .map((f) => t(f.label));
@@ -390,11 +396,12 @@ export default function MerlReporting({ user }) {
     const problem = m.validate?.(values);
     if (problem) { toast.error(t(problem.key, problem.params)); return; }
     let uploadedEvidence = null;
-    let evidenceValues = values;
+    let evidenceValues = m.key === 'evidence' && !APPROVER_ROLES.includes(user?.role)
+      ? { ...values, verification_status: 'pending' } : values;
     try {
       if (m.key === 'evidence' && file) {
         uploadedEvidence = await uploadEvidenceFile(file, projectId);
-        evidenceValues = { ...values, file_url: uploadedEvidence.storageUrl };
+        evidenceValues = { ...evidenceValues, file_url: uploadedEvidence.storageUrl };
       }
       const savedId = await saveModuleRecord({ module: m, values: evidenceValues, id: editing?.id ?? null, projectId, reportingPeriod: activePeriod, indicators });
       if (m.key === 'indicator_progress' && savedId) {
@@ -500,6 +507,7 @@ export default function MerlReporting({ user }) {
   };
 
   const currentPeriodRow = periods.find((p) => p.period_label === activePeriod);
+  const periodUnavailable = !!activePeriod && !currentPeriodRow;
   const periodLocked = currentPeriodRow?.submission_status === 'approved';
   const canDeleteCurrentPeriod = !!currentPeriodRow && canEdit
     && (!periodLocked || user?.role === 'ROLE_ADMIN');
@@ -599,6 +607,7 @@ export default function MerlReporting({ user }) {
           <label className="field-label">{t('merl.activePeriod')}</label>
           <select className="field-input" value={activePeriod} onChange={(e) => { const period=e.target.value; setActivePeriod(period); setSearchParams(previous=>{const next=new URLSearchParams(previous); if(period) next.set('period',period); else next.delete('period'); return next;},{replace:true}); }}>
             <option value="">{t('merl.noneOption')}</option>
+            {periodUnavailable && <option value={activePeriod} disabled>{activePeriod} — {t('roleWorkflow.unavailable')}</option>}
             {periods.map((p) => <option key={p.id} value={p.period_label}>{p.period_label}</option>)}
           </select>
         </div>
@@ -613,6 +622,8 @@ export default function MerlReporting({ user }) {
           </>
         )}
       </div>
+
+      {periodUnavailable && <p role="alert" className="card" style={{ padding: '1rem' }}>{t('roleWorkflow.missingPeriod', { period: activePeriod })}</p>}
 
       {/* Period submission / approval status (Form 11) */}
       {currentPeriodRow && (
@@ -738,6 +749,8 @@ export default function MerlReporting({ user }) {
         ))}
       </div>
 
+      {activeModule.key === 'evidence' && !APPROVER_ROLES.includes(user?.role) && <p>{t('roleWorkflow.evidenceReview')}</p>}
+
       {/* Records */}
       <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.9rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
@@ -748,7 +761,7 @@ export default function MerlReporting({ user }) {
           {canEdit && (
             <button style={btn('var(--green-700)')}
               onClick={() => setEditing({})}
-              disabled={(activeModule.periodScoped && !activePeriod)
+              disabled={(activeModule.periodScoped && (!activePeriod || periodUnavailable))
                 || (activeModule.periodScoped && currentPeriodRow?.submission_status === 'approved')}
               title={activeModule.periodScoped && currentPeriodRow?.submission_status === 'approved'
                 ? 'This reporting period is approved and locked — the DoCC M&E Officer must reopen it to make changes'

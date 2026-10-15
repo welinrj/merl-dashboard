@@ -134,7 +134,6 @@ export default function Reports({ user }) {
   const requested = new URLSearchParams(window.location.hash.split('?')[1] || '');
   const [sourceD, setD] = useState(null);
   const [scopeId, setScopeId] = useState(() => requested.get('project') || '');
-  const [includeCompletedProjects, setIncludeCompletedProjects] = useState(false);
   const [type, setType] = useState(() => initialReportType(requested, REPORT_TYPES.map(r=>r.key)));
   const [projectId, setProjectId] = useState(() => requested.get('project') || '');
   const [province, setProvince] = useState('');
@@ -200,11 +199,11 @@ export default function Reports({ user }) {
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [], narratives: narr.data ?? [],
         portfolioStatus: status.data ?? [], learning: withReportingDates(learn.data ?? [], rep.data ?? []), evidence: evidence.data ?? [], analyses: analyses.data ?? [],
         targets: (targets.data ?? []).map(row => ({ ...row, project_id: (ind.data ?? []).find(i => i.id === row.indicator_id)?.project_id })),
-      }, includeCompletedProjects));
+      }));
       if ((proj.data ?? []).length) setProjectId(current => current || officialPortfolioData({ projects: proj.data ?? [] }).projects[0]?.id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang, liveRevision, includeCompletedProjects]);
+  }, [lang, liveRevision]);
 
   const d = scopeProjectReport(sourceD, type === 'project' ? projectId : scopeId);
   if (dataError) return <div className="page-pad"><div role="alert" className="card" style={{ padding: '1rem', color: 'var(--red-700)' }}>{dataError}</div></div>;
@@ -387,7 +386,7 @@ export default function Reports({ user }) {
       `}</style>
 
       <div className="rp-noprint">
-        <label><input type="checkbox" checked={includeCompletedProjects} onChange={event => { setIncludeCompletedProjects(event.target.checked); setProjectId(''); setScopeId(''); }} /> Include completed project history</label>
+        <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-3)' }}>{t('roleWorkflow.reportScope')}</p>
         <PageHeader
           title={t('rpt.reports')}
         />

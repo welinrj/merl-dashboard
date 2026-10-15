@@ -1,3 +1,4 @@
+import AssignProjectsModal from '../components/AssignProjectsModal';
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
@@ -60,73 +61,6 @@ function TabButton({ label, active, onClick }) {
 // Assign/unassign projects to a Project Manager. Every other role is
 // portfolio-wide (System Admin / DoCC M&E Officer / Viewer) and needs no
 // assignment — they see all.
-function AssignProjectsModal({ user, onClose }) {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage;
-  const [projects, setProjects] = useState([]);
-  const [assigned, setAssigned] = useState(new Set());
-  const [loading, setLoading]   = useState(true);
-  const [busy, setBusy]         = useState(null);
-  const [err, setErr]           = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [pj, as] = await Promise.all([
-      localised(() => supabase.from('v_projects').select(i18nCols('id, code, name')).order('code')),
-      supabase.from('v_user_project_assignments').select('project_id, is_active').eq('user_id', user.id),
-    ]);
-    setProjects(pj.data || []);
-    setAssigned(new Set((as.data || []).filter(a => a.is_active).map(a => a.project_id)));
-    setLoading(false);
-  }, [user.id, lang]);
-  useEffect(() => { load(); }, [load]);
-
-  const toggle = async (projectId, isOn) => {
-    setBusy(projectId); setErr('');
-    const { error } = isOn
-      ? await supabase.rpc('unassign_user_project', { p_user_id: user.id, p_project_id: projectId })
-      : await supabase.rpc('assign_user_project', { p_user_id: user.id, p_project_id: projectId, p_assignment_type: 'manager' });
-    setBusy(null);
-    if (error) { setErr(dbErrorMessage(error)); return; }
-    setAssigned(prev => { const n = new Set(prev); if (isOn) n.delete(projectId); else n.add(projectId); return n; });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 mt-12" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-gray-900">{t('adm.assignedProjects')}</h3>
-        <p className="text-sm text-gray-500 mt-1">
-          <span className="font-medium text-gray-700">{user.full_name}</span> can access only the projects checked below.
-        </p>
-        {err && <div className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
-        <div className="mt-4 max-h-80 overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-lg">
-          {loading ? (
-            <div className="p-4 text-sm text-gray-400">{t('adm.loading')}</div>
-          ) : projects.length === 0 ? (
-            <div className="p-4 text-sm text-gray-400">{t('adm.noProjects')}</div>
-          ) : projects.map(p => {
-            const on = assigned.has(p.id);
-            return (
-              <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
-                <input type="checkbox" checked={on} disabled={busy === p.id}
-                  onChange={() => toggle(p.id, on)} className="accent-green-600 w-4 h-4" />
-                <span className="min-w-0">
-                  <span className="text-sm font-semibold text-gray-800">{p.code}</span>
-                  <span className="text-xs text-gray-500 ml-2">{p.name}</span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
-        <div className="mt-4 flex justify-between items-center">
-          <span className="text-xs text-gray-400">{assigned.size} project{assigned.size === 1 ? '' : 's'} assigned</span>
-          <button onClick={onClose} className="bg-green-700 text-white text-sm font-semibold rounded-lg px-5 py-2 hover:bg-green-800">{t('adm.done')}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Users Tab ─────────────────────────────────────────────────────────────────
 function UsersTab() {
   const { t } = useTranslation();

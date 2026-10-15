@@ -14,3 +14,8 @@ export function visiblePeriodOptions(projects, rows) {
     .sort((a, b) => String(b.period_end || b.period_label).localeCompare(String(a.period_end || a.period_label)));
 }
 export const workspacePeriodKey = userId => `merl.workspace.period.${userId}`;
+
+// An explicit selection stays explicit, including a missing period on a new project.
+export function resolveReportingPeriod(requested, previous, periods = []) {
+  return requested !== null ? requested : previous || periods[0]?.period_label || '';
+}
