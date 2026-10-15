@@ -50,13 +50,13 @@ const OVERVIEW_METRIC_STYLES = `
     display:grid!important;
     grid-template-columns:minmax(0,1fr)!important;
     grid-template-areas:none!important;
-    grid-template-rows:minmax(40px,auto) minmax(80px,1fr) auto auto!important;
+    grid-template-rows:minmax(36px,auto) minmax(76px,1fr) auto auto!important;
     grid-auto-flow:row!important;
     align-content:stretch!important;
     align-items:stretch!important;
-    gap:.65rem!important;
+    gap:.5rem!important;
     min-height:232px!important;
-    padding:1rem!important;
+    padding:.875rem!important;
     border:1px solid var(--visual-border)!important;
     border-radius:var(--visual-radius)!important;
     background:#fff!important;
@@ -118,7 +118,7 @@ const OVERVIEW_METRIC_STYLES = `
     grid-column:1!important;
     grid-row:3!important;
     min-width:0;
-    min-height:2.5em;
+    min-height:2em;
     color:var(--visual-muted)!important;
     font-size:.875rem!important;
     line-height:1.45!important;
@@ -153,7 +153,7 @@ const OVERVIEW_METRIC_STYLES = `
   }
   .k21-gauge{
     position:relative;
-    width:min(144px,100%);
+    width:min(136px,100%);
     aspect-ratio:200/112;
     flex:none;
   }

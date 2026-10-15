@@ -58,11 +58,12 @@ try {
     });
   }));
   assert.ok(textFits,'French card labels and actions are fully visible');
-  await page.locator('.ovx-kpis').screenshot({path:'qa-artifacts/header-visual-kpis-fr-360.png'});
+  await page.locator('.ovx-kpi').first().screenshot({path:'qa-artifacts/header-visual-kpis-fr-360.png'});
+  await page.locator('.ovx-kpi-progress').screenshot({path:'qa-artifacts/header-visual-progress-fr-360.png'});
   await page.locator('.dsh-lang button[lang=en]').click();
   await page.goto('http://localhost:5199/#/review');
-  await page.locator('.merl-status-badge').first().waitFor();
-  for(const badge of await page.locator('.merl-status-badge').all()){
+  await page.locator('.merl-status-badge:visible').first().waitFor();
+  for(const badge of await page.locator('.merl-status-badge:visible').all()){
     assert.ok((await badge.innerText()).trim().length>0);assert.equal(await badge.locator('svg[aria-hidden=true]').count(),1);
   }
   await fits();await page.screenshot({path:'qa-artifacts/header-visual-review-360.png'});
