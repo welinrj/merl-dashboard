@@ -5,6 +5,7 @@ const resources = {
   // ── English ──────────────────────────────────────────────────────────────
   en: {
     translation: {
+      visual: { fullScale: 'Out of 100%' },
       tasks: {
   "title": "My tasks",
   "scope": "For the projects and reporting period shown here.",
@@ -2257,6 +2258,7 @@ roleWorkflow: {"assignments": "Project assignments", "manager": "Project manager
   // a small shared subset are provided here; anything missing falls back to EN.
   fr: {
     translation: {
+      visual: { fullScale: 'Sur une échelle de 100 %' },
       tasks: {
   "title": "Mes tâches",
   "scope": "Pour les projets et la période affichés ici.",

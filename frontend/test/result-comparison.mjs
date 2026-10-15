@@ -58,6 +58,7 @@ test('PDF table cells reset their backgrounds after drawing text', () => {
   const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
   renderReportPdf(pdf, [{ type: 'table', rows: [['Name', 'Actual'], ['Participants', '25']] }]);
   const stream = pdf.internal.pages[1].join('\n');
-  const rectangles = stream.match(/(?:1\. g|0\.92 0\.95 0\.96 rg)\n[^\n]+ re\nB/g) || [];
-  assert.equal(rectangles.length, 4, 'All four cells have their own light fill before drawing');
+  const rectangles = [...stream.matchAll(/((?:[0-9.]+ ){0,2}[0-9.]+ (?:g|rg))\n[^\n]+ re\nB/g)];
+  assert.equal(rectangles.length, 4, 'All four cells reset their fill before drawing');
+  assert.ok(rectangles.every(cell => cell[1].split(' ').slice(0,-1).every(channel => Number(channel) > .85)), 'Cells use light fills after text changes graphics state');
 });

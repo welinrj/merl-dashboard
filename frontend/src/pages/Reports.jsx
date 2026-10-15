@@ -17,7 +17,7 @@ import { officialPortfolioData } from '../lib/docc/projectScope';
 // Financial Performance, Geographic/Provincial, Funding Partner/Donor.
 // =============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Document, HeadingLevel, Packer, PageBreak, Paragraph, Table, TableCell, TableRow, WidthType, TextRun, Footer, PageNumber, AlignmentType } from 'docx';
+import { Document, HeadingLevel, Packer, PageBreak, Paragraph, Table, TableCell, TableRow, WidthType, TextRun, Header, Footer, PageNumber, AlignmentType } from 'docx';
 import { jsPDF } from 'jspdf';
 import { Download, FileText, Printer } from '../components/ui/icons';
 import { supabase } from '../supabaseClient';
@@ -298,13 +298,13 @@ export default function Reports({ user }) {
         if (block.type === 'pageBreak') return new Paragraph({ children: [new PageBreak()] });
         if (block.type === 'table') return new Table({
           width: { size: 100, type: WidthType.PERCENTAGE },
-          rows: block.rows.map((row, index) => new TableRow({ tableHeader: index === 0, children: row.map(cell => new TableCell({ shading: index === 0 ? { fill: 'EAF2F6' } : undefined, margins: { top: 80, bottom: 80, left: 80, right: 80 }, children: String(cell || '—').split('\n').map(text => new Paragraph({ children: [new TextRun({ text, bold: index === 0, size: 18 })], spacing: { after: 40 } })) })) })),
+          rows: block.rows.map((row, index) => new TableRow({ tableHeader: index === 0, children: row.map(cell => new TableCell({ shading: index === 0 ? { fill: 'EAF5F5' } : undefined, margins: { top: 80, bottom: 80, left: 80, right: 80 }, children: String(cell || '—').split('\n').map(text => new Paragraph({ children: [new TextRun({ text, bold: index === 0, size: 18, color: index === 0 ? '153B58' : '24364B' })], spacing: { after: 40 } })) })) })),
         });
         const heading = block.type === 'title' ? HeadingLevel.TITLE : block.type === 'heading1' ? HeadingLevel.HEADING_1 : block.type === 'heading2' ? HeadingLevel.HEADING_2 : undefined;
-        return new Paragraph({ text: block.text, heading, keepNext: Boolean(heading), spacing: { after: heading ? 160 : 100 } });
+        return new Paragraph({ children: [new TextRun({text:block.text, color:heading ? '153B58' : '24364B'})], heading, keepNext: Boolean(heading), spacing: { after: heading ? 160 : 100 } });
       });
       const coverChildren = await wordCover(cover);
-      const documentFile = new Document({ styles: { default: { document: { run: { font: 'Calibri', size: 22, color: '1A1A1A' } } } }, sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 720, bottom: 720, left: 720, right: 720 } } }, footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${cover.status} · `, size: 16 }), new TextRun({ children: [PageNumber.CURRENT], size: 16 }), new TextRun({ text: ' / ', size: 16 }), new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16 })] })] }) }, children: [...coverChildren, ...children] }] });
+      const documentFile = new Document({ styles: { default: { document: { run: { font: 'Calibri', size: 22, color: '24364B' } }, title: { run: {color:'153B58', bold:true} }, heading1: {run:{color:'153B58',bold:true}}, heading2:{run:{color:'153B58',bold:true}} } }, sections: [{ properties: { titlePage:true, page: { size: { width: 11906, height: 16838 }, margin: { top: 720, bottom: 720, left: 720, right: 720 } } }, headers: {first:new Header({children:[]}), default:new Header({children:[new Paragraph({children:[new TextRun({text:cover.title,size:16,color:'526277'})]})]})}, footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `${cover.status} · `, size: 16, color:'526277' }), new TextRun({ children: [PageNumber.CURRENT], size: 16 }), new TextRun({ text: ' / ', size: 16 }), new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16 })] })] }) }, children: [...coverChildren, ...children] }] });
       downloadBlob(await Packer.toBlob(documentFile), reportFilename('docx'));
       void logGeneration('docx');
     } catch (error) {

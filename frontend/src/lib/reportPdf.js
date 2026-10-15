@@ -8,7 +8,7 @@ export function renderReportPdf(pdf, blocks, { title = '', status = '' } = {}) {
   const clean = text => String(text ?? '—').replaceAll('→', ' to ').replaceAll('—', '-').replaceAll('–', '-').replaceAll('’', "'").replaceAll('≥', '>=').replaceAll('≤', '<=');
   const nextPage = () => { pdf.addPage(); y = 52; };
   const write = (text, size = 9, bold = false, gap = 7) => {
-    pdf.setFont(family, bold ? 'bold' : 'normal'); pdf.setFontSize(size);
+    pdf.setFont(family, bold ? 'bold' : 'normal'); pdf.setFontSize(size); pdf.setTextColor(bold ? '#153B58' : '#24364B');
     for (const line of pdf.splitTextToSize(clean(text), width)) {
       if (y + size + 3 > bottom) nextPage();
       pdf.text(line, margin, y); y += size + 3;
@@ -31,12 +31,13 @@ export function renderReportPdf(pdf, blocks, { title = '', status = '' } = {}) {
       const height = lineCount * lineHeight + padding * 2;
       let x = margin;
       pdf.setFont(family, isHeader ? 'bold' : 'normal'); pdf.setFontSize(7.5);
-      pdf.setDrawColor('#D6E0E5'); pdf.setFillColor(isHeader ? '#EAF2F6' : '#FFFFFF');
+      pdf.setDrawColor('#D6E0E5'); pdf.setFillColor(isHeader ? '#EAF5F5' : '#FFFFFF');
       for (let i = 0; i < columns; i++) {
         // jsPDF text emits a fill colour operator. Reset it for every cell,
         // otherwise the next rectangle inherits black from the preceding text.
-        pdf.setFillColor(isHeader ? '#EAF2F6' : '#FFFFFF');
+        pdf.setFillColor(isHeader ? '#EAF5F5' : '#FFFFFF');
         pdf.rect(x, y - 7, widths[i], height, 'FD');
+        pdf.setTextColor(isHeader ? '#153B58' : '#24364B');
         pdf.text(cells[i] || [], x + padding, y + padding);
         x += widths[i];
       }

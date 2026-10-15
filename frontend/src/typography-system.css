@@ -278,10 +278,10 @@ pre,
 /* Preserve hierarchy on phones without shrinking body text too far. */
 @media (max-width: 760px) {
   :root {
-    --type-body: 0.9rem;
-    --type-body-sm: 0.8rem;
+    --type-body: 0.9375rem;
+    --type-body-sm: 0.875rem;
     --type-control: 1rem;
-    --type-label: 0.72rem;
+    --type-label: 0.8125rem;
   }
 
   .page-title,

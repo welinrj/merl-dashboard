@@ -10,6 +10,7 @@ function clampPct(value) {
 }
 
 function ScoreGauge({ value, displayValue }) {
+  const { t } = useTranslation();
   const pct = clampPct(value);
   const tone = value == null ? 'none' : pct >= 80 ? 'strong' : pct >= 40 ? 'moderate' : 'weak';
   return (
@@ -17,10 +18,11 @@ function ScoreGauge({ value, displayValue }) {
       <svg viewBox="0 0 200 112" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
         <path className="k21-gauge-track" d="M 12 100 A 88 88 0 0 1 188 100" pathLength="100" />
         <path className="k21-gauge-value" d="M 12 100 A 88 88 0 0 1 188 100" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - pct} />
+        <path className="k21-gauge-target" d="M 188 94 V 106" />
       </svg>
       <div className="k21-gauge-copy">
         <span className="kpi-card-value">{displayValue}</span>
-        <span className="k21-gauge-unit">100% scale</span>
+        <span className="k21-gauge-unit">{t('visual.fullScale')}</span>
       </div>
       <div className="k21-compact-track" aria-hidden="true">
         <span className="k21-compact-fill" style={{ width: `${pct}%` }} />
@@ -48,17 +50,17 @@ const OVERVIEW_METRIC_STYLES = `
     display:grid!important;
     grid-template-columns:minmax(0,1fr)!important;
     grid-template-areas:none!important;
-    grid-template-rows:minmax(40px,auto) minmax(96px,1fr) auto auto!important;
+    grid-template-rows:minmax(40px,auto) minmax(80px,1fr) auto auto!important;
     grid-auto-flow:row!important;
     align-content:stretch!important;
     align-items:stretch!important;
     gap:.65rem!important;
-    min-height:260px!important;
+    min-height:232px!important;
     padding:1rem!important;
-    border:1px solid #dfe7f2!important;
-    border-radius:18px!important;
-    background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(249,252,255,.96))!important;
-    box-shadow:0 8px 28px rgba(28,67,133,.07)!important;
+    border:1px solid var(--visual-border)!important;
+    border-radius:var(--visual-radius)!important;
+    background:#fff!important;
+    box-shadow:var(--visual-shadow)!important;
     overflow:hidden!important;
     isolation:isolate;
   }
@@ -79,9 +81,9 @@ const OVERVIEW_METRIC_STYLES = `
     text-align:left;
   }
   .dsh .ovx .ovx-kpis .kpi-card-label{
-    color:#172d57!important;
-    font-size:.85rem!important;
-    font-weight:740!important;
+    color:var(--visual-ink)!important;
+    font-size:.9375rem!important;
+    font-weight:700!important;
     line-height:1.35!important;
     letter-spacing:0!important;
     text-transform:none!important;
@@ -94,16 +96,16 @@ const OVERVIEW_METRIC_STYLES = `
     align-items:center!important;
     justify-content:center!important;
     min-width:0;
-    min-height:96px;
+    min-height:80px;
     padding:0!important;
   }
   .dsh .ovx .ovx-kpis .kpi-card-value{
     display:block!important;
     min-width:0;
     margin:0!important;
-    color:#172d57!important;
+    color:var(--visual-ink)!important;
     font-family:var(--font-display)!important;
-    font-size:clamp(1.9rem,2.5vw,2.5rem)!important;
+    font-size:clamp(1.75rem,2.1vw,2.25rem)!important;
     font-weight:780!important;
     font-variant-numeric:tabular-nums!important;
     letter-spacing:-.04em!important;
@@ -117,8 +119,8 @@ const OVERVIEW_METRIC_STYLES = `
     grid-row:3!important;
     min-width:0;
     min-height:2.5em;
-    color:#728096!important;
-    font-size:.82rem!important;
+    color:var(--visual-muted)!important;
+    font-size:.875rem!important;
     line-height:1.45!important;
     text-align:center;
   }
@@ -138,8 +140,8 @@ const OVERVIEW_METRIC_STYLES = `
     border:1px solid #d5e9ea;
     border-radius:9px;
     background:#f1f8f8;
-    color:#14727b!important;
-    font-size:.78rem!important;
+    color:var(--visual-accent)!important;
+    font-size:.875rem!important;
     font-weight:700!important;
     line-height:1.35!important;
     opacity:1!important;
@@ -151,13 +153,14 @@ const OVERVIEW_METRIC_STYLES = `
   }
   .k21-gauge{
     position:relative;
-    width:min(160px,100%);
+    width:min(144px,100%);
     aspect-ratio:200/112;
     flex:none;
   }
   .k21-gauge svg{display:block;width:100%;height:100%;overflow:visible;}
   .k21-gauge-track,.k21-gauge-value{fill:none;stroke-width:12;stroke-linecap:butt;}
-  .k21-gauge-track{stroke:#e8eef7;}
+  .k21-gauge-track{stroke:#e6edf2;}
+  .k21-gauge-target{fill:none;stroke:#526277;stroke-width:1.5;}
   .k21-gauge-value{stroke:#205fc8;transition:stroke-dashoffset .8s cubic-bezier(.33,1,.68,1);}
   .k21-gauge.tone-strong .k21-gauge-value{stroke:#22a565;}
   .k21-gauge.tone-moderate .k21-gauge-value{stroke:#e0a12a;}
@@ -174,11 +177,11 @@ const OVERVIEW_METRIC_STYLES = `
     pointer-events:none;
   }
   .dsh .ovx .ovx-kpis .k21-gauge-copy .kpi-card-value{
-    font-size:clamp(1.65rem,2.3vw,2.2rem)!important;
+    font-size:clamp(1.5rem,2vw,1.9rem)!important;
   }
   .k21-gauge-unit{
-    color:#7b8799;
-    font-size:.62rem;
+    color:var(--visual-muted);
+    font-size:.6875rem;
     font-weight:650;
     line-height:1.25;
     letter-spacing:.02em;
@@ -194,16 +197,16 @@ const OVERVIEW_METRIC_STYLES = `
   }
   @container(max-width:519px){
     .dsh .ovx .ovx-kpis{grid-template-columns:1fr!important;}
-    .dsh .ovx .ovx-kpis .ovx-kpi{min-height:0!important;height:auto!important;align-self:start;grid-template-rows:auto 64px auto auto!important;gap:8px!important;padding:14px 14px 24px!important;}
+    .dsh .ovx .ovx-kpis .ovx-kpi{min-height:0!important;height:auto!important;align-self:start;grid-template-rows:auto 64px auto auto!important;gap:8px!important;padding:14px 14px 22px!important;}
     .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-visual{min-height:64px!important;}
-    .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-sub{min-height:0!important;font-size:13px!important;line-height:1.4!important;}
+    .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-sub{min-height:0!important;font-size:14px!important;line-height:1.4!important;}
     .dsh .ovx .ovx-kpis .kpi-card-label{font-size:14px!important;}
-    .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-link{font-size:13px!important;padding:8px!important;box-sizing:border-box;}
+    .dsh .ovx .ovx-kpis .ovx-kpi > .kpi-card-link{font-size:14px!important;padding:8px!important;box-sizing:border-box;}
     .dsh .ovx .ovx-kpis .kpi-card-value,.dsh .ovx .ovx-kpis .k21-gauge-copy .kpi-card-value{font-size:28px!important;}
-    .k21-gauge{width:100%;height:64px;aspect-ratio:auto;display:flex;flex-direction:column;justify-content:center;gap:10px;}
+    .k21-gauge{width:100%;height:64px;aspect-ratio:auto;display:flex;flex-direction:column;justify-content:center;gap:6px;}
     .k21-gauge svg{display:none;}
     .k21-gauge-copy{position:static;}
-    .k21-gauge-unit{display:none;}
+    .k21-gauge-unit{display:block;font-size:11px;}
     .k21-compact-track{display:block;height:8px;width:100%;border-radius:4px;background:#e8eef7;overflow:hidden;}
     .k21-compact-fill{display:block;height:100%;border-radius:4px;background:#168c96;}
     .tone-strong .k21-compact-fill{background:#22a565;}
@@ -216,7 +219,7 @@ const OVERVIEW_METRIC_STYLES = `
   }
   @media(max-width:560px){
     .dsh .ovx .ovx-kpis{grid-template-columns:1fr!important;}
-    .dsh .ovx .ovx-kpis .ovx-kpi{min-height:260px!important;}
+    .dsh .ovx .ovx-kpis .ovx-kpi{min-height:232px!important;}
   }
   }
   @media(prefers-reduced-motion:reduce){
