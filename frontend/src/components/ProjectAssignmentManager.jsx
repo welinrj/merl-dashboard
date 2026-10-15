@@ -26,7 +26,7 @@ export default function ProjectAssignmentManager() {
     <h2 style={{ fontSize: '1rem', margin: '0 0 .6rem' }}>{t('roleWorkflow.assignments')}</h2>
     {error ? <p role="alert">{error}</p> : <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.6rem', alignItems: 'end' }}>
       <label style={{ flex: '1 1 220px', minWidth: 0 }}>{t('roleWorkflow.manager')}
-        <select className="field-input" value={selected} disabled={loading} onChange={e => setSelected(e.target.value)}>
+        <select aria-label={t('roleWorkflow.manager')} className="field-input" value={selected} disabled={loading} onChange={e => setSelected(e.target.value)}>
           <option value="">{loading ? t('common.loading') : t('roleWorkflow.chooseManager')}</option>
           {users.map(user => <option key={user.id} value={user.id}>{user.full_name}</option>)}
         </select>
