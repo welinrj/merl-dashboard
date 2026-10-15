@@ -102,6 +102,7 @@ check('anonymous private route returns to the one public overview',new URL(page.
 for(const width of [1024,768,390,360,320]) {
   await page.setViewportSize({width,height:844});
   await go('#/dashboards');
+  check(`${width}px: public metric values align across the first row`,await page.locator('.pbd-metric>strong').evaluateAll(nodes=>Math.abs(nodes[0].getBoundingClientRect().top-nodes[1].getBoundingClientRect().top)<2));
   check(`${width}px: no page-wide horizontal overflow`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
   if(width<=760) {
     const menu=page.getByRole('button',{name:'Open menu'});
