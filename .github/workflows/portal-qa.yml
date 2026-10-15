@@ -48,6 +48,10 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate figure explanations and report readiness
+        working-directory: frontend
+        run: node qa/result-assurance.mjs
+
       - name: Validate Results Framework reading and editing on phones
         working-directory: frontend
         env:

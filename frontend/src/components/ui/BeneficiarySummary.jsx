@@ -51,7 +51,7 @@ async function readAll(view, columns, lang, translate = false) {
 }
 
 export default function BeneficiarySummary(props) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage?.startsWith('fr') ? 'fr' : 'en';
   const c = COPY[lang];
   const { filters } = useDashboardFilters();
@@ -62,6 +62,7 @@ export default function BeneficiarySummary(props) {
 
   useEffect(() => {
     let active = true;
+    if (props.beneficiaryData) return;
     setSource(null);
     setError(false);
     Promise.all([
@@ -71,15 +72,16 @@ export default function BeneficiarySummary(props) {
       if (active) setSource({ projects, beneficiaries });
     }).catch(() => { if (active) setError(true); });
     return () => { active = false; };
-  }, [lang, retry]);
+  }, [lang, retry, Boolean(props.beneficiaryData)]);
 
   const scoped = useMemo(() => {
-    if (!source) return null;
-    const projects = source.projects.filter(p => projectMatches(p, filters));
+    const effective = props.beneficiaryData || source;
+    if (!effective) return null;
+    const projects = props.beneficiaryData ? effective.projects : effective.projects.filter(p => projectMatches(p, filters));
     const ids = new Set(projects.map(p => p.id));
-    const rows = source.beneficiaries.filter(row => ids.has(row.project_id));
+    const rows = effective.beneficiaries.filter(row => ids.has(row.project_id));
     return { projects, rows, summary: aggregateBeneficiaries(rows) };
-  }, [source, filters]);
+  }, [source, filters, props.beneficiaryData]);
 
   const summary = scoped?.summary;
   const display = value => value == null ? '—' : fmtNum(value);
@@ -129,7 +131,7 @@ export default function BeneficiarySummary(props) {
             </div>)}
           </div>
           <p className="bene-note">{c.total}: <strong>{display(summary.total_direct)}</strong> · {c.completeness}: {display(summary.genderCompleteness)}% · {c.checked}: {display(summary.checked)} / {display(summary.records)}.</p>
-          <p className="bene-note">{c.note}</p>
+          <p className="bene-note">{t('figure.formulas.beneficiaries')}</p>
           {projectRows.length > 0 && <div className="bene-actions"><button type="button" className="bene-action" aria-expanded={expanded} onClick={() => setExpanded(v => !v)}>{expanded ? c.hide : c.details}</button></div>}
           {expanded && <div className="bene-table-wrap"><table>
             <thead><tr><th>{c.project}</th><th>{c.total}</th>{FIELDS.map(([field]) => <th key={field}>{c[field]}</th>)}</tr></thead>

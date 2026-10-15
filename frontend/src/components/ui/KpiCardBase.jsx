@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 // Executive KPI primitive adapted from the user-supplied 21st.dev score-card.
 // The caller owns the values, labels and destinations; no demonstration data is used.
 import { cn } from '@/lib/utils';
@@ -226,9 +227,10 @@ const OVERVIEW_METRIC_STYLES = `
 
 export default function KpiCard({
   label, value, sub, progress, progressColor, linkLabel,
-  onClick, children, className, icon: Icon,
+  onClick, onExplain, children, className, icon: Icon,
 }) {
-  const Tag = onClick ? 'button' : 'div';
+  const { t } = useTranslation();
+  const Tag = onClick && !onExplain ? 'button' : 'div';
   const injectOverviewStyles = typeof className === 'string' && className.includes('ovx-kpi-progress');
   const showGauge = progress != null;
 
@@ -236,8 +238,8 @@ export default function KpiCard({
     <>
       {injectOverviewStyles && <style>{OVERVIEW_METRIC_STYLES}</style>}
       <Tag
-        type={onClick ? 'button' : undefined}
-        onClick={onClick}
+        type={onClick && !onExplain ? 'button' : undefined}
+        onClick={onExplain ? undefined : onClick}
         className={cn(
           'island-metric group relative flex w-full min-w-0 flex-col gap-2.5 rounded-[var(--radius-card)] border',
           'border-[var(--border)] bg-white p-4 text-left transition-all duration-200',
@@ -248,6 +250,7 @@ export default function KpiCard({
         <div className="kpi-card-head min-w-0">
           {Icon && <span className="merl-card-icon"><Icon size={30} /></span>}
           <div className="kpi-card-label text-[0.72rem] font-semibold leading-tight text-[var(--text-2)]">{label}</div>
+          {onExplain && <button type="button" className="kpi-card-explain" onClick={onExplain} aria-label={t('figure.explainMetric', { metric: label })}>{t('figure.explain')}</button>}
         </div>
         <div className="kpi-card-visual">
           {showGauge ? (
@@ -265,7 +268,7 @@ export default function KpiCard({
             <div className="kpi-card-progress-fill h-full rounded-[3px]" style={{ width: `${clampPct(progress)}%`, background: progressColor || 'var(--green-600)' }} />
           </div>
         )}
-        {linkLabel && <span className="kpi-card-link text-xs font-semibold text-[var(--green-700)]">{linkLabel}</span>}
+        {linkLabel && (onExplain ? <button type="button" className="kpi-card-link text-xs font-semibold text-[var(--green-700)]" onClick={onClick}>{linkLabel}</button> : <span className="kpi-card-link text-xs font-semibold text-[var(--green-700)]">{linkLabel}</span>)}
       </Tag>
     </>
   );
