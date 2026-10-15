@@ -11,7 +11,7 @@ import { resolveReportingPeriod } from '../lib/docc/workspacePeriod';
 // through the public.v_* views while writes go through the SECURITY DEFINER
 // RPCs from migration 0029.
 // =============================================================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -345,13 +345,15 @@ export default function MerlReporting({ user }) {
   const [sections, setSections] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [sectionCheck, setSectionCheck] = useState({scope:'',loading:true,error:false});
-  const sectionScope = JSON.stringify([projectId,activePeriod]);
+  const sectionScope = JSON.stringify([projectId,activePeriod,refreshKey]);
+  const submitLock = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
   const sectionReady = sectionCheck.scope === sectionScope && !sectionCheck.loading && !sectionCheck.error;
   useEffect(() => {
     if (!projectId || !activePeriod) { setSections({}); return undefined; }
     let alive = true;
     setSections({});
-    const scope = JSON.stringify([projectId,activePeriod]);
+    const scope = JSON.stringify([projectId,activePeriod,refreshKey]);
     setSectionCheck({scope,loading:true,error:false});
     const scoped = MODULES.filter((mm) => mm.periodScoped);
     Promise.all(scoped.map((mm) => supabase.from(mm.view).select('id', { count: 'exact', head: true })
@@ -511,7 +513,7 @@ export default function MerlReporting({ user }) {
     const { error } = await supabase.rpc(rpc, params);
     if (error) { toast.error(dbErrorMessage(error)); return; }
     toast.success(rpc === 'reopen_reporting_period' ? t('merl.periodReopenedToast') : t('merl.updatedToast'));
-    loadContext(projectId);
+    await loadContext(projectId);
   };
 
   const currentPeriodRow = periods.find((p) => p.period_label === activePeriod);
@@ -561,6 +563,10 @@ export default function MerlReporting({ user }) {
   // section with only a draft in it is not filled in, so it is turned back here
   // with the officer sent straight to the section that needs work.
   const submitPeriod = async () => {
+    if (submitLock.current) return;
+    submitLock.current = true;
+    setSubmitting(true);
+    try {
     if (!sectionReady) { toast.error(t('tasks.checkFailed')); return; }
     if (missingRequired.length) {
       toast.error(t('merl.submitBlocked', { sections: missingRequired.map((m) => t(m.label)).join(', ') }));
@@ -576,7 +582,8 @@ export default function MerlReporting({ user }) {
       });
       if (!ok) { selectTab(pending[0].key); return; }
     }
-    periodAction('submit_reporting_period', currentPeriodRow.id);
+    await periodAction('submit_reporting_period', currentPeriodRow.id);
+    } finally { submitLock.current = false; setSubmitting(false); }
   };
 
   return (
@@ -681,7 +688,7 @@ export default function MerlReporting({ user }) {
 
       {currentPeriodRow && <ReportingChecklist modules={scopedModules} counts={sections} hasDraft={moduleHasDraft}
         loading={sectionCheck.scope !== sectionScope || sectionCheck.loading} error={sectionCheck.error}
-        status={currentPeriodRow.submission_status} editable={canEdit}
+        status={currentPeriodRow.submission_status} editable={canEdit} submitting={submitting}
         onRetry={() => setRefreshKey(value=>value+1)} onSubmit={submitPeriod}
         onOpen={key => { selectTab(key); requestAnimationFrame(() => { const records=document.getElementById('reporting-records'); records?.focus(); records?.scrollIntoView({block:'start'}); }); }} />}
 

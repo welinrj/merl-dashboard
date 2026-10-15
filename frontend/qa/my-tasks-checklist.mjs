@@ -30,7 +30,7 @@ try {
    if(path.startsWith('/rest/v1/')){
     let body=rows[path.split('/').pop()]||[];
     for(const [key,value]of url.searchParams)if(value.startsWith('eq.'))body=body.filter(row=>String(row[key])===value.slice(3));
-    if(req.method()==='HEAD')return route.fulfill({status:200,headers:unknownCounts?{}:{'content-range':`*/${body.length}`},body:''});
+    if(req.method()==='HEAD')return route.fulfill({status:200,headers:unknownCounts?{}:{'content-range':`*/${body.length}`,'access-control-expose-headers':'content-range'},body:''});
     return json((req.headers().accept||'').includes('vnd.pgrst.object')?body[0]||null:body);
    }
    return json([]);
@@ -50,7 +50,7 @@ try {
     assert.match(await link.getAttribute('href'),/submission=rp1/);await link.click();
     const dialog=page.getByRole('dialog',{name:'Reporting period detail',exact:true});await dialog.waitFor();
     assert.match(await dialog.innerText(),/Coastal adaptation project/);assert.match(await dialog.innerText(),/Q3 2026/);assert.equal(writes.length,0);
-    await dialog.getByRole('button',{name:'Close',exact:true}).click();await dialog.waitFor({state:'hidden'});assert.doesNotMatch(page.url(),/submission=/);
+    await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});assert.doesNotMatch(page.url(),/submission=/);
    } else {
     assert.match(await tasks.innerText(),/Explain the spending change/);
     await tasks.getByRole('link',{name:'Make corrections',exact:true}).click();

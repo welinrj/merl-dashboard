@@ -6,7 +6,7 @@ import ProjectAssignmentManager from '../components/ProjectAssignmentManager';
 // codes) and drives the SECURITY DEFINER workflow RPCs, which enforce that only
 // the DoCC M&E Officer (or System Admin) may act.
 // =============================================================================
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, RotateCcw, Eye, Unlock, AlertTriangle, X, FileText } from '../components/ui/icons';
@@ -275,6 +275,17 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const [data, setData] = useState(null);
+  const dialog = useRef(null);
+  useEffect(() => {
+    const previous = document.activeElement, overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialog.current.showModal();
+    return () => {
+      dialog.current?.close();
+      document.body.style.overflow = overflow;
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -291,8 +302,8 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
   const status = row.submission_status;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t('merl.periodDetail')}
-      style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
+    <dialog ref={dialog} aria-label={t('merl.periodDetail')} onCancel={event => { event.preventDefault(); onClose(); }}
+      style={{ position:'fixed', inset:0, zIndex:60, display:'flex', justifyContent:'flex-end', width:'100%', maxWidth:'none', height:'100%', maxHeight:'none', margin:0, padding:0, border:0, background:'transparent', color:'var(--text-1)' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.4)' }} />
       <div style={{ position: 'relative', width: 'min(560px, 100%)', maxWidth: '100%', height: '100%', background: 'var(--surface-1, var(--white))',
         boxShadow: '-8px 0 24px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}>
@@ -306,7 +317,7 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
               <StatusBadge status={status} />
             </div>
           </div>
-          <button onClick={onClose} aria-label={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4, flexShrink: 0 }}>
+          <button onClick={onClose} aria-label={t('ui.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4, minWidth:44, minHeight:44, flexShrink: 0 }}>
             <X size={20} />
           </button>
         </div>
@@ -371,7 +382,7 @@ function SubmissionDrawer({ row, project, canReview, busy, onClose, onReview, on
           </div>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }
 
