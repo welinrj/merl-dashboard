@@ -44,24 +44,28 @@ export default function FigureExplanation({ metric, value, data, period, readOnl
   return createPortal(<dialog ref={dialog} className="figure-dialog" aria-labelledby={titleId} onClose={onClose}
     onClick={event => { if (event.target === dialog.current) dialog.current.close(); }}>
     <header><h2 id={titleId}>{t(`figure.metrics.${metric}`)}</h2><button type="button" onClick={() => dialog.current.close()} aria-label={t('common.close')}>×</button></header>
-    <dl><dt>{t('figure.value')}</dt><dd>{value}</dd><dt>{t('workspace.period')}</dt><dd>{current ? t('figure.current') : period || t('workspace.allPeriods')}</dd></dl>
-    <h3>{t('figure.calculation')}</h3><p>{t(`figure.formulas.${metric}`)}</p>
+    <p className="figure-meaning">{t(`figure.meaning.${metric}`)}</p>
+    <dl><dt>{t('figure.value')}</dt><dd>{value}</dd><dt>{t(current ? 'figure.basis' : 'workspace.period')}</dt><dd>{current ? t('figure.current') : period || t('workspace.allPeriods')}</dd></dl>
+    <p>{t(`figure.summary.${metric}`)}</p>
+    {missing > 0 && <p className="figure-note">{t('figure.missing')}</p>}
+    <details className="figure-details"><summary>{t('figure.calculation')}</summary>
+    <p>{t(`figure.formulas.${metric}`)}</p>
     {metric === 'budget' && <><p>{t('figure.currency')}</p><p>{t('figure.budgetTerms', { spent: fmtNum(sumReported(finance.map(row => toVuv(row.cumulative_expenditure, projectMap.get(row.project_id)?.currency)))), budget: fmtNum(sumReported(data.projects.map(project => toVuv(project.budget_vuv, project.currency)))) })}</p></>}
-    <p>{t('figure.sourceCount', { count: rows.length })}</p>
-    {missing > 0 && <p>{t('figure.missing', { count: missing })}</p>}
-    <h3>{t('figure.sources')}</h3>
+    </details>
+    <details className="figure-details figure-sources"><summary>{t('figure.sourceCount', { count: rows.length })}</summary>
     {!rows.length ? <p>{t('figure.noSources')}</p> : <ul>{rows.map((row, index) => {
       const project = projectMap.get(row.project_id);
       const label = row.reporting_period || row.period_label;
       const approval = row.submission_status || periods.find(item => item.project_id === row.project_id && item.period_label === label)?.submission_status;
       const indicator = data.indicators.find(item => item.id === row.indicator_id);
       const amount = metric === 'budget' ? toVuv(row.cumulative_expenditure, project?.currency) : metric === 'beneficiaries' ? row.total_direct : metric === 'progress' ? row.achievement_pct : null;
-      return <li key={`${row.id || row.project_id}-${index}`}><strong>{project?.code || project?.name}{indicator ? ` · ${indicator.code || indicator.name || ''}` : ''}</strong>
-        <span>{label || t('figure.current')}{amount != null ? ` · ${fmtNum(amount)}${metric === 'progress' ? '%' : metric === 'budget' ? ' VUV' : ''}` : ''}</span>
+      return <li key={`${row.id || row.project_id}-${index}`}><strong>{project?.name || project?.code}{indicator ? ` · ${indicator.name || indicator.code || ''}` : ''}</strong>
+        <span>{label || t('figure.current')}{amount != null ? ` · ${fmtNum(amount)}${metric === 'progress' ? '%' : metric === 'budget' ? ' VT' : ''}` : ''}</span>
         {!current && <span>{t('figure.approval')}: {statusText(approval)}</span>}
         {row.review_status && <span>{t('figure.review')}: {statusText(row.review_status)}</span>}
         <a href={sourceHref(row)} onClick={onClose}>{t('figure.openSource')}</a>
       </li>;
     })}</ul>}
+    </details>
   </dialog>, document.body);
 }
