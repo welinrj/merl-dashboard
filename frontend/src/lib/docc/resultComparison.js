@@ -4,12 +4,20 @@ import { frameworkTargetValue } from './frameworkTarget';
 const numeric = value => value != null && value !== '' && Number.isFinite(Number(value));
 export function indicatorTargets(rows = []) {
   const result = new Map();
-  for (const row of [...rows].sort(compareReportedRows)) {
+  for (const row of [...rows].sort(compareTargetVersions)) {
     const bag = result.get(row.indicator_id) || {};
     bag[row.target_type] = row;
     result.set(row.indicator_id, bag);
   }
   return result;
+}
+
+// Same ordering as the target-save RPC, including effective dates and revisions.
+export function compareTargetVersions(a, b) {
+  const time = value => Date.parse(value || '') || 0;
+  return time(a.period_end || a.created_at) - time(b.period_end || b.created_at)
+    || time(a.updated_at || a.created_at) - time(b.updated_at || b.created_at)
+    || String(a.id).localeCompare(String(b.id));
 }
 
 // Compare recorded observations, never sum successive cumulative snapshots.

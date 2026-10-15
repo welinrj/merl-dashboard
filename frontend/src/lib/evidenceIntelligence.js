@@ -28,9 +28,10 @@ export const EVIDENCE_STATES = {
 export const stateMeta = (state) => EVIDENCE_STATES[state] ?? EVIDENCE_STATES.not_analysed;
 
 /** Per-indicator rollup: has evidence, is it relevant, is the figure news. */
-export async function fetchEvidenceStatus(projectId) {
+export async function fetchEvidenceStatus(projectId, { signal } = {}) {
   let query = supabase.from('v_indicator_evidence_status').select('*');
   if (projectId) query = query.eq('project_id', projectId);
+  if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
   return new Map((data ?? []).map((row) => [row.indicator_id, {
@@ -42,13 +43,13 @@ export async function fetchEvidenceStatus(projectId) {
 }
 
 /** Every document filed against one indicator, with its latest finding. */
-export async function fetchIndicatorEvidence(indicatorId) {
+export async function fetchIndicatorEvidence(indicatorId, { signal } = {}) {
   const [docs, analyses] = await Promise.all([
     supabase.from('v_evidence').select('id, title, document_type, document_date, file_url, reporting_period, created_at')
-      .eq('indicator_id', indicatorId).order('created_at', { ascending: false }),
+      .eq('indicator_id', indicatorId).order('created_at', { ascending: false }).abortSignal(signal),
     supabase.from('v_evidence_analysis').select('*')
       .eq('indicator_id', indicatorId).neq('review_state', 'superseded')
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }).abortSignal(signal),
   ]);
   if (docs.error) throw docs.error;
   if (analyses.error) throw analyses.error;

@@ -135,7 +135,7 @@ for (const role of ROLES) {
     assert.equal(ctx.frameworkWrites.at(-1).args.p_changes.title,`Updated objective by ${role}`);
     for(const [column,value] of [['Baseline','125'],['Mid-term','500'],['Final target','1000'],['Latest actual','400'],['Progress','45'],['Narrative','Updated narrative']]) {
       await page.getByRole('button',{name:`Edit ${column}: IND-01`,exact:true}).click();
-      await dialog.getByLabel('Content').fill(value);
+      await dialog.getByLabel(['Latest actual','Progress'].includes(column) ? column : 'Content', {exact:true}).fill(value);
       await saveButton.click();
       await dialog.waitFor({state:'hidden'});
       const changed=ctx.frameworkWrites.at(-1).args.p_changes;

@@ -11,7 +11,7 @@ export default function ResultComparison({ result }) {
       ['previous', result.previous ? `${value(result.previousActual)} · ${result.previous.reporting_period}` : t('resultDetail.noPrevious')],
       ['change', value(result.change)], ['gap', value(result.gap)],
       ['direction', t(`resultDetail.${result.direction}`, { defaultValue: result.direction })],
-      ['approval', value(result.approval?.replaceAll('_', ' '))],
+      ['approval', result.approval ? t(`rf.states.${result.approval}`, { defaultValue:value(result.approval.replaceAll('_', ' ')) }) : value(null)],
     ].map(([key, text]) => <div key={key}><dt>{t(`resultDetail.${key}`)}</dt><dd>{text}</dd></div>)}</dl>
     <p>{t('resultDetail.methodNote')}</p>
   </details>;

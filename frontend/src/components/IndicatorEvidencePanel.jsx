@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
@@ -6,6 +6,7 @@ import {
 } from '../lib/evidenceIntelligence';
 import { openIndicatorEvidence } from '../lib/indicatorEvidenceFiles';
 import { fmtDate, fmtNum } from '../lib/locale';
+import { markBackgroundRead } from '../lib/readAvailability';
 
 /** Map a single analysis row onto the badge vocabulary used across the portal. */
 function analysisState(analysis) {
@@ -30,23 +31,35 @@ export function EvidenceBadge({ state, count }) {
 
 export default function IndicatorEvidencePanel({ indicator, canEdit, onProgressWritten }) {
   const { t, i18n } = useTranslation();
-  const [rows, setRows] = useState([]);
+  const [result, setResult] = useState({ indicatorId:null, rows:[] });
+  const rows = result.indicatorId === indicator?.id ? result.rows : [];
+  const [readError, setReadError] = useState(null);
+  const requestRef = useRef(0);
+  const controllerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
     if (!indicator?.id) return;
-    setLoading(true);
+    const request = ++requestRef.current;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    markBackgroundRead(controller.signal);
+    const indicatorId = indicator.id;
+    setLoading(true); setReadError(null); setResult({ indicatorId, rows:[] });
     try {
-      setRows(await fetchIndicatorEvidence(indicator.id));
+      const rows = await fetchIndicatorEvidence(indicatorId, { signal:controller.signal });
+      if (request === requestRef.current) setResult({ indicatorId, rows });
     } catch (error) {
-      toast.error(error?.message || t('evi.readFailed'));
+      if (request === requestRef.current) setReadError({ indicatorId, message:error?.message || t('evi.readFailed') });
     } finally {
-      setLoading(false);
+      if (request === requestRef.current) setLoading(false);
     }
   }, [indicator?.id, t]);
 
-  useEffect(() => { load(); }, [load, i18n.language]);
+  useEffect(() => { load(); return () => { requestRef.current++; controllerRef.current?.abort(); }; }, [load, i18n.language]);
+  const error = readError?.indicatorId === indicator?.id ? readError : null;
 
   const run = async (evidenceId) => {
     setBusyId(evidenceId);
@@ -106,7 +119,8 @@ export default function IndicatorEvidencePanel({ indicator, canEdit, onProgressW
 
       {loading && <p className="evi-hint">{t('evi.loading')}</p>}
 
-      {!loading && rows.length === 0 && (
+      {error && <div role="alert" className="evi-empty"><strong>{t('rf.evidenceError')}</strong><button type="button" className="btn btn-secondary" onClick={load}>{t('rf.retry')}</button></div>}
+      {!loading && !error && result.indicatorId === indicator?.id && rows.length === 0 && (
         <div className="evi-empty">
           <strong>{t('evi.noEvidence')}</strong>
           <span>{t('evi.noEvidenceHint')}</span>
