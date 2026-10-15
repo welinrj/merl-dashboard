@@ -25,3 +25,8 @@
 @media print { .report-readiness, .figure-dialog { display: none; } }
 
 .ovx-kpi .kpi-card-head { display: flex; gap: 8px; }.ovx-kpi .kpi-card-label { min-width: 0; flex: 1; }.ovx-kpi button.kpi-card-link { font-family: inherit; cursor: pointer; }
+
+.figure-dialog .figure-meaning { font-size: 1rem; font-weight: 650; margin: 16px 0 8px; }
+.figure-dialog .figure-note { padding: 10px 12px; border-left: 3px solid #d3a345; background: #fffbef; }
+.figure-details { border-top: 1px solid #e2e9ee; margin-top: 16px; }
+.figure-details > summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-size: .9rem; font-weight: 650; overflow-wrap: anywhere; }
