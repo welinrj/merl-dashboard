@@ -69,8 +69,11 @@ try {
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:5199/#/results-framework');
  const coreError=page.getByRole('alert').filter({hasText:'Results could not be loaded.'});
- await coreError.waitFor();failCore=false;
- await coreError.getByRole('button',{name:'Retry',exact:true}).click();
+ await coreError.waitFor();
+ if(await coreError.getByRole('button',{name:'Retry',exact:true}).count()!==1)throw new Error('Core error has no retry action');
+ failCore=false;
+ // Genuine transport failures retain the portal-wide guard and its recovery.
+ await page.getByRole('alertdialog').getByRole('button').click();
  await page.locator('.rf2-table').waitFor();
  await page.locator('.rf2-desktop-activities').getByText('ACT-01 — Restore coastal buffer',{exact:true}).waitFor();
  const clamp=await page.locator('.rf2-indicator b').first().evaluate(el=>getComputedStyle(el).webkitLineClamp);

@@ -27,6 +27,7 @@ import { projectColor } from '../components/PublicProjectResults';
 import * as OPT from '../constants/formOptions';
 import IndicatorEvidencePanel, { EvidenceBadge } from '../components/IndicatorEvidencePanel';
 import { fetchEvidenceStatus } from '../lib/evidenceIntelligence';
+import { markBackgroundRead } from '../lib/readAvailability';
 
 const empty = {
   projects: [], nodes: [], indicators: [], targets: [], progress: [], narratives: [], activities: [],
@@ -160,6 +161,7 @@ export default function ResultsWorkspace({ user }) {
   const [evidenceError, setEvidenceError] = useState(false);
   const [evidenceLoading, setEvidenceLoading] = useState(true);
   const evidenceRequest = useRef(0);
+  const evidenceController = useRef(null);
   // Narratives are clamped so every row is the same height; this holds the ones
   // the reader has opened back up.
   const [openNarratives, setOpenNarratives] = useState(() => new Set());
@@ -170,12 +172,16 @@ export default function ResultsWorkspace({ user }) {
   });
   const refreshEvidence = async () => {
     const request = ++evidenceRequest.current;
+    evidenceController.current?.abort();
+    const controller = new AbortController();
+    evidenceController.current = controller;
+    markBackgroundRead(controller.signal);
     setEvidenceLoading(true); setEvidenceError(false); setEvidence(new Map());
-    try { const map = await fetchEvidenceStatus(); if (request === evidenceRequest.current) setEvidence(map); }
+    try { const map = await fetchEvidenceStatus(undefined, { signal:controller.signal }); if (request === evidenceRequest.current) setEvidence(map); }
     catch { if (request === evidenceRequest.current) setEvidenceError(true); }
     finally { if (request === evidenceRequest.current) setEvidenceLoading(false); }
   };
-  useEffect(() => { refreshEvidence(); return () => { evidenceRequest.current++; }; }, [user?.id, reloadKey, liveRevision]);
+  useEffect(() => { refreshEvidence(); return () => { evidenceRequest.current++; evidenceController.current?.abort(); }; }, [user?.id, reloadKey, liveRevision, i18n.resolvedLanguage]);
 
   const reload = () => setReloadKey((n) => n + 1);
 

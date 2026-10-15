@@ -6,6 +6,7 @@ import {
 } from '../lib/evidenceIntelligence';
 import { openIndicatorEvidence } from '../lib/indicatorEvidenceFiles';
 import { fmtDate, fmtNum } from '../lib/locale';
+import { markBackgroundRead } from '../lib/readAvailability';
 
 /** Map a single analysis row onto the badge vocabulary used across the portal. */
 function analysisState(analysis) {
@@ -34,16 +35,21 @@ export default function IndicatorEvidencePanel({ indicator, canEdit, onProgressW
   const rows = result.indicatorId === indicator?.id ? result.rows : [];
   const [readError, setReadError] = useState(null);
   const requestRef = useRef(0);
+  const controllerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
     if (!indicator?.id) return;
     const request = ++requestRef.current;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    markBackgroundRead(controller.signal);
     const indicatorId = indicator.id;
     setLoading(true); setReadError(null); setResult({ indicatorId, rows:[] });
     try {
-      const rows = await fetchIndicatorEvidence(indicatorId);
+      const rows = await fetchIndicatorEvidence(indicatorId, { signal:controller.signal });
       if (request === requestRef.current) setResult({ indicatorId, rows });
     } catch (error) {
       if (request === requestRef.current) setReadError({ indicatorId, message:error?.message || t('evi.readFailed') });
@@ -52,7 +58,7 @@ export default function IndicatorEvidencePanel({ indicator, canEdit, onProgressW
     }
   }, [indicator?.id, t]);
 
-  useEffect(() => { load(); return () => { requestRef.current++; }; }, [load, i18n.language]);
+  useEffect(() => { load(); return () => { requestRef.current++; controllerRef.current?.abort(); }; }, [load, i18n.language]);
   const error = readError?.indicatorId === indicator?.id ? readError : null;
 
   const run = async (evidenceId) => {
