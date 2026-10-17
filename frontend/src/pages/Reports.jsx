@@ -1,3 +1,4 @@
+import ReportContents from '../components/ReportContents';
 import ReportReadiness, { ReadinessExportSummary } from '../components/ReportReadiness';
 import { reportReadiness, rowMatchesReportScope } from '../lib/docc/reportReadiness';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
@@ -464,6 +465,8 @@ export default function Reports({ user }) {
       </div>
 
       <button type="button" className="rp-noprint" onClick={() => setShowCover(value => !value)} style={{ minHeight:40, marginTop:8, border:0, background:'transparent', color:'var(--green-800)' }}>{t(showCover ? 'resultDetail.hideCover' : 'resultDetail.showCover')}</button>
+      <div className="report-reading-layout">
+      <ReportContents onOpen={() => setPreviewOpen(true)} onShowCover={() => setShowCover(true)} title={cover.title} period={cover.period} revision={`${type}:${projectId}:${scopeId}:${period}`} />
       <div id="report-preview" className={`rp-doc rp-print ${previewOpen ? 'rp-preview-open' : 'rp-preview-collapsed'} ${showCover ? 'rp-show-cover' : ''}`}>
         <IslandReportCover {...cover} />
         <div className="rp-stamp">
@@ -482,6 +485,8 @@ export default function Reports({ user }) {
         {type === 'geographic' && <GeographicReport d={d} province={province} period={period} periodType={periodType} />}
         {type === 'donor' && <DonorReport d={d} donor={donor} period={period} periodType={periodType} />}
         <ReadinessExportSummary result={readiness} />
+      </div>
+
       </div>
 
       {/* Report Library (§48-51): audit trail of official reports generated */}

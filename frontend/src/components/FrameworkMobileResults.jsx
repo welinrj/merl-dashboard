@@ -1,3 +1,4 @@
+import ResultAchievement from './ResultAchievement';
 import { useTranslation } from 'react-i18next';
 import ResultComparison from './ResultComparison';
 import { fmtNum } from '../lib/locale';
@@ -46,36 +47,41 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
           const edit = (field, label) => editable && indicator && <button type="button" className="rf2-mobile-edit"
             aria-label={`${t('rf.editField', { field:label })}: ${indicator.code || indicator.name}`} onClick={() => editRow(row, field)}>{t('rf.edit')}</button>;
           const cells = indicator ? [
+            ['actual', t('rf.actual'), display(row.progress?.cumulative_actual ?? row.progress?.actual_this_period)],
+            ['final', t('rf.final'), display(frameworkTargetValue(row.targets.final, indicator.target_value))],
+            ['progress', t('rf.progress'), percent(row.comparison?.achievement)],
             ['baseline', t('rf.baseline'), display(frameworkTargetValue(row.targets.baseline, indicator.baseline_value))],
             ['mid_term', t('rf.mid_term'), display(frameworkTargetValue(row.targets.mid_term))],
-            ['final', t('rf.final'), display(frameworkTargetValue(row.targets.final, indicator.target_value))],
-            ['actual', t('rf.actual'), display(row.progress?.cumulative_actual ?? row.progress?.actual_this_period)],
-            ['progress', t('rf.progress'), percent(row.comparison?.achievement)],
           ] : [];
-          return <article className="rf2-result-card" key={indicator?.id || row.node.id}>
+          return <article className="rf2-result-card reading-result-card" key={indicator?.id || row.node.id}>
             <small>{row.project.name}</small>
             <h2>{indicator?.code && <span>{indicator.code} · </span>}{indicator?.name || row.node.title}</h2>
             {edit('indicator', t('rf.indicator'))}
-            {row.path.length > 0 && <details className="rf2-mobile-path"><summary>{t('rf.frameworkText')}</summary>
-              {row.path.map(node => <div key={node.id}><p><strong>{nodeTypeLabel(node.node_type)}{node.node_code ? ` ${node.node_code}` : ''}:</strong> {node.title}</p>
-                {editable && <button type="button" className="rf2-mobile-edit" aria-label={`${t('rf.editField', { field:nodeTypeLabel(node.node_type) })}: ${node.node_code || node.title}`} onClick={() => editNode(node)}>{t('rf.edit')}</button>}
-                {node.description && <p>{node.description}</p>}
-              </div>)}
-            </details>}
             {indicator ? <>
-              <p><strong>{t('rf.unitLabel')}</strong> {indicator.unit || t('rf.notRecorded')}</p>
-              <p className="rf2-period-context"><strong>{t('rf.periodLabel')}</strong> {row.progress?.reporting_period || t('rf.noReported')}</p>
-              <dl>{cells.map(([field, label, value]) => <div key={field}><dt>{label}</dt><dd>{value}</dd>{edit(field, label)}</div>)}</dl>
+              <div className="reading-result-meta"><p><strong>{t('rf.unitLabel')}</strong> {indicator.unit || t('rf.notRecorded')}</p>
+              <p className="rf2-period-context"><strong>{t('rf.periodLabel')}</strong> {row.progress?.reporting_period || t('rf.noReported')}</p></div>
+              <div className="reading-result-summary">
+              <dl>{cells.map(([field, label, value]) => <div key={field} data-field={field}><dt>{label}</dt><dd>{value}</dd>{edit(field, label)}</div>)}</dl>
+              <div className="reading-result-evidence"><button type="button" className="btn btn-secondary" onClick={() => onEvidence(indicator)}>{t('rf.viewEvidence')}</button><p>{t('reading.evidenceHelp')}</p></div>
+              </div>
+              <ResultAchievement value={row.comparison?.achievement} />
               <ResultComparison result={row.comparison} />
               {workingState?.(row)}
               <div className="rf2-mobile-status">{status(row)}{edit('status', t('rf.status'))}</div>
               <div className="rf2-mobile-update"><h3>{t('rf.reportedUpdate')}</h3><p>{row.narrative?.progress_summary || row.progress?.narrative || t('rf.noNarrative')}</p>{edit('narrative', t('rf.narrative'))}</div>
               <p><strong>{t('rf.frequencyLabel')}</strong> {OPT.labelOf(OPT.REPORTING_FREQUENCY, indicator.official_reporting_frequency || indicator.frequency) || t('rf.notRecorded')}</p>
               {edit('reporting', t('rf.reporting'))}
-              <button type="button" className="rf2-mobile-edit" onClick={() => onEvidence(indicator)}>{t('rf.viewEvidence')}</button>
+
+
             </> : <><p>{t('rf.noAttached')}</p>
               {editable && <button type="button" className="rf2-mobile-edit" onClick={() => attachIndicator(row)}>{t('rf.addIndicator')}</button>}
             </>}
+            {row.path.length > 0 && <details className="rf2-mobile-path"><summary>{t('rf.frameworkText')}</summary>
+              {row.path.map(node => <div key={node.id}><p><strong>{nodeTypeLabel(node.node_type)}{node.node_code ? ` ${node.node_code}` : ''}:</strong> {node.title}</p>
+                {editable && <button type="button" className="rf2-mobile-edit" aria-label={`${t('rf.editField', { field:nodeTypeLabel(node.node_type) })}: ${node.node_code || node.title}`} onClick={() => editNode(node)}>{t('rf.edit')}</button>}
+                {node.description && <p>{node.description}</p>}
+              </div>)}
+            </details>}
           </article>;
         })}
         <section className="rf2-activities"><h3>{t('rf.linkedActivities')}</h3>

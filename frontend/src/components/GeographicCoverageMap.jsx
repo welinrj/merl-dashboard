@@ -27,10 +27,10 @@ const BASEMAPS = {
 
 const BREAKS = [
   { min: 0, max: 0, label: '0', color: '#f1f5f9' },
-  { min: 1, max: 1, label: '1', color: '#ffd43b' },
-  { min: 2, max: 3, label: '2–3', color: '#ff922b' },
-  { min: 4, max: 5, label: '4–5', color: '#f03e3e' },
-  { min: 6, max: Infinity, label: '6+', color: '#7b2cbf' },
+  { min: 1, max: 1, label: '1', color: '#b7dfe0' },
+  { min: 2, max: 3, label: '2–3', color: '#75b7bf' },
+  { min: 4, max: 5, label: '4–5', color: '#2c8694' },
+  { min: 6, max: Infinity, label: '6+', color: '#153b58' },
 ];
 
 // Published project names are canonical. Some operational names differ from

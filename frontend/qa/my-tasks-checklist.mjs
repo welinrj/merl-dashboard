@@ -64,6 +64,7 @@ try {
     assert.equal(await checklist.getByRole('button',{name:'Submit',exact:true}).count(),0);
     await checklist.getByRole('button',{name:'Continue with Spending',exact:true}).click();
     assert.match(page.url(),/module=financial_progress/);
+    await page.waitForFunction(()=>document.getElementById('reporting-records')===document.activeElement);
     assert.equal(await page.locator('#reporting-records').evaluate(el=>el===document.activeElement),true);
     await page.getByRole('button',{name:'Add',exact:true}).click();
     const dialog=page.getByRole('dialog');await dialog.waitFor();await dialog.getByLabel(/Cumulative Expenditure/i).fill('25');

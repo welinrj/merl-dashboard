@@ -119,6 +119,8 @@ for (const route of ROUTES) {
     attempted += 1;
     if (!(await el.isVisible().catch(() => false))) { findings.push(`${route} :: control ${i} is no longer available`); continue; }
     const label = labels[i] || '(icon)';
+    const href = await el.getAttribute('href');
+    const destination = href ? new URL(href, before) : null;
 
     let succeeded = false;
     try { await el.click({ timeout: 3000 }); succeeded = true; }
@@ -130,7 +132,13 @@ for (const route of ROUTES) {
     const alive = await page.evaluate(() => document.body.innerText.trim().length > 50).catch(() => false);
 
     if (errs.length) findings.push(`${route} :: "${label}" -> ${errs[0]}`);
-    if (!alive) findings.push(`${route} :: "${label}" -> BLANK PAGE after click`);
+    // Attribution links may deliberately leave the portal. Verify their
+    // destination rather than applying the portal's body check to a vendor page.
+    const afterOrigin = new URL(page.url()).origin;
+    const leftPortal = afterOrigin !== new URL(before).origin;
+    const expectedOutbound = leftPortal && destination && /^https?:$/.test(destination.protocol) && destination.origin === afterOrigin;
+    if (leftPortal && !expectedOutbound) findings.push(`${route} :: "${label}" -> unexpected external navigation`);
+    if (!alive && !expectedOutbound) findings.push(`${route} :: "${label}" -> BLANK PAGE after click`);
 
     // Close anything modal the click opened, and get back to a known state.
     await page.keyboard.press('Escape').catch(() => {});

@@ -1,3 +1,4 @@
+import ReadingDensity, { useReadingDensity } from '../components/ReadingDensity';
 import { draftKey, useFormDraft } from '../lib/formDraft';
 import DraftStatus from '../components/ui/DraftStatus';
 import { sourceFrameworkRow, workingFrameworkProgress, editorValues } from '../lib/docc/frameworkEditing';
@@ -371,6 +372,8 @@ export default function ResultsWorkspace({ user }) {
     </div>;
   };
 
+  const [density, setDensity] = useReadingDensity();
+
   const workingState = row => row.workingProgress ? <details className="rf2-working">
     <summary>{t('rf.workingTitle', { period:row.workingProgress.reporting_period })}</summary>
     <p>{t('rf.workingHelp')}</p>
@@ -380,7 +383,7 @@ export default function ResultsWorkspace({ user }) {
       <a className="rf2-mobile-edit" href={`#/merl-reporting?module=indicator_progress&project=${encodeURIComponent(row.project.id)}&period=${encodeURIComponent(row.workingProgress.reporting_period)}`}>{t('rf.continueReporting')}</a></>}
   </details> : null;
 
-  return <div className="page-pad rf2-page">
+  return <div className={`page-pad rf2-page reading-${density}`}>
     <ResultsStyles />
 
     <header className="rf2-header">
@@ -393,6 +396,7 @@ export default function ResultsWorkspace({ user }) {
       </div>
     </header>
 
+    <ReadingDensity value={density} onChange={setDensity} />
     <section className="rf2-tools">
       <label>{t('rf.project')}
         <select aria-label={t('rf.project')} className="field-input" value={projectFilter} onChange={(e) => chooseProject(e.target.value)}>
