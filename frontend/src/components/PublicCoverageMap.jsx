@@ -70,7 +70,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const copy = fr ? {
     overview:'Vue d’ensemble',reset:'Voir tout le Vanuatu',neutral:'Aucun lieu de projet enregistré',source:'Limites des conseils de zone · instantané 2025',countNote:'Les nombres représentent des conseils de zone, pas des projets.',zoomIn:'Agrandir',zoomOut:'Réduire',layers:'Couches',street:'Plan',satellite:'Satellite',one:'projet', many:'projets', none:'aucun lieu de mise en œuvre enregistré',
     noneDetail:'Aucun lieu de mise en œuvre n’est enregistré pour ce conseil de zone. Cela ne signifie pas nécessairement qu’il n’y a aucune activité de projet.',
-    unavailable:'Carte temporairement indisponible.', keyTitle:'Zones par thème officiel',
+    unavailable:'Carte temporairement indisponible.', keyTitle:'Thèmes des projets',
     keyBody:'Les zones non colorées n’ont pas de lieu de mise en œuvre enregistré.',
     themes:{adaptation:'Adaptation',mitigation:'Atténuation',both:'Adaptation et atténuation','not-recorded':'Thème non renseigné'},
     areaOne:'conseil',areaMany:'conseils',
@@ -78,7 +78,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   } : {
     overview:'Overview',reset:'Show all Vanuatu',neutral:'No recorded project location',source:'Area Council boundaries · 2025 snapshot',countNote:'Counts are Area Councils, not projects.',zoomIn:'Zoom in',zoomOut:'Zoom out',layers:'Layers',street:'Street map',satellite:'Satellite',one:'project', many:'projects', none:'no recorded implementation location',
     noneDetail:'No implementation location is recorded for this Area Council. This does not necessarily mean there is no project activity.',
-    unavailable:'Map temporarily unavailable.', keyTitle:'Areas by official thematic area',
+    unavailable:'Map temporarily unavailable.', keyTitle:'Project themes',
     keyBody:'Uncoloured areas have no recorded implementation location.',
     themes:{adaptation:'Adaptation',mitigation:'Mitigation',both:'Adaptation & Mitigation','not-recorded':'Theme not recorded'},
     areaOne:'Area Council',areaMany:'Area Councils',
@@ -112,8 +112,8 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     if(toggle){toggle.title=copy.layers;toggle.setAttribute('aria-label',copy.layers);}
     L.control.scale({imperial:false,position:'bottomright'}).addTo(map);
     mapRef.current=map;setErr('');setReady(map);
-    const b=L.geoJSON(data).getBounds();if(b.isValid())map.fitBounds(b,{padding:[28,28]});updateLabels();
-    resize=new ResizeObserver(()=>map.invalidateSize({pan:false}));resize.observe(ref.current);
+    const b=L.geoJSON(data).getBounds();if(b.isValid())map.fitBounds(b,{padding:[28,28],animate:false});updateLabels();
+    resize=new ResizeObserver(()=>map.invalidateSize({pan:true,animate:false}));resize.observe(ref.current);
   }).catch(()=>alive&&setErr(copyRef.current.unavailable));
   return()=>{alive=false;resize?.disconnect();if(mapRef.current){mapRef.current.remove();mapRef.current=null;}layerRef.current=null;dataRef.current=null;};
   },[fr]);
@@ -156,7 +156,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   },[areas,selectedArea,ready,fr]);
   const showAll=()=>{
     if(mapRef.current&&dataRef.current&&window.L){
-      mapRef.current.fitBounds(window.L.geoJSON(dataRef.current.display.land).getBounds(),{padding:[28,28]});
+      mapRef.current.fitBounds(window.L.geoJSON(dataRef.current.display.land).getBounds(),{padding:[28,28],animate:false});
     }
   };
   return <div className="pub-leaflet-wrap pub-coverage-map">

@@ -32,6 +32,8 @@
 }
 @media(max-width:380px){
  .pub-coverage-map .pub-map-canvas{height:390px}
- :is(.pub-root,.pbd-root) .pub-coverage-map .pub-map-legend>div{font-size:13px;gap:7px}
- :is(.pub-root,.pbd-root) .pub-coverage-map .pub-map-legend b{font-size:11px}
+ :is(.pub-root,.pbd-root) .pub-coverage-map .pub-map-legend>div{font-size:14px;gap:7px}
+ :is(.pub-root,.pbd-root) .pub-coverage-map .pub-map-legend b{font-size:12px}
 }
+
+:is(.pub-root,.pbd-root) .pub-coverage-map .pub-map-legend span{font-size:14px;line-height:1.5}

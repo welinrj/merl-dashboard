@@ -48,17 +48,35 @@ try{
  assert.ok(await page.locator('.pub-map-neutral').innerText().then(t=>t.includes('66')));
  for(const width of [1920,1440,768,390,360]){
   await page.setViewportSize({width,height:1100});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await page.getByRole('button',{name:'Show all Vanuatu'}).click();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await page.locator('.pub-coverage-map').scrollIntoViewIfNeeded();
   const boxes=await page.locator('.pub-coverage-map').evaluate(el=>{
    const canvas=el.querySelector('.pub-map-canvas').getBoundingClientRect(),key=el.querySelector('.pub-map-key').getBoundingClientRect();
-   return {mapHeight:canvas.height,clear:key.top>=canvas.bottom-1,fit:document.documentElement.scrollWidth<=innerWidth+1};
+   const land=el.querySelector('.leaflet-councilLand-pane path').getBoundingClientRect();
+   const allIslands=land.left>=canvas.left&&land.right<=canvas.right&&land.top>=canvas.top&&land.bottom<=canvas.bottom;
+   const font=parseFloat(getComputedStyle(el.querySelector('.pub-map-legend span')).fontSize);
+   return {allIslands,font,mapHeight:canvas.height,clear:key.top>=canvas.bottom-1,fit:document.documentElement.scrollWidth<=innerWidth+1};
   });
-  assert.ok(boxes.mapHeight>=390&&boxes.clear&&boxes.fit,JSON.stringify({width,...boxes}));
+  assert.ok(boxes.allIslands&&boxes.font>=14&&boxes.mapHeight>=390&&boxes.clear&&boxes.fit,JSON.stringify({width,...boxes}));
   await page.screenshot({path:`qa-artifacts/map-cartography-${width}.png`});
  }
  await page.setViewportSize({width:1440,height:1100});
- await page.locator('.pub-map-recorded').first().click({force:true});
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ await page.getByRole('button',{name:'Show all Vanuatu'}).click();
+ await page.locator('.pub-map-canvas').scrollIntoViewIfNeeded();
+ const point=await page.locator('.pub-map-recorded').evaluateAll(paths=>{
+  for(const path of [...paths].sort((a,b)=>b.getBBox().width*b.getBBox().height-a.getBBox().width*a.getBBox().height)){
+   const box=path.getBBox();
+   for(let x=.15;x<1;x+=.1)for(let y=.15;y<1;y+=.1){
+    const point=new DOMPoint(box.x+box.width*x,box.y+box.height*y);
+    if(path.isPointInFill(point)){const screen=point.matrixTransform(path.getScreenCTM());return {x:screen.x,y:screen.y};}
+   }
+  }
+ });
+ assert.ok(point,'recorded council has a clickable interior');
+ await page.mouse.click(point.x,point.y);
  await page.getByRole('button',{name:'Clear area selection'}).waitFor();
  await page.getByRole('button',{name:'Clear area selection'}).click();
  await page.locator('.leaflet-control-layers-toggle').click();
