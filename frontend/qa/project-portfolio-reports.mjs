@@ -58,6 +58,13 @@ try{
  report=await page.locator('#report-preview').innerText();assert.match(report,/Selected project indicator/);assert.doesNotMatch(report,/Other project indicator/);
  await page.getByRole('combobox').first().selectOption('full_me');
  assert.equal(await page.locator('.island-report-cover').isVisible(),false);
+ const contents=page.getByRole('navigation',{name:'In this report',exact:true});
+ await contents.getByRole('button').first().waitFor();
+ assert.equal(await page.locator('#report-preview .report-contents').count(),0,'Navigation is excluded from exports');
+ await contents.getByRole('button').first().click();
+ await page.getByRole('button',{name:'Collapse preview',exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>document.activeElement?.id.startsWith('report-section-')),true,'Section navigation focuses the destination');
+ await page.getByRole('button',{name:'Collapse preview',exact:true}).click();
  await page.getByRole('button',{name:'View full report',exact:true}).click();
  assert.match(await page.locator('.rp-result-table').innerText(),/Target minus actual/);
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -78,6 +85,7 @@ try{
  assert.match(wordXml,/125%/);assert.match(wordXml,/Page 7/);assert.match(wordXml,/Coastal delivery monitoring/);
  assert.match(wordXml,/Previous comparable period/);assert.match(wordXml,/Q2 2026/);
  assert.match(wordXml,/tblHeader/);
+ assert.doesNotMatch(wordXml,/Choose a section to open the full preview/);
  assert.ok(wordZip.file('word/footer1.xml'));
  assert.ok(Object.keys(wordZip.files).some(path=>path.startsWith('word/media/') && path.endsWith('.png')));
  // Delay font loading, then change the screen's report type while exporting.

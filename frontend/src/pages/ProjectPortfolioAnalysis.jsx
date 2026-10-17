@@ -758,7 +758,8 @@ export default function ProjectPortfolioAnalysis() {
         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
           {/* 3 — project identification */}
-          <div className="card" style={{ padding: '0.9rem 1.1rem' }}>
+          <div className="card reading-project-identity" style={{ padding: '0.9rem 1.1rem' }}>
+            <header><div><small>{project.code}</small><h2>{project.name}</h2><p>{project.provinces?.join(' · ') || t('ppa.notReported')}</p></div><StatusBadge status={project.status} /></header>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.85rem' }}>
               <Field label={t('ppa.projectName')} value={project.name} />
               <Field label={t('ppa.projectCode')} value={project.code} />

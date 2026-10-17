@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { projectMatches, useDashboardFilters } from '../lib/dashboardFilters';
@@ -80,6 +81,7 @@ async function fetchAreaCouncils(signal) {
 const emptyCoverage = () => ({ projectsByArea: new Map(), rowsByArea: new Map(), assignedProjects: new Set(), mappedRows: [], unassignedRows: [] });
 
 export default function InteractiveCoverageMap({ selected }) {
+  const { t } = useTranslation();
   const { filters } = useDashboardFilters();
   const targetRef = useRef(null);
   const mapRef = useRef(null);
@@ -102,6 +104,7 @@ export default function InteractiveCoverageMap({ selected }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [boundaryKey, setBoundaryKey] = useState(0);
   const [selectedArea, setSelectedArea] = useState(null);
+  useEffect(() => { setSelectedArea(null); }, [filters, selected]);
   const [layerVisibility, setLayerVisibility] = useState({ areas: true, sites: true, villages: true });
 
   useEffect(() => {
@@ -367,6 +370,7 @@ export default function InteractiveCoverageMap({ selected }) {
           </div>
         )}
       </div>
+      {selectedArea && <section className="coverage-map__selection" role="status" aria-label={t('reading.areaSelection')}><div><strong>{selectedArea.name}</strong><p>{t('reading.areaCounts', { projects:selectedArea.count, sites:selectedArea.sites })}</p></div><button type="button" className="coverage-map__action" onClick={() => setSelectedArea(null)}>{t('reading.closeArea')}</button></section>}
       <div className="coverage-map__footer">
         <span>Pinch/scroll to zoom · drag to pan · Layers switches Street/Satellite and map overlays. Project sites appear from zoom 9; reference village labels from zoom 11.</span>
         {unallocated > 0 && <span className="coverage-map__notice"><strong>{unallocated}</strong> filtered {unallocated === 1 ? 'project is' : 'projects are'} not yet linked to a mappable Area Council. These projects remain in the portfolio totals.</span>}

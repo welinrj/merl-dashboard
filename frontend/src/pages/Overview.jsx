@@ -419,7 +419,8 @@ export default function Overview({ user }) {
         value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 
-      <section className="ovx-kpis" aria-label={t('overview.title')}>
+      <nav className="overview-section-nav" aria-label={t('reading.overviewSections')}>{[['ovx-summary','summary'],['ovx-period','progress'],['ovx-priorities','actions'],['ovx-reporting','reports']].map(([id,key]) => <button type="button" key={id} aria-controls={id} onClick={event => { event.preventDefault(); const target=document.getElementById(id); if(target){ target.focus({preventScroll:true}); target.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); } }}>{t(`reading.${key}`)}</button>)}</nav>
+      <section id="ovx-summary" tabIndex={-1} className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
           className="ovx-kpi ovx-kpi-projects"
           onExplain={() => setExplainedMetric('projects')}
@@ -489,7 +490,7 @@ export default function Overview({ user }) {
         />
       </section>
 
-      <section className="ovx-card ovx-period-card">
+      <section id="ovx-period" tabIndex={-1} className="ovx-card ovx-period-card">
         <div className="ovx-period-head">
           <h2>Progress by Reporting Period</h2>
           <label className="ovx-period-select"><span>Frequency</span><select disabled={Boolean(period)} value={periodInfo?.period_type || progressPeriodType} onChange={(e)=>setProgressPeriodType(e.target.value)}><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="six_monthly">Six-monthly</option><option value="annual">Annual</option></select></label>
@@ -534,7 +535,7 @@ export default function Overview({ user }) {
         </div>
       </section>
 
-      <section className="ovx-priority-grid">
+      <section id="ovx-priorities" tabIndex={-1} className="ovx-priority-grid">
         <article className="ovx-card ovx-attention-card">
           <CardHeading icon={<AlertTriangle size={17} aria-hidden="true" />} title={t('overview.needsAttention')} />
           <div className="ovx-attention-grid">
@@ -567,7 +568,7 @@ export default function Overview({ user }) {
         </article>
       </section>
 
-      <section className="ovx-card ovx-reporting-card">
+      <section id="ovx-reporting" tabIndex={-1} className="ovx-card ovx-reporting-card">
         <CardHeading title={t('overview.recentUpcoming')} />
         {reportRows.length === 0 ? (
           <div className="ovx-empty">{t('overview.nothingDueSoon')}</div>

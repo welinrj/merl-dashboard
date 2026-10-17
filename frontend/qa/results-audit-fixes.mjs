@@ -82,9 +82,16 @@ try {
  await rollupError.waitFor();failRollup=false;
  await rollupError.getByRole('button',{name:'Retry',exact:true}).click();
  await rollupError.waitFor({state:'hidden'});
+ await page.getByRole('button',{name:'Compact',exact:true}).click();
+ if(!await page.locator('.rf2-page').evaluate(el=>el.classList.contains('reading-compact')))throw new Error('Compact spacing did not apply');
+ await page.reload();await page.locator('.rf2-table').waitFor();
+ if(await page.getByRole('button',{name:'Compact',exact:true}).getAttribute('aria-pressed')!=='true')throw new Error('Reading preference was not retained');
+ await page.getByRole('button',{name:'Comfortable',exact:true}).click();
  await page.screenshot({animations:'disabled',path:'qa-artifacts/header-results-audit-desktop.png'});
  await page.setViewportSize({width:360,height:800});
  const card=page.locator('.rf2-result-card').first();await card.waitFor();
+ if(await card.locator('.reading-result-summary').count()!==1)throw new Error('Result and evidence summary missing');
+ if(!await card.locator('.reading-result-evidence').getByRole('button',{name:'View evidence',exact:true}).isVisible())throw new Error('Evidence is not beside result summary');
  await card.getByRole('button',{name:'Edit Latest actual: IND-01',exact:true}).click();
  const dialog=page.getByRole('dialog');
  await dialog.getByLabel('Latest actual',{exact:true}).fill('25');

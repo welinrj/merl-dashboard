@@ -52,7 +52,7 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
             ['actual', t('rf.actual'), display(row.progress?.cumulative_actual ?? row.progress?.actual_this_period)],
             ['progress', t('rf.progress'), percent(row.comparison?.achievement)],
           ] : [];
-          return <article className="rf2-result-card" key={indicator?.id || row.node.id}>
+          return <article className="rf2-result-card reading-result-card" key={indicator?.id || row.node.id}>
             <small>{row.project.name}</small>
             <h2>{indicator?.code && <span>{indicator.code} · </span>}{indicator?.name || row.node.title}</h2>
             {edit('indicator', t('rf.indicator'))}
@@ -65,14 +65,17 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
             {indicator ? <>
               <p><strong>{t('rf.unitLabel')}</strong> {indicator.unit || t('rf.notRecorded')}</p>
               <p className="rf2-period-context"><strong>{t('rf.periodLabel')}</strong> {row.progress?.reporting_period || t('rf.noReported')}</p>
+              <div className="reading-result-summary">
               <dl>{cells.map(([field, label, value]) => <div key={field}><dt>{label}</dt><dd>{value}</dd>{edit(field, label)}</div>)}</dl>
+              <div className="reading-result-evidence"><button type="button" className="btn btn-secondary" onClick={() => onEvidence(indicator)}>{t('rf.viewEvidence')}</button><p>{t('reading.evidenceHelp')}</p></div>
+              </div>
               <ResultComparison result={row.comparison} />
               {workingState?.(row)}
               <div className="rf2-mobile-status">{status(row)}{edit('status', t('rf.status'))}</div>
               <div className="rf2-mobile-update"><h3>{t('rf.reportedUpdate')}</h3><p>{row.narrative?.progress_summary || row.progress?.narrative || t('rf.noNarrative')}</p>{edit('narrative', t('rf.narrative'))}</div>
               <p><strong>{t('rf.frequencyLabel')}</strong> {OPT.labelOf(OPT.REPORTING_FREQUENCY, indicator.official_reporting_frequency || indicator.frequency) || t('rf.notRecorded')}</p>
               {edit('reporting', t('rf.reporting'))}
-              <button type="button" className="rf2-mobile-edit" onClick={() => onEvidence(indicator)}>{t('rf.viewEvidence')}</button>
+
             </> : <><p>{t('rf.noAttached')}</p>
               {editable && <button type="button" className="rf2-mobile-edit" onClick={() => attachIndicator(row)}>{t('rf.addIndicator')}</button>}
             </>}
