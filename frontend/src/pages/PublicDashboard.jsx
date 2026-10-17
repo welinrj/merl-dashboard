@@ -147,7 +147,7 @@ function ProjectCard({ project, areas, copy, lang }) {
   const projectAreas = areas.filter(area => list(area.project_ids).some(id => String(id) === String(project.id)));
   const ThemeIcon = /loss.*damage/i.test(themeOf(project)) ? LossDamageIcon : /adaptation/i.test(themeOf(project)) ? AdaptationIcon : null;
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
-  return <FeatureCardGradient className="pbd-project-card">
+  return <FeatureCardGradient id={`public-project-${project.id}`} tabIndex={-1} className="pbd-project-card">
     <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><StatusBadge className={`pbd-status pbd-status-${statusOf(project)}`} label={copy[statusOf(project)]} tone={statusOf(project) === 'upcoming' ? 'warning' : statusOf(project) === 'other' ? 'neutral' : 'success'} /></header>
     <p className="pbd-project-description">{project.description || project.expected_primary_outcome || copy.noDescription}</p>
     <dl className="pbd-project-facts">
@@ -288,7 +288,7 @@ export default function PublicDashboard() {
             <div className="pbd-section-head"><div><span><MapPin size={16} aria-hidden="true" />{c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
             {selectedArea && <div className="pbd-area-selection">{c.selectedArea} <strong>{selectedArea.area_council}, {selectedArea.province}</strong></div>}
             <div className="pbd-location-grid">
-              <PublicCoverageMap areas={areas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} />
+              <PublicCoverageMap projectCount={filtered.length} areas={areas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={id=>requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);card?.scrollIntoView({block:"start",behavior:"auto"});card?.focus({preventScroll:true});})} />
               <div className="pbd-area-directory">
                 <div className="pbd-area-directory-head">
                   <h3>{c.areaCouncils}</h3>

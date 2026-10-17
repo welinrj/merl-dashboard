@@ -7,7 +7,7 @@ export interface FeatureCardItem {
   description: string;
 }
 
-export interface FeatureCardGradientProps {
+export interface FeatureCardGradientProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
   className?: string;
   pattern?: GridSquare[];
@@ -20,9 +20,11 @@ export function FeatureCardGradient({
   className = "",
   pattern,
   gridSize = 20,
+  ...articleProps
 }: FeatureCardGradientProps) {
   return (
     <article
+      {...articleProps}
       className={`relative overflow-hidden rounded-3xl bg-gradient-to-b from-neutral-100 to-white p-6 ${className}`.trim()}
     >
       <Grid pattern={pattern} size={gridSize} />
