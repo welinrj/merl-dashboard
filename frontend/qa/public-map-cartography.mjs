@@ -79,10 +79,10 @@ try{
  await page.mouse.click(point.x,point.y);
  await page.getByRole('button',{name:'Clear area selection'}).waitFor();
  await page.getByRole('button',{name:'Clear area selection'}).click();
- await page.locator('.leaflet-control-layers-toggle').click();
+ await page.locator('.leaflet-control-layers').hover();
  await page.getByText('Satellite',{exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('.leaflet-control-attribution')?.textContent.includes('Esri'));
- await page.locator('.leaflet-control-layers-toggle').click();
+ await page.locator('.leaflet-control-layers').hover();
  await page.locator('.leaflet-control-layers').getByText('Overview',{exact:true}).click();
  await page.getByRole('button',{name:'FR',exact:true}).click();
  await page.getByRole('button',{name:'Voir tout le Vanuatu'}).waitFor();
