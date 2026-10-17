@@ -81,7 +81,8 @@ try {
     if (!(await card.getByRole('button', { name: `Edit ${field}: IND-01`, exact: true }).isVisible())) throw new Error(`Phone editing missing ${field}`);
   }
   await page.screenshot({ path: 'qa-artifacts/header-framework-phone.png', animations: 'disabled' });
-  await card.screenshot({ path:'qa-artifacts/header-framework-reading-card.png', animations:'disabled' });
+  await card.locator('[data-field=actual]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path:'qa-artifacts/header-framework-reading-card.png', animations:'disabled' });
   await card.getByRole('button', { name: 'Edit Final target: IND-01', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Content').fill('1200');
@@ -98,11 +99,13 @@ try {
   if (!/changes saved/i.test(await page.locator('.rf2-save-feedback').innerText())) throw new Error('Saved state must remain visible');
   await page.setViewportSize({ width:1920, height:1080 });
   await page.locator('.rf2-table:visible').waitFor();
-  await page.locator('.rf2-mobile-results>button').click();
+  await page.locator('.rf2-mobile-results>button[aria-pressed=true]').click();
   await groups.first().locator('.rf2-result-card').first().waitFor();
   if(!await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth))throw new Error('Wide Results reading view overflows');
-  await groups.first().screenshot({path:'qa-artifacts/header-framework-reading-wide.png',animations:'disabled'});
-  await page.locator('.rf2-mobile-results>button').click();
+  await groups.first().locator('summary').first().scrollIntoViewIfNeeded();
+  await page.screenshot({path:'qa-artifacts/header-framework-reading-wide.png',animations:'disabled'});
+  await page.locator('.rf2-mobile-results>button[aria-pressed=false]').click();
+  await page.locator('.rf2-table:visible').waitFor();
   await page.setViewportSize({ width: 1440, height: 900 });
   const table = page.getByRole('region', { name: 'Results framework table' });
   await table.waitFor();
