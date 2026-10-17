@@ -7,21 +7,21 @@
 .reading-density { display:flex; justify-content:flex-end; gap:4px; margin-bottom:12px; }
 .reading-density button { min-height:44px; padding:8px 14px; border:1px solid var(--visual-border); background:#fff; color:var(--visual-ink); border-radius:8px; font:inherit; font-size:.875rem; cursor:pointer; }
 .reading-density button[aria-pressed=true] { color:#fff; background:var(--visual-ink); border-color:var(--visual-ink); }
-.dsh .rf2-result-group { border-color:var(--visual-border); border-radius:14px; background:#fff; overflow:hidden; }
-.dsh .rf2-result-group>summary { padding:18px; background:#edf5f7; color:var(--visual-ink); min-height:64px; }
-.dsh .rf2-result-group>summary strong { font-size:1.05rem; line-height:1.5; }
-.dsh .reading-result-card { padding:20px; border:1px solid var(--visual-border); border-radius:12px; background:#fff; }
-.dsh .reading-result-card h2 { color:var(--visual-ink); font-size:1.1rem; line-height:1.5; max-width:75ch; }
-.dsh .reading-result-summary { display:grid; grid-template-columns:minmax(0,1fr) minmax(140px,.3fr); align-items:start; gap:16px; margin:16px 0; }
-.dsh .reading-result-summary>dl { margin:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
-.dsh .reading-result-summary>dl>div { min-width:0; padding:12px; background:#f1f7fa; border:1px solid #d9e5ec; border-radius:8px; }
-.dsh .reading-result-summary>dl>div:nth-child(-n+3) { background:#eaf5f5; border-color:#b5d6db; }
-.dsh .reading-result-summary dd { font-size:1.25rem; color:var(--visual-ink); font-variant-numeric:tabular-nums; line-height:1.4; overflow-wrap:anywhere; }
+.dsh .rf2-page .rf2-result-groups .rf2-result-group { border-color:var(--visual-border); border-radius:14px; background:#fff; overflow:hidden; }
+.dsh .rf2-page .rf2-result-groups .rf2-result-group>summary { padding:18px; background:#edf5f7; color:var(--visual-ink); min-height:64px; }
+.dsh .rf2-page .rf2-result-groups .rf2-result-group>summary strong { font-size:1.05rem; line-height:1.5; }
+.dsh .rf2-page .rf2-result-card.reading-result-card { padding:20px; border:1px solid var(--visual-border); border-radius:12px; background:#fff; }
+.dsh .rf2-page .rf2-result-card.reading-result-card h2 { color:var(--visual-ink); font-size:1.1rem; line-height:1.5; max-width:75ch; }
+.dsh .rf2-page .reading-result-card .reading-result-summary { display:grid; grid-template-columns:minmax(0,1fr) minmax(140px,.3fr); align-items:start; gap:16px; margin:16px 0; }
+.dsh .rf2-page .reading-result-card .reading-result-summary>dl { margin:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.dsh .rf2-page .reading-result-card .reading-result-summary>dl>div { min-width:0; padding:12px; background:#f1f7fa; border:1px solid #d9e5ec; border-radius:8px; }
+.dsh .rf2-page .reading-result-card .reading-result-summary>dl>div:nth-child(-n+3) { background:#eaf5f5; border-color:#b5d6db; }
+.dsh .rf2-page .reading-result-card .reading-result-summary dd { font-size:1.25rem; color:var(--visual-ink); font-variant-numeric:tabular-nums; line-height:1.4; overflow-wrap:anywhere; }
 .reading-result-evidence p { color:var(--visual-muted); font-size:.875rem; line-height:1.5; margin:8px 0; }
-.dsh .reading-result-card .rf2-mobile-update { border-left:3px solid #8abdc4; padding:4px 14px; margin:16px 0; background:#f8fbfc; }
-.dsh .reading-result-card .rf2-mobile-update p { max-width:75ch; line-height:1.65; }
-.dsh .reading-result-card .result-comparison { border:1px solid var(--visual-border); border-radius:8px; padding:10px 12px; background:#fafcfd; }
-.dsh .reading-result-card summary { min-height:44px; align-content:center; cursor:pointer; }
+.dsh .rf2-page .rf2-result-card.reading-result-card .rf2-mobile-update { border-left:3px solid #8abdc4; padding:4px 14px; margin:16px 0; background:#f8fbfc; }
+.dsh .rf2-page .rf2-result-card.reading-result-card .rf2-mobile-update p { max-width:75ch; line-height:1.65; }
+.dsh .rf2-page .rf2-result-card.reading-result-card .result-comparison { border:1px solid var(--visual-border); border-radius:8px; padding:10px 12px; background:#fafcfd; }
+.dsh .rf2-page .rf2-result-card.reading-result-card summary { min-height:44px; align-content:center; cursor:pointer; }
 .report-reading-layout { display:grid; grid-template-columns:220px minmax(0,1fr); gap:20px; align-items:start; margin-top:12px; }
 .report-reading-layout>div { min-width:0; margin-top:0; }
 .report-contents { position:sticky; top:100px; max-height:calc(100dvh - 140px); overflow:auto; border:1px solid var(--visual-border); border-radius:12px; background:#fff; padding:16px; }
@@ -39,16 +39,18 @@
 .coverage-map__action { min-height:44px; }
 .coverage-map__selection p { margin:4px 0 0; font-size:.875rem; }
 @media(min-width:1100px) {
-  .dsh .rf2-result-groups { max-width:1360px; margin-inline:auto; }
-  .dsh .reading-compact .reading-result-card { padding:14px; }
-  .dsh .reading-compact .reading-result-summary { margin:10px 0; gap:10px; }
+  .dsh .rf2-result-groups { width:100%; max-width:1360px; margin-inline:auto; }
+  .dsh .rf2-page.reading-compact .rf2-result-card.reading-result-card { padding:14px; }
+  .dsh .rf2-page.reading-compact .reading-result-card .reading-result-summary { margin:10px 0; gap:10px; }
   .dsh .reading-compact .rf2-table td { padding:.35rem .5rem; }
-  .dsh .reading-compact .rf2-group-content { gap:10px; }
+  .dsh .rf2-page.reading-compact .rf2-result-groups .rf2-group-content { gap:10px; }
 }
 @media(min-width:1600px) {
-  .dsh .rf2-group-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:16px; }
-  .dsh .rf2-group-content>.rf2-activities { grid-column:1/-1; }
-  .dsh .reading-result-summary { grid-template-columns:1fr; }
+  .dsh .rf2-page .rf2-result-groups .rf2-group-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:16px; }
+  .dsh .rf2-page .rf2-result-groups .rf2-group-content>.rf2-activities { grid-column:1/-1; }
+  .dsh .rf2-page .rf2-result-groups .rf2-group-content>.reading-result-card:only-of-type { grid-column:1/-1; }
+  .dsh .rf2-page .rf2-result-groups .reading-result-card:only-of-type .reading-result-summary { grid-template-columns:minmax(0,1fr) minmax(140px,.3fr); }
+  .dsh .rf2-page .reading-result-card .reading-result-summary { grid-template-columns:1fr; }
 }
 @media(max-width:1000px) {
   .report-reading-layout { grid-template-columns:minmax(0,1fr); gap:12px; }
@@ -56,13 +58,13 @@
   .report-contents ol { display:flex; gap:6px; overflow:auto; padding-bottom:6px; }
   .report-contents li { flex:0 0 190px; }
   .report-contents button { height:100%; background:#f1f7fa; }
-  .dsh .reading-result-summary { grid-template-columns:1fr; }
+  .dsh .rf2-page .reading-result-card .reading-result-summary { grid-template-columns:1fr; }
 }
 @media(max-width:700px) {
   .reading-density { display:none; }
-  .dsh .reading-result-card { padding:16px; }
-  .dsh .reading-result-summary>dl { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .dsh .reading-result-summary>dl>div { padding:10px; }
+  .dsh .rf2-page .rf2-result-card.reading-result-card { padding:16px; }
+  .dsh .rf2-page .reading-result-card .reading-result-summary>dl { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dsh .rf2-page .reading-result-card .reading-result-summary>dl>div { padding:10px; }
   .overview-section-nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .overview-section-nav button { font-size:.8125rem; padding:8px 10px; }
 }
@@ -85,7 +87,7 @@
 #report-cover-preview { scroll-margin-top:9rem; }
 @media(max-width:1000px) { .report-contents .report-cover-thumbnail { max-width:360px; } }
 
-.dsh .reading-result-meta { display:flex; flex-wrap:wrap; gap:4px 16px; margin-top:12px; }
-.dsh .reading-result-meta p { margin:0; padding:0; font-size:.8125rem; }
-.dsh .reading-result-meta .rf2-period-context { border:0; background:transparent; }
-.dsh .reading-result-card .rf2-mobile-path { margin-top:16px; border-top:1px solid var(--visual-border); padding-top:8px; }
+.dsh .rf2-page .reading-result-card .reading-result-meta { display:flex; flex-wrap:wrap; gap:4px 16px; margin-top:12px; }
+.dsh .rf2-page .reading-result-card .reading-result-meta p { margin:0; padding:0; font-size:.8125rem; }
+.dsh .rf2-page .reading-result-card .reading-result-meta .rf2-period-context { border:0; background:transparent; }
+.dsh .rf2-page .rf2-result-card.reading-result-card .rf2-mobile-path { margin-top:16px; border-top:1px solid var(--visual-border); padding-top:8px; }

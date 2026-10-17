@@ -102,6 +102,8 @@ try {
   await page.locator('.rf2-mobile-results>button[aria-pressed=true]').click();
   await groups.first().locator('.rf2-result-card').first().waitFor();
   if(!await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth))throw new Error('Wide Results reading view overflows');
+  const layout=await groups.first().evaluate(group=>({group:group.getBoundingClientRect().width,card:group.querySelector('.reading-result-card').getBoundingClientRect().width,count:group.querySelectorAll('.reading-result-card').length}));
+  if(layout.group<1000 || layout.count===1 && layout.card<layout.group-48)throw new Error('Wide reading layout does not use the available space');
   await groups.first().locator('summary').first().scrollIntoViewIfNeeded();
   await page.screenshot({path:'qa-artifacts/header-framework-reading-wide.png',animations:'disabled'});
   await page.locator('.rf2-mobile-results>button[aria-pressed=false]').click();
