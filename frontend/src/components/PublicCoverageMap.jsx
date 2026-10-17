@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { THEME_AREA_COLOURS, THEME_AREA_ORDER } from '../lib/publicPortfolioCategories';
-import './public-coverage-theme-glow.css';
+import './public-coverage-map.css';
 
 const LEAFLET_JS='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 const LEAFLET_CSS='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 // Use the reviewed 2025 WGS84 snapshot bundled with the portal. This keeps the
 // 71 Area Council names stable and avoids an upstream map service changing them.
-const BOUNDARY_URL=`${import.meta.env.BASE_URL}data/vanuatu-area-councils-2025.geojson`;
+const BOUNDARY_URL=`${import.meta.env.BASE_URL}data/vanuatu-area-councils-map.geojson`;
 let promise;
 function leaflet(){
   if(window.L) return Promise.resolve(window.L);
@@ -68,20 +68,20 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const { i18n } = useTranslation();
   const fr = i18n.resolvedLanguage?.startsWith('fr');
   const copy = fr ? {
-    zoomIn:'Agrandir',zoomOut:'Réduire',layers:'Couches',street:'Plan',satellite:'Satellite',one:'projet', many:'projets', none:'aucun lieu de mise en œuvre enregistré',
+    overview:'Vue d’ensemble',reset:'Voir tout le Vanuatu',neutral:'Aucun lieu de projet enregistré',source:'Limites des conseils de zone · instantané 2025',countNote:'Les nombres représentent des conseils de zone, pas des projets.',zoomIn:'Agrandir',zoomOut:'Réduire',layers:'Couches',street:'Plan',satellite:'Satellite',one:'projet', many:'projets', none:'aucun lieu de mise en œuvre enregistré',
     noneDetail:'Aucun lieu de mise en œuvre n’est enregistré pour ce conseil de zone. Cela ne signifie pas nécessairement qu’il n’y a aucune activité de projet.',
     unavailable:'Carte temporairement indisponible.', keyTitle:'Zones par thème officiel',
     keyBody:'Les zones non colorées n’ont pas de lieu de mise en œuvre enregistré.',
     themes:{adaptation:'Adaptation',mitigation:'Atténuation',both:'Adaptation et atténuation','not-recorded':'Thème non renseigné'},
-    areaOne:'zone',areaMany:'zones',
+    areaOne:'conseil',areaMany:'conseils',
     aria:'Carte publique de la couverture des projets',
   } : {
-    zoomIn:'Zoom in',zoomOut:'Zoom out',layers:'Layers',street:'Street map',satellite:'Satellite',one:'project', many:'projects', none:'no recorded implementation location',
+    overview:'Overview',reset:'Show all Vanuatu',neutral:'No recorded project location',source:'Area Council boundaries · 2025 snapshot',countNote:'Counts are Area Councils, not projects.',zoomIn:'Zoom in',zoomOut:'Zoom out',layers:'Layers',street:'Street map',satellite:'Satellite',one:'project', many:'projects', none:'no recorded implementation location',
     noneDetail:'No implementation location is recorded for this Area Council. This does not necessarily mean there is no project activity.',
     unavailable:'Map temporarily unavailable.', keyTitle:'Areas by official thematic area',
     keyBody:'Uncoloured areas have no recorded implementation location.',
     themes:{adaptation:'Adaptation',mitigation:'Mitigation',both:'Adaptation & Mitigation','not-recorded':'Theme not recorded'},
-    areaOne:'area',areaMany:'areas',
+    areaOne:'Area Council',areaMany:'Area Councils',
     aria:'Public project coverage map',
   };
   const ref=useRef(null), mapRef=useRef(null), layerRef=useRef(null), dataRef=useRef(null);
@@ -89,45 +89,58 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   stateRef.current={areas,selectedArea,onAreaSelect};
   const copyRef=useRef(copy); copyRef.current=copy;
   const [err,setErr]=useState('');
-  const [ready,setReady]=useState(false);
-  useEffect(()=>{let alive=true;Promise.all([leaflet(),boundaries()]).then(([L,data])=>{
+  const [ready,setReady]=useState(null);
+  const [themeCounts,setThemeCounts]=useState({});
+  useEffect(()=>{let alive=true;let resize;setReady(null);Promise.all([leaflet(),boundaries()]).then(([L,data])=>{
     if(!alive||!ref.current)return;
     dataRef.current=data;
     const map=L.map(ref.current,{center:[-16.3,167.6],zoom:6,zoomControl:false,minZoom:5,maxZoom:18,scrollWheelZoom:true});
     L.control.zoom({zoomInTitle:copy.zoomIn,zoomOutTitle:copy.zoomOut}).addTo(map);
-    const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    const overview=L.layerGroup().addTo(map);
+    map.createPane('councilLand');map.getPane('councilLand').style.zIndex='250';
+    map.createPane('councilBorders');map.getPane('councilBorders').style.zIndex='450';
+    map.getPane('councilBorders').style.pointerEvents='none';
+    L.geoJSON(data.display.land,{pane:'councilLand',interactive:false,style:{stroke:false,fillColor:'#f5f4eb',fillOpacity:1}}).addTo(overview);
+    const labels=L.layerGroup(data.display.provinceLabels.map(f=>L.marker([f.geometry.coordinates[1],f.geometry.coordinates[0]],{interactive:false,keyboard:false,icon:L.divIcon({className:'pub-map-province',html:esc(f.properties.name),iconSize:[80,24],iconAnchor:[-10,12]})})));
+    const updateLabels=()=>{if(map.hasLayer(overview)&&map.getZoom()<=7){if(!map.hasLayer(labels))labels.addTo(map);}else if(map.hasLayer(labels))map.removeLayer(labels);};
+    map.on('zoomend baselayerchange',updateLabels);
+    L.geoJSON(data.display.boundaries,{pane:'councilBorders',interactive:false,style:{className:'pub-map-boundaries',color:'#617e87',weight:.8,opacity:.85,fill:false,lineJoin:'round',lineCap:'round'}}).addTo(map);
+    const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'});
     const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery &copy; Esri'});
-    const layers=L.control.layers({[copy.street]:street,[copy.satellite]:sat},{},{position:'topright',collapsed:true}).addTo(map);
+    const layers=L.control.layers({[copy.overview]:overview,[copy.street]:street,[copy.satellite]:sat},{},{position:'topright',collapsed:true}).addTo(map);
     const toggle=layers.getContainer().querySelector('.leaflet-control-layers-toggle');
     if(toggle){toggle.title=copy.layers;toggle.setAttribute('aria-label',copy.layers);}
     L.control.scale({imperial:false,position:'bottomright'}).addTo(map);
-    mapRef.current=map;setErr('');setReady(true);
-    const b=L.geoJSON(data).getBounds();if(b.isValid())map.fitBounds(b,{padding:[12,12]});
+    mapRef.current=map;setErr('');setReady(map);
+    const b=L.geoJSON(data).getBounds();if(b.isValid())map.fitBounds(b,{padding:[28,28]});updateLabels();
+    resize=new ResizeObserver(()=>map.invalidateSize({pan:false}));resize.observe(ref.current);
   }).catch(()=>alive&&setErr(copyRef.current.unavailable));
-  return()=>{alive=false;if(mapRef.current){mapRef.current.remove();mapRef.current=null;}layerRef.current=null;dataRef.current=null;};
+  return()=>{alive=false;resize?.disconnect();if(mapRef.current){mapRef.current.remove();mapRef.current=null;}layerRef.current=null;dataRef.current=null;};
   },[fr]);
   useEffect(()=>{
-    if(!ready||!mapRef.current||!dataRef.current||!window.L)return;
+    if(!ready||ready!==mapRef.current||!dataRef.current||!window.L)return;
     const L=window.L,map=mapRef.current,c=copyRef.current;
     if(layerRef.current)map.removeLayer(layerRef.current);
     const lookup=new Map(areas.map(a=>[key(a.province,a.area_council),a]));
     const selectedKey=selectedArea?key(selectedArea.province,selectedArea.area_council):'';
     const themeFor=(rec)=>['adaptation','mitigation','both','not-recorded'].includes(rec?.theme_category)
       ? rec.theme_category : 'not-recorded';
-    const categoryFor=(feature)=>{
-      const name=feature?.properties?.ADM2_EN||'',province=feature?.properties?.ADM1_EN||'';
-      const rec=lookup.get(key(province,name));
-      return rec?.project_count>0?themeFor(rec):'';
-    };
+    const counts={};
+    for(const feature of dataRef.current.features){
+      const rec=lookup.get(key(feature.properties.ADM1_EN,feature.properties.ADM2_EN));
+      const theme=rec?.project_count>0?themeFor(rec):'none';
+      counts[theme]=(counts[theme]||0)+1;
+    }
+    setThemeCounts(counts);
     const geo=L.geoJSON(dataRef.current,{style:f=>{
       const name=f.properties?.ADM2_EN||'',province=f.properties?.ADM1_EN||'';
       const rec=lookup.get(key(province,name));const selected=selectedKey===key(province,name);
-      const theme=rec?.theme_category||'none';
+      const theme=themeFor(rec);
       return {
-        color:selected?'#173f83':'#536575',
-        weight:selected?3:rec?.project_count?1.4:.7,
-        fillColor:THEME_AREA_COLOURS[theme]||THEME_AREA_COLOURS['not-recorded'],
-        fillOpacity:rec?.project_count?0.76:0.12,
+        className:rec?.project_count?'pub-map-recorded':'pub-map-unrecorded',
+        color:'#173f63',stroke:selected,weight:2.5,opacity:1,
+        fillColor:THEME_AREA_COLOURS[theme],
+        fillOpacity:rec?.project_count?0.7:0,
       };
     },onEachFeature:(f,l)=>{
       const name=f.properties?.ADM2_EN||'',province=f.properties?.ADM1_EN||'';
@@ -139,32 +152,16 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
         l.on('click',()=>stateRef.current.onAreaSelect?.({province:found.province||province,area_council:found.area_council||name}));
       }
     }});
-    const glow=L.geoJSON(dataRef.current,{
-      filter:feature=>Boolean(categoryFor(feature)),
-      style:feature=>{
-        const category=categoryFor(feature);
-        const glowColour={
-          adaptation:'#59a9ff',
-          mitigation:'#35eda4',
-          both:'#bd9dff',
-          'not-recorded':'#ffd46a',
-        }[category]||'#59a9ff';
-        return {
-          className:`pbd-neon-boundary pbd-neon-boundary--${category}`,
-          color:glowColour,
-          weight:5,
-          opacity:1,
-          fill:false,
-          interactive:false,
-        };
-      },
-    });
-    const coverageLayers=L.layerGroup([geo,glow]).addTo(map);
-    layerRef.current=coverageLayers;
+    layerRef.current=geo.addTo(map);
   },[areas,selectedArea,ready,fr]);
-  const themeCounts=areas.reduce((counts,area)=>{
-    if(area.project_count>0) counts[area.theme_category||'not-recorded']=(counts[area.theme_category||'not-recorded']||0)+1;
-    return counts;
-  },{});
-  return <div className="pub-leaflet-wrap"><div ref={ref} className="pub-leaflet" aria-label={copy.aria}/>{err&&<div className="pub-map-error">{err}</div>}<div className="pub-map-key"><strong>{copy.keyTitle}</strong><div className="pub-map-legend">{THEME_AREA_ORDER.map(theme=><div key={theme}><i style={{backgroundColor:THEME_AREA_COLOURS[theme]}} aria-hidden="true"/><span>{copy.themes[theme]}</span><b>{themeCounts[theme]||0} {(themeCounts[theme]||0)===1?copy.areaOne:copy.areaMany}</b></div>)}</div><small>{copy.keyBody}</small></div></div>;
+  const showAll=()=>{
+    if(mapRef.current&&dataRef.current&&window.L){
+      mapRef.current.fitBounds(window.L.geoJSON(dataRef.current.display.land).getBounds(),{padding:[28,28]});
+    }
+  };
+  return <div className="pub-leaflet-wrap pub-coverage-map">
+    <div className="pub-map-toolbar"><span>{copy.overview}</span><button type="button" onClick={showAll} disabled={!ready}>{copy.reset}</button></div>
+    <div className="pub-map-canvas"><div ref={ref} className="pub-leaflet" aria-label={copy.aria}/>{err&&<div className="pub-map-error" role="status">{err}</div>}</div>
+    <div className="pub-map-key"><strong>{copy.keyTitle}</strong><div className="pub-map-legend">{THEME_AREA_ORDER.map(theme=><div key={theme}><i style={{backgroundColor:THEME_AREA_COLOURS[theme]}} aria-hidden="true"/><span>{copy.themes[theme]}</span><b>{themeCounts[theme]||0} {(themeCounts[theme]||0)===1?copy.areaOne:copy.areaMany}</b></div>)}<div className="pub-map-neutral"><i aria-hidden="true"/><span>{copy.neutral}</span><b>{themeCounts.none||0} {copy.areaMany}</b></div></div><small>{copy.keyBody} {copy.countNote}</small><small className="pub-map-source">{copy.source}</small></div>
+  </div>;
 }

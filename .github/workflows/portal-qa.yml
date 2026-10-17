@@ -48,6 +48,19 @@ jobs:
           cat /tmp/merl-preview.log
           exit 1
 
+      - name: Validate map cartography and responsive legend
+        working-directory: frontend
+        run: node qa/public-map-cartography.mjs
+
+      - name: Retain map previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-cartography-previews
+          path: frontend/qa-artifacts/map-cartography-*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Validate executive KPI alignment and score gauges
         working-directory: frontend
         env:
