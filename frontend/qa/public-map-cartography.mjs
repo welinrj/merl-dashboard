@@ -55,11 +55,12 @@ try{
   const boxes=await page.locator('.pub-coverage-map').evaluate(el=>{
    const canvas=el.querySelector('.pub-map-canvas').getBoundingClientRect(),key=el.querySelector('.pub-map-key').getBoundingClientRect();
    const land=el.querySelector('.leaflet-councilLand-pane path').getBoundingClientRect();
+   const fillsMap=land.height>=canvas.height*.6;
    const allIslands=land.left>=canvas.left&&land.right<=canvas.right&&land.top>=canvas.top&&land.bottom<=canvas.bottom;
    const font=parseFloat(getComputedStyle(el.querySelector('.pub-map-legend span')).fontSize);
-   return {allIslands,font,mapHeight:canvas.height,clear:key.top>=canvas.bottom-1,fit:document.documentElement.scrollWidth<=innerWidth+1};
+   return {allIslands,fillsMap,font,mapHeight:canvas.height,clear:key.top>=canvas.bottom-1,fit:document.documentElement.scrollWidth<=innerWidth+1};
   });
-  assert.ok(boxes.allIslands&&boxes.font>=14&&boxes.mapHeight>=390&&boxes.clear&&boxes.fit,JSON.stringify({width,...boxes}));
+  assert.ok(boxes.allIslands&&boxes.fillsMap&&boxes.font>=14&&boxes.mapHeight>=390&&boxes.clear&&boxes.fit,JSON.stringify({width,...boxes}));
   await page.screenshot({path:`qa-artifacts/map-cartography-${width}.png`});
  }
  await page.setViewportSize({width:1440,height:1100});

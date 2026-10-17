@@ -94,7 +94,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   useEffect(()=>{let alive=true;let resize;setReady(null);Promise.all([leaflet(),boundaries()]).then(([L,data])=>{
     if(!alive||!ref.current)return;
     dataRef.current=data;
-    const map=L.map(ref.current,{center:[-16.3,167.6],zoom:6,zoomControl:false,minZoom:5,maxZoom:18,scrollWheelZoom:true});
+    const map=L.map(ref.current,{center:[-16.3,167.6],zoom:6,zoomControl:false,zoomSnap:.25,zoomDelta:.5,minZoom:5,maxZoom:18,scrollWheelZoom:true});
     L.control.zoom({zoomInTitle:copy.zoomIn,zoomOutTitle:copy.zoomOut}).addTo(map);
     const overview=L.layerGroup().addTo(map);
     map.createPane('councilLand');map.getPane('councilLand').style.zIndex='250';
