@@ -1,3 +1,4 @@
+import { fmtNum } from '../lib/locale';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
@@ -370,7 +371,7 @@ export default function InteractiveCoverageMap({ selected }) {
           </div>
         )}
       </div>
-      {selectedArea && <section className="coverage-map__selection" role="status" aria-label={t('reading.areaSelection')}><div><strong>{selectedArea.name}</strong><p>{t('reading.areaCounts', { projects:selectedArea.count, sites:selectedArea.sites })}</p></div><button type="button" className="coverage-map__action" onClick={() => setSelectedArea(null)}>{t('reading.closeArea')}</button></section>}
+      {selectedArea && <section className="coverage-map__selection" role="status" aria-label={t('reading.areaSelection')}><div><strong>{selectedArea.name}</strong><p>{t('reading.areaCounts', { projects:fmtNum(selectedArea.count), sites:fmtNum(selectedArea.sites) })}</p></div><button type="button" className="coverage-map__action" onClick={() => setSelectedArea(null)}>{t('reading.closeArea')}</button></section>}
       <div className="coverage-map__footer">
         <span>Pinch/scroll to zoom · drag to pan · Layers switches Street/Satellite and map overlays. Project sites appear from zoom 9; reference village labels from zoom 11.</span>
         {unallocated > 0 && <span className="coverage-map__notice"><strong>{unallocated}</strong> filtered {unallocated === 1 ? 'project is' : 'projects are'} not yet linked to a mappable Area Council. These projects remain in the portfolio totals.</span>}
