@@ -1,3 +1,4 @@
+import ResultAchievement from './ResultAchievement';
 import { useTranslation } from 'react-i18next';
 import ResultComparison from './ResultComparison';
 import { fmtNum } from '../lib/locale';
@@ -69,6 +70,7 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
               <dl>{cells.map(([field, label, value]) => <div key={field}><dt>{label}</dt><dd>{value}</dd>{edit(field, label)}</div>)}</dl>
               <div className="reading-result-evidence"><button type="button" className="btn btn-secondary" onClick={() => onEvidence(indicator)}>{t('rf.viewEvidence')}</button><p>{t('reading.evidenceHelp')}</p></div>
               </div>
+              <ResultAchievement value={row.comparison?.achievement} />
               <ResultComparison result={row.comparison} />
               {workingState?.(row)}
               <div className="rf2-mobile-status">{status(row)}{edit('status', t('rf.status'))}</div>

@@ -4111,6 +4111,8 @@ resources.en.translation.reading = {"contents": "In this report", "contentsHelp"
 resources.fr.translation.reading = {"contents": "Dans ce rapport", "contentsHelp": "Choisissez une section pour ouvrir l’aperçu complet.", "density": "Espacement de lecture", "comfortable": "Aéré", "compact": "Compact", "evidenceHelp": "Ouvrez les documents qui justifient ce résultat.", "overviewSections": "Sections de la vue d’ensemble", "summary": "En un coup d’œil", "progress": "Avancement dans le temps", "actions": "Priorités et actions", "reports": "Rapports"};
 Object.assign(resources.en.translation.reading, { areaSelection:'Selected area', areaCounts:'{{projects}} linked projects · {{sites}} mapped sites', closeArea:'Close area details' });
 Object.assign(resources.fr.translation.reading, { areaSelection:'Zone sélectionnée', areaCounts:'{{projects}} projets associés · {{sites}} sites cartographiés', closeArea:'Fermer les détails de la zone' });
+Object.assign(resources.en.translation.reading, { achievementScale:'Reported achievement: {{value}}%. Target marker: 100%.', targetMarker:'100% target', coverPreview:'Open report cover' });
+Object.assign(resources.fr.translation.reading, { achievementScale:'Avancement déclaré : {{value}} %. Repère de cible : 100 %.', targetMarker:'Cible : 100 %', coverPreview:'Ouvrir la couverture du rapport' });
 resources.en.translation.rf.scale = 'Scale {{value}}';
 resources.fr.translation.rf.scale = 'Niveau {{value}}';
 resources.en.translation.rf.noColumn = 'No {{column}} recorded for this row';

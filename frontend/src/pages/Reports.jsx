@@ -466,7 +466,7 @@ export default function Reports({ user }) {
 
       <button type="button" className="rp-noprint" onClick={() => setShowCover(value => !value)} style={{ minHeight:40, marginTop:8, border:0, background:'transparent', color:'var(--green-800)' }}>{t(showCover ? 'resultDetail.hideCover' : 'resultDetail.showCover')}</button>
       <div className="report-reading-layout">
-      <ReportContents onOpen={() => setPreviewOpen(true)} revision={`${type}:${projectId}:${scopeId}:${period}`} />
+      <ReportContents onOpen={() => setPreviewOpen(true)} onShowCover={() => setShowCover(true)} title={cover.title} period={cover.period} revision={`${type}:${projectId}:${scopeId}:${period}`} />
       <div id="report-preview" className={`rp-doc rp-print ${previewOpen ? 'rp-preview-open' : 'rp-preview-collapsed'} ${showCover ? 'rp-show-cover' : ''}`}>
         <IslandReportCover {...cover} />
         <div className="rp-stamp">

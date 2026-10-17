@@ -59,11 +59,12 @@ try{
  await page.getByRole('combobox').first().selectOption('full_me');
  assert.equal(await page.locator('.island-report-cover').isVisible(),false);
  const contents=page.getByRole('navigation',{name:'In this report',exact:true});
- await contents.getByRole('button').first().waitFor();
+ await contents.locator('ol button').first().waitFor();
  assert.equal(await page.locator('#report-preview .report-contents').count(),0,'Navigation is excluded from exports');
- await contents.getByRole('button').first().click();
+ await contents.locator('ol button').first().click();
  await page.getByRole('button',{name:'Collapse preview',exact:true}).waitFor();
- assert.equal(await page.evaluate(()=>document.activeElement?.id.startsWith('report-section-')),true,'Section navigation focuses the destination');
+ await page.waitForFunction(()=>document.activeElement?.id.startsWith('report-section-'));
+ assert.equal(await page.locator('.report-contents button[aria-current=location]').count(),1,'Section navigation exposes the chosen section');
  await page.getByRole('button',{name:'Collapse preview',exact:true}).click();
  await page.getByRole('button',{name:'View full report',exact:true}).click();
  assert.match(await page.locator('.rp-result-table').innerText(),/Target minus actual/);
