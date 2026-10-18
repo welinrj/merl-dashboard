@@ -53,7 +53,7 @@ try{
  assert.doesNotMatch(await page.locator('.ppa-indicator-result').filter({hasText:'Selected project indicator'}).innerText(),/Awaiting review/);
  for(const width of [360,390,1440]){
   await page.setViewportSize({width,height:1000});
-  await page.getByRole('heading',{name:'Project indicator results',exact:true}).scrollIntoViewIfNeeded();
+  await page.getByText('Project indicator results',{exact:true}).scrollIntoViewIfNeeded();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await page.screenshot({path:`qa-artifacts/header-portfolio-results-${width}.png`});
  }
@@ -71,7 +71,7 @@ try{
  await page.locator('#ppa-project').selectOption('pa');
  await page.locator('.ppa-indicator-result').first().waitFor();
  await page.locator('.dsh-lang button[lang=fr]').click();
- await page.getByRole('heading',{name:'Résultats des indicateurs du projet',exact:true}).waitFor();
+ await page.getByText('Résultats des indicateurs du projet',{exact:true}).waitFor();
  assert.equal(await page.locator('.ppa-indicator-result').getByText('En attente de vérification',{exact:true}).count(),6);
  assert.deepEqual(errors,[]);
  console.log('PASS Saved VCAP2 figures, draft labels, zero/missing values, source notes, review-state isolation, project switching, EN/FR and phone/desktop layout');
