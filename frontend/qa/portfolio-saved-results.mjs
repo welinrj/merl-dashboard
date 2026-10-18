@@ -64,6 +64,14 @@ try{
  assert.match(await panel.innerText(),/2,345.67/);
  assert.match(await panel.innerText(),/Awaiting review/);
  await panel.getByRole('button',{name:'Close',exact:true}).click();
+ assert.ok(await first.evaluate(node=>node===document.activeElement),'focus returns to result card');
+ await page.setViewportSize({width:390,height:844});
+ await first.click();
+ await panel.waitFor();
+ await panel.getByRole('button',{name:'Close',exact:true}).press('Escape');
+ await panel.waitFor({state:'detached'});
+ await first.click();
+ await panel.getByRole('button',{name:'Close',exact:true}).click();
  await page.locator('#ppa-project').selectOption('pb');
  await page.getByRole('link',{name:'Generate project reports',exact:true}).waitFor();
  await page.waitForFunction(()=>document.querySelector('#ppa-project')?.value==='pb'&&!document.querySelector('.ppa-indicator-result'));

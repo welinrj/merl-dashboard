@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { portfolioResultEntries } from '../lib/docc/portfolioResultDisplay';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { ReviewIcon, BudgetUsageIcon, UpdateProgressIcon, ResultsIcon, BeneficiariesIcon } from '../components/ui/MerlIcons';
@@ -18,9 +19,9 @@ import { currentProjects } from '../lib/docc/projectScope';
 //     selector asks the reader to choose a project again, and changing it
 //     clears the whole page rather than leaving last project's numbers on
 //     screen while the new ones load.
-//   · Every figure comes from lib/docc/projectAnalysis.js. A KPI at the top and
-//     the section that explains it below are literally the same value, so they
-//     cannot drift apart.
+//   · Performance figures come from lib/docc/projectAnalysis.js. Saved draft
+//     indicator figures are a separate, labelled private display fallback and
+//     never feed the performance aggregates.
 //   · Missing data is said out loud. "No financial records have been submitted"
 //     is a different statement from "0 VUV spent", and the page never turns the
 //     first into the second.
@@ -383,25 +384,30 @@ function Framework({ d, results, onIndicator }) {
 /** Indicator detail. Closing returns to exactly where the reader was. */
 function IndicatorPanel({ entry, history, onClose }) {
   const { t } = useTranslation();
+  const dialog = useRef(null);
+  const opener = useRef(document.activeElement);
+  useEffect(() => { dialog.current?.showModal(); }, []);
+  const close = () => { dialog.current?.close(); onClose(); opener.current?.focus?.(); };
   const ind = entry.indicator;
   const p = entry.progress;
   const rows = history
     .filter((h) => h.indicator_id === ind.id)
     .sort((a, b) => new Date(b.created_at ?? 0) - new Date(a.created_at ?? 0));
 
-  return (
-    <div role="dialog" aria-modal="true" aria-label={ind.name}
-      style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(20,18,15,0.35)', display: 'flex', justifyContent: 'flex-end' }}
-      onClick={onClose}>
+  return createPortal(
+    <dialog ref={dialog} aria-modal="true" aria-label={ind.name}
+      onCancel={event => { event.preventDefault(); close(); }}
+      style={{ position: 'fixed', inset: 0, width: '100%', maxWidth: 'none', height: '100%', maxHeight: 'none', margin: 0, padding: 0, border: 0, background: 'rgba(20,18,15,0.35)' }}
+      onClick={event => { if (event.target === event.currentTarget) close(); }}>
       <div onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--white)', width: 'min(560px, 100%)', height: '100%', overflowY: 'auto', padding: '1.25rem', boxShadow: 'var(--shadow-lg)' }}>
+        style={{ marginLeft: 'auto', background: 'var(--white)', width: 'min(560px, 100%)', height: '100%', overflowY: 'auto', padding: '1.25rem', boxShadow: 'var(--shadow-lg)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)' }}>{ind.code}</div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', margin: '0.15rem 0 0', color: 'var(--text-1)' }}>{ind.name}</h2>
           </div>
-          <button type="button" onClick={onClose} className="btn-secondary"
-            style={{ padding: '0.35rem 0.7rem', borderRadius: 'var(--radius-control)', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', flexShrink: 0 }}>
+          <button type="button" onClick={close} className="btn-secondary"
+            style={{ minHeight: 44, padding: '0.35rem 0.7rem', borderRadius: 'var(--radius-control)', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', flexShrink: 0 }}>
             {t('ppa.close')}
           </button>
         </div>
@@ -457,7 +463,7 @@ function IndicatorPanel({ entry, history, onClose }) {
           </Scroller>
         )}
       </div>
-    </div>
+    </dialog>, document.body
   );
 }
 
@@ -846,7 +852,7 @@ export default function ProjectPortfolioAnalysis() {
                           ? `${fmtPct(entry.pct)} progress`
                           : cfg.show_target && target != null ? `Target: ${fmtNum(target)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : entry.indicator.code}
                       {entry.progress && <span className="ppa-result-provenance" style={{display:'block',marginTop:8,fontSize:13,lineHeight:1.5,textAlign:'left',color:'var(--text-2)'}}>
-                        {entry.awaitingReview && <strong style={{display:'block'}}>{t('ppa.awaitingReview')}</strong>}
+                        {entry.awaitingReview && <strong style={{display:'block',fontSize:13,lineHeight:1.5}}>{t('ppa.awaitingReview')}</strong>}
                         {entry.progress.reporting_period}
                       </span>}</>}
                       />
