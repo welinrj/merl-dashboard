@@ -78,3 +78,16 @@
 .pub-coverage-map .pub-map-recorded{stroke-linejoin:round;stroke-linecap:round}
 .pub-coverage-map .leaflet-control-layers-toggle{background-image:none!important;display:grid;place-items:center;text-decoration:none}
 .pub-coverage-map .leaflet-control-layers-toggle::after{content:'▱';color:#315b70;font:700 32px/1 system-ui,sans-serif;transform:rotate(-8deg)}
+/* MapLibre controls keep a usable touch target without covering the legend. */
+.pub-coverage-map .pub-map-options{display:flex;align-items:center;flex-wrap:wrap;gap:12px 24px;padding:8px 14px;background:#fff;border-top:1px solid #e3ecf0;font:500 13px/1.5 system-ui;color:#365565}
+.pub-coverage-map .pub-map-options label{display:flex;align-items:center;gap:8px;min-height:44px}
+.pub-coverage-map .pub-map-options select{min-height:44px;border:1px solid #bfd0d9;border-radius:8px;background:white;padding:7px 10px;color:#294e63;font:inherit}
+.pub-coverage-map .pub-map-options input{width:18px;height:18px;accent-color:#2a637a}
+.pub-coverage-map .maplibregl-ctrl-group{border:1px solid #c7d8e0;border-radius:9px;box-shadow:0 2px 8px #163d571a}
+.pub-coverage-map .maplibregl-ctrl-group button{width:44px;height:44px}
+.pub-coverage-map .maplibregl-ctrl-attrib{font:10px/1.5 system-ui;background:#ffffffed;max-width:calc(100vw - 80px)}
+.pub-coverage-map .maplibregl-popup-content{padding:16px;border-radius:10px;color:#24465b;font:13px/1.5 system-ui;max-height:260px;overflow:auto}
+.pub-coverage-map .maplibregl-popup-close-button{width:32px;height:32px;font-size:22px}
+.pub-coverage-map .pub-map-error{position:absolute;inset:0;display:grid;place-content:center;gap:12px;padding:24px;background:#f4f8fa;color:#294e63;text-align:center}
+.pub-coverage-map .pub-map-error button{min-height:44px;border:1px solid #bfd0d9;background:white;border-radius:8px;font:inherit;cursor:pointer}
+:is(.pub-root,.pbd-root) .pub-coverage-map.pub-map-expanded{grid-template-rows:auto auto minmax(180px,1fr) auto}
