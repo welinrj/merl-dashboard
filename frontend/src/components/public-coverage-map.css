@@ -72,3 +72,9 @@
  .pub-coverage-map .pub-map-toolbar button:nth-child(2){grid-area:locations}
  .pub-coverage-map .pub-map-toolbar button:last-child{grid-area:full}
 }
+/* Geographic tiles remain visible beneath transparent project coverage. */
+.pub-coverage-map .pub-map-context-note{position:absolute;left:60px;right:60px;bottom:32px;z-index:650;padding:7px 10px;border:1px solid #d5e1e7;border-radius:6px;background:#fffffff2;color:#355366;text-align:center;font:500 12px/1.4 system-ui,sans-serif;pointer-events:none;box-shadow:0 1px 6px #173c5018}
+.pub-coverage-map .pub-map-council{color:#163b55;font-size:12px;text-shadow:0 0 4px #fff,1px 0 2px #fff,-1px 0 2px #fff}
+.pub-coverage-map .pub-map-recorded{stroke-linejoin:round;stroke-linecap:round}
+.pub-coverage-map .leaflet-control-layers-toggle{background-image:none!important;display:grid;place-items:center;text-decoration:none}
+.pub-coverage-map .leaflet-control-layers-toggle::after{content:'▱';color:#315b70;font:700 32px/1 system-ui,sans-serif;transform:rotate(-8deg)}

@@ -39,13 +39,13 @@ const errors=[];page.on('pageerror',e=>errors.push(e.message));
 mkdirSync('qa-artifacts',{recursive:true});
 try{
  await page.goto('http://127.0.0.1:5199/#/dashboards');
- await page.locator('.pub-map-boundaries').waitFor({timeout:30000});
+ await page.locator('.pub-map-recorded').first().waitFor({timeout:30000});
  await page.waitForFunction(()=>document.querySelectorAll('.pub-map-recorded').length===5);
- assert.equal(await page.locator('.pub-map-boundaries').count(),1,'shared boundaries rendered once');
+ assert.equal(await page.locator('.pub-map-boundaries').count(),0,'neutral council linework is off by default');
  assert.equal(await page.locator('.pub-map-recorded,.pub-map-unrecorded').count(),71);
- assert.equal(tileRequests,0,'overview requests no external basemap tiles');
+ assert.ok(tileRequests>0,'default map requests geographic basemap detail');
  assert.equal(await page.locator('.pbd-neon-boundary').count(),0);
- assert.ok(await page.locator('.pub-map-neutral').innerText().then(t=>t.includes('66')));
+ await page.waitForFunction(()=>document.querySelector('.pub-map-neutral')?.textContent.includes('66'));
  for(const [width,height] of [[1920,1100],[1440,1100],[768,1100],[390,844],[360,780]]){
   await page.setViewportSize({width,height});
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -103,9 +103,12 @@ try{
  await page.locator('.leaflet-control-layers').getByText('Overview',{exact:true}).click();
  await page.getByRole('button',{name:'FR',exact:true}).click();
  await page.getByRole('button',{name:'Voir tout le Vanuatu'}).waitFor();
- await page.locator('.pub-map-boundaries').waitFor();
+ await page.locator('.pub-map-recorded').first().waitFor();
  await page.waitForFunction(()=>document.querySelectorAll('.pub-map-recorded').length===5);
- assert.ok(await page.locator('.pub-map-province').count()>0);
+ assert.equal(await page.locator('.pub-map-boundaries').count(),0);
+ await page.locator('.leaflet-control-layers').hover();
+ await page.getByText('Limites des conseils',{exact:true}).click();
+ assert.equal(await page.locator('.pub-map-boundaries').count(),1,'optional shared boundaries render once');
  assert.deepEqual(errors,[]);
- console.log('Map cartography: 71 councils, offline overview, clean boundaries, correct counts, selection, base layers, EN/FR and five viewports passed.');
+ console.log('Map cartography: 71 councils, geographic default, optional boundaries, correct counts, selection, base layers, EN/FR and five viewports passed.');
 }finally{await browser.close();}
