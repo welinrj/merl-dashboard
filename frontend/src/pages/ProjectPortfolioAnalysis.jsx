@@ -852,7 +852,7 @@ export default function ProjectPortfolioAnalysis() {
                           ? `${fmtPct(entry.pct)} progress`
                           : cfg.show_target && target != null ? `Target: ${fmtNum(target)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : entry.indicator.code}
                       {entry.progress && <span className="ppa-result-provenance" style={{display:'block',marginTop:8,fontSize:13,lineHeight:1.5,textAlign:'left',color:'var(--text-2)'}}>
-                        {entry.awaitingReview && <strong style={{display:'block',fontSize:13,lineHeight:1.5}}>{t('ppa.awaitingReview')}</strong>}
+                        {entry.awaitingReview && <span className="ppa-result-review" style={{display:'block',fontSize:13,fontWeight:700,lineHeight:1.5}}>{t('ppa.awaitingReview')}</span>}
                         {entry.progress.reporting_period}
                       </span>}</>}
                       />

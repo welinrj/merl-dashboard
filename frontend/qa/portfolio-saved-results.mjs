@@ -45,6 +45,7 @@ try{
  for(const [n,value] of values.entries()){
   const card=page.locator('.ppa-indicator-result').filter({hasText:'VCAP saved indicator '+n});
   assert.match(await card.innerText(),/Awaiting review/);
+  assert.ok(await card.locator('.ppa-result-review').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)<=14),'review label stays secondary to the result number');
   assert.match(await card.innerText(),/Q3 2026/);
   if(value==null)assert.match(await card.innerText(),/No numeric result recorded/);
   else assert.ok((await card.innerText()).includes(value.toLocaleString('en-US')));
