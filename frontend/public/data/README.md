@@ -21,8 +21,12 @@ Santo 1, South Santo 2, and South East Santo.
 repository root (Shapely 2.2, pyproj 3.7). The original snapshot stays unchanged.
 The pack retains all 71 names and source boundary segments. It includes unioned
 land, shared boundary linework drawn once, and six province label points derived
-from the province footprints. The overview uses these vectors without map tiles;
-street and satellite imagery remain optional with their provider attribution.
+from the province footprints. The optional simplified overview uses these vectors without map tiles. The
+default terrain basemap and optional street/satellite imagery retain provider
+attribution. The fallback land sits below imagery, so it never masks the real
+coastline. Project fills are transparent; unrecorded council linework is off by
+default. Since the source is simplified to 100 m, council geometry and fallback
+land are hidden above zoom 11. Geographic tiles remain visible at closer zoom.
 
 Two source self-intersections (Central Pentecost One and Northwest Santo) are
 repaired only for display. The maximum absolute geodesic area change is 0.204 m².
