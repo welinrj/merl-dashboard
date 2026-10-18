@@ -1,10 +1,9 @@
-// A new officer should be able to find a project and change its manager on a phone.
+// Saved indicator figures remain visible without changing their review status.
 // All authentication and writes are mocked; no real project data is edited.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
-import { readFileSync, mkdirSync } from 'node:fs';
-import JSZip from 'jszip';
-const fixture = JSON.parse(readFileSync(process.env.STUB_FILE,'utf8'));
+import { mkdirSync } from 'node:fs';
+mkdirSync('qa-artifacts',{recursive:true});
 const HOST='https://ndntvncboeajanipafeq.supabase.co';
 const now=Math.floor(Date.now()/1000),b64=v=>Buffer.from(JSON.stringify(v)).toString('base64url');
 const token=`${b64({alg:'HS256',typ:'JWT'})}.${b64({sub:'u1',role:'authenticated',aud:'authenticated',iat:now,exp:now+3600})}.sig`;
