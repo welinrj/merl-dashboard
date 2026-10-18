@@ -61,6 +61,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      - name: Validate saved portfolio indicator figures
+        working-directory: frontend
+        run: node qa/portfolio-saved-results.mjs
+
       - name: Validate executive KPI alignment and score gauges
         working-directory: frontend
         env:

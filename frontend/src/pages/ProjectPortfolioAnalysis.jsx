@@ -1,3 +1,4 @@
+import { portfolioResultEntries } from '../lib/docc/portfolioResultDisplay';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { ReviewIcon, BudgetUsageIcon, UpdateProgressIcon, ResultsIcon, BeneficiariesIcon } from '../components/ui/MerlIcons';
 import ProjectLocations from '../components/ProjectLocations';
@@ -327,7 +328,7 @@ function Framework({ d, results, onIndicator }) {
         )}
         <span style={{ fontSize: '0.7rem', fontWeight: 700, color: TONE[IND_TONE[r.status]].fg,
           background: TONE[IND_TONE[r.status]].bg, padding: '0.15rem 0.45rem', borderRadius: 999, whiteSpace: 'nowrap' }}>
-          {t(`ppa.ind_${r.status}`)}
+          {r.awaitingReview ? t('ppa.awaitingReview') : t(`ppa.ind_${r.status}`)}
         </span>
       </span>
     </button>
@@ -405,6 +406,9 @@ function IndicatorPanel({ entry, history, onClose }) {
           </button>
         </div>
 
+        {entry.awaitingReview && <p role="note" style={{padding:12,background:'var(--surface-1)',lineHeight:1.5}}><strong>{t('ppa.awaitingReview')}</strong><br/>{t('ppa.draftResultNote')}</p>}
+        {p?.reporting_period && <p>{t('ppa.period')}: {p.reporting_period}</p>}
+        {p?.narrative && <p style={{whiteSpace:'pre-wrap',fontSize:14,lineHeight:1.6}}>{p.narrative}</p>}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.8rem', margin: '1rem 0' }}>
           <Field label={t('ppa.baseline')} value={ind.baseline_value != null ? fmtNum(ind.baseline_value) : null} />
           <Field label={t('ppa.periodTarget')} value={p?.period_target != null ? fmtNum(p.period_target) : null} />
@@ -436,7 +440,7 @@ function IndicatorPanel({ entry, history, onClose }) {
             <table className="data-table" style={{ width: '100%', minWidth: 380 }}>
               <thead><tr>
                 <th>{t('ppa.period')}</th><th>{t('ppa.target')}</th>
-                <th>{t('ppa.actual')}</th><th>{t('ppa.achievement')}</th>
+                <th>{t('ppa.actual')}</th><th>{t('ppa.cumulative')}</th><th>{t('ppa.achievement')}</th>
               </tr></thead>
               <tbody>
                 {rows.map((h) => (
@@ -444,6 +448,7 @@ function IndicatorPanel({ entry, history, onClose }) {
                     <td>{h.reporting_period || '—'}</td>
                     <td>{h.period_target != null ? fmtNum(h.period_target) : '—'}</td>
                     <td>{h.actual_this_period != null ? fmtNum(h.actual_this_period) : '—'}</td>
+                    <td>{h.cumulative_actual != null ? fmtNum(h.cumulative_actual) : '—'}</td>
                     <td>{h.achievement_pct != null ? fmtPct(h.achievement_pct) : '—'}</td>
                   </tr>
                 ))}
@@ -597,6 +602,7 @@ export default function ProjectPortfolioAnalysis() {
 
   // ── The analysis ───────────────────────────────────────────────────────────
   const a = useMemo(() => analyseProject(d, period), [d, period]);
+  const portfolioResults = useMemo(() => ({ ...a.results, rows: portfolioResultEntries(a.results.rows, d.progress, d.periods, period) }), [a.results, d.progress, d.periods, period]);
 
   // Global search opens the owning project and the relevant record/section.
   // Keep the URL context so Back and refresh remain meaningful.
@@ -606,14 +612,14 @@ export default function ProjectPortfolioAnalysis() {
     if (handledFocus.current === key) return;
     handledFocus.current = key;
     if (focus === 'indicator') {
-      const entry = a.results.rows.find(r => r.indicator.id === focusRecord);
+      const entry = portfolioResults.rows.find(r => r.indicator.id === focusRecord);
       if (entry) setIndicator(entry);
       else jump('ppa-results');
     } else {
       const section = ['objective', 'impact', 'paradigm_shift', 'gcf_result_area', 'component', 'outcome', 'output', 'sub_output', 'co_benefit'].includes(focus) ? 'ppa-results' : focus === 'activity' ? 'ppa-implementation' : null;
       if (section) requestAnimationFrame(() => document.getElementById(section)?.scrollIntoView({ block: 'start' }));
     }
-  }, [projectId, focus, focusRecord, period, loading, d.project, a.results.rows]);
+  }, [projectId, focus, focusRecord, period, loading, d.project, portfolioResults.rows]);
 
   const periodOptions = useMemo(() => {
     const labels = [...new Set(d.periods.map((p) => p.period_label).filter(Boolean))];
@@ -822,23 +828,27 @@ export default function ProjectPortfolioAnalysis() {
           </div>
 
           {d.kpiConfig.length > 0 && (
-            <Section title="Project Result KPIs" description="Featured indicators configured from this project's official results framework.">
+            <Section title={t('ppa.resultKpisTitle')} description={t('ppa.resultKpisDesc')}>
               <div className="grid-kpi-6">
                 {[...d.kpiConfig].sort((a,b) => a.display_order - b.display_order).map((cfg) => {
-                  const entry = a.results.rows.find((r) => r.indicator.id === cfg.indicator_id);
+                  const entry = portfolioResults.rows.find((r) => r.indicator.id === cfg.indicator_id);
                   if (!entry) return null;
                   const actual = entry.progress?.cumulative_actual ?? entry.progress?.actual_this_period;
                   const target = entry.progress?.final_target ?? entry.indicator.target_value;
                   return (
-                    <button type="button" key={cfg.id} onClick={() => setIndicator(entry)} className="kpi-jump">
+                    <button type="button" key={cfg.id} onClick={() => setIndicator(entry)} className="kpi-jump ppa-indicator-result">
                       <StatTile
                         label={cfg.short_label}
-                        status={entry.status === 'below_target' ? 'red' : entry.status === 'on_track' || entry.status === 'achieved' ? 'green' : 'none'}
-                        value={actual != null ? `${fmtNum(actual)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : t('ppa.notReported')}
+                        status={entry.awaitingReview ? undefined : entry.status === 'below_target' ? 'red' : entry.status === 'on_track' || entry.status === 'achieved' ? 'green' : 'none'}
+                        value={actual != null ? `${fmtNum(actual)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : entry.progress ? t('ppa.noNumericResult') : t('ppa.notReported')}
                         placeholder={actual == null}
-                        sub={cfg.show_progress && typeof entry.pct === 'number'
+                        sub={<>{cfg.show_progress && typeof entry.pct === 'number'
                           ? `${fmtPct(entry.pct)} progress`
                           : cfg.show_target && target != null ? `Target: ${fmtNum(target)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : entry.indicator.code}
+                      {entry.progress && <span className="ppa-result-provenance" style={{display:'block',marginTop:8,fontSize:13,lineHeight:1.5,textAlign:'left',color:'var(--text-2)'}}>
+                        {entry.awaitingReview && <strong style={{display:'block'}}>{t('ppa.awaitingReview')}</strong>}
+                        {entry.progress.reporting_period}
+                      </span>}</>}
                       />
                     </button>
                   );
@@ -986,7 +996,7 @@ export default function ProjectPortfolioAnalysis() {
                 </div>
               ))}
             </div>
-            <Framework d={d} results={a.results} onIndicator={setIndicator} />
+            <Framework d={d} results={portfolioResults} onIndicator={setIndicator} />
           </Section>
 
           {/* 13/14 — beneficiaries and Area Council coverage */}
