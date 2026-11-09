@@ -46,7 +46,7 @@ const COPY = {
   en: {
     title: 'Public Overview', subtitle: 'Department of Climate Change project portfolio', overview: 'Public Overview',
     search: 'Search projects…', status: 'Status', theme: 'Theme', province: 'Province', all: 'All', reset: 'Reset', filters: 'Filters',
-    refresh: 'Refresh', refreshing: 'Checking for updates…', projects: 'DoCC Projects', projectCount: 'Projects under the Department of Climate Change', filteredProjectCount: 'Projects matching the selected filters',
+    refresh: 'Refresh', refreshing: 'Checking for updates…', projects: 'DoCC Projects', singleProject: 'DoCC Project', projectCount: 'Projects under the Department of Climate Change', filteredProjectCount: 'Projects matching the selected filters',
     funding: 'Recorded Project Funding', fundingSub: 'All recorded project budgets converted to VUV using Reserve Bank of Vanuatu rates dated 25 Sep 2026', utilised: 'Funds Utilised', utilisedSub: 'Latest approved cumulative expenditure',
     beneficiaries: 'Total Beneficiaries', beneficiariesSub: 'Direct beneficiaries from approved reports', utilisation: 'Financial Utilisation',
     utilisationSub: 'Approved expenditure as a share of recorded budgets', portfolio: 'Project portfolio', portfolioIntro: 'Projects coordinated by the Department of Climate Change and the information currently recorded for public view.',
@@ -67,7 +67,7 @@ const COPY = {
   fr: {
     title: 'Vue publique', subtitle: 'Portefeuille de projets du Département du changement climatique', overview: 'Vue publique',
     search: 'Rechercher des projets…', status: 'État', theme: 'Thème', province: 'Province', all: 'Tous', reset: 'Réinitialiser', filters: 'Filtres',
-    refresh: 'Actualiser', refreshing: 'Recherche de mises à jour…', projects: 'Projets du DoCC', projectCount: 'Projets relevant du Département du changement climatique', filteredProjectCount: 'Projets correspondant aux filtres sélectionnés',
+    refresh: 'Actualiser', refreshing: 'Recherche de mises à jour…', projects: 'Projets du DoCC', singleProject: 'Projet du DoCC', projectCount: 'Projets relevant du Département du changement climatique', filteredProjectCount: 'Projets correspondant aux filtres sélectionnés',
     funding: 'Financement enregistré des projets', fundingSub: 'Tous les budgets enregistrés sont convertis en VUV selon les taux de la Banque de Réserve du Vanuatu du 25 sept. 2026', utilised: 'Fonds utilisés', utilisedSub: 'Dernières dépenses cumulées approuvées',
     beneficiaries: 'Total des bénéficiaires', beneficiariesSub: 'Bénéficiaires directs issus des rapports approuvés', utilisation: 'Utilisation financière',
     utilisationSub: 'Dépenses approuvées en proportion des budgets enregistrés', portfolio: 'Portefeuille de projets', portfolioIntro: 'Projets coordonnés par le Département du changement climatique et informations actuellement enregistrées pour le public.',
@@ -334,7 +334,7 @@ export default function PublicDashboard() {
           </section>
 
           <section className="pbd-section pbd-portfolio">
-            <div className="pbd-section-head"><div><span><ProjectsIcon size={20} aria-hidden="true" />{c.portfolio}</span><p>{c.portfolioIntro}</p></div><strong>{num(filtered.length, lang)} {c.projects}</strong></div>
+            <div className="pbd-section-head"><div><span><ProjectsIcon size={20} aria-hidden="true" />{c.portfolio}</span><p>{c.portfolioIntro}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
             <div className="pbd-project-grid">{filtered.length ? filtered.map(project => <ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang} />) : <div className="pbd-empty">{c.noProjects}</div>}</div>
           </section>
           <footer className="pbd-footer"><span>{c.source}</span></footer>
