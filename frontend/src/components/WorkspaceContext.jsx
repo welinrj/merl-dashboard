@@ -36,7 +36,7 @@ export default function WorkspaceContextProvider({ user, children }) {
     let alive = true;
     setAccess({ loading: true, error: false, projects: [], periods: [] });
     Promise.all([
-      supabase.from('v_projects').select('id, code, has_results_framework'),
+      supabase.from('v_projects').select('id, code, status, has_results_framework, excluded_from_current_portfolio'),
       supabase.from('v_reporting_periods').select('project_id, period_label, period_type, period_end'),
     ]).then(([projectsResponse, periodsResponse]) => {
       if (!alive) return;

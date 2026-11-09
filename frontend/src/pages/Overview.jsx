@@ -137,7 +137,7 @@ export default function Overview({ user }) {
         ));
 
         const responses = await Promise.all([
-          q('v_projects', 'id,has_results_framework, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
+          q('v_projects', 'id,has_results_framework, excluded_from_current_portfolio, code, name, status, currency, budget_vuv, spent_vuv, provinces, donor, implementing_partners, category, start_date, end_date, updated_at'),
           q('v_financial_progress', 'project_id, approved_budget, cumulative_expenditure, reporting_period, created_at, updated_at'),
           q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
           q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, indirect, reporting_period, double_counting_check'),
