@@ -91,3 +91,7 @@
 .pub-coverage-map .pub-map-error{position:absolute;inset:0;display:grid;place-content:center;gap:12px;padding:24px;background:#f4f8fa;color:#294e63;text-align:center}
 .pub-coverage-map .pub-map-error button{min-height:44px;border:1px solid #bfd0d9;background:white;border-radius:8px;font:inherit;cursor:pointer}
 :is(.pub-root,.pbd-root) .pub-coverage-map.pub-map-expanded{grid-template-rows:auto auto minmax(180px,1fr) auto}
+.pub-coverage-map .pub-map-boundary-fallback{display:block;width:100%;height:100%;background:#e5f0f3}
+.pub-coverage-map .pub-map-boundary-fallback [role=button]{cursor:pointer}
+.pub-coverage-map .pub-map-boundary-fallback [role=button]:focus-visible{outline:none;stroke:#163d57;stroke-width:3}
+.pub-coverage-map .pub-maplibre[hidden]{display:none}
