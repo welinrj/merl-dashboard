@@ -66,7 +66,7 @@ export default function BeneficiarySummary(props) {
     setSource(null);
     setError(false);
     Promise.all([
-      readAll('v_projects', 'id, has_results_framework, code, name, status, provinces, donor, category, start_date, end_date', lang, true),
+      readAll('v_projects', 'id, has_results_framework, excluded_from_current_portfolio, code, name, status, provinces, donor, category, start_date, end_date', lang, true),
       readAll('v_beneficiaries', 'id, project_id, total_direct, female, male, other_gender, youth, persons_with_disability, indirect, double_counting_check', lang),
     ]).then(([projects, beneficiaries]) => {
       if (active) setSource({ projects, beneficiaries });

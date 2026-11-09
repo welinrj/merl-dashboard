@@ -28,7 +28,7 @@ export default function ProjectStatusSummary() {
         const all = [];
         for (let offset = 0; ; offset += 1000) {
           const { data, error: readError } = await supabase.from('v_projects')
-            .select('id,has_results_framework,code,status,category,donor,provinces,start_date,end_date')
+            .select('id,has_results_framework, excluded_from_current_portfolio,code,status,category,donor,provinces,start_date,end_date')
             .order('id').range(offset, offset + 999);
           if (readError) throw readError;
           const page = data ?? [];

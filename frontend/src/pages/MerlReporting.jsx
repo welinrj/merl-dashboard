@@ -1,3 +1,4 @@
+import { currentProjects } from '../lib/docc/projectScope';
 import ReportingChecklist from '../components/ReportingChecklist';
 import { resolveReportingPeriod } from '../lib/docc/workspacePeriod';
 // =============================================================================
@@ -300,11 +301,12 @@ export default function MerlReporting({ user }) {
 
   // ── Load projects once ──────────────────────────────────────────────────────
   useEffect(() => {
-    localised(() => supabase.from('v_projects').select(i18nCols('id, code, name, status')).order('code'))
+    localised(() => supabase.from('v_projects').select(i18nCols('id, code, name, status, has_results_framework, excluded_from_current_portfolio')).order('code'))
       .then(({ data, error }) => {
         if (error) { toast.error(t('merl.couldNotLoad')); return; }
-        setProjects(data ?? []);
-        if (data?.length && !projectId) setProjectId(data[0].id);
+        const portfolio = currentProjects(data ?? []);
+        setProjects(portfolio);
+        setProjectId(current => portfolio.some(project => project.id === current) ? current : (portfolio[0]?.id || ''));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);

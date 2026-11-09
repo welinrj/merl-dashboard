@@ -1,3 +1,4 @@
+import { isCurrentPortfolioProject } from '../lib/docc/projectScope';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
@@ -47,10 +48,11 @@ export default function EvidenceUploadPortal() {
   useEffect(() => {
     if (!visible) { setOpen(false); return; }
     let alive = true;
-    supabase.from('v_projects').select('id, code, name').order('code').then(({ data, error }) => {
+    supabase.from('v_projects').select('id, code, name, status, excluded_from_current_portfolio').order('code').then(({ data, error }) => {
       if (!alive || error) return;
-      setProjects(data || []);
-      if (!projectId && data?.length) setProjectId(data[0].id);
+      const portfolio = (data || []).filter(isCurrentPortfolioProject);
+      setProjects(portfolio);
+      setProjectId(current => portfolio.some(project => project.id === current) ? current : (portfolio[0]?.id || ''));
     });
     return () => { alive = false; };
   }, [visible]);

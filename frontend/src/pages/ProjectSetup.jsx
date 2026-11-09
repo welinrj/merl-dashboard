@@ -216,7 +216,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   const loadProjects = useCallback(async () => {
     const { data: ps, error: pe } = await supabase
       .from('v_projects')
-      .select('id,has_results_framework,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome')
+      .select('id,has_results_framework, excluded_from_current_portfolio,code,name,acronym,description,status,category,lead_agency,executing_agency,implementing_partners,donor,funding_window,currency,budget_vuv,start_date,end_date,approval_date,project_type,primary_climate_theme,coverage_type,provinces,islands,area_councils,communities,project_manager_id,me_officer_id,finance_officer_id,project_manager,me_officer,finance_officer,est_direct_beneficiaries,est_indirect_beneficiaries,expected_primary_outcome')
       .order('code');
     setLoadingProjects(false);
     if (pe) { toast.error(dbErrorMessage(pe)); return; }
@@ -288,7 +288,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     <div className="pd-finder">
       <h2>Find your project</h2>
       <label className="pd-field"><span>Search by project name, short name or code</span><input type="search" className="field-input" value={search} onChange={event => setSearch(event.target.value)} placeholder="For example, VCAP2" /></label>
-      <label className="pd-show-all"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked) setProjectId(currentProjects(projects)[0]?.id || ''); }} /> Show projects without a results framework and completed projects</label>
+      <label className="pd-show-all"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked) setProjectId(currentProjects(projects)[0]?.id || ''); }} /> Show full project register</label>
       <div className="pd-project-list" aria-label="Choose a project">
         {loadingProjects ? <p role="status">Loading projects…</p> : visibleProjects.filter(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())).map(p => <button type="button" key={p.id} aria-pressed={p.id === projectId} onClick={() => setProjectId(p.id)}><strong>{p.name}</strong><span>{p.code || p.acronym || 'Open project'}{p.id === projectId ? ' · Selected' : ''}</span><span className="pd-project-meta">{p.status ? p.status.replaceAll('_', ' ') : 'Status not recorded'} · {p.islands?.length ? p.islands.join(', ') : p.provinces?.length ? p.provinces.join(', ') : 'Location not recorded'}</span><span className="pd-project-open">{p.id === projectId ? 'Viewing project' : 'View project'} <span aria-hidden="true">→</span></span></button>)}
         {!loadingProjects && !visibleProjects.some(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())) && <p role="status">No matching projects. Try another name or choose Show projects above.</p>}
