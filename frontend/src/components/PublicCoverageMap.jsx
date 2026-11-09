@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { THEME_AREA_COLOURS, THEME_AREA_ORDER } from '../lib/publicPortfolioCategories';
 import './public-coverage-map.css';
+import PublicBoundaryFallback from './PublicBoundaryFallback';
 import { mapLabelPoint } from '../lib/publicMapLabels';
 import { coverageFeatures, geometryBounds, mapStyle, loadBasemap } from '../lib/maplibreCoverage';
 
@@ -85,7 +86,14 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const [showBorders,setShowBorders]=useState(false);
   bordersRef.current=showBorders;
   const [retry,setRetry]=useState(0);
-  const [themeCounts,setThemeCounts]=useState({});
+  const [boundaryData,setBoundaryData]=useState(null);
+  const [locationsOnly,setLocationsOnly]=useState(null);
+  const selectedKey=selectedArea?key(selectedArea.province,selectedArea.area_council):'';
+  useEffect(()=>setLocationsOnly(null),[selectedKey]);
+  const coverage=useMemo(()=>boundaryData&&coverageFeatures(boundaryData,areas,selectedKey,key),[boundaryData,areas,selectedKey]);
+  const themeCounts=coverage?.counts || Object.fromEntries(THEME_AREA_ORDER.map(theme=>[
+    theme,areas.filter(area=>area.project_count>0&&(area.theme_category||'not-recorded')===theme).length,
+  ]));
   const [detailZoom,setDetailZoom]=useState(false);
   const [basemapState,setBasemapState]=useState('loading');
   const focusStateRef=useRef({map:null,selection:''});
@@ -108,7 +116,8 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   useEffect(()=>{
     let alive=true,resize;
     setReady(null);setErr('');
-    Promise.all([import('maplibre-gl'),import('maplibre-gl/dist/maplibre-gl.css'),boundaries(),import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url')]).then(([engine,,data,worker])=>{
+    const boundaryLoad=boundaries().then(data=>{if(alive)setBoundaryData(data);return data;});
+    Promise.all([import('maplibre-gl'),import('maplibre-gl/dist/maplibre-gl.css'),boundaryLoad,import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url')]).then(([engine,,data,worker])=>{
       if(!alive||!ref.current)return;
       engine.setWorkerUrl(worker.default);dataRef.current=data;
       const map=new engine.Map({container:ref.current,style:mapStyle(null,data),center:[167.6,-16.3],zoom:5,
@@ -177,10 +186,9 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   },[showBorders,ready]);
   useEffect(()=>{
     const map=mapRef.current,data=dataRef.current;
-    if(!ready||!data||!map?.getSource('councils'))return;
-    const selectedKey=selectedArea?key(selectedArea.province,selectedArea.area_council):'';
-    const {collection,counts}=coverageFeatures(data,areas,selectedKey,key);
-    setThemeCounts(counts);map.getSource('councils').setData(collection);
+    if(!ready||!data||!coverage||!map?.getSource('councils'))return;
+    const {collection}=coverage;
+    map.getSource('councils').setData(collection);
     if(map.getSource('council-labels'))map.getSource('council-labels').setData({type:'FeatureCollection',features:collection.features.map(f=>{
       const [lat,lng]=mapLabelPoint(f);
       return {type:'Feature',properties:f.properties,geometry:{type:'Point',coordinates:[lng,lat]}};
@@ -191,8 +199,9 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
       if(features.length)map.fitBounds(geometryBounds({features}),{padding:40,maxZoom:9.5,duration:0});
       focusStateRef.current={map,selection:selectedKey};
     }
-  },[areas,selectedArea,ready,fr]);
+  },[coverage,selectedKey,ready,fr]);
   const showAll=()=>{
+    setLocationsOnly(false);
     if(mapRef.current&&dataRef.current)mapRef.current.fitBounds(geometryBounds(dataRef.current),{padding:28,duration:0});
   };
   const recordedAreas=areas.filter(a=>a.project_count>0);
@@ -200,23 +209,30 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const locatedProjects=new Set(recordedAreas.flatMap(a=>a.project_ids||[]).map(String)).size;
   const activeThemes=THEME_AREA_ORDER.filter(theme=>themeCounts[theme]>0);
   const showLocations=()=>{
+    setLocationsOnly(true);
     if(!mapRef.current||!dataRef.current)return;
     const keys=new Set(recordedAreas.map(a=>key(a.province,a.area_council)));
     const features=dataRef.current.features.filter(f=>keys.has(key(f.properties.ADM1_EN,f.properties.ADM2_EN)));
     if(features.length)mapRef.current.fitBounds(geometryBounds({features}),{padding:36,maxZoom:10,duration:0});
   };
+  const fallback=Boolean(err&&coverage);
+  const chooseFallbackArea=areaKey=>{
+    const area=recordedAreas.find(a=>key(a.province,a.area_council)===areaKey);
+    if(area)onAreaSelect({province:area.province,area_council:area.area_council});
+  };
   const legendRows=themes=>themes.map(theme=><div key={theme}><i style={{backgroundColor:THEME_AREA_COLOURS[theme]}} aria-hidden="true"/><span>{copy.themes[theme]}</span><b>{themeCounts[theme]||0} {(themeCounts[theme]||0)===1?copy.areaOne:copy.areaMany}</b></div>);
   return <div ref={wrapRef} className={`pub-leaflet-wrap pub-coverage-map${expanded?' pub-map-expanded':''}`} role={expanded?'dialog':undefined} aria-modal={expanded?true:undefined} aria-label={copy.aria}>
-    <div className="pub-map-toolbar"><button type="button" onClick={showAll} disabled={!ready}>{copy.reset}</button><button type="button" onClick={showLocations} disabled={!ready||!recordedAreas.length}>{copy.locations}</button><button ref={expandRef} type="button" aria-pressed={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?copy.collapse:copy.expand}</button></div>
-    <div className="pub-map-options"><label><span>{fr?'Fond de carte':'Basemap'}</span><select aria-label={fr?'Fond de carte':'Basemap'} value={basemap} onChange={e=>setBasemap(e.target.value)}><option value="light">{fr?'Clair':'Light'}</option><option value="street">{copy.street}</option><option value="satellite">{copy.satellite}</option></select></label><label><input type="checkbox" checked={showBorders} onChange={e=>setShowBorders(e.target.checked)}/>{copy.boundaries}</label></div>
-    <div className="pub-map-canvas"><div ref={ref} className="pub-leaflet pub-maplibre" aria-label={copy.aria}/>{(detailZoom||basemapState==='loading'||basemapState==='failed')&&<div className="pub-map-context-note" role="status">{detailZoom?copy.zoomNote:basemapState==='failed'?copy.basemapFailed:copy.basemapLoading}</div>}{err&&<div className="pub-map-error" role="status">{err}<button type="button" onClick={()=>setRetry(n=>n+1)}>{fr?'Réessayer':'Try again'}</button></div>}</div>
+    <div className="pub-map-toolbar"><button type="button" onClick={showAll} disabled={!ready&&!fallback}>{copy.reset}</button><button type="button" onClick={showLocations} disabled={(!ready&&!fallback)||!recordedAreas.length}>{copy.locations}</button><button ref={expandRef} type="button" aria-pressed={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?copy.collapse:copy.expand}</button></div>
+    <div className="pub-map-options"><label><span>{fr?'Fond de carte':'Basemap'}</span><select aria-label={fr?'Fond de carte':'Basemap'} value={basemap} disabled={fallback} onChange={e=>setBasemap(e.target.value)}><option value="light">{fr?'Clair':'Light'}</option><option value="street">{copy.street}</option><option value="satellite">{copy.satellite}</option></select></label><label><input type="checkbox" checked={showBorders} onChange={e=>setShowBorders(e.target.checked)}/>{copy.boundaries}</label></div>
+    <div className="pub-map-canvas"><div ref={ref} hidden={fallback} className="pub-leaflet pub-maplibre" aria-label={copy.aria}/>{fallback&&<PublicBoundaryFallback data={boundaryData} collection={coverage.collection} locationsOnly={locationsOnly} showBorders={showBorders} onSelect={onAreaSelect?chooseFallbackArea:undefined} label={copy.aria}/>}
+      {(fallback||(!err&&(detailZoom||basemapState==='loading'||basemapState==='failed')))&&<div className="pub-map-context-note" role="status">{fallback?copy.basemapFailed:detailZoom?copy.zoomNote:basemapState==='failed'?copy.basemapFailed:copy.basemapLoading}</div>}{err&&!fallback&&<div className="pub-map-error" role="status">{err}<button type="button" onClick={()=>setRetry(n=>n+1)}>{fr?'Réessayer':'Try again'}</button></div>}</div>
     <div className="pub-map-key"><strong>{copy.keyTitle}</strong>
       <div className="pub-map-legend">{legendRows(activeThemes)}</div>
-      {!activeThemes.length&&ready&&<small role="status">{copy.noLocations}</small>}
+      {!activeThemes.length&&(ready||fallback)&&<small role="status">{copy.noLocations}</small>}
 
       {recordedAreas.length>1&&onAreaSelect&&<label className="pub-map-choose"><span>{copy.choose}</span><select value={chosen?key(chosen.province,chosen.area_council):''} onChange={e=>{const a=recordedAreas.find(a=>key(a.province,a.area_council)===e.target.value);onAreaSelect?.(a?{province:a.province,area_council:a.area_council}:null);}}><option value="">—</option>{recordedAreas.map(a=><option key={key(a.province,a.area_council)} value={key(a.province,a.area_council)}>{a.area_council}, {a.province}</option>)}</select></label>}
       {chosen&&<div className="pub-map-selection" aria-live="polite"><strong>{chosen.area_council}</strong><span>{chosen.province} · {copy.themes[chosen.theme_category]||copy.themes['not-recorded']}</span><ul>{(chosen.project_names||[]).map((name,i)=><li key={`${name}-${i}`}>{name}{onViewProject&&chosen.project_ids?.[i]&&<button type="button" onClick={()=>{setExpanded(false);onViewProject(chosen.project_ids[i]);}}>{copy.view}</button>}</li>)}</ul></div>}
-      <details className="pub-map-all-themes"><summary>{copy.legend}</summary><small className="pub-map-neutral">{themeCounts.none||0} {copy.areaMany} · {copy.neutral}</small>
+      <details className="pub-map-all-themes"><summary>{copy.legend}</summary>{coverage&&<small className="pub-map-neutral">{themeCounts.none||0} {copy.areaMany} · {copy.neutral}</small>}
       {projectCount!=null&&<small className="pub-map-data-note">{fr?`${locatedProjects} sur ${projectCount} projets ont un lieu enregistré par conseil de zone.`:`${locatedProjects} of ${projectCount} projects have an Area Council location recorded.`}</small>}<div className="pub-map-legend">{legendRows(THEME_AREA_ORDER.filter(t=>!activeThemes.includes(t)))}</div><small>{copy.coverage} {copy.countNote}</small><small className="pub-map-source">{copy.source}</small></details>
     </div>
   </div>;

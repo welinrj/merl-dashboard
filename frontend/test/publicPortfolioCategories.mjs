@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   aggregateIndicatorCategories,
   thematicAreaCategory,
+  scopePublicAreas,
 } from '../src/lib/publicPortfolioCategories.js';
 
 test('Area Councils use official project themes, including a combined category', () => {
@@ -29,4 +30,18 @@ test('indicator category counts aggregate once and follow project filtering', ()
   assert.deepEqual(aggregateIndicatorCategories(rows, new Set(['a'])), [
     { key: 'ecosystems', indicatorCount: 3, projectCount: 1 },
   ]);
+});
+
+test('province filters keep map and directory assignments within the selected province', () => {
+  const projects = [{ id: 'p', name: 'Island project', docc_themes: ['Adaptation'] }];
+  const areas = [
+    { province: 'Sanma', area_council: 'Big Bay Inland', project_ids: ['p', 'p', 'archived'] },
+    { province: 'Shefa', area_council: 'Efate', project_ids: ['p'] },
+  ];
+  assert.deepEqual(scopePublicAreas(areas, projects, 'Sanma'), [{
+    province: 'Sanma', area_council: 'Big Bay Inland', project_ids: ['p'],
+    project_names: ['Island project'], project_count: 1, theme_category: 'adaptation',
+  }]);
+  assert.equal(scopePublicAreas(areas, projects).length, 2);
+  assert.deepEqual(scopePublicAreas(areas, projects, 'Torba'), []);
 });

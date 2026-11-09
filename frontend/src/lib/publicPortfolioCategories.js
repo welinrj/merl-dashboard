@@ -66,3 +66,18 @@ export function aggregateIndicatorCategories(rows = [], selectedProjectIds = nul
       projectCount: grouped.get(key).projectIds.size,
     }));
 }
+
+export function scopePublicAreas(areas, projects, province = '') {
+  const projectsById = new Map(projects.map(project => [String(project.id), project]));
+  return areas.filter(area => !province || area.province === province).map(area => {
+    const areaProjects = [...new Set(list(area.project_ids).map(String))]
+      .map(id => projectsById.get(id)).filter(Boolean);
+    return {
+      ...area,
+      project_ids: areaProjects.map(project => project.id),
+      project_names: areaProjects.map(project => project.name),
+      project_count: areaProjects.length,
+      theme_category: thematicAreaCategory(areaProjects),
+    };
+  }).filter(area => area.project_count > 0);
+}
