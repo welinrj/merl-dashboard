@@ -169,13 +169,13 @@ try{
  });
  await fallback.goto('http://127.0.0.1:5199/#/dashboards');
  await fallback.locator('.pub-map-boundary-fallback').waitFor();
- await fallback.getByLabel('Province',{exact:true}).selectOption({label:'Sanma'});
+ await fallback.getByRole('combobox',{name:/^province$/i}).selectOption({label:'Sanma'});
  assert.equal(await fallback.locator('.pbd-area-list button').count(),3);
  assert.equal(await fallback.locator('.pub-map-boundary-fallback [role=button]').count(),3);
  const council=fallback.getByRole('button',{name:/^Big Bay Coast, Sanma$/i});
  await council.focus();
  await council.press('Enter');
- await fallback.getByRole('button',{name:'Clear area selection'}).waitFor();
+ await fallback.locator('.pbd-area-selection').getByText(/Big Bay Coast/i).waitFor();
  await fallback.close();
  console.log('MapLibre cartography: OpenFreeMap requested, 71 councils, shared borders, selection, fallback, satellite, EN/FR and five viewports passed.');
 }catch(error){await page.screenshot({path:'qa-artifacts/map-failure.png'});console.error('Page errors:',errors);throw error;}finally{await browser.close();}
