@@ -9,18 +9,19 @@ import {
 } from './components/ui/icons';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES } from './i18n';
+import { loadPageModule } from './lib/moduleRecovery';
 
-const Overview = lazy(() => import('./pages/Overview'));
-const Dashboards = lazy(() => import('./pages/Dashboards'));
-const ResultsWorkspace = lazy(() => import('./pages/ResultsWorkspace'));
-const ProjectPortfolioAnalysis = lazy(() => import('./pages/ProjectPortfolioAnalysis'));
-const ProjectSetup = lazy(() => import('./pages/ProjectSetup'));
+const Overview = lazy(() => loadPageModule(() => import('./pages/Overview')));
+const Dashboards = lazy(() => loadPageModule(() => import('./pages/Dashboards')));
+const ResultsWorkspace = lazy(() => loadPageModule(() => import('./pages/ResultsWorkspace')));
+const ProjectPortfolioAnalysis = lazy(() => loadPageModule(() => import('./pages/ProjectPortfolioAnalysis')));
+const ProjectSetup = lazy(() => loadPageModule(() => import('./pages/ProjectSetup')));
 import WorkspaceGuide from './components/WorkspaceGuide';
 import { useBackdropDismiss } from './lib/useBackdropDismiss';
-const MerlReporting = lazy(() => import('./pages/MerlReporting'));
-const Reports = lazy(() => import('./pages/Reports'));
-const AdminPanel = lazy(() => import('./pages/AdminPanel'));
-const ReviewApproval = lazy(() => import('./pages/ReviewApproval'));
+const MerlReporting = lazy(() => loadPageModule(() => import('./pages/MerlReporting')));
+const Reports = lazy(() => loadPageModule(() => import('./pages/Reports')));
+const AdminPanel = lazy(() => loadPageModule(() => import('./pages/AdminPanel')));
+const ReviewApproval = lazy(() => loadPageModule(() => import('./pages/ReviewApproval')));
 import ErrorBoundary from './components/ErrorBoundary';
 import GlobalSearch from './components/GlobalSearch';
 import HeaderPartnerLogos from './components/HeaderPartnerLogos';
