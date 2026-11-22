@@ -396,7 +396,6 @@ export default function ResultsWorkspace({ user }) {
       </div>
     </header>
 
-    <ReadingDensity value={density} onChange={setDensity} />
     <section className="rf2-tools">
       <label>{t('rf.project')}
         <select aria-label={t('rf.project')} className="field-input" value={projectFilter} onChange={(e) => chooseProject(e.target.value)}>
@@ -422,6 +421,7 @@ export default function ResultsWorkspace({ user }) {
     {!loading && !error && <div className="rf2-mobile-results">
       <a className="btn btn-secondary" href={`#/reports?project=${projectFilter === 'all' ? '' : encodeURIComponent(projectFilter)}&period=${encodeURIComponent(period || '')}`}>{t('rf.openReports')}</a>
       <button type="button" className="btn btn-secondary" aria-pressed={showFullTable} onClick={() => setShowFullTable(v => !v)}>{showFullTable ? t('rf.listView') : t('rf.tableView')}</button>
+      <ReadingDensity value={density} onChange={setDensity} />
       {!showFullTable && !filtered.length && <p className="rf2-empty">{t('rf.empty')}</p>}
       {!showFullTable && filtered.length > 0 && <FrameworkMobileResults key={`${projectFilter}:${search}`} rows={filtered}
         canEdit={canEdit} editRow={editRow} editNode={editNode} attachIndicator={attachIndicator}
