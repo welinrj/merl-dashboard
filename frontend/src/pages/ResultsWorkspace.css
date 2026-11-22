@@ -1,4 +1,4 @@
-.dsh .rf2-page .rf2-tools{position:sticky;top:0;z-index:8;box-shadow:0 4px 14px #1931570b;grid-template-columns:minmax(240px,1.2fr) minmax(180px,1fr) auto;}
+.dsh .rf2-page .rf2-tools{position:relative;top:auto;z-index:auto;box-shadow:none;grid-template-columns:minmax(240px,1.2fr) minmax(180px,1fr) auto;}
 .dsh .rf2-page .rf2-tools .field-input{width:100%;min-width:0;min-height:44px;box-sizing:border-box;}
 .dsh .rf2-page .rf2-tools label{min-width:0;font-size:13px;color:#193157;}
 .dsh .rf2-page .rf2-project-context{grid-column:1/-1;margin:0;padding-top:8px;border-top:1px solid #dbe8ec;color:#193157;font-size:13px;overflow-wrap:anywhere;}
@@ -52,3 +52,38 @@
 .dsh .rf2-working summary{cursor:pointer;min-height:44px;font-weight:700}
 .dsh .rf2-desktop-activities{margin-top:16px;border:1px solid var(--border);border-radius:10px;background:var(--white)}
 .dsh .rf2-form-actions{flex-wrap:wrap}.dsh .rf2-form-actions button{min-height:44px}
+
+/* Filters belong to the page flow. Only the table's own column headings stick
+   inside its scroll region, so the two layers cannot cover each other. */
+.dsh .rf2-page .rf2-mobile-results {
+  display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:16px 0;
+}
+.dsh .rf2-page .rf2-mobile-results>.btn { flex:0 1 auto; width:auto; min-height:44px; }
+.dsh .rf2-page .rf2-mobile-results>.reading-density { margin:0 0 0 auto; }
+.dsh .rf2-page .rf2-mobile-results>.rf2-result-groups,
+.dsh .rf2-page .rf2-mobile-results>.rf2-empty { flex:0 0 100%; min-width:0; }
+.dsh .rf2-page .rf2-table-wrap {
+  position:relative; isolation:isolate; overflow:auto; overscroll-behavior:contain;
+  max-height:min(65dvh,720px); border-radius:10px; background:#fff;
+  scrollbar-width:auto; scrollbar-color:#9aafbd #edf3f7;
+}
+.dsh .rf2-page .rf2-table { --rf2-row:#fff; --rf2-stripe:#f5f8fb; }
+.dsh .rf2-page .rf2-table th {
+  /* The legacy shell sets every th background with !important. */
+  position:sticky; top:0; z-index:4; background:#edf5f7!important; color:#153b58;
+  font-size:12px; font-weight:700; line-height:1.45; text-transform:none;
+  letter-spacing:0; white-space:normal; vertical-align:bottom; padding:12px;
+  box-shadow:0 1px 0 #c5d8e0;
+}
+.dsh .rf2-page .rf2-table th:first-child { z-index:6; }
+.dsh .rf2-page .rf2-table td { background:var(--rf2-row,#fff); padding:12px; }
+.dsh .rf2-page.reading-compact .rf2-table td { padding:8px 10px; }
+.dsh .rf2-page .rf2-table td.rf2-project { background:var(--rf2-row,#fff); }
+.dsh .rf2-page .rf2-table-help { max-width:90ch; line-height:1.55; }
+@media (max-width:700px) {
+  .dsh .rf2-page .rf2-mobile-results>.btn { flex:1 1 150px; }
+}
+@media print {
+  .dsh .rf2-page .rf2-table-wrap { overflow:visible; max-height:none; }
+  .dsh .rf2-page .rf2-table th,.dsh .rf2-page .rf2-table td.rf2-project { position:static; }
+}

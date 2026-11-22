@@ -1,16 +1,19 @@
-name: Sidebar design QA
+name: Workspace layout QA
 on:
   pull_request:
     paths:
       - 'frontend/src/sidebar-refinement.css'
       - 'frontend/src/island-resilience.css'
+      - 'frontend/src/pages/ResultsWorkspace.jsx'
+      - 'frontend/src/pages/ResultsWorkspace.css'
+      - 'frontend/qa/results-scroll-layout.mjs'
       - 'frontend/src/App.tsx'
       - 'frontend/src/main.jsx'
       - 'frontend/qa/sidebar-integration.mjs'
       - '.github/workflows/sidebar-qa.yml'
 jobs:
   sidebar:
-    name: Desktop and mobile sidebar
+    name: Sidebar and Results layout
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -27,6 +30,9 @@ jobs:
         run: |
           npm install --no-save playwright@1.64.0
           npx playwright install --with-deps chromium
+          sudo mkdir -p /opt/pw-browsers
+          PW_EXECUTABLE="$(node --input-type=module -e "import { chromium } from 'playwright'; console.log(chromium.executablePath())")"
+          sudo ln -sf "$PW_EXECUTABLE" /opt/pw-browsers/chromium
       - run: npm run build
         working-directory: frontend
       - name: Start built portal
@@ -42,11 +48,19 @@ jobs:
       - name: Check sidebar geometry, type, navigation and mobile drawer
         working-directory: frontend
         run: node qa/sidebar-integration.mjs
-      - name: Retain sidebar previews
+      - name: Check Results scrolling and editing
+        working-directory: frontend
+        run: |
+          node qa/results-scroll-layout.mjs
+          node qa/results-framework-usability.mjs
+      - name: Retain workspace previews
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sidebar-previews
-          path: frontend/qa-artifacts/sidebar-*.png
+          name: workspace-layout-previews
+          path: |
+            frontend/qa-artifacts/sidebar-*.png
+            frontend/qa-artifacts/results-scroll-*.png
+            frontend/qa-artifacts/header-framework-*.png
           if-no-files-found: ignore
           retention-days: 7
