@@ -513,10 +513,10 @@ export default function ResultsWorkspace({ user }) {
             </tr>;
           })}
         </tbody>
+        <FrameworkActivities rows={filtered} activities={data.activities} error={activityError} onRetry={reload} columnCount={FRAMEWORK_COLUMNS.length + 11} />
       </table>
       {!filtered.length && <div className="rf2-empty">{t('rf.empty')}</div>}
     </div>}
-    {!loading && !error && showFullTable && <FrameworkActivities rows={filtered} activities={data.activities} error={activityError} onRetry={reload} />}
 
     {evidenceIndicator && <IndicatorEvidencePanel
       indicator={evidenceIndicator}

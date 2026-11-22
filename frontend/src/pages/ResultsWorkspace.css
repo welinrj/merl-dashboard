@@ -87,3 +87,8 @@
   .dsh .rf2-page .rf2-table-wrap { overflow:visible; max-height:none; }
   .dsh .rf2-page .rf2-table th,.dsh .rf2-page .rf2-table td.rf2-project { position:static; }
 }
+
+/* Keep project activities inside the framework grid and scroll region. */
+.dsh .rf2-page .rf2-table-activities td { border-top:2px solid #c5d8e0; }
+.dsh .rf2-page .rf2-activity-cell section { max-width:680px; white-space:normal; overflow-wrap:anywhere; }
+.dsh .rf2-page .rf2-activity-cell h2 { margin:0 0 12px; font-size:16px; color:#153b58; }
