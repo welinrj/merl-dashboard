@@ -1,4 +1,6 @@
 import { Component, type ReactNode } from 'react';
+import i18n from '../i18n';
+import { freshPageUrl, isModuleLoadError } from '../lib/moduleRecovery';
 
 interface Props { children: ReactNode; }
 interface State { error: Error | null; }
@@ -23,6 +25,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
+    const moduleError = isModuleLoadError(error);
 
     return (
       <div style={{ padding: '3rem 1.5rem', display: 'flex', justifyContent: 'center' }}>
@@ -41,22 +44,22 @@ export default class ErrorBoundary extends Component<Props, State> {
             !
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: 'var(--text-1)', margin: 0 }}>
-            Something went wrong on this page
+            {i18n.t(moduleError ? 'err.pageLoadTitle' : 'err.pageTitle')}
           </h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-2)', margin: '0.6rem 0 1rem' }}>
-            An unexpected error occurred. You can open another section from the menu, or reload the page.
+            {i18n.t(moduleError ? 'err.pageLoadHelp' : 'err.pageHelp')}
           </p>
-          <div
+          {!moduleError && <div
             style={{
               fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-3)',
               background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: 7,
               padding: '0.6rem 0.75rem', marginBottom: '1.25rem', wordBreak: 'break-word', textAlign: 'left',
             }}
           >
-            {error.message || 'Unknown error'}
-          </div>
-          <button className="btn btn-primary" onClick={() => window.location.reload()}>
-            Reload page
+            {error.message || i18n.t('err.pageUnknown')}
+          </div>}
+          <button className="btn btn-primary" onClick={() => window.location.replace(freshPageUrl(window.location.href))}>
+            {i18n.t('err.pageReload')}
           </button>
         </div>
       </div>
