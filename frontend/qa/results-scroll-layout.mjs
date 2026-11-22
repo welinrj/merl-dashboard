@@ -70,6 +70,15 @@ try {
    assert(geometry.headHit,'Rows must not paint over the column headings');
    if(width>900)assert(Math.abs(geometry.projectLeft-geometry.left)<3,'Project identity stays frozen horizontally');
    assert(Math.abs(await page.locator('.dsh-scroll').evaluate(el=>el.scrollTop)-outer)<2,'Table scrolling does not move the page');
+   // Reproduce the native wheel gesture at the end of a long table, rather
+   // than only setting scrollTop: it must not chain into the outer page.
+   await table.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+   const beforeWheel=await page.locator('.dsh-scroll').evaluate(el=>el.scrollTop);
+   const area=await table.boundingBox();
+   await page.mouse.move(area.x+area.width/2,area.y+area.height/2);
+   await page.mouse.wheel(0,600);
+   await page.waitForTimeout(150);
+   assert(Math.abs(await page.locator('.dsh-scroll').evaluate(el=>el.scrollTop)-beforeWheel)<2,'Wheel scrolling must stay inside the table');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No body overflow');
    await page.screenshot({path:`qa-artifacts/results-scroll-${width}x${height}.png`});
    // A reader can leave the spreadsheet for the grouped, readable list.

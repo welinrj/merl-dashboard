@@ -69,7 +69,8 @@
 }
 .dsh .rf2-page .rf2-table { --rf2-row:#fff; --rf2-stripe:#f5f8fb; }
 .dsh .rf2-page .rf2-table th {
-  position:sticky; top:0; z-index:4; background:#edf5f7; color:#153b58;
+  /* The legacy shell sets every th background with !important. */
+  position:sticky; top:0; z-index:4; background:#edf5f7!important; color:#153b58;
   font-size:12px; font-weight:700; line-height:1.45; text-transform:none;
   letter-spacing:0; white-space:normal; vertical-align:bottom; padding:12px;
   box-shadow:0 1px 0 #c5d8e0;
