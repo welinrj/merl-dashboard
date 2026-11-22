@@ -35,10 +35,11 @@ import './typography-system.css';
 import './header-two-logo.css';
 import './visual-consistency.css';
 import './merl-icons.css';
-import './sidebar-refinement.css';
 import './island-resilience.css';
 import './visual-polish.css';
 import './reading-layout.css';
+// Authenticated navigation has one final layout/typography contract.
+import './sidebar-refinement.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,12 +1,12 @@
 /* Approved Island resilience identity. Existing institutional header stays intact. */
-.dsh .dsh-side{background:#153b58!important}
-.dsh .dsh-side .dsh-brand{display:grid!important;grid-template-columns:64px minmax(0,1fr);padding:16px;gap:4px 12px;text-align:left}
-.dsh .dsh-side .dsh-brand::before,.dsh .dsh-side .dsh-brand::after{display:none!important}
-.dsh .dsh-side .dsh-brand>img.island-logo{display:block!important;grid-column:1;grid-row:1/span 2;width:64px;height:64px;background:#fff;border-radius:50%;padding:4px;box-sizing:border-box;filter:none;opacity:1}
-.dsh .dsh-brand-title{grid-column:2;grid-row:1;font-size:20px!important;color:#fff;align-self:end}
-.dsh .dsh-brand-dept{grid-column:2;grid-row:2;align-self:start;font-size:11px!important}
-.dsh .dsh-side .dsh-nav a.active,.dsh .dsh-side .dsh-nav a.active:hover{background:#007f8d!important}
-.dsh .dsh-side .dsh-nav a .merl-icon{--merl-icon-outline:#effbfc;--merl-icon-blue:#5ab9c3;--merl-icon-pale:#d5f1f2}
+.pbd-root .dsh-side{background:#153b58!important}
+.pbd-root .dsh-side .dsh-brand{display:grid!important;grid-template-columns:64px minmax(0,1fr);padding:16px;gap:4px 12px;text-align:left}
+.pbd-root .dsh-side .dsh-brand::before,.pbd-root .dsh-side .dsh-brand::after{display:none!important}
+.pbd-root .dsh-side .dsh-brand>img.island-logo{display:block!important;grid-column:1;grid-row:1/span 2;width:64px;height:64px;background:#fff;border-radius:50%;padding:4px;box-sizing:border-box;filter:none;opacity:1}
+.pbd-root .dsh-brand-title{grid-column:2;grid-row:1;font-size:20px!important;color:#fff;align-self:end}
+.pbd-root .dsh-brand-dept{grid-column:2;grid-row:2;align-self:start;font-size:11px!important}
+.pbd-root .dsh-side .dsh-nav a.active,.pbd-root .dsh-side .dsh-nav a.active:hover{background:#007f8d!important}
+.pbd-root .dsh-side .dsh-nav a .merl-icon{--merl-icon-outline:#effbfc;--merl-icon-blue:#5ab9c3;--merl-icon-pale:#d5f1f2}
 .dsh .merl-card-icon{--merl-icon-blue:#008e9b;--merl-icon-pale:#e0f2f3;--merl-icon-outline:#153b58;background:#edf8f9}
 /* Shared treatment for every metric card, including analysis and period summaries. */
 :is(.island-metric,.ovx-period-kpis>div,.ppr-metrics>div,.ppr-public-kpis>div,.geo-metrics>.geo-metric){position:relative;isolation:isolate;overflow:hidden;padding-bottom:1.75rem!important}
