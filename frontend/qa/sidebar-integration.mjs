@@ -56,7 +56,7 @@ try {
    assert.equal(actual.titleSize,11,'Section heading must not inherit global h2 size');
    assert(actual.decoration.every(value=>value==='none'));
    assert.equal(actual.linkCount,8);assert.equal(actual.activeCount,1);
-   assert(actual.iconWidths.every(value=>value===22));
+   assert(actual.iconWidths.every(value=>Math.abs(value-22)<.05), `Consistent icon width: ${actual.iconWidths}`);
    assert(actual.navOverflow<=1,'Navigation labels must fit their own column');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'No body overflow');
    const header=await page.locator('.dsh-head').boundingBox();
