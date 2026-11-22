@@ -1,5 +1,4 @@
 import WorkspaceContextProvider from './components/WorkspaceContext';
-import { IslandLogo } from './components/IslandBrand';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
@@ -476,9 +475,8 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
       />
 
       {/* ── Sidebar ── */}
-      <aside className={`dsh-side${sidebarOpen ? ' open' : ''}`}>
+      <aside id="workspace-navigation" className={`dsh-side${sidebarOpen ? ' open' : ''}`}>
         <div className="dsh-brand">
-          <IslandLogo />
           <div className="dsh-brand-dept">{t('shell.department')}</div>
           <div className="dsh-brand-title">MERL Portal</div>
         </div>
@@ -502,22 +500,12 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
             </section>;
           })}
         </nav>
-        {/* Decorative only — hidden from assistive technology. */}
-        <svg className="dsh-foliage" viewBox="0 0 240 250" aria-hidden="true" focusable="false">
-          <path d="M100 250C64 214 48 168 66 122c40 14 62 62 58 128Z" fill="#7fbf9b" opacity=".5" />
-          <path d="M66 122c22 30 34 76 34 128" stroke="#5fa981" strokeWidth="2" opacity=".45" fill="none" />
-          <path d="M156 250c-8-52 8-104 52-128 10 52-10 100-24 128Z" fill="#4e9fb5" opacity=".45" />
-          <path d="M208 122c-30 30-48 76-52 128" stroke="#3e8ca1" strokeWidth="2" opacity=".45" fill="none" />
-          <path d="M24 250c-14-44-6-88 26-118 16 44 8 88-4 118Z" fill="#e0a12a" opacity=".3" />
-          <path d="M124 250c-2-58 20-104 62-124-2 56-28 100-44 124Z" fill="#8fd0ae" opacity=".3" />
-          <path d="M66 250c-24-40-24-84 2-116 20 38 16 82 6 116Z" fill="#3e8ca1" opacity=".35" />
-        </svg>
       </aside>
 
       {/* ── Main column ── */}
       <div className="dsh-main">
         <header className="dsh-head">
-          <button className="dsh-hamburger" aria-label={t('shell.toggleMenu')} onClick={() => setSidebarOpen(o => !o)}><Menu size={18} aria-hidden="true" /></button>
+          <button className="dsh-hamburger" aria-controls="workspace-navigation" aria-expanded={sidebarOpen} aria-label={t('shell.toggleMenu')} onClick={() => setSidebarOpen(o => !o)}><Menu size={18} aria-hidden="true" /></button>
           <div style={{ minWidth: 0 }}>
             <div className="dsh-head-title">{t(`head.${activeItem.key}`)}</div>
             {activeItem.hasSub && <div className="dsh-head-sub">{t(`head.${activeItem.key}Sub`)}</div>}
@@ -597,7 +585,7 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
         ))}
         {visibleNav.length > 0 && (
           <button type="button" aria-label={t('shell.toggleMenu')}
-            aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(o => !o)}>
+            aria-controls="workspace-navigation" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(o => !o)}>
             <Menu size={20} aria-hidden="true" /><span>{mobileLabels.more}</span>
           </button>
         )}
