@@ -57,7 +57,7 @@ check('framework project managers are visible',await page.getByText('Lina Kalo',
 check('all official themes are shown for multi-theme projects',await page.getByText('Adaptation, Mitigation',{exact:true}).count()===1);
 check('implementation areas are visible',await page.getByRole('heading',{name:'Area Councils'}).count()===1 && await page.getByRole('button',{name:/Big Bay Coast/}).count()===1);
 const areaFlap = page.getByRole('button',{name:/Big Bay Coast/}).locator('.pbd-area-flap-face');
-check('Area Council names use the split-flap display',await areaFlap.count()===1 && (await areaFlap.evaluate(node=>getComputedStyle(node).animationName)).includes('pbd-area-flap'));
+check('Area Council names remain readable without decorative motion',await areaFlap.count()===1 && (await areaFlap.evaluate(node=>getComputedStyle(node).animationName))==='none' && (await areaFlap.innerText()).includes('Big Bay Coast'));
 const autoAreaBefore = await page.locator('.pbd-area-list>button.is-auto-current').getAttribute('data-area-index');
 await page.clock.fastForward(3300);
 const autoAreaAfter = await page.locator('.pbd-area-list>button.is-auto-current').getAttribute('data-area-index');
