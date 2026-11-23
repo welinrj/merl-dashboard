@@ -20,6 +20,7 @@ import { useLiveDashboard } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import StatTile from '../components/ui/StatTile';
 import MetricStrip from '../components/ui/MetricStrip';
+import { ResultComparisonList } from '../components/ResultComparisonCard';
 import Gedsi from '../components/ui/Gedsi';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
@@ -88,8 +89,8 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
         q('v_risks_issues', 'project_id, code, type, description, category, likelihood, impact, risk_rating, status, due_date, date_resolved, responsible_person'),
         q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, other_vulnerable, indirect, reporting_period'),
         q('v_project_activities', 'project_id, code, name, status, physical_progress_pct, output_code, province, island, area_council, community'),
-        q('v_project_indicators', 'id, project_id, code, name, baseline_value, target_value, indicator_level, framework_node_id'),
-        q('v_indicator_progress', 'project_id, indicator_id, indicator_code, cumulative_actual, achievement_pct, performance_status, schedule_status, reporting_period, final_target, date_reported, review_status, created_at, updated_at'),
+        q('v_project_indicators', 'id, project_id, code, name, unit, baseline_value, target_value, indicator_level, framework_node_id'),
+        q('v_indicator_progress', 'project_id, indicator_id, indicator_code, indicator_name, unit, cumulative_actual, achievement_pct, performance_status, schedule_status, reporting_period, final_target, date_reported, review_status, created_at, updated_at'),
         q('v_reporting_periods', 'project_id, period_label, period_type, submission_status, period_end'),
         supabase.from('v_framework_nodes').select('id, project_id, parent_node_id, node_code, node_type, title, status, sort_order'),
         supabase.from('v_project_area_councils').select('id, project_id, province_code, area_council_name, coverage_status, feasibility_status, feasibility_note'),
@@ -487,7 +488,8 @@ function Portfolio({ d, onNavigate }) {
 
 // ── Project dashboard ────────────────────────────────────────────────────────
 function ProjectView({ d, projectId }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage?.startsWith('fr') ? 'fr' : 'en';
   const p = d.projects.find((x) => x.id === projectId);
   const fin = useMemo(() => latestByProject(d.financial.filter((f) => f.project_id === projectId)).get(projectId), [d, projectId]);
   if (!p) return <p style={{ color: 'var(--text-3)' }}>{t('dash.selectProject')}</p>;
@@ -538,21 +540,10 @@ function ProjectView({ d, projectId }) {
         <div className="db-card">
           <h3 className="db-h">{t('dash.indPerformance')}</h3>
           {inds.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>{t('dash.noIndicators')}</p> : (
-            <div style={{ overflowX: 'auto' }}><table className="db-table">
-              <thead><tr><th>{t('dash.code')}</th><th>{t('dash.indicator')}</th><th>{t('dash.baseline')}</th><th>{t('dash.target')}</th><th>{t('dash.current')}</th><th>{t('dash.achievementShort')}</th></tr></thead>
-              <tbody>
-                {inds.map((i) => {
-                  const last = prog.find(x => x.indicator_id === i.id);
-                  return (
-                    <tr key={i.code}>
-                      <td>{i.code}</td><td>{i.name}</td><td>{i.baseline_value ?? '—'}</td><td>{i.target_value ?? '—'}</td>
-                      <td>{last?.cumulative_actual ?? '—'}</td>
-                      <td style={{ color: perfTint(last?.performance_status), fontWeight: 700 }}>{fmtPct(last?.achievement_pct)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table></div>
+            <ResultComparisonList lang={lang} rows={inds.map(i => {
+              const last = prog.find(x => x.indicator_id === i.id);
+              return {id:i.id,title:i.name,code:i.code,baseline:i.baseline_value,performanceLabel:last?.performance_status?OPT.labelOf(OPT.PERFORMANCE_STATUS,last.performance_status):undefined,actual:last?.cumulative_actual,target:last?.final_target??i.target_value,achievement:last?.achievement_pct,unit:i.unit,period:last?.reporting_period,date:last?.date_reported,reviewStatus:last?.review_status};
+            })}/>
           )}
         </div>
         <div className="db-card">
@@ -572,7 +563,8 @@ function ProjectView({ d, projectId }) {
 
 // ── Results & Indicators ─────────────────────────────────────────────────────
 function Results({ d }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage?.startsWith('fr') ? 'fr' : 'en';
   const perf = countBy(d.progress, (p) => OPT.labelOf(OPT.PERFORMANCE_STATUS, p.performance_status || 'no_data'));
   return (
     <>
@@ -588,19 +580,7 @@ function Results({ d }) {
       </div>
       <div className="db-card" style={{ marginTop: '1rem' }}>
         <h3 className="db-h">{t('dash.latestReported')}</h3>
-        <div style={{ overflowX: 'auto' }}><table className="db-table">
-          <thead><tr><th>{t('dash.indicator')}</th><th>{t('dash.period')}</th><th>{t('dash.current')}</th><th>{t('dash.target')}</th><th>{t('dash.achievement')}</th><th>{t('dash.status')}</th></tr></thead>
-          <tbody>
-            {d.progress.map((r, idx) => (
-              <tr key={idx}>
-                <td>{r.indicator_code}</td><td>{r.reporting_period}</td><td>{r.cumulative_actual ?? '—'}</td>
-                <td>{r.final_target ?? '—'}</td>
-                <td style={{ fontWeight: 700 }}>{fmtPct(r.achievement_pct)}</td>
-                <td style={{ color: perfTint(r.performance_status) }}>{OPT.labelOf(OPT.PERFORMANCE_STATUS, r.performance_status)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table></div>
+        <ResultComparisonList lang={lang} rows={d.progress.map(r=>({id:r.indicator_id,title:r.indicator_name||d.indicators.find(i=>i.id===r.indicator_id)?.name||r.indicator_code,code:r.indicator_code,baseline:d.indicators.find(i=>i.id===r.indicator_id)?.baseline_value,performanceLabel:r.performance_status?OPT.labelOf(OPT.PERFORMANCE_STATUS,r.performance_status):undefined,actual:r.cumulative_actual,target:r.final_target,achievement:r.achievement_pct,unit:r.unit,period:r.reporting_period,date:r.date_reported,reviewStatus:r.review_status,projectName:d.projects.find(p=>p.id===r.project_id)?.name}))}/>
       </div>
     </>
   );
