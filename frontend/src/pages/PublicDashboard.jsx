@@ -208,11 +208,12 @@ export default function PublicDashboard() {
   const activeCategory = indicatorCategories.find(category => category.key === openCategory);
   const activeDetails = activeCategory ? visibleIndicatorDetails.filter(row => row.category_key === activeCategory.key) : [];
   const stamp = summary?.updated_at ? `${c.updated}: ${new Date(summary.updated_at).toLocaleDateString(lang==='fr'?'fr-FR':'en-GB')}` : (lang==='fr'?'Date de mise à jour non renseignée':'Refresh date not recorded');
+  const coveredStamp = known => known<filtered.length ? `${lang==='fr'?'Données':'Coverage'}: ${known}/${filtered.length} · ${stamp}` : stamp;
   const metricRows = [
     {tone:'projects',label:c.projects,value:num(filtered.length,lang),detail:allScope?c.projectCount:c.filteredProjectCount},
-    {tone:'funding',label:c.funding,value:fundingTotal,detail:`${fundingCoverage(filtered).known} / ${filtered.length} ${lang==='fr'?'projets avec un financement renseigné':'projects with recorded funding'}. ${c.fundingSub}`},
-    {tone:'utilised',label:c.utilised,value:utilisedTotal,detail:c.utilisedSub},
-    {tone:'beneficiaries',label:c.beneficiaries,value:totals.beneficiaries==null?c.noFinance:num(totals.beneficiaries,lang),detail:c.beneficiariesSub},
+    {tone:'funding',label:c.funding,value:fundingTotal,stamp:coveredStamp(fundingCoverage(filtered).known),detail:`${fundingCoverage(filtered).known} / ${filtered.length} ${lang==='fr'?'projets avec un financement renseigné':'projects with recorded funding'}. ${c.fundingSub}`},
+    {tone:'utilised',label:c.utilised,value:utilisedTotal,stamp:coveredStamp(filtered.filter(p=>finite(p.cumulative_expenditure_vuv)).length),detail:c.utilisedSub},
+    {tone:'beneficiaries',label:c.beneficiaries,stamp:coveredStamp(filtered.filter(p=>finite(p.published_beneficiaries)).length),value:totals.beneficiaries==null?c.noFinance:num(totals.beneficiaries,lang),detail:c.beneficiariesSub},
     {tone:'rate',label:c.utilisation,value:pct(comparableUtilisation),detail:c.utilisationSub},
   ];
   const viewProject=id=>{setPresenting(false);requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
@@ -260,7 +261,7 @@ export default function PublicDashboard() {
 
   return <div className="dsh pbd-root">
     {presenting&&<PresentationView title={c.title} subtitle={`${stamp} · ${filtered.length} ${c.projects}${selectedArea?` · ${selectedArea.area_council}, ${selectedArea.province}`:''}${!allScope?` · ${lang==='fr'?'Vue filtrée':'Filtered view'}`:''}`} lang={lang} onClose={()=>setPresenting(false)} slides={[
-      {id:'summary',label:lang==='fr'?'Vue d’ensemble':'At a glance',content:<><p className="presentation-note">{c.source}</p><div className="presentation-grid">{metricRows.map(row=><PresentationMetric key={row.tone} label={row.label} value={row.value} stamp={row.tone==='projects'?(allScope?c.projectCount:c.filteredProjectCount):stamp}/>)}</div></>},
+      {id:'summary',label:lang==='fr'?'Vue d’ensemble':'At a glance',content:<><p className="presentation-note">{c.source}</p><div className="presentation-grid">{metricRows.map(row=><PresentationMetric key={row.tone} label={row.label} value={row.value} stamp={row.tone==='projects'?(allScope?c.projectCount:c.filteredProjectCount):(row.stamp||stamp)}/>)}</div></>},
       {id:'map',label:lang==='fr'?'Carte':'Map',content:mapView()},
       {id:'projects',label:c.portfolio,content:<div className="pbd-project-grid">{filtered.length?filtered.map(project=><ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang}/>):<p>{c.noProjects}</p>}</div>},
     ]}/>}
@@ -289,7 +290,7 @@ export default function PublicDashboard() {
         {!data ? (isLoading ? <div className="pbd-state" role="status"><IslandLoading />{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
           {lang === 'fr' && <p className="pbd-refresh-status">Les intitulés et descriptions des projets et indicateurs sont affichés dans leur langue source lorsqu’une traduction validée n’est pas disponible.</p>}
           <section className="pbd-metrics" aria-label={c.title}>
-            {metricRows.map(row=><Metric key={row.tone} {...row} stamp={stamp} french={lang==='fr'}/>)}
+            {metricRows.map(row=><Metric key={row.tone} {...row} stamp={row.stamp||stamp} french={lang==='fr'}/>)}
           </section>
           <details className="pbd-method-note"><summary>{lang === 'fr' ? 'À propos des chiffres' : 'About these figures'}</summary><p>{c.fundingSub}. {c.utilisedSub}. {c.beneficiariesSub}.</p></details>
 
