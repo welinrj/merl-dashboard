@@ -34,7 +34,7 @@ try {
    return json(rows);
   });
   const page=await context.newPage();
-  const routes=[['overview','/dashboards'],['projects','/project-setup'],['framework','/results-framework'],['portfolio','/analytics/project-portfolio?project=pa'],['update','/merl-reporting'],['review','/review'],['reports','/reports'],['admin','/admin']];
+  const routes=process.env.MERL_HEADER_ONLY ? [] : [['overview','/dashboards'],['projects','/project-setup'],['framework','/results-framework'],['portfolio','/analytics/project-portfolio?project=pa'],['update','/merl-reporting'],['review','/review'],['reports','/reports'],['admin','/admin']];
   const observations=[];
   for(const [width,height] of [[1440,900],[1024,768],[390,844]]) {
    await page.setViewportSize({width,height});
@@ -96,7 +96,7 @@ try {
     await publicPage.waitForTimeout(500);
     assert.equal(await publicPage.locator('[data-slot=progress]').count(),0,'Category counts are not achievement bars');
     const publicFits=await publicPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);
-    if(!publicFits){await publicPage.screenshot({path:`qa-artifacts/launch-public-failure-${language}-${width}.png`});console.log(await publicPage.locator('.dsh-head').evaluate(el=>({width:el.getBoundingClientRect().width,children:[...el.children].map(c=>({name:c.className,x:c.getBoundingClientRect().x,width:c.getBoundingClientRect().width,display:getComputedStyle(c).display}))})));}
+    if(!publicFits){await publicPage.screenshot({path:`qa-artifacts/launch-public-failure-${language}-${width}.png`});console.log(await publicPage.locator('.dsh-head').evaluate(el=>({viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth,width:el.getBoundingClientRect().width,offenders:[...document.querySelectorAll('*')].map(c=>({name:c.className,x:c.getBoundingClientRect().x,right:c.getBoundingClientRect().right,width:c.getBoundingClientRect().width})).filter(c=>c.width>0&&c.right>innerWidth+1).slice(0,15),children:[...el.children].map(c=>({name:c.className,x:c.getBoundingClientRect().x,width:c.getBoundingClientRect().width,display:getComputedStyle(c).display}))})));}
     assert(publicFits,'Public page fits');
     await publicPage.locator('.dsh-scroll').evaluate(el=>{el.scrollTop=0;});
     await publicPage.screenshot({path:`qa-artifacts/launch-${language}-public-${width}.png`});

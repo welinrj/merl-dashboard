@@ -266,3 +266,5 @@
 .dsh.pbd-root .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity)>.dsh-head-actions{grid-column:3!important;grid-row:1!important;width:max-content!important;}
 }
 @media(max-width:360px){.dsh .dsh-head:has(>.merl-header-identity) .dsh-lang button{min-width:26px;width:26px!important;padding:0 2px!important;}}
+
+@media(max-width:560px){.dsh.pbd-root .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity){height:72px!important;min-height:72px!important;padding:8px!important;gap:0 7px!important;box-sizing:border-box!important;}}

@@ -38,12 +38,14 @@ jobs:
           exit 1
       - name: Capture frontend visual review
         working-directory: frontend
-        run: node qa/launch-visual-review.mjs
+        run: |
+          MERL_HEADER_ONLY=1 node qa/launch-visual-review.mjs
+          node qa/header-brand-layout.mjs
+          node qa/header-inline-auth.mjs
+          node qa/launch-visual-review.mjs
       - name: Check Results editing and scrolling
         working-directory: frontend
         run: |
-          node qa/header-brand-layout.mjs
-          node qa/header-inline-auth.mjs
           node qa/results-scroll-layout.mjs
           node qa/results-framework-usability.mjs
           node qa/results-audit-fixes.mjs
