@@ -401,9 +401,6 @@ export default function Overview({ user }) {
         </div>
       </section>
 
-      <MyTasks periods={reporting} projects={projects} user={user} />
-      <PendingResultsFrameworks projects={registeredProjects} user={user} />
-
       <DashboardFilterPanel filters={filters} setFilter={setFilter} reset={reset} lang={lang}
         fields={[
           { key: 'fy', label: t('overview.filterFy'), options: years.map(y => ({ value: String(y), label: String(y) })) },
@@ -489,6 +486,9 @@ export default function Overview({ user }) {
           onClick={() => nav('/analytics/reporting')}
         />
       </section>
+
+      <MyTasks periods={reporting} projects={projects} user={user} />
+      <PendingResultsFrameworks projects={registeredProjects} user={user} />
 
       <section id="ovx-period" tabIndex={-1} className="ovx-card ovx-period-card">
         <div className="ovx-period-head">

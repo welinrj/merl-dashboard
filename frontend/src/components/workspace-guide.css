@@ -17,3 +17,5 @@
 .dsh .wg-guide[open] ol{margin:8px 0}
 .dsh .wg-guide p{font-size:14px}
 @media(max-width:640px){.dsh .wg-wrap{margin:2px 12px 0;gap:0}.dsh .wg-start{width:100%;justify-content:space-between}.dsh .wg-start a{font-size:12px;padding:4px;gap:4px}.dsh .wg-start a svg{width:16px;height:16px}.dsh .wg-guide{margin-left:0}.dsh .wg-guide>summary{min-height:36px;font-size:12px}}
+
+@media(max-width:640px){.dsh .wg-start{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px}.dsh .wg-start a{font-size:11px;justify-content:flex-start;line-height:1.35}.dsh .wg-start a svg{flex:0 0 16px}}
