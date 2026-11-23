@@ -80,6 +80,7 @@ const OVERVIEW_METRIC_STYLES = `
     align-items:flex-start;
     text-align:left;
   }
+  .dsh .ovx .ovx-kpis .kpi-card-explain svg{display:block;flex-shrink:0;}
   .dsh .ovx .ovx-kpis .kpi-card-label{
     color:var(--visual-ink)!important;
     font-size:1rem!important;
