@@ -33,7 +33,7 @@ export default function PresentationView({ title, subtitle, slides, lang = 'en',
   };
   const keepFocus = event => {
     if (event.key !== 'Tab' || dialog.current.querySelector('.pub-map-expanded')) return;
-    const nodes = [...dialog.current.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),[tabindex="0"]')].filter(node => node.getClientRects().length);
+    const nodes = [...dialog.current.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),summary,[tabindex="0"]')].filter(node => node.getClientRects().length);
     const first = nodes[0], last = nodes.at(-1);
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
