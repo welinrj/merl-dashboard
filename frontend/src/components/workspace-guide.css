@@ -3,3 +3,17 @@
 @media print{.wg-wrap,.wg-reminders{display:none!important}.ux-table-cards{display:none!important}.ux-table-desktop{display:block!important}}
 .ux-card-sort{display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap}.ux-card-sort label{display:grid;gap:.4rem;flex:1;font-size:.9rem}.ux-card-sort .field-input{min-height:48px;font-size:16px}
 .mr-form-actions{position:sticky;bottom:0;background:var(--white);padding:.75rem 0;border-top:1px solid var(--border)}.mr-form-dialog input[type=checkbox]{width:24px!important;height:24px!important}
+
+/* A quiet utility row rather than another page-sized card. */
+.dsh .wg-wrap{max-width:none;margin:4px 24px 0;padding:0;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dsh .wg-start{margin:0;display:flex;gap:4px;flex-wrap:wrap}
+.dsh .wg-start a{min-height:40px;padding:6px 10px;border:0;background:transparent;font-size:13px;gap:6px;border-radius:6px;flex-direction:row}
+.dsh .wg-start a:hover{background:#e8f2f5}
+.dsh .wg-start a svg{width:18px;height:18px}
+.dsh .wg-guide{margin-left:auto;border:0;padding:0 8px;background:transparent;max-width:100%}
+.dsh .wg-guide>summary{min-height:40px;font-size:13px;font-weight:600;gap:6px}
+.dsh .wg-guide>summary svg{width:18px;height:18px}
+.dsh .wg-guide[open]{flex-basis:100%;padding:8px 14px;border:1px solid #d9e5ec;background:white;border-radius:10px}
+.dsh .wg-guide[open] ol{margin:8px 0}
+.dsh .wg-guide p{font-size:14px}
+@media(max-width:640px){.dsh .wg-wrap{margin:2px 12px 0;gap:0}.dsh .wg-start{width:100%;justify-content:space-between}.dsh .wg-start a{font-size:12px;padding:4px;gap:4px}.dsh .wg-start a svg{width:16px;height:16px}.dsh .wg-guide{margin-left:0}.dsh .wg-guide>summary{min-height:36px;font-size:12px}}

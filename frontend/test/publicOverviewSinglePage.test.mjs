@@ -23,14 +23,9 @@ test('the public overview contains the requested portfolio information', () => {
   assert.match(dashboard, /pbd-project-grid/);
 });
 
-test('Area Council names use an accessible, reduced-motion split-flap display', () => {
-  assert.match(dashboard, /className="pbd-area-flap"/);
+test('Area Council names remain readable rather than a split-flap animation', () => {
   assert.match(dashboard, /className="pbd-area-flap-face">\{area\.area_council\}/);
-  assert.match(dashboard, /--pbd-flap-delay/);
-  assert.match(publicDashboardCss, /@keyframes pbd-area-flap-enter/);
-  assert.match(publicDashboardCss, /rotateX\(-90deg\)/);
-  assert.match(publicDashboardCss, /prefers-reduced-motion:reduce[\s\S]*\.pbd-area-flap-face[\s\S]*animation-name:pbd-area-flap-fade/);
-  assert.doesNotMatch(publicDashboardCss, /\.pbd-area-flap-face[^}]*infinite/);
+  assert.doesNotMatch(publicDashboardCss, /rotateX|@keyframes pbd-area-flap-(enter|cycle)/);
 });
 
 test('Area Council directory auto-scrolls with user and motion-preference controls', () => {
@@ -39,8 +34,6 @@ test('Area Council directory auto-scrolls with user and motion-preference contro
   assert.match(dashboard, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/);
   assert.match(dashboard, /aria-pressed=\{areaScrollPaused\}/);
   assert.match(dashboard, /onTouchStart=\{\(\) => setAreaScrollPaused\(true\)\}/);
-  assert.match(publicDashboardCss, /@keyframes pbd-area-flap-cycle/);
-  assert.match(publicDashboardCss, /\.pbd-area-list>button\.is-auto-current \.pbd-area-flap-face/);
 });
 
 test('dashboard views use the same framework-backed published scope', () => {
@@ -61,13 +54,12 @@ test('every public indicator category has a distinct web-library icon', () => {
   assert.match(indicatorCard, /pbd-activity-category-icon/);
 });
 
-test('indicator categories use the 21st.dev stats-card-with-progress composition', () => {
+test('indicator category counts cannot be mistaken for percentage achievement', () => {
   assert.match(dashboard, /<IndicatorProgressCard/);
-  assert.match(indicatorCard, /21st\.dev "Stats card with progress"/);
-  assert.match(indicatorCard, /@radix-ui\/react-progress/);
-  for (const slot of ['card', 'card-content', 'card-header', 'card-title', 'progress', 'progress-indicator', 'card-footer']) {
-    assert.match(indicatorCard, new RegExp(`data-slot="${slot}"`));
-  }
+  assert.match(indicatorCard, /aria-expanded=\{open\}/);
+  assert.match(indicatorCard, /\{value\}/);
+  assert.doesNotMatch(indicatorCard, /ProgressPrimitive|data-slot="progress"|role="progressbar"/);
+  assert.doesNotMatch(dashboard, /indicatorCount \/ maxCategoryCount/);
 });
 
 test('anonymous reads stay within public snapshot tables', () => {

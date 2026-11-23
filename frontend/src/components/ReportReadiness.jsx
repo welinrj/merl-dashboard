@@ -7,8 +7,7 @@ export default function ReportReadiness({ result, period, readOnly = false }) {
     <h2 id="report-readiness-title">{t('readiness.title')}</h2>
     <p role="status"><strong>{result.empty ? t('readiness.empty') : result.issues.length ? t('readiness.attention', { count: result.issues.length }) : t('readiness.passed')}</strong></p>
     <p>{t('readiness.scope', { projects: result.projectCount, approved: result.approvedCount, periods: result.periodCount })}</p>
-    <p>{t('readiness.basis')}</p>
-    {result.issues.length > 0 && <details><summary>{t('readiness.review')}</summary><ul>{result.issues.map((issue, index) => <li key={`${issue.key}-${issue.projectId || index}`}>
+    {result.issues.length > 0 && <details><summary>{t('readiness.review')}</summary><p>{t('readiness.basis')}</p><ul>{result.issues.map((issue, index) => <li key={`${issue.key}-${issue.projectId || index}`}>
       <div><strong>{issue.projectName}</strong><p>{t(`readiness.issues.${issue.key}`, { count: issue.count })}</p></div>
       {!result.empty && <a href={readinessAction(issue, period, readOnly)}>{t('readiness.open')}</a>}
     </li>)}</ul></details>}

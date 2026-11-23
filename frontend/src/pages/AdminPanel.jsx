@@ -176,7 +176,7 @@ function UsersTab() {
         columns={[
           {key:'full_name',label:t('adm.name'),required:true,render:u=><span className="font-semibold text-gray-800">{u.full_name}</span>},
           {key:'email',label:t('adm.email'),render:u=><span className="text-gray-500">{u.email}</span>},
-          {key:'role',label:t('adm.role'),render:u=>{const role=DB_ROLES.find(r=>r.id===u.role);return <span className={`text-xs px-2 py-1 rounded font-semibold ${role?.color||'bg-gray-100 text-gray-600'}`}>{role?t(role.label):u.role}</span>;}},
+          {key:'role',label:t('adm.role'),render:u=>{const role=DB_ROLES.find(r=>r.id===u.role);return <span className={`admin-role-badge text-xs px-2 py-1 rounded font-semibold ${role?.color||'bg-gray-100 text-gray-600'}`}>{role?t(role.label):u.role}</span>;}},
           {key:'organisation',label:t('adm.organisation')},
           {key:'active',label:t('adm.status'),value:u=>u.active?1:0,render:u=><span className={`text-xs font-medium ${u.active?'text-green-700':'text-gray-500'}`}>● {u.active?'Active':'Inactive'}</span>},
         ]}

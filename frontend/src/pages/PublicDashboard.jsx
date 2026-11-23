@@ -203,7 +203,6 @@ export default function PublicDashboard() {
   const visibleIndicatorDetails = sourceIndicatorDetails.filter(row => selectedIds.has(String(row.project_id)));
   const activeCategory = indicatorCategories.find(category => category.key === openCategory);
   const activeDetails = activeCategory ? visibleIndicatorDetails.filter(row => row.category_key === activeCategory.key) : [];
-  const maxCategoryCount = Math.max(1, ...indicatorCategories.map(category => category.indicatorCount));
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
   const refresh = () => { void refetch(); };
   const chooseProvince = province => {
@@ -255,8 +254,8 @@ export default function PublicDashboard() {
     <div className="dsh-main">
       <header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}><Menu size={18} /></button><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>
       <main className="dsh-scroll scrollbar-thin"><div className="pbd-view">
-        <div className="pbd-title-row"><div><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div></div>
-        <p>{data && (lang === 'fr' ? `${projects.length} projets actuels du DoCC. Les filtres portent sur ce portefeuille.` : `${projects.length} current DoCC projects. Filters apply to this portfolio.`)}</p>
+        <div className="pbd-title-row"><div><span className="pbd-eyebrow">{lang === 'fr' ? 'VANUATU · ACTION CLIMATIQUE' : 'VANUATU · CLIMATE ACTION'}</span><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div></div>
+        <p className="pbd-scope-note">{data && (lang === 'fr' ? `${projects.length} projets actuels du DoCC. Les filtres portent sur ce portefeuille.` : `${projects.length} current DoCC projects. Filters apply to this portfolio.`)}</p>
         <div className={`pbd-filters${filtersOpen ? ' pbd-filters-open' : ''}`}>
           <label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={event => setFilters(value => ({ ...value, search: event.target.value }))} placeholder={c.search} /></label>
           <button type="button" className="pbd-filter-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}>{c.filters}{!allScope && <span aria-label="active"> •</span>}</button>
@@ -271,11 +270,12 @@ export default function PublicDashboard() {
           {lang === 'fr' && <p className="pbd-refresh-status">Les intitulés et descriptions des projets et indicateurs sont affichés dans leur langue source lorsqu’une traduction validée n’est pas disponible.</p>}
           <section className="pbd-metrics" aria-label={c.title}>
             <Metric label={c.projects} value={num(filtered.length, lang)} detail={allScope ? c.projectCount : c.filteredProjectCount} tone="projects" />
-            <Metric label={c.funding} value={fundingTotal} detail={`${fundingCoverage(filtered).known} / ${filtered.length} ${lang === 'fr' ? 'projets avec un financement renseigné. ' : 'projects with recorded funding. '}${c.fundingSub}`} tone="funding" />
+            <Metric label={c.funding} value={fundingTotal} detail={`${fundingCoverage(filtered).known} / ${filtered.length} ${lang === 'fr' ? 'projets avec un financement renseigné' : 'projects with recorded funding'}`} tone="funding" />
             <Metric label={c.utilised} value={utilisedTotal} detail={c.utilisedSub} tone="utilised" />
             <Metric label={c.beneficiaries} value={totals.beneficiaries == null ? c.noFinance : num(totals.beneficiaries, lang)} detail={c.beneficiariesSub} tone="beneficiaries" />
             <Metric label={c.utilisation} value={pct(comparableUtilisation)} detail={c.utilisationSub} tone="rate" />
           </section>
+          <details className="pbd-method-note"><summary>{lang === 'fr' ? 'À propos des chiffres' : 'About these figures'}</summary><p>{c.fundingSub}. {c.utilisedSub}. {c.beneficiariesSub}.</p></details>
 
           <section className="pbd-section pbd-location-section">
             <div className="pbd-section-head"><div><span><MapPin size={16} aria-hidden="true" />{c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
@@ -323,7 +323,6 @@ export default function PublicDashboard() {
                 icon={CategoryIcon ? <CategoryIcon size={30} /> : <FontAwesomeIcon icon={categoryIcon} />}
                 title={c.activityCategoryLabels[category.key] || c.activityCategoryLabels.other}
                 value={num(category.indicatorCount, lang)}
-                progress={category.indicatorCount / maxCategoryCount * 100}
                 meta={`${indicatorLabel} · ${projectLabel}`}
                 actionLabel={openCategory === category.key ? c.collapseCategory : c.expandCategory}
                 open={openCategory === category.key}

@@ -395,7 +395,7 @@ export default function Reports({ user }) {
 
       <ReportReadiness result={readiness} period={period} readOnly={user?.role === 'ROLE_VIEWER'} />
       {/* Controls */}
-      <div className="rp-noprint" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <div className="rp-noprint rp-controls">
         <div style={{ flex: '1 1 220px' }}>
           <label className="field-label">{t('rpt.reportType')}</label>
           <select className="field-input" value={type} onChange={(e) => { setType(e.target.value); setPreviewOpen(false); }}>
@@ -454,6 +454,12 @@ export default function Reports({ user }) {
         {type !== 'full_me' && <button onClick={generate} disabled={readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> {t('rpt.generateReport')}
         </button>}
+      </div>
+      <div className="rp-selected-scope rp-noprint" role="status">
+        <strong>{i18n.resolvedLanguage?.startsWith('fr') ? 'Sélection du rapport' : 'Selected report scope'}</strong>
+        <span>{t(REPORT_TYPES.find(item => item.key === type)?.label || 'rpt.reports')}</span>
+        <span>{(type === 'project' ? projectId : scopeId) ? sourceD.projects.find(item => item.id === (type === 'project' ? projectId : scopeId))?.name : (i18n.resolvedLanguage?.startsWith('fr') ? 'Tous les projets avec un cadre de résultats' : 'All projects with results frameworks')}</span>
+        <span>{period || t('workspace.allPeriods')}{periodType ? ` · ${PERIOD_TYPES.find(item => item.value === periodType)?.label}` : ''}{type === 'geographic' && province ? ` · ${province}` : ''}{type === 'donor' && donor ? ` · ${donor}` : ''}</span>
       </div>
       {exportError && <div className="rp-noprint" role="alert" style={{ color: 'var(--red-700)', marginTop: '.6rem', fontSize: '.85rem' }}>{exportError}</div>}
 
