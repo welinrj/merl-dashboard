@@ -140,7 +140,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
       map.on('zoomend',()=>alive&&setDetailZoom(map.getZoom()>11));
       map.on('error',event=>{
         if(!alive)return;
-        if(['openmaptiles','imagery'].includes(event.sourceId)&&!map.getLayer('fallback-land')){
+        if(['openmaptiles','imagery','terrain'].includes(event.sourceId)&&!map.getLayer('fallback-land')){
           map.setStyle(mapStyle(null,data));setBasemapState('failed');
         }
       });

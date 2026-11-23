@@ -166,6 +166,13 @@ try{
  await waitMap();
  assert.equal(await page.locator('.pub-basemap-picker').getByRole('button',{name:'Satellite',exact:true}).getAttribute('aria-pressed'),'true','basemap selection survives a reload');
  await page.waitForFunction(()=>document.querySelector('.maplibregl-ctrl-attrib')?.textContent.includes('Esri'));
+ // A terrain outage retains selectable council coverage and allows another choice.
+ await context.route('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/**',route=>route.abort());
+ await page.locator('.pub-basemap-picker').getByRole('button',{name:'Terrain',exact:true}).click();
+ await page.getByRole('status').filter({hasText:'Basemap unavailable'}).waitFor();
+ await waitMap();
+ assert.equal(await mapEval(map=>Boolean(map.getLayer('fallback-land'))),true);
+ await context.unroute('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/**');
  // An unavailable tile service retains selectable council coverage.
  await context.route('https://tiles.openfreemap.org/**',route=>route.abort());
  await page.locator('.pub-basemap-picker').getByRole('button',{name:'Street map',exact:true}).click();
