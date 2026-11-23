@@ -15,6 +15,8 @@ fixture.v_framework_nodes=[
 ];
 fixture.v_project_indicators=Array.from({length:301},(_,index)=>({...fixture.v_project_indicators[0],id:`indicator-${index}`,code:`IND-${index+1}`,name:`Framework record ${index+1}`,framework_node_id:'output'}));
 
+fixture.v_project_activities=[{id:'activity-linked',project_id:'pa',framework_node_id:'output',code:'ACT-1',name:'Consultation programme agenda',status:'not_started',physical_progress_pct:0},{id:'activity-unlinked',project_id:'pa',framework_node_id:null,code:'ACT-2',name:'Travel proposal plan',status:'not_started'}];
+
 mkdirSync('qa-artifacts',{recursive:true});
 const browser=await chromium.launch();
 try {
@@ -51,6 +53,10 @@ try {
    const table=page.getByRole('region',{name:'Results framework table'});
    await table.waitFor();
    await page.waitForFunction(()=>document.querySelectorAll('.rf2-table tbody tr').length>=301);
+   assert.equal(await page.locator('.rf2-table > .rf2-table-activities [data-activity-id]').count(),2,'All project activities stay inside the table');
+   assert.equal(await page.locator('.rf2-desktop-activities').count(),0,'No detached activity section');
+   const counts=await page.locator('.rf2-table').evaluate(el=>({head:el.tHead.rows[0].cells.length,activity:[...el.querySelector('.rf2-table-activities tr').cells].reduce((n,cell)=>n+cell.colSpan,0)}));
+   assert.equal(counts.activity,counts.head,'Activity rows match the framework column grid');
    assert.notEqual(await page.locator('.rf2-tools').evaluate(el=>getComputedStyle(el).position),'sticky','Filters must scroll with the page');
    await table.scrollIntoViewIfNeeded();
    const size=await table.boundingBox();
@@ -80,6 +86,8 @@ try {
    await page.waitForTimeout(150);
    assert(Math.abs(await page.locator('.dsh-scroll').evaluate(el=>el.scrollTop)-beforeWheel)<2,'Wheel scrolling must stay inside the table');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No body overflow');
+   await table.evaluate(el=>{el.scrollLeft=0;});
+   await page.locator('.rf2-table-activities').getByText('Travel proposal plan',{exact:false}).waitFor({state:'visible'});
    await page.screenshot({path:`qa-artifacts/results-scroll-${width}x${height}.png`});
    // A reader can leave the spreadsheet for the grouped, readable list.
    await toggle.scrollIntoViewIfNeeded();await toggle.click();
@@ -93,7 +101,7 @@ try {
   }
   // Search remains functional after scrolling a long framework.
   await page.locator('input[type=search]').filter({visible:true}).last().fill('Framework record 301');
-  await page.waitForFunction(()=>document.querySelectorAll('.rf2-table tbody tr').length===1);
+  await page.waitForFunction(()=>document.querySelectorAll('.rf2-table > tbody:first-of-type > tr').length===1);
   console.log('PASS Results table scrolling, opaque sticky headings, static filters, frozen project identity, list switch and search across 301 synthetic indicators');
   await context.close();
  }

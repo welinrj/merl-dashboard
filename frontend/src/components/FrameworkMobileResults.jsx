@@ -94,12 +94,22 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
   </div>;
 }
 
-export function FrameworkActivities({ rows, activities, error, onRetry }) {
+export function FrameworkActivities({ rows, activities, error, onRetry, columnCount }) {
   const { t } = useTranslation();
-  const ids = new Set(rows.map(row => row.project.id));
-  const items = activities.filter(activity => ids.has(activity.project_id));
-  return <section className="rf2-activities rf2-desktop-activities"><h2>{t('rf.projectActivities')}</h2>
-    {error ? <p role="alert">{error} <button type="button" className="btn btn-secondary" onClick={onRetry}>{t('rf.retry')}</button></p>
-      : items.length ? <ul className="rf2-linked-activities">{items.map(activity => <li key={activity.id}><strong>{activity.code} — {activity.name}</strong><p>{t('rf.status')}: {t(`rf.states.${activity.status}`, { defaultValue:activity.status || t('rf.notRecorded') })}{activity.physical_progress_pct != null && <> · {t('rf.progress')}: {percent(activity.physical_progress_pct)}</>}</p><a href={`#/project-setup?project=${encodeURIComponent(activity.project_id)}`}>{t('rf.viewActivities')}</a></li>)}</ul> : <p>{t('rf.noLinkedActivities')}</p>}
-  </section>;
+  const projects = [...new Map(rows.map(row => [row.project.id, row.project])).values()];
+  return <tbody className="rf2-table-activities">{projects.map(project => {
+    const items = activities.filter(activity => activity.project_id === project.id);
+    if (!items.length && !error) return null;
+    return <tr key={project.id}>
+      <td className="rf2-project"><div className="rf2-project-mark"><small>{project.code || project.acronym}</small><b>{project.name}</b></div></td>
+      <td colSpan={columnCount - 1} className="rf2-activity-cell"><section aria-label={`${t('rf.projectActivities')}: ${project.name}`}><h2>{t('rf.projectActivities')}</h2>
+        {error ? <p role="alert">{error} <button type="button" className="btn btn-secondary" onClick={onRetry}>{t('rf.retry')}</button></p>
+          : <ul className="rf2-linked-activities">{items.map(activity => <li key={activity.id} data-activity-id={activity.id}>
+            <strong>{activity.code ? `${activity.code} — ` : ''}{activity.name}</strong>
+            <p>{t('rf.status')}: {t(`rf.states.${activity.status}`, { defaultValue:activity.status || t('rf.notRecorded') })}{activity.physical_progress_pct != null && <> · {t('rf.progress')}: {percent(activity.physical_progress_pct)}</>}</p>
+            <a href={`#/project-setup?project=${encodeURIComponent(activity.project_id)}`}>{t('rf.viewActivities')}</a>
+          </li>)}</ul>}
+      </section></td>
+    </tr>;
+  })}</tbody>;
 }
