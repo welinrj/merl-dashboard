@@ -85,8 +85,8 @@ async function check(page, label, width, authenticated) {
     };
   });
   const phoneSingleRow = width<=560;
-  const singleRow = authenticated ? (width>760 || phoneSingleRow) : (width>1280 || phoneSingleRow);
-  const compactHeader = authenticated ? (width>760 || phoneSingleRow) : phoneSingleRow;
+  const singleRow = authenticated || width>1280 || phoneSingleRow;
+  const compactHeader = authenticated || width>1280 || phoneSingleRow;
   const expected = {
     identityClear:true, imageCount:2, imagesLoaded:true, resolutionReady:true,
     brandTextAbsent:true, onlyRequestedLogos:true,
