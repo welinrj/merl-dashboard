@@ -60,6 +60,7 @@ async function check(page, label, width, authenticated) {
     const headerHeight = parseFloat(getComputedStyle(header.closest('.dsh')).getPropertyValue('--workspace-header-h'));
     return {
       identityClear: !visible(identity) || (fits(rect(identity),h) && !overlaps(rect(identity),g) && !overlaps(rect(identity),c) && identity.scrollWidth<=identity.clientWidth+1),
+      transparentLogos: getComputedStyle(group).backgroundColor==='rgba(0, 0, 0, 0)',
       imageCount: images.length,
       imagesLoaded: images.every(i=>i.complete && i.naturalWidth>0),
       resolutionReady: images.every(i=>i.naturalWidth>=rect(i).width && i.naturalHeight>=rect(i).height),
@@ -88,7 +89,7 @@ async function check(page, label, width, authenticated) {
   const singleRow = authenticated || width>1280 || phoneSingleRow;
   const compactHeader = authenticated || width>1280 || phoneSingleRow;
   const expected = {
-    identityClear:true, imageCount:2, imagesLoaded:true, resolutionReady:true,
+    identityClear:true, transparentLogos:true, imageCount:2, imagesLoaded:true, resolutionReady:true,
     brandTextAbsent:true, onlyRequestedLogos:true,
     crestFit:'contain', doccFit:phoneSingleRow?'cover':'contain',
     partnerLogosVisible:true,

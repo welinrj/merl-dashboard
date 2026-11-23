@@ -143,16 +143,44 @@ try{
  await page.mouse.click(point.x,point.y);
  await page.getByRole('button',{name:'Clear area selection'}).waitFor();
  await page.getByRole('button',{name:'Clear area selection'}).click();
- await page.getByLabel('Basemap',{exact:true}).selectOption('satellite');
+ // Every basemap is directly available at narrow phone widths.
+ await page.setViewportSize({width:320,height:844});
+ const picker=page.locator('.pub-basemap-picker');
+ await picker.scrollIntoViewIfNeeded();
+ assert.equal(await picker.getByRole('button').count(),4);
+ assert.ok(await picker.getByRole('button').evaluateAll(buttons=>buttons.every(b=>b.getBoundingClientRect().height>=44&&b.getBoundingClientRect().right<=innerWidth)));
+ const camera=await mapEval(map=>({center:map.getCenter().toArray(),zoom:map.getZoom()}));
+ await picker.getByRole('button',{name:'Terrain',exact:true}).click();
+ for(let i=0;i<200;i++){if(await mapEval(map=>Boolean(map.getSource('terrain'))&&map.isSourceLoaded('terrain')))break;await page.waitForTimeout(100);}
+ assert.equal(await mapEval(map=>Boolean(map.getSource('terrain'))&&map.isSourceLoaded('terrain')),true,'terrain tiles loaded');
+ await picker.getByRole('button',{name:'Satellite',exact:true}).click();
+ for(let i=0;i<200;i++){if(await mapEval(map=>Boolean(map.getSource('imagery'))&&map.isSourceLoaded('imagery')))break;await page.waitForTimeout(100);}
+ assert.equal(await mapEval(map=>Boolean(map.getSource('imagery'))&&map.isSourceLoaded('imagery')),true,'satellite imagery tiles loaded');
+ const after=await mapEval(map=>({center:map.getCenter().toArray(),zoom:map.getZoom()}));
+ assert.deepEqual(after,camera,'switching basemaps retains the map position');
+ assert.equal(await picker.getByRole('button',{name:'Satellite',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.screenshot({path:'qa-artifacts/map-satellite-320.png'});
+ assert.equal(await page.evaluate(()=>localStorage.getItem('merl.public.basemap')),'satellite');
+ await page.reload();
+ await page.locator('.maplibregl-canvas').waitFor();
+ await waitMap();
+ assert.equal(await page.locator('.pub-basemap-picker').getByRole('button',{name:'Satellite',exact:true}).getAttribute('aria-pressed'),'true','basemap selection survives a reload');
  await page.waitForFunction(()=>document.querySelector('.maplibregl-ctrl-attrib')?.textContent.includes('Esri'));
+ // A terrain outage retains selectable council coverage and allows another choice.
+ await context.route('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/**',route=>route.abort());
+ await page.locator('.pub-basemap-picker').getByRole('button',{name:'Terrain',exact:true}).click();
+ await page.getByRole('status').filter({hasText:'Basemap unavailable'}).waitFor();
+ await waitMap();
+ assert.equal(await mapEval(map=>Boolean(map.getLayer('fallback-land'))),true);
+ await context.unroute('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/**');
  // An unavailable tile service retains selectable council coverage.
  await context.route('https://tiles.openfreemap.org/**',route=>route.abort());
- await page.getByLabel('Basemap',{exact:true}).selectOption('street');
+ await page.locator('.pub-basemap-picker').getByRole('button',{name:'Street map',exact:true}).click();
  await page.getByRole('status').filter({hasText:'Basemap unavailable'}).waitFor();
  await waitMap();
  assert.equal(await mapEval(map=>Boolean(map.getLayer('fallback-land'))),true);
  await context.unroute('https://tiles.openfreemap.org/**');
- await page.getByLabel('Basemap',{exact:true}).selectOption('light');
+ await page.locator('.pub-basemap-picker').getByRole('button',{name:'Light',exact:true}).click();
  await page.getByRole('button',{name:'FR',exact:true}).click();
  await page.getByRole('button',{name:'Voir tout le Vanuatu'}).waitFor();
  await waitMap();

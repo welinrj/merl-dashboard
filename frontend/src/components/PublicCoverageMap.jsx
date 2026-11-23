@@ -4,7 +4,7 @@ import { THEME_AREA_COLOURS, THEME_AREA_ORDER } from '../lib/publicPortfolioCate
 import './public-coverage-map.css';
 import PublicBoundaryFallback from './PublicBoundaryFallback';
 import { mapLabelPoint } from '../lib/publicMapLabels';
-import { coverageFeatures, geometryBounds, mapStyle, loadBasemap } from '../lib/maplibreCoverage';
+import { coverageFeatures, geometryBounds, mapStyle, loadBasemap, BASEMAP_IDS } from '../lib/maplibreCoverage';
 
 // Reviewed WGS84 snapshot, including all 71 councils and shared linework.
 const BOUNDARY_URL=`${import.meta.env.BASE_URL}data/vanuatu-area-councils-map.geojson`;
@@ -82,7 +82,10 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const copyRef=useRef(copy); copyRef.current=copy;
   const [err,setErr]=useState('');
   const [ready,setReady]=useState(null);
-  const [basemap,setBasemap]=useState('light');
+  const [basemap,setBasemap]=useState(()=>{
+    try { const stored=localStorage.getItem('merl.public.basemap');return BASEMAP_IDS.includes(stored)?stored:'light'; } catch { return 'light'; }
+  });
+  useEffect(()=>{try { localStorage.setItem('merl.public.basemap',basemap); } catch { /* Map controls still work when storage is unavailable. */ }},[basemap]);
   const [showBorders,setShowBorders]=useState(false);
   bordersRef.current=showBorders;
   const [retry,setRetry]=useState(0);
@@ -137,7 +140,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
       map.on('zoomend',()=>alive&&setDetailZoom(map.getZoom()>11));
       map.on('error',event=>{
         if(!alive)return;
-        if(['openmaptiles','imagery'].includes(event.sourceId)&&!map.getLayer('fallback-land')){
+        if(['openmaptiles','imagery','terrain'].includes(event.sourceId)&&!map.getLayer('fallback-land')){
           map.setStyle(mapStyle(null,data));setBasemapState('failed');
         }
       });
@@ -223,7 +226,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const legendRows=themes=>themes.map(theme=><div key={theme}><i style={{backgroundColor:THEME_AREA_COLOURS[theme]}} aria-hidden="true"/><span>{copy.themes[theme]}</span><b>{themeCounts[theme]||0} {(themeCounts[theme]||0)===1?copy.areaOne:copy.areaMany}</b></div>);
   return <div ref={wrapRef} className={`pub-leaflet-wrap pub-coverage-map${expanded?' pub-map-expanded':''}`} role={expanded?'dialog':undefined} aria-modal={expanded?true:undefined} aria-label={copy.aria}>
     <div className="pub-map-toolbar"><button type="button" onClick={showAll} disabled={!ready&&!fallback}>{copy.reset}</button><button type="button" onClick={showLocations} disabled={(!ready&&!fallback)||!recordedAreas.length}>{copy.locations}</button><button ref={expandRef} type="button" aria-pressed={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?copy.collapse:copy.expand}</button></div>
-    <div className="pub-map-options"><label><span>{fr?'Fond de carte':'Basemap'}</span><select aria-label={fr?'Fond de carte':'Basemap'} value={basemap} disabled={fallback} onChange={e=>setBasemap(e.target.value)}><option value="light">{fr?'Clair':'Light'}</option><option value="street">{copy.street}</option><option value="satellite">{copy.satellite}</option></select></label><label><input type="checkbox" checked={showBorders} onChange={e=>setShowBorders(e.target.checked)}/>{copy.boundaries}</label></div>
+    <div className="pub-map-options"><fieldset className="pub-basemap-picker" disabled={fallback}><legend>{fr?'Fond de carte':'Basemap'}</legend><div className="pub-basemap-choices">{BASEMAP_IDS.map(id=><button key={id} type="button" aria-pressed={basemap===id} onClick={()=>setBasemap(id)}>{id==='light'?(fr?'Clair':'Light'):id==='street'?copy.street:id==='terrain'?(fr?'Relief':'Terrain'):copy.satellite}</button>)}</div></fieldset><label><input type="checkbox" checked={showBorders} onChange={e=>setShowBorders(e.target.checked)}/>{copy.boundaries}</label></div>
     <div className="pub-map-canvas"><div ref={ref} hidden={fallback} className="pub-leaflet pub-maplibre" aria-label={copy.aria}/>{fallback&&<PublicBoundaryFallback data={boundaryData} collection={coverage.collection} locationsOnly={locationsOnly} showBorders={showBorders} onSelect={onAreaSelect?chooseFallbackArea:undefined} label={copy.aria}/>}
       {(fallback||(!err&&(detailZoom||basemapState==='loading'||basemapState==='failed')))&&<div className="pub-map-context-note" role="status">{fallback?copy.basemapFailed:detailZoom?copy.zoomNote:basemapState==='failed'?copy.basemapFailed:copy.basemapLoading}</div>}{err&&!fallback&&<div className="pub-map-error" role="status">{err}<button type="button" onClick={()=>setRetry(n=>n+1)}>{fr?'Réessayer':'Try again'}</button></div>}</div>
     <div className="pub-map-key"><strong>{copy.keyTitle}</strong>

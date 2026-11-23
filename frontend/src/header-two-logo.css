@@ -199,7 +199,7 @@
   position:relative;isolation:isolate;background:linear-gradient(110deg,#102f47,#173f56 72%,#205766)!important;
   border:0!important;border-radius:0!important;box-shadow:inset 0 -3px 0 #2dbbb1,0 3px 14px #102f4720!important;
 }
-.dsh .dsh-head:has(>.merl-header-identity)>.merl-partner-logos{grid-column:1!important;grid-row:1!important;padding:6px 10px!important;background:#fff;border:1px solid #ffffff70;border-radius:8px;box-sizing:border-box;}
+.dsh .dsh-head:has(>.merl-header-identity)>.merl-partner-logos{grid-column:1!important;grid-row:1!important;padding:6px 10px!important;background:transparent;border:1px solid transparent;border-radius:0;box-shadow:none;box-sizing:border-box;}
 .dsh .dsh-head>.merl-header-identity{display:flex;flex-direction:column;justify-content:center;grid-column:2;grid-row:1;min-width:0;gap:4px;padding-left:20px;border-left:1px solid #ffffff30;color:#fff;}
 .merl-header-identity strong{color:#fff;font-family:Arial,sans-serif;font-size:23px;font-weight:700;line-height:1.15;letter-spacing:.015em;white-space:nowrap}
 .merl-header-identity strong>span{font-weight:400;letter-spacing:0;font-size:20px}
