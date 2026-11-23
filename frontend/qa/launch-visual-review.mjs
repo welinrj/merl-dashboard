@@ -95,7 +95,9 @@ try {
     await publicPage.locator('.pbd-metric').first().waitFor();
     await publicPage.waitForTimeout(500);
     assert.equal(await publicPage.locator('[data-slot=progress]').count(),0,'Category counts are not achievement bars');
-    assert(await publicPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Public page fits');
+    const publicFits=await publicPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);
+    if(!publicFits){await publicPage.screenshot({path:`qa-artifacts/launch-public-failure-${language}-${width}.png`});console.log(await publicPage.locator('.dsh-head').evaluate(el=>({width:el.getBoundingClientRect().width,children:[...el.children].map(c=>({name:c.className,x:c.getBoundingClientRect().x,width:c.getBoundingClientRect().width,display:getComputedStyle(c).display}))})));}
+    assert(publicFits,'Public page fits');
     await publicPage.locator('.dsh-scroll').evaluate(el=>{el.scrollTop=0;});
     await publicPage.screenshot({path:`qa-artifacts/launch-${language}-public-${width}.png`});
     await publicPage.locator('.pbd-activity-section').scrollIntoViewIfNeeded();

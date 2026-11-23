@@ -251,3 +251,18 @@
 }
 
 @media(min-width:761px) and (max-width:1050px){.dsh:not(.pbd-root) .merl-header-identity strong>span{display:none}}
+
+/* Own the child placement as well as the grid. Public page styles are loaded
+   lazily, so their retired one-column header must not move these controls. */
+.dsh .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity)>.merl-partner-logos{grid-column:1!important;grid-row:1!important;width:max-content!important;max-width:none!important;}
+.dsh .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity)>.dsh-head-actions{grid-column:3!important;grid-row:1!important;width:auto!important;max-width:100%!important;justify-self:end!important;}
+@media(max-width:1280px){.dsh.pbd-root .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity)>.dsh-head-actions{grid-column:1/-1!important;grid-row:2!important;width:100%!important;}}
+@media(min-width:561px) and (max-width:760px){
+.dsh:not(.pbd-root) .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity)>.merl-partner-logos{grid-column:2!important;}
+.dsh.pbd-root .dsh-head>.merl-header-identity{display:flex!important;}
+}
+@media(max-width:560px){
+.dsh.pbd-root .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity)>.merl-partner-logos{grid-column:2!important;}
+.dsh.pbd-root .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity)>.dsh-head-actions{grid-column:3!important;grid-row:1!important;width:max-content!important;}
+}
+@media(max-width:360px){.dsh .dsh-head:has(>.merl-header-identity) .dsh-lang button{min-width:26px;width:26px!important;padding:0 2px!important;}}
