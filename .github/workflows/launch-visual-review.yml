@@ -41,7 +41,7 @@ jobs:
         run: |
           MERL_HEADER_ONLY=1 node qa/launch-visual-review.mjs
           node qa/header-brand-layout.mjs
-          node qa/header-inline-auth.mjs
+          STUB_FILE=qa/fixture.json node qa/header-inline-auth.mjs
           node qa/launch-visual-review.mjs
       - name: Check Results editing and scrolling
         working-directory: frontend
