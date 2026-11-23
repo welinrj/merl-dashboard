@@ -1,7 +1,7 @@
 name: Launch visual review
 on:
   push:
-    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading, fix/section-card-colour-hierarchy, feat/institutional-merl-masthead, fix/transparent-branding-and-basemaps]
+    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading, fix/section-card-colour-hierarchy, feat/institutional-merl-masthead, fix/transparent-branding-and-basemaps, feat/launch-reading-and-presentation]
 jobs:
   sidebar:
     name: Sidebar and Results layout
@@ -39,6 +39,7 @@ jobs:
       - name: Capture frontend visual review
         working-directory: frontend
         run: |
+          node qa/presentation-reading.mjs
           MERL_HEADER_ONLY=1 node qa/launch-visual-review.mjs
           node qa/header-brand-layout.mjs
           node qa/public-map-cartography.mjs

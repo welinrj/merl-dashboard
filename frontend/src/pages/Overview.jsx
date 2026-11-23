@@ -1,4 +1,5 @@
 import FigureExplanation from '../components/FigureExplanation';
+import PresentationView, { PresentationMetric } from '../components/PresentationView';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { scopeWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import { PortfolioCardIcon, ProgressCardIcon, BudgetCardIcon, BeneficiariesCardIcon, AttentionCardIcon, ReportingCardIcon } from '../components/ui/MerlCardIcons';
@@ -108,6 +109,7 @@ export default function Overview({ user }) {
   const [progressPeriodType, setProgressPeriodType] = useState('quarterly');
   const [publishingPublic, setPublishingPublic] = useState(false);
   const [explainedMetric, setExplainedMetric] = useState(null);
+  const [presenting,setPresenting]=useState(false);
   const canPublishPublic = user?.role === 'ROLE_ADMIN';
 
   const publishPublicPortal = async () => {
@@ -378,8 +380,31 @@ export default function Overview({ user }) {
       status: reportStatus(r),
     }));
 
+  const french = lang?.startsWith('fr');
+  const noDate = french ? 'Date non renseignée' : 'Date not recorded';
+  const reportStamp = rows => period || withReportingDates(rows,reporting).map(row=>row.period_end||row.date_reported).filter(Boolean).sort().at(-1)?.slice(0,10) || noDate;
+  const cardStamps = {projects:french?'Registre actuel':'Current register',progress:period||dataAsAt,budget:reportStamp(financial),beneficiaries:reportStamp(beneficiaries),attention:period||(french?'État actuel':'Current status'),reporting:reporting.map(row=>row.period_end).filter(Boolean).sort().at(-1)?.slice(0,10)||noDate};
+  const cardDetails = {
+    projects:t('visual.cards.projectStatus',{active:fmtNum(lifecycleCounts.active),planned:fmtNum(lifecycleCounts.planned),completed:fmtNum(lifecycleCounts.completed)}),
+    progress:t('visual.cards.resultsBasis'),
+    budget:totalExpenditure==null?t('visual.cards.noFinancial'):t('visual.cards.spent',{amount:fmtVUV(totalExpenditure)}),
+    beneficiaries:[genderSummary,beneficiaryState.periods.join(' · '),beneficiaryState.unpublished?(french?'Inclut des rapports non approuvés ; exclus du total public.':'Includes unapproved reports; excluded from the public total.'):null,beneficiaryState.unchecked?(french?'Vérification des doubles comptes requise.':'Double-counting verification required.'):null].filter(Boolean).join(' · '),
+    attention:period&&!progress.length?t('workspace.noPeriodResults'):t('visual.cards.attentionCounts',{risk:fmtNum(atRiskProjects),delayed:fmtNum(delayedProjects)}),
+    reporting:t('visual.cards.approvedPeriods',{approved:fmtNum(reportsApproved),total:fmtNum(reporting.length)}),
+  };
+  const presentationMetrics = [
+    ['projects',t('visual.cards.projects'),fmtNum(total)],['progress',t('overview.overallProgress'),overallProgress==null?'—':`${overallProgress}%`],
+    ['budget',t('visual.cards.budget'),budgetUtilisation==null?'—':`${budgetUtilisation}%`],['beneficiaries',t('visual.cards.beneficiaries'),totalBeneficiaries==null?'—':fmtNum(totalBeneficiaries)],
+    ['attention',t('visual.cards.attention'),period&&!progress.length?'—':fmtNum(atRiskProjects+delayedProjects)],['reporting',t('visual.cards.reporting'),`${reportingCompletion}%`],
+  ];
+  const viewScope = `${period||(french?'Toutes les périodes':'All periods')} · ${total} ${french?'projets':'projects'}${Object.values(filters).some(Boolean)?` · ${french?'Vue filtrée':'Filtered view'}`:''}`;
   return (
     <div className="ovx">
+      {presenting&&<PresentationView title={t('overview.title')} subtitle={viewScope} lang={lang||'en'} onClose={()=>setPresenting(false)} slides={[
+        {id:'summary',label:french?'Vue d’ensemble':'At a glance',content:<><p className="presentation-note">{french?'Vue interne : les données soumises peuvent être en attente d’approbation.':'Internal view: submitted data may still be awaiting approval.'}</p><div className="presentation-grid">{presentationMetrics.map(([key,label,value])=><PresentationMetric key={key} label={label} value={value} stamp={cardStamps[key]}/>)}</div></>},
+        {id:'reporting',label:french?'Rapportage':'Reporting',content:<div className="presentation-reporting">{reportRows.length?reportRows.map(row=><article key={row.id}><h3>{row.project}</h3><p>{row.item}</p><p>{fmtDate(row.due)} · {row.status.label}</p></article>):<p>{french?'Aucune échéance de rapport enregistrée pour cette vue.':'No reporting deadlines recorded for this view.'}</p>}</div>},
+      ]}/>}
+
       <OverviewStyles />
 
       <section className="ovx-heading rp-noprint">
@@ -389,6 +414,7 @@ export default function Overview({ user }) {
           {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
         </div>
         <div className="ovx-heading-actions">
+          <button type="button" className="ovx-export" onClick={()=>setPresenting(true)}>{french?'Mode présentation':'Presentation mode'}</button>
           {canPublishPublic && <button type="button" className="ovx-publish"
             onClick={publishPublicPortal} disabled={publishingPublic}>
             <Send size={16} aria-hidden="true" />
@@ -411,7 +437,7 @@ export default function Overview({ user }) {
           { key: 'partner', label: t('overview.filterPartner'), options: partners.map(partner => ({ value: partner, label: partner })) },
         ]} />
 
-      {explainedMetric && <FigureExplanation metric={explainedMetric} period={period} readOnly={user?.role === 'ROLE_VIEWER'} onClose={() => setExplainedMetric(null)}
+      {explainedMetric && <FigureExplanation context={cardDetails[explainedMetric]} metric={explainedMetric} period={period} readOnly={user?.role === 'ROLE_VIEWER'} onClose={() => setExplainedMetric(null)}
         value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 
@@ -419,6 +445,7 @@ export default function Overview({ user }) {
       <section id="ovx-summary" tabIndex={-1} className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
           className="ovx-kpi ovx-kpi-projects"
+          concise stamp={cardStamps.projects}
           onExplain={() => setExplainedMetric('projects')}
           icon={PortfolioCardIcon}
           label={t('visual.cards.projects')}
@@ -429,6 +456,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-progress"
+          concise stamp={cardStamps.progress}
           onExplain={() => setExplainedMetric('progress')}
           icon={ProgressCardIcon}
           label={t('overview.overallProgress')}
@@ -441,6 +469,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-budget"
+          concise stamp={cardStamps.budget}
           onExplain={() => setExplainedMetric('budget')}
           icon={BudgetCardIcon}
           label={t('visual.cards.budget')}
@@ -453,6 +482,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi ovx-kpi-beneficiaries"
+          concise stamp={cardStamps.beneficiaries}
           onExplain={() => setExplainedMetric('beneficiaries')}
           beneficiaryData={{ projects, beneficiaries }}
           icon={BeneficiariesCardIcon}
@@ -465,6 +495,7 @@ export default function Overview({ user }) {
         <KpiCard
           className="ovx-kpi"
           label={t('visual.cards.attention')}
+          concise stamp={cardStamps.attention}
           onExplain={() => setExplainedMetric('attention')}
           icon={AttentionCardIcon}
           value={period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects)}
@@ -475,6 +506,7 @@ export default function Overview({ user }) {
         <KpiCard
           className="ovx-kpi"
           label={t('visual.cards.reporting')}
+          concise stamp={cardStamps.reporting}
           onExplain={() => setExplainedMetric('reporting')}
           icon={ReportingCardIcon}
           value={`${reportingCompletion}%`}

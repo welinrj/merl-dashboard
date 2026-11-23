@@ -6,7 +6,7 @@ import { toVuv, sumReported } from '../lib/docc/currency';
 import { fmtNum } from '../lib/locale';
 import './ResultAssurance.css';
 const statuses = new Set(['approved','draft','submitted','under_review','resubmitted','returned','published','locked','reviewed']);
-export default function FigureExplanation({ metric, value, data, period, readOnly = false, onClose }) {
+export default function FigureExplanation({ metric, value, data, period, context, readOnly = false, onClose }) {
   const { t } = useTranslation();
   const dialog = useRef(null), titleId = useId();
   useEffect(() => {
@@ -45,6 +45,7 @@ export default function FigureExplanation({ metric, value, data, period, readOnl
     onClick={event => { if (event.target === dialog.current) dialog.current.close(); }}>
     <header><h2 id={titleId}>{t(`figure.metrics.${metric}`)}</h2><button type="button" onClick={() => dialog.current.close()} aria-label={t('common.close')}>×</button></header>
     <p className="figure-meaning">{t(`figure.meaning.${metric}`)}</p>
+    {context && <p className="figure-context">{context}</p>}
     <dl><dt>{t('figure.value')}</dt><dd>{value}</dd><dt>{t(current ? 'figure.basis' : 'workspace.period')}</dt><dd>{current ? t('figure.current') : period || t('workspace.allPeriods')}</dd></dl>
     <p>{t(`figure.summary.${metric}`)}</p>
     {missing > 0 && <p className="figure-note">{t('figure.missing')}</p>}

@@ -235,7 +235,7 @@ const OVERVIEW_METRIC_STYLES = `
 
 export default function KpiCard({
   label, value, sub, progress, progressColor, linkLabel,
-  onClick, onExplain, children, className, icon: Icon,
+  onClick, onExplain, children, className, icon: Icon, concise = false, stamp,
 }) {
   const { t } = useTranslation();
   const Tag = onClick && !onExplain ? 'button' : 'div';
@@ -268,8 +268,8 @@ export default function KpiCard({
           )}
         </div>
         <div className="kpi-card-sub text-xs leading-snug text-[var(--text-3)]">
-          {sub}
-          {children}
+          {concise ? stamp : sub}
+          {!concise && children}
         </div>
         {progress != null && (
           <div className="kpi-card-progress h-1.5 overflow-hidden rounded-[3px] bg-[var(--surface-2)]">

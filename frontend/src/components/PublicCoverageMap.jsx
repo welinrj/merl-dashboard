@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { THEME_AREA_COLOURS, THEME_AREA_ORDER } from '../lib/publicPortfolioCategories';
 import './public-coverage-map.css';
 import PublicBoundaryFallback from './PublicBoundaryFallback';
+import { publishedMapResult } from '../lib/publishedMapResult';
 import { mapLabelPoint } from '../lib/publicMapLabels';
 import { coverageFeatures, geometryBounds, mapStyle, loadBasemap, BASEMAP_IDS } from '../lib/maplibreCoverage';
 
@@ -53,7 +54,7 @@ function boundaries(){
   return boundaryPromise;
 }
 
-export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSelect,onViewProject,projectCount=null}){
+export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSelect,onViewProject,projects=[],projectCount=null}){
   const { i18n } = useTranslation();
   const fr = i18n.resolvedLanguage?.startsWith('fr');
   const copy = fr ? {
@@ -105,7 +106,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     const previous=document.activeElement;
     expandRef.current?.focus();
     const handleKey=e=>{
-      if(e.key==='Escape'){setExpanded(false);return;}
+      if(e.key==='Escape'){e.preventDefault();e.stopPropagation();setExpanded(false);return;}
       if(e.key==='Tab'){
         const nodes=[...wrapRef.current.querySelectorAll('button:not(:disabled),a[href],input,select,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
         const first=nodes[0],last=nodes[nodes.length-1];
@@ -234,7 +235,20 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
       {!activeThemes.length&&(ready||fallback)&&<small role="status">{copy.noLocations}</small>}
 
       {recordedAreas.length>1&&onAreaSelect&&<label className="pub-map-choose"><span>{copy.choose}</span><select value={chosen?key(chosen.province,chosen.area_council):''} onChange={e=>{const a=recordedAreas.find(a=>key(a.province,a.area_council)===e.target.value);onAreaSelect?.(a?{province:a.province,area_council:a.area_council}:null);}}><option value="">—</option>{recordedAreas.map(a=><option key={key(a.province,a.area_council)} value={key(a.province,a.area_council)}>{a.area_council}, {a.province}</option>)}</select></label>}
-      {chosen&&<div className="pub-map-selection" aria-live="polite"><strong>{chosen.area_council}</strong><span>{chosen.province} · {copy.themes[chosen.theme_category]||copy.themes['not-recorded']}</span><ul>{(chosen.project_names||[]).map((name,i)=><li key={`${name}-${i}`}>{name}{onViewProject&&chosen.project_ids?.[i]&&<button type="button" onClick={()=>{setExpanded(false);onViewProject(chosen.project_ids[i]);}}>{copy.view}</button>}</li>)}</ul></div>}
+      {chosen&&<div className="pub-map-selection" aria-live="polite"><strong>{chosen.area_council}</strong><span>{chosen.province} · {copy.themes[chosen.theme_category]||copy.themes['not-recorded']}</span>
+        <p className="pub-map-result-note">{fr?'Résultats du projet entier, et non des totaux pour ce conseil de zone.':'Project-wide results, not totals for this Area Council.'}</p>
+        <ul>{(chosen.project_ids||[]).map((id,i)=>{
+          const project=projects.find(p=>String(p.id)===String(id));
+          const result=project?publishedMapResult(project):null;
+          const status=project?.lifecycle_status||project?.status;
+          const statusLabel=({ongoing:fr?'En cours':'Ongoing',active:fr?'En cours':'Ongoing',completed:fr?'Achevé':'Completed',closed:fr?'Achevé':'Completed',upcoming:fr?'À venir':'Upcoming'})[status];
+          const resultLabel=result?.kind==='indicator'?result.label:result?.kind==='beneficiaries'?(fr?'Bénéficiaires directs publiés':'Published direct beneficiaries'):(fr?'Progrès déclaré':'Reported progress');
+          return <li key={id} className="pub-map-project-result"><h4>{project?.name||chosen.project_names?.[i]||copy.view}</h4><p>{chosen.area_council}, {chosen.province}{statusLabel&&<> · {statusLabel}</>}</p>
+            {result?<><span>{resultLabel}</span><strong>{new Intl.NumberFormat(fr?'fr-FR':'en-US',{maximumFractionDigits:2}).format(result.value)}{result.kind==='progress'?'%':result.unit?` ${result.unit}`:''}</strong><small>{fr?'Période approuvée':'Approved period'}: {result.period||(fr?'Non renseignée':'Not recorded')}</small></>:<p>{fr?'Aucun résultat approuvé publié pour ce projet.':'No approved results published for this project.'}</p>}
+            {onViewProject&&<button type="button" onClick={()=>{setExpanded(false);onViewProject(id);}}>{copy.view}</button>}
+          </li>;
+        })}</ul></div>}
+
       <details className="pub-map-all-themes"><summary>{copy.legend}</summary>{coverage&&<small className="pub-map-neutral">{themeCounts.none||0} {copy.areaMany} · {copy.neutral}</small>}
       {projectCount!=null&&<small className="pub-map-data-note">{fr?`${locatedProjects} sur ${projectCount} projets ont un lieu enregistré par conseil de zone.`:`${locatedProjects} of ${projectCount} projects have an Area Council location recorded.`}</small>}<div className="pub-map-legend">{legendRows(THEME_AREA_ORDER.filter(t=>!activeThemes.includes(t)))}</div><small>{copy.coverage} {copy.countNote}</small><small className="pub-map-source">{copy.source}</small></details>
     </div>
