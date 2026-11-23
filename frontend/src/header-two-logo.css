@@ -194,7 +194,7 @@
 /* Institutional masthead: supplied identities remain intact; product text is
    separate from the two official logo assets. Keep all controls accessible. */
 .dsh .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity){
-  display:grid!important;grid-template-columns:max-content minmax(160px,1fr) auto!important;grid-template-rows:1fr!important;
+  display:grid!important;grid-template-columns:max-content minmax(160px,1fr) auto!important;grid-template-rows:minmax(0,1fr)!important;
   align-items:center!important;gap:0 20px!important;height:80px!important;min-height:80px!important;padding:10px 20px!important;
   position:relative;isolation:isolate;background:linear-gradient(110deg,#102f47,#173f56 72%,#205766)!important;
   border:0!important;border-radius:0!important;box-shadow:inset 0 -3px 0 #2dbbb1,0 3px 14px #102f4720!important;
@@ -241,7 +241,7 @@
   .dsh:not(.pbd-root) .dsh-head:has(>.merl-header-identity)>.merl-partner-logos{grid-column:2!important;}
 }
 @media(max-width:560px){
-  .dsh .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity){height:72px!important;min-height:72px!important;grid-template-rows:1fr!important;padding:8px!important;gap:0 7px!important;}
+  .dsh .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity){height:72px!important;min-height:72px!important;grid-template-rows:minmax(0,1fr)!important;padding:8px!important;gap:0 7px!important;}
   .dsh.pbd-root .dsh-main>.dsh-head:has(>.merl-partner-logos):has(>.merl-header-identity){grid-template-columns:36px max-content minmax(0,1fr)!important;}
   .dsh.pbd-root .dsh-head:has(>.merl-header-identity)>.dsh-hamburger{grid-column:1;grid-row:1;position:static!important;width:36px!important;min-width:36px;}
   .dsh.pbd-root .dsh-head:has(>.merl-header-identity)>.merl-partner-logos{grid-column:2!important;}

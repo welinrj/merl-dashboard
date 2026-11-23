@@ -99,7 +99,7 @@ async function check(page, label, width, authenticated) {
     sidebarPresent:true, onePublicForm:true,
   };
   for (const [key,value] of Object.entries(result)) {
-    if (value!==expected[key]) throw new Error(`${label}: ${key} expected ${expected[key]}, got ${value}`);
+    if (value!==expected[key]) { console.log(await page.locator('.dsh-head').evaluate(h=>[h,...h.children].map(e=>({name:e.className,rect:e.getBoundingClientRect().toJSON(),scroll:e.scrollWidth,client:e.clientWidth,display:getComputedStyle(e).display})))); throw new Error(`${label}: ${key} expected ${expected[key]}, got ${value}`); }
   }
   console.log(`PASS ${label}`);
 }
