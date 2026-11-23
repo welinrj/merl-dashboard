@@ -42,7 +42,7 @@
   display:flex; align-items:center; position:relative; min-height:44px; gap:12px;
   padding:10px 12px; border:1px solid transparent; border-radius:8px;
   color:#43566b; background:transparent; box-shadow:none;
-  font-size:13px!important; font-weight:500!important; line-height:1.4!important; text-decoration:none;
+  font-size:14px!important; font-weight:500!important; line-height:1.4!important; text-decoration:none;
 }
 .dsh:not(.pbd-root) .dsh-nav-label { flex:1; min-width:0; overflow-wrap:anywhere; }
 .dsh:not(.pbd-root) .dsh-side .dsh-nav a svg {

@@ -32,9 +32,9 @@ export default function DashboardFilterPanel({ fields, filters, setFilter, reset
         {open ? c.hide : c.title}
         <span aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
-      <button type="button" className="dashboard-filters-clear" disabled={!selected.length} onClick={reset}>{c.clear}</button>
+      {selected.length > 0 && <button type="button" className="dashboard-filters-clear" onClick={reset}>{c.clear}</button>}
     </div>
-    <p className="dashboard-filters-status" role="status">{selected.length ? `${selected.length} ${selected.length === 1 ? c.appliedOne : c.applied}` : c.none}</p>
+    {selected.length > 0 && <p className="dashboard-filters-status" role="status">{`${selected.length} ${selected.length === 1 ? c.appliedOne : c.applied}`}</p>}
     {selected.length > 0 && <ul className="dashboard-filter-selections" aria-label={c.applied}>
       {selected.map(field => {
         const value = field.options.find(option => option.value === filters[field.key])?.label ?? filters[field.key];

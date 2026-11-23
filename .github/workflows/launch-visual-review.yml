@@ -1,7 +1,7 @@
 name: Launch visual review
 on:
   push:
-    branches: [feat/launch-visual-polish]
+    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading]
 jobs:
   sidebar:
     name: Sidebar and Results layout
@@ -45,6 +45,9 @@ jobs:
           node qa/results-scroll-layout.mjs
           node qa/results-framework-usability.mjs
           node qa/results-audit-fixes.mjs
+          node qa/dashboard-filters.mjs
+          STUB_FILE=qa/fixture.json node qa/workspace-usability.mjs
+          STUB_FILE=qa/fixture.json node qa/kpi-alignment.mjs
           STUB_FILE=qa/fixture.json node qa/page-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()
