@@ -284,3 +284,7 @@
     min-height:40px!important;
   }
 }
+
+/* Keep the decorative project-card grid inside its own card. Its former
+   half-width offset could contribute horizontal overflow on narrow screens. */
+.dsh.pbd-root .pbd-project-card>.feature-card-grid{inset:0;margin:0;width:100%;height:100%;overflow:hidden;contain:paint;}
