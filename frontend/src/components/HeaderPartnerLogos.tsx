@@ -19,7 +19,7 @@ export default function HeaderPartnerLogos() {
     if (!header || !shell) return;
 
     const update = () => {
-      shell.style.setProperty('--workspace-header-h', `${Math.ceil(header.getBoundingClientRect().height)}px`);
+      shell.style.setProperty('--workspace-header-h', `${Math.ceil(header.getBoundingClientRect().height)}px`, 'important');
     };
     update();
     if (typeof ResizeObserver === 'undefined') {
