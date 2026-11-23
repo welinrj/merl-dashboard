@@ -1,7 +1,7 @@
 name: Launch visual review
 on:
   push:
-    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading]
+    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading, fix/section-card-colour-hierarchy]
 jobs:
   sidebar:
     name: Sidebar and Results layout

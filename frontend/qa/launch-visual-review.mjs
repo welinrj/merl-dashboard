@@ -57,6 +57,17 @@ try {
       excerpt:document.querySelector('.dsh-scroll')?.innerText.slice(0,2000)
     }))});
     await page.screenshot({path:`qa-artifacts/launch-${language}-${name}-${width}.png`});
+    if(name==='overview'){
+      const colour=await page.locator('.kpi-card-head').first().evaluate(el=>getComputedStyle(el).backgroundColor);
+      assert.equal(colour,'rgb(234, 242, 247)','Result card headings use the shared pale blue');
+      for(const selector of ['.ovx-beneficiary-summary','.ovx-status-summary']){
+        const section=page.locator(selector);await section.scrollIntoViewIfNeeded();
+        const heading=section.locator(selector.includes('beneficiary')?'.bene-head':':scope > h2');
+        assert.equal(await heading.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(23, 62, 89)','Section headings use the shared navy');
+        await page.screenshot({path:`qa-artifacts/launch-${language}-${selector.slice(1)}-${width}.png`});
+      }
+    }
+
    }
   }
   writeFileSync(`qa-artifacts/launch-${language}-observations.json`,JSON.stringify(observations,null,2));

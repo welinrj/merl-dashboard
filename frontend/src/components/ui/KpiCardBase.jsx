@@ -77,8 +77,12 @@ const OVERVIEW_METRIC_STYLES = `
     grid-row:1!important;
     min-width:0;
     align-self:start;
-    align-items:flex-start;
+    align-items:center;
     text-align:left;
+    background:var(--visual-card-header,#eaf2f7);
+    border-bottom:1px solid #cedfe9;
+    border-radius:7px;
+    padding:8px;
   }
   .dsh .ovx .ovx-kpis .kpi-card-explain svg{display:block;flex-shrink:0;}
   .dsh .ovx .ovx-kpis .kpi-card-label{
