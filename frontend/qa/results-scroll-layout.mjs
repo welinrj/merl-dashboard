@@ -87,6 +87,7 @@ try {
    assert(Math.abs(await page.locator('.dsh-scroll').evaluate(el=>el.scrollTop)-beforeWheel)<2,'Wheel scrolling must stay inside the table');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No body overflow');
    await table.evaluate(el=>{el.scrollLeft=0;});
+   await page.locator('.rf2-table-activities').getByText('Travel proposal plan',{exact:false}).waitFor({state:'visible'});
    await page.screenshot({path:`qa-artifacts/results-scroll-${width}x${height}.png`});
    // A reader can leave the spreadsheet for the grouped, readable list.
    await toggle.scrollIntoViewIfNeeded();await toggle.click();
