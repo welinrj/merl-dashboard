@@ -44,6 +44,7 @@ jobs:
         run: |
           node qa/results-scroll-layout.mjs
           node qa/results-framework-usability.mjs
+          node qa/results-audit-fixes.mjs
           STUB_FILE=qa/fixture.json node qa/page-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()

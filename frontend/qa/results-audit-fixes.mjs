@@ -75,7 +75,7 @@ try {
  // Genuine transport failures retain the portal-wide guard and its recovery.
  await page.getByRole('alertdialog').getByRole('button').click();
  await page.locator('.rf2-table').waitFor();
- await page.locator('.rf2-desktop-activities').getByText('ACT-01 — Restore coastal buffer',{exact:true}).waitFor();
+ await page.locator('.rf2-table > .rf2-table-activities').getByText('ACT-01 — Restore coastal buffer',{exact:true}).waitFor();
  const clamp=await page.locator('.rf2-indicator b').first().evaluate(el=>getComputedStyle(el).webkitLineClamp);
  if(clamp!=='none')throw new Error('Indicator text is clipped');
  const rollupError=page.getByRole('alert').filter({hasText:'Evidence could not be loaded.'});
