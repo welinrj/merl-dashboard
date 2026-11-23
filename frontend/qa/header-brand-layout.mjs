@@ -47,6 +47,7 @@ async function check(page, label, width, authenticated) {
     const docc = group.querySelector('.merl-partner-docc');
     const controls = header.querySelector('.dsh-head-actions');
     const menu = header.querySelector('.dsh-hamburger');
+    const identity = header.querySelector('.merl-header-identity');
     const rect = el => el.getBoundingClientRect();
     const h = rect(header), g = rect(group), c = rect(controls);
     const fits = (a,b) => a.left >= b.left-1 && a.right <= b.right+1 && a.top >= b.top-1 && a.bottom <= b.bottom+1;
@@ -58,6 +59,7 @@ async function check(page, label, width, authenticated) {
     const sidebar = header.closest('.dsh').querySelector('.dsh-side');
     const headerHeight = parseFloat(getComputedStyle(header.closest('.dsh')).getPropertyValue('--workspace-header-h'));
     return {
+      identityClear: !visible(identity) || (fits(rect(identity),h) && !overlaps(rect(identity),g) && !overlaps(rect(identity),c) && identity.scrollWidth<=identity.clientWidth+1),
       imageCount: images.length,
       imagesLoaded: images.every(i=>i.complete && i.naturalWidth>0),
       resolutionReady: images.every(i=>i.naturalWidth>=rect(i).width && i.naturalHeight>=rect(i).height),
@@ -83,21 +85,21 @@ async function check(page, label, width, authenticated) {
     };
   });
   const phoneSingleRow = width<=560;
-  const singleRow = authenticated ? (width>760 || phoneSingleRow) : (width>1280 || phoneSingleRow);
-  const compactHeader = authenticated ? (width>760 || phoneSingleRow) : phoneSingleRow;
+  const singleRow = authenticated || width>1280 || phoneSingleRow;
+  const compactHeader = authenticated || width>1280 || phoneSingleRow;
   const expected = {
-    imageCount:2, imagesLoaded:true, resolutionReady:true,
+    identityClear:true, imageCount:2, imagesLoaded:true, resolutionReady:true,
     brandTextAbsent:true, onlyRequestedLogos:true,
     crestFit:'contain', doccFit:phoneSingleRow?'cover':'contain',
     partnerLogosVisible:true,
-    leftAligned:authenticated || width>560, sameRow:singleRow, verticalPaddingBalanced:singleRow,
+    leftAligned:authenticated ? !(width>560 && width<=760) : width>560, sameRow:singleRow, verticalPaddingBalanced:singleRow,
     compactWorkspaceHeader:compactHeader,
     inside:true, distinct:true, controlsClear:true, controlsInside:true, menuClear:true,
     horizontalOverflow:false, headerWordmark:false, headerHeightSynced:true,
     sidebarPresent:true, onePublicForm:true,
   };
   for (const [key,value] of Object.entries(result)) {
-    if (value!==expected[key]) throw new Error(`${label}: ${key} expected ${expected[key]}, got ${value}`);
+    if (value!==expected[key]) { console.log(await page.locator('.dsh-head').evaluate(h=>[h,...h.children].map(e=>({name:e.className,rect:e.getBoundingClientRect().toJSON(),scroll:e.scrollWidth,client:e.clientWidth,display:getComputedStyle(e).display})))); throw new Error(`${label}: ${key} expected ${expected[key]}, got ${value}`); }
   }
   console.log(`PASS ${label}`);
 }

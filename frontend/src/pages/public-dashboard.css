@@ -284,3 +284,10 @@
     min-height:40px!important;
   }
 }
+
+/* Keep the decorative project-card grid inside its own card. Its former
+   half-width offset could contribute horizontal overflow on narrow screens. */
+.dsh.pbd-root .pbd-project-card>.feature-card-grid{inset:0;margin:0;width:100%;height:100%;overflow:hidden;contain:paint;}
+
+/* Reserve the same label space for the two-column cards on narrow phones. */
+@media(max-width:360px){.dsh.pbd-root .pbd-metric .merl-metric-head{min-height:84px!important;}}

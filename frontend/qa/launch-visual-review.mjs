@@ -34,7 +34,7 @@ try {
    return json(rows);
   });
   const page=await context.newPage();
-  const routes=[['overview','/dashboards'],['projects','/project-setup'],['framework','/results-framework'],['portfolio','/analytics/project-portfolio?project=pa'],['update','/merl-reporting'],['review','/review'],['reports','/reports'],['admin','/admin']];
+  const routes=process.env.MERL_HEADER_ONLY ? [] : [['overview','/dashboards'],['projects','/project-setup'],['framework','/results-framework'],['portfolio','/analytics/project-portfolio?project=pa'],['update','/merl-reporting'],['review','/review'],['reports','/reports'],['admin','/admin']];
   const observations=[];
   for(const [width,height] of [[1440,900],[1024,768],[390,844]]) {
    await page.setViewportSize({width,height});
@@ -95,7 +95,9 @@ try {
     await publicPage.locator('.pbd-metric').first().waitFor();
     await publicPage.waitForTimeout(500);
     assert.equal(await publicPage.locator('[data-slot=progress]').count(),0,'Category counts are not achievement bars');
-    assert(await publicPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Public page fits');
+    const publicFits=await publicPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);
+    if(!publicFits) await publicPage.screenshot({path:`qa-artifacts/launch-public-failure-${language}-${width}.png`});
+    assert(publicFits,'Public page fits');
     await publicPage.locator('.dsh-scroll').evaluate(el=>{el.scrollTop=0;});
     await publicPage.screenshot({path:`qa-artifacts/launch-${language}-public-${width}.png`});
     await publicPage.locator('.pbd-activity-section').scrollIntoViewIfNeeded();

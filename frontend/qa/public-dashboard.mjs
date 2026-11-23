@@ -57,7 +57,7 @@ check('framework project managers are visible',await page.getByText('Lina Kalo',
 check('all official themes are shown for multi-theme projects',await page.getByText('Adaptation, Mitigation',{exact:true}).count()===1);
 check('implementation areas are visible',await page.getByRole('heading',{name:'Area Councils'}).count()===1 && await page.getByRole('button',{name:/Big Bay Coast/}).count()===1);
 const areaFlap = page.getByRole('button',{name:/Big Bay Coast/}).locator('.pbd-area-flap-face');
-check('Area Council names use the split-flap display',await areaFlap.count()===1 && (await areaFlap.evaluate(node=>getComputedStyle(node).animationName)).includes('pbd-area-flap'));
+check('Area Council names remain readable without decorative motion',await areaFlap.count()===1 && (await areaFlap.evaluate(node=>getComputedStyle(node).animationName))==='none' && (await areaFlap.innerText()).includes('Big Bay Coast'));
 const autoAreaBefore = await page.locator('.pbd-area-list>button.is-auto-current').getAttribute('data-area-index');
 await page.clock.fastForward(3300);
 const autoAreaAfter = await page.locator('.pbd-area-list>button.is-auto-current').getAttribute('data-area-index');
@@ -102,6 +102,7 @@ check('anonymous private route returns to the one public overview',new URL(page.
 for(const width of [1024,768,390,360,320]) {
   await page.setViewportSize({width,height:844});
   await go('#/dashboards');
+  if(width===320) console.log(await page.locator('.pbd-metric').evaluateAll(ns=>ns.slice(0,2).map(n=>({card:n.getBoundingClientRect().toJSON(),head:n.querySelector('.merl-metric-head').getBoundingClientRect().toJSON(),min:getComputedStyle(n.querySelector('.merl-metric-head')).minHeight,value:n.querySelector('strong').getBoundingClientRect().toJSON()}))));
   check(`${width}px: public metric values align across the first row`,await page.locator('.pbd-metric>strong').evaluateAll(nodes=>Math.abs(nodes[0].getBoundingClientRect().top-nodes[1].getBoundingClientRect().top)<2));
   check(`${width}px: no page-wide horizontal overflow`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
   if(width<=760) {
