@@ -1,6 +1,9 @@
 /* Shared visual finish. Layout contracts, data scopes and navigation stay in their components. */
 :root {
   --visual-ink:#153b58;
+  --visual-section-header:#173e59;
+  --visual-card-header:#eaf2f7;
+  --visual-result-surface:#ffffff;
   --visual-accent:#006c78;
   --visual-muted:#526277;
   --visual-border:#d9e5ec;
@@ -183,3 +186,14 @@
 .dsh .wg-wrap{margin-top:0}.dsh .wg-guide>summary{font-size:14px;font-weight:400;color:#40586a}
 .dsh .wg-guide[open] .wg-start{margin:10px 0}
 @media(max-width:700px){.dsh .ovx .overview-section-nav{gap:8px 18px;display:flex;flex-wrap:wrap}.dsh .ovx .ovx-reading-caption{font-size:16px!important}.dsh .ovx .dashboard-filters-toggle{min-width:0;width:100%;min-height:48px}.dsh .ovx .dashboard-filters-heading{flex-wrap:wrap}.dsh .wc-account{font-size:13px}}
+
+/* Colour identifies hierarchy, never a result's success or failure. */
+.dsh .ovx :is(.ovx-status-summary>h2,.ovx-beneficiary-summary>.bene-head,.my-tasks>header,.ovx-period-head,.ovx-card-heading,.ovx-assurance-heading){
+  background:var(--visual-section-header);color:#fff;padding:12px 16px;border-radius:8px;margin-bottom:16px;
+}
+.dsh .ovx :is(.ovx-status-summary>h2,.bene-head h2,.my-tasks header h2,.ovx-period-head h2,.ovx-card-heading .ovx-card-title,.ovx-assurance-heading h2){color:#fff!important}
+.dsh .ovx :is(.bene-head .bene-meta,.my-tasks header>span,.ovx-period-head label,.ovx-assurance-heading p,.ovx-assurance-heading .ovx-assurance-eyebrow){color:#dceaf0!important}
+.dsh .ovx :is(.ovx-status-summary,.ovx-beneficiary-summary,.my-tasks,.ovx-card){background:var(--visual-result-surface)}
+.dsh .ovx :is(.status-tile,.bene-tile,.ovx-period-kpis>div){background:#f7fafc;border-color:#d5e2ea}
+.dsh .ovx .status-tile[aria-pressed=true]{background:#e3f2f3;border-color:#21838c}
+@media(max-width:640px){.dsh .ovx :is(.ovx-status-summary>h2,.ovx-beneficiary-summary>.bene-head,.my-tasks>header,.ovx-period-head,.ovx-card-heading,.ovx-assurance-heading){padding:12px;border-radius:7px}}
