@@ -31,7 +31,14 @@ export default function PresentationView({ title, subtitle, slides, lang = 'en',
     if (fullScreen) void document.exitFullscreen?.().catch(() => {});
     else void surface.current?.requestFullscreen?.().catch(() => {});
   };
-  return createPortal(<dialog ref={dialog} className="presentation-dialog" aria-labelledby={headingId} onClose={onClose}>
+  const keepFocus = event => {
+    if (event.key !== 'Tab' || dialog.current.querySelector('.pub-map-expanded')) return;
+    const nodes = [...dialog.current.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),[tabindex="0"]')].filter(node => node.getClientRects().length);
+    const first = nodes[0], last = nodes.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  };
+  return createPortal(<dialog ref={dialog} className="presentation-dialog" aria-labelledby={headingId} onClose={onClose} onKeyDown={keepFocus}>
     <div ref={surface} className="presentation-surface">
       <header className="presentation-header"><div><div className="presentation-brand"><img src={`${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`} alt="Coat of arms of Vanuatu"/><img src={`${import.meta.env.BASE_URL}docc-logo.png`} alt="Department of Climate Change, Vanuatu"/><span>MERL</span></div><h2 id={headingId}>{title}</h2><p>{subtitle}</p></div>
         <div className="presentation-actions">{document.fullscreenEnabled && <button type="button" onClick={toggleFullScreen}>{fullScreen ? (french ? 'Réduire' : 'Leave full screen') : (french ? 'Plein écran du navigateur' : 'Browser full screen')}</button>}

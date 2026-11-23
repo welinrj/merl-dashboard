@@ -56,8 +56,8 @@ try{
    assert.deepEqual(await dialog.locator('.presentation-metric>strong').allTextContents(),before,'presentation uses the same figures');
    assert.ok(await dialog.locator('.presentation-metric>strong').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=36));
    assert.equal(await dialog.evaluate(e=>e.scrollWidth<=innerWidth+1),true,'presentation fits the viewport');
-   for(let i=0;i<7;i++){await page.keyboard.press('Tab');assert.equal(await dialog.evaluate(e=>e.contains(document.activeElement)),true,'focus stays inside presentation');}
    await page.screenshot({path:`qa-artifacts/launch-presentation-${auth?'internal':'public'}-${lang}-${width}.png`});
+   for(let i=0;i<7;i++){await page.keyboard.press('Tab');assert.equal(await dialog.evaluate(e=>e.contains(document.activeElement)),true,'focus stays inside presentation');}
    if(!auth){
     await dialog.locator('.presentation-nav').getByRole('button',{name:lang==='fr'?'Carte':'Map',exact:true}).click();await dialog.locator('.pub-map-boundary-fallback').waitFor();
     assert.match(await dialog.locator('.pub-map-selection').innerText(),/0 trees/);
