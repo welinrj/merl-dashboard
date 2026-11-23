@@ -22,6 +22,8 @@ import { IndicatorProgressCard } from '../components/ui/indicator-progress-card'
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
+import MetricInformation from '../components/MetricInformation';
+import PresentationView, { PresentationMetric } from '../components/PresentationView';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { toVuv } from '../lib/docc/currency';
@@ -132,9 +134,10 @@ const statusOf = project => isCompletedProject(project)
 const initialFilters = { search: '', status: '', theme: '', province: '' };
 
 const METRIC_ICONS = { projects: OverviewIcon, funding: FundingIcon, utilised: FundsUsedIcon, beneficiaries: BeneficiariesIcon, rate: BudgetUsageIcon };
-function Metric({ label, value, detail, tone = '' }) {
+function Metric({ label, value, detail, stamp, french, tone = '' }) {
+  const [open,setOpen]=useState(false);
   const Icon = METRIC_ICONS[tone] || OverviewIcon;
-  return <article className={`pbd-metric island-metric ${tone}`}><div className="merl-metric-head"><span className="merl-card-icon"><Icon size={30} /></span><span>{label}</span></div><strong>{value}</strong><small>{detail}</small></article>;
+  return <article className={`pbd-metric island-metric ${tone}`}><div className="merl-metric-head"><span className="merl-card-icon"><Icon size={30} /></span><span>{label}</span><button type="button" className="pbd-metric-info" onClick={()=>setOpen(true)} aria-label={`${french?'À propos de':'About'} ${label}`}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg></button></div><strong>{value}</strong><small>{stamp}</small>{open&&<MetricInformation label={label} value={value} detail={detail} stamp={stamp} french={french} onClose={()=>setOpen(false)}/>}</article>;
 }
 
 function ProjectCard({ project, areas, copy, lang }) {
@@ -166,6 +169,7 @@ export default function PublicDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openCategory, setOpenCategory] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [presenting,setPresenting]=useState(false);
   const [autoAreaIndex, setAutoAreaIndex] = useState(0);
   const [areaScrollPaused, setAreaScrollPaused] = useState(false);
   const [areaScrollHover, setAreaScrollHover] = useState(false);
@@ -203,6 +207,17 @@ export default function PublicDashboard() {
   const visibleIndicatorDetails = sourceIndicatorDetails.filter(row => selectedIds.has(String(row.project_id)));
   const activeCategory = indicatorCategories.find(category => category.key === openCategory);
   const activeDetails = activeCategory ? visibleIndicatorDetails.filter(row => row.category_key === activeCategory.key) : [];
+  const stamp = summary?.updated_at ? `${c.updated}: ${new Date(summary.updated_at).toLocaleDateString(lang==='fr'?'fr-FR':'en-GB')}` : (lang==='fr'?'Date de mise à jour non renseignée':'Refresh date not recorded');
+  const coveredStamp = known => known<filtered.length ? `${lang==='fr'?'Données':'Coverage'}: ${known}/${filtered.length} · ${stamp}` : stamp;
+  const metricRows = [
+    {tone:'projects',label:c.projects,value:num(filtered.length,lang),detail:allScope?c.projectCount:c.filteredProjectCount},
+    {tone:'funding',label:c.funding,value:fundingTotal,stamp:coveredStamp(fundingCoverage(filtered).known),detail:`${fundingCoverage(filtered).known} / ${filtered.length} ${lang==='fr'?'projets avec un financement renseigné':'projects with recorded funding'}. ${c.fundingSub}`},
+    {tone:'utilised',label:c.utilised,value:utilisedTotal,stamp:coveredStamp(filtered.filter(p=>finite(p.cumulative_expenditure_vuv)).length),detail:c.utilisedSub},
+    {tone:'beneficiaries',label:c.beneficiaries,stamp:coveredStamp(filtered.filter(p=>finite(p.published_beneficiaries)).length),value:totals.beneficiaries==null?c.noFinance:num(totals.beneficiaries,lang),detail:c.beneficiariesSub},
+    {tone:'rate',label:c.utilisation,value:pct(comparableUtilisation),detail:c.utilisationSub},
+  ];
+  const viewProject=id=>{setPresenting(false);requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
+  const mapView=()=><PublicCoverageMap projectCount={filtered.length} projects={filtered} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={viewProject}/>;
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
   const refresh = () => { void refetch(); };
   const chooseProvince = province => {
@@ -245,6 +260,12 @@ export default function PublicDashboard() {
   }, [autoAreaIndex, areaScrollStopped, visibleAreas.length]);
 
   return <div className="dsh pbd-root">
+    {presenting&&<PresentationView title={c.title} subtitle={`${stamp} · ${filtered.length} ${c.projects}${selectedArea?` · ${selectedArea.area_council}, ${selectedArea.province}`:''}${!allScope?` · ${lang==='fr'?'Vue filtrée':'Filtered view'}`:''}`} lang={lang} onClose={()=>setPresenting(false)} slides={[
+      {id:'summary',label:lang==='fr'?'Vue d’ensemble':'At a glance',content:<><p className="presentation-note">{c.source}</p><div className="presentation-grid">{metricRows.map(row=><PresentationMetric key={row.tone} label={row.label} value={row.value} stamp={row.tone==='projects'?(allScope?c.projectCount:c.filteredProjectCount):(row.stamp||stamp)}/>)}</div></>},
+      {id:'map',label:lang==='fr'?'Carte':'Map',content:mapView()},
+      {id:'projects',label:c.portfolio,content:<div className="pbd-project-grid">{filtered.length?filtered.map(project=><ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang}/>):<p>{c.noProjects}</p>}</div>},
+    ]}/>}
+
     {menuOpen && <button type="button" className="pbd-overlay" aria-label={c.close} onClick={() => setMenuOpen(false)} />}
     <aside className={`dsh-side${menuOpen ? ' open' : ''}`}>
       <div className="dsh-brand"><IslandLogo /><div className="dsh-brand-dept">Department of Climate Change</div><div className="dsh-brand-title">MERL Portal</div></div>
@@ -254,7 +275,7 @@ export default function PublicDashboard() {
     <div className="dsh-main">
       <header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}><Menu size={18} /></button><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>
       <main className="dsh-scroll scrollbar-thin"><div className="pbd-view">
-        <div className="pbd-title-row"><div><span className="pbd-eyebrow">{lang === 'fr' ? 'VANUATU · ACTION CLIMATIQUE' : 'VANUATU · CLIMATE ACTION'}</span><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div></div>
+        <div className="pbd-title-row"><div><span className="pbd-eyebrow">{lang === 'fr' ? 'VANUATU · ACTION CLIMATIQUE' : 'VANUATU · CLIMATE ACTION'}</span><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div><button type="button" className="pbd-present" disabled={!data} onClick={()=>setPresenting(true)}>{lang==='fr'?'Mode présentation':'Presentation mode'}</button></div>
         <p className="pbd-scope-note">{data && (lang === 'fr' ? `${projects.length} projets actuels du DoCC. Les filtres portent sur ce portefeuille.` : `${projects.length} current DoCC projects. Filters apply to this portfolio.`)}</p>
         <div className={`pbd-filters${filtersOpen ? ' pbd-filters-open' : ''}`}>
           <label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={event => setFilters(value => ({ ...value, search: event.target.value }))} placeholder={c.search} /></label>
@@ -269,11 +290,7 @@ export default function PublicDashboard() {
         {!data ? (isLoading ? <div className="pbd-state" role="status"><IslandLoading />{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
           {lang === 'fr' && <p className="pbd-refresh-status">Les intitulés et descriptions des projets et indicateurs sont affichés dans leur langue source lorsqu’une traduction validée n’est pas disponible.</p>}
           <section className="pbd-metrics" aria-label={c.title}>
-            <Metric label={c.projects} value={num(filtered.length, lang)} detail={allScope ? c.projectCount : c.filteredProjectCount} tone="projects" />
-            <Metric label={c.funding} value={fundingTotal} detail={`${fundingCoverage(filtered).known} / ${filtered.length} ${lang === 'fr' ? 'projets avec un financement renseigné' : 'projects with recorded funding'}`} tone="funding" />
-            <Metric label={c.utilised} value={utilisedTotal} detail={c.utilisedSub} tone="utilised" />
-            <Metric label={c.beneficiaries} value={totals.beneficiaries == null ? c.noFinance : num(totals.beneficiaries, lang)} detail={c.beneficiariesSub} tone="beneficiaries" />
-            <Metric label={c.utilisation} value={pct(comparableUtilisation)} detail={c.utilisationSub} tone="rate" />
+            {metricRows.map(row=><Metric key={row.tone} {...row} stamp={row.stamp||stamp} french={lang==='fr'}/>)}
           </section>
           <details className="pbd-method-note"><summary>{lang === 'fr' ? 'À propos des chiffres' : 'About these figures'}</summary><p>{c.fundingSub}. {c.utilisedSub}. {c.beneficiariesSub}.</p></details>
 
@@ -281,7 +298,7 @@ export default function PublicDashboard() {
             <div className="pbd-section-head"><div><span><MapPin size={16} aria-hidden="true" />{c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
             {selectedArea && <div className="pbd-area-selection">{c.selectedArea} <strong>{selectedArea.area_council}, {selectedArea.province}</strong></div>}
             <div className="pbd-location-grid">
-              <PublicCoverageMap projectCount={filtered.length} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={id=>requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);card?.scrollIntoView({block:"start",behavior:"auto"});card?.focus({preventScroll:true});})} />
+              {mapView()}
               <div className="pbd-area-directory">
                 <div className="pbd-area-directory-head">
                   <h3>{c.areaCouncils}</h3>

@@ -105,3 +105,9 @@
 .pub-coverage-map .pub-basemap-choices button:focus-visible{outline:3px solid #168e94;outline-offset:2px}
 .pub-coverage-map .pub-basemap-picker:disabled button{opacity:.55;cursor:default}
 @media(max-width:560px){.pub-coverage-map .pub-basemap-picker{width:100%}.pub-coverage-map .pub-basemap-choices{grid-template-columns:repeat(2,minmax(0,1fr))}.pub-coverage-map .pub-map-options{gap:8px;padding:12px 14px}}
+
+.pub-coverage-map .pub-map-selection .pub-map-result-note{font-size:12px;line-height:1.5;color:#526d7d;margin:6px 0}
+.pub-coverage-map .pub-map-selection ul{list-style:none;padding:0;display:grid;gap:10px}
+.pub-coverage-map .pub-map-project-result{display:grid;gap:6px;padding:14px!important;background:#fff;border:1px solid #cbdde5;border-radius:8px}
+.pub-coverage-map .pub-map-project-result h4{font:700 16px/1.4 Arial,sans-serif;margin:0;color:#173b54}.pub-coverage-map .pub-map-project-result p{font:13px/1.5 Arial,sans-serif;margin:0;color:#526d7d}
+.pub-coverage-map .pub-map-project-result>strong{font-size:24px;color:#173b54}.pub-coverage-map .pub-map-project-result>span,.pub-coverage-map .pub-map-project-result>small{font-size:13px;line-height:1.5}
