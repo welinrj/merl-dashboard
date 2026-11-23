@@ -23,6 +23,7 @@ import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
 import MetricInformation from '../components/MetricInformation';
+import { PublishedResultComparisons } from '../components/ResultComparisonCard';
 import PresentationView, { PresentationMetric } from '../components/PresentationView';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
@@ -147,6 +148,7 @@ function ProjectCard({ project, areas, copy, lang }) {
   return <FeatureCardGradient id={`public-project-${project.id}`} tabIndex={-1} className="pbd-project-card">
     <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><StatusBadge className={`pbd-status pbd-status-${statusOf(project)}`} label={copy[statusOf(project)]} tone={statusOf(project) === 'upcoming' ? 'warning' : statusOf(project) === 'other' ? 'neutral' : 'success'} /></header>
     <p className="pbd-project-description">{project.description || project.expected_primary_outcome || copy.noDescription}</p>
+    <PublishedResultComparisons project={project} lang={lang}/>
     <dl className="pbd-project-facts">
       <div><dt>{copy.manager}</dt><dd>{project.project_manager || copy.unknown}</dd></div>
       <div><dt>{copy.implementation}</dt><dd>{places.length ? places.join(', ') : copy.unknown}</dd></div>
