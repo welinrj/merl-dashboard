@@ -102,6 +102,7 @@ check('anonymous private route returns to the one public overview',new URL(page.
 for(const width of [1024,768,390,360,320]) {
   await page.setViewportSize({width,height:844});
   await go('#/dashboards');
+  if(width===320) console.log(await page.locator('.pbd-metric').evaluateAll(ns=>ns.slice(0,2).map(n=>({card:n.getBoundingClientRect().toJSON(),head:n.querySelector('.merl-metric-head').getBoundingClientRect().toJSON(),min:getComputedStyle(n.querySelector('.merl-metric-head')).minHeight,value:n.querySelector('strong').getBoundingClientRect().toJSON()}))));
   check(`${width}px: public metric values align across the first row`,await page.locator('.pbd-metric>strong').evaluateAll(nodes=>Math.abs(nodes[0].getBoundingClientRect().top-nodes[1].getBoundingClientRect().top)<2));
   check(`${width}px: no page-wide horizontal overflow`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
   if(width<=760) {

@@ -290,4 +290,4 @@
 .dsh.pbd-root .pbd-project-card>.feature-card-grid{inset:0;margin:0;width:100%;height:100%;overflow:hidden;contain:paint;}
 
 /* Reserve the same label space for the two-column cards on narrow phones. */
-@media(max-width:360px){.dsh.pbd-root .pbd-metric .merl-metric-head{min-height:84px;}}
+@media(max-width:360px){.dsh.pbd-root .pbd-metric .merl-metric-head{min-height:84px!important;}}
