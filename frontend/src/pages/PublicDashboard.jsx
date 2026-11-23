@@ -24,7 +24,6 @@ import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
 import MetricInformation from '../components/MetricInformation';
 import { PublishedResultComparisons } from '../components/ResultComparisonCard';
-import PresentationView, { PresentationMetric } from '../components/PresentationView';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { toVuv } from '../lib/docc/currency';
@@ -171,7 +170,6 @@ export default function PublicDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openCategory, setOpenCategory] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [presenting,setPresenting]=useState(false);
   const [autoAreaIndex, setAutoAreaIndex] = useState(0);
   const [areaScrollPaused, setAreaScrollPaused] = useState(false);
   const [areaScrollHover, setAreaScrollHover] = useState(false);
@@ -218,7 +216,7 @@ export default function PublicDashboard() {
     {tone:'beneficiaries',label:c.beneficiaries,stamp:coveredStamp(filtered.filter(p=>finite(p.published_beneficiaries)).length),value:totals.beneficiaries==null?c.noFinance:num(totals.beneficiaries,lang),detail:c.beneficiariesSub},
     {tone:'rate',label:c.utilisation,value:pct(comparableUtilisation),detail:c.utilisationSub},
   ];
-  const viewProject=id=>{setPresenting(false);requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
+  const viewProject=id=>{requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
   const mapView=()=><PublicCoverageMap projectCount={filtered.length} projects={filtered} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={viewProject}/>;
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
   const refresh = () => { void refetch(); };
@@ -262,11 +260,6 @@ export default function PublicDashboard() {
   }, [autoAreaIndex, areaScrollStopped, visibleAreas.length]);
 
   return <div className="dsh pbd-root">
-    {presenting&&<PresentationView title={c.title} subtitle={`${stamp} · ${filtered.length} ${c.projects}${selectedArea?` · ${selectedArea.area_council}, ${selectedArea.province}`:''}${!allScope?` · ${lang==='fr'?'Vue filtrée':'Filtered view'}`:''}`} lang={lang} onClose={()=>setPresenting(false)} slides={[
-      {id:'summary',label:lang==='fr'?'Vue d’ensemble':'At a glance',content:<><p className="presentation-note">{c.source}</p><div className="presentation-grid">{metricRows.map(row=><PresentationMetric key={row.tone} label={row.label} value={row.value} stamp={row.tone==='projects'?(allScope?c.projectCount:c.filteredProjectCount):(row.stamp||stamp)}/>)}</div></>},
-      {id:'map',label:lang==='fr'?'Carte':'Map',content:mapView()},
-      {id:'projects',label:c.portfolio,content:<div className="pbd-project-grid">{filtered.length?filtered.map(project=><ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang}/>):<p>{c.noProjects}</p>}</div>},
-    ]}/>}
 
     {menuOpen && <button type="button" className="pbd-overlay" aria-label={c.close} onClick={() => setMenuOpen(false)} />}
     <aside className={`dsh-side${menuOpen ? ' open' : ''}`}>
@@ -277,7 +270,7 @@ export default function PublicDashboard() {
     <div className="dsh-main">
       <header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}><Menu size={18} /></button><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>
       <main className="dsh-scroll scrollbar-thin"><div className="pbd-view">
-        <div className="pbd-title-row"><div><span className="pbd-eyebrow">{lang === 'fr' ? 'VANUATU · ACTION CLIMATIQUE' : 'VANUATU · CLIMATE ACTION'}</span><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div><button type="button" className="pbd-present" disabled={!data} onClick={()=>setPresenting(true)}>{lang==='fr'?'Mode présentation':'Presentation mode'}</button></div>
+        <div className="pbd-title-row"><div><span className="pbd-eyebrow">{lang === 'fr' ? 'VANUATU · ACTION CLIMATIQUE' : 'VANUATU · CLIMATE ACTION'}</span><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div></div>
         <p className="pbd-scope-note">{data && (lang === 'fr' ? `${projects.length} projets actuels du DoCC. Les filtres portent sur ce portefeuille.` : `${projects.length} current DoCC projects. Filters apply to this portfolio.`)}</p>
         <div className={`pbd-filters${filtersOpen ? ' pbd-filters-open' : ''}`}>
           <label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={event => setFilters(value => ({ ...value, search: event.target.value }))} placeholder={c.search} /></label>

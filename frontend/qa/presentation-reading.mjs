@@ -35,7 +35,8 @@ try{
    await page.setViewportSize({width,height:width===390?844:1000});
    await page.goto('http://127.0.0.1:5199/#/dashboards');
    const modeName=lang==='fr'?'Mode présentation':'Presentation mode';
-   const trigger=page.getByRole('button',{name:modeName,exact:true});await trigger.waitFor();await trigger.waitFor({state:'visible'});
+   await page.locator(auth?'.ovx-kpis .ovx-kpi':'.pbd-metric').first().waitFor();
+   assert.equal(await page.getByRole('button',{name:modeName,exact:true}).count(),0,'presentation mode is removed');
    if(!auth){
     await page.locator('.pbd-metric').first().waitFor();
     assert.equal(await page.locator('.pbd-metric').count(),5);
@@ -51,26 +52,9 @@ try{
     await page.locator('.ovx-kpis .ovx-kpi').first().waitFor();
     const info=page.locator('.kpi-card-explain').first();await info.click();await page.locator('.figure-dialog .figure-context').waitFor();await page.keyboard.press('Escape');await page.locator('.figure-dialog').waitFor({state:'detached'});
    }
-   const before=await page.locator(auth?'.ovx-kpi .kpi-card-value':'.pbd-metric>strong').allTextContents();
-   await trigger.click();const dialog=page.locator('.presentation-dialog');await dialog.waitFor();
-   assert.deepEqual(await dialog.locator('.presentation-metric>strong').allTextContents(),before,'presentation uses the same figures');
-   assert.ok(await dialog.locator('.presentation-metric>strong').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=36));
-   assert.equal(await dialog.evaluate(e=>e.scrollWidth<=innerWidth+1),true,'presentation fits the viewport');
-   await page.screenshot({path:`qa-artifacts/launch-presentation-${auth?'internal':'public'}-${lang}-${width}.png`});
-   for(let i=0;i<7;i++){await page.keyboard.press('Tab');assert.equal(await dialog.evaluate(e=>e.contains(document.activeElement)),true,'focus stays inside presentation');}
-   if(!auth){
-    await dialog.locator('.presentation-nav').getByRole('button',{name:lang==='fr'?'Carte':'Map',exact:true}).click();await dialog.locator('.pub-map-boundary-fallback').waitFor();
-    assert.match(await dialog.locator('.pub-map-selection').innerText(),/0 trees/);
-    await dialog.locator('.pub-map-toolbar button').last().click();await dialog.locator('.pub-map-expanded').waitFor();await page.keyboard.press('Escape');
-    await dialog.locator('.pub-map-expanded').waitFor({state:'detached'});assert.equal(await dialog.isVisible(),true,'Escape closes the map first');
-    await dialog.locator('.presentation-nav').getByRole('button',{name:lang==='fr'?'Portefeuille de projets':'Project portfolio',exact:true}).click();
-    assert.equal(await dialog.locator('.pbd-project-card').count(),2);
-   }else await dialog.locator('.presentation-nav').getByRole('button',{name:lang==='fr'?'Rapportage':'Reporting',exact:true}).click();
-   await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});
-   assert.equal(await trigger.evaluate(e=>document.activeElement===e),true,'presentation exit restores focus');
-   assert.deepEqual(await page.locator(auth?'.ovx-kpi .kpi-card-value':'.pbd-metric>strong').allTextContents(),before,'exit preserves the data and scope');
+   await page.screenshot({path:`qa-artifacts/launch-reading-${auth?'internal':'public'}-${lang}-${width}.png`});
    assert.deepEqual(errors,[]);
-   console.log(`PASS concise cards, map result, presentation values, keyboard and exit: ${auth?'internal':'public'} ${lang} ${width}`);
+   console.log(`PASS concise cards, map result and no presentation mode: ${auth?'internal':'public'} ${lang} ${width}`);
   }
   await context.close();
  }

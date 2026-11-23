@@ -296,10 +296,8 @@
 .dsh.pbd-root .pbd-metric .merl-metric-head{position:relative;padding-right:34px;min-height:56px;align-items:flex-start}
 .dsh.pbd-root .pbd-metric .pbd-metric-info{position:absolute;right:-6px;top:-6px;display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:8px;background:transparent;color:#42637a;cursor:pointer}
 .dsh.pbd-root .pbd-metric>small{font-size:12px!important;color:#526d7d}
-.pbd-metric-info:focus-visible,.pbd-present:focus-visible{outline:3px solid #1b969b;outline-offset:2px}
-.dsh.pbd-root .pbd-title-row .pbd-present{flex-shrink:0;align-self:center;min-height:44px;padding:10px 16px;border:1px solid #a9dbd8;border-radius:8px;background:#dff3f0;color:#143c52;font:600 14px/1.4 Arial,sans-serif;cursor:pointer}
-.dsh.pbd-root .pbd-title-row .pbd-present:disabled{opacity:.5;cursor:default}
+.pbd-metric-info:focus-visible{outline:3px solid #1b969b;outline-offset:2px}
 .metric-information{width:min(480px,calc(100vw - 32px));max-height:85dvh;overflow:auto;padding:24px;border:1px solid #cbdde5;border-radius:12px;color:#173b54;font-family:Arial,sans-serif;background:#fff}.metric-information::backdrop{background:#102f4780}.metric-information header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.metric-information h2{font-size:20px;margin:0}.metric-information header button{flex-shrink:0;width:44px;height:44px;border:1px solid #bdd0dc;border-radius:8px;background:white;color:#173b54;font-size:26px;cursor:pointer}.metric-information>strong{display:block;font-size:36px;margin:20px 0;overflow-wrap:anywhere}.metric-information p{font-size:15px;line-height:1.6}
-@media(max-width:760px){.dsh.pbd-root .pbd-title-row{gap:16px;flex-wrap:wrap}.dsh.pbd-root .pbd-metric .merl-metric-head{flex-wrap:wrap;padding-right:26px;min-height:72px!important}.dsh.pbd-root .pbd-metric .merl-metric-head>.merl-card-icon{display:none}.dsh.pbd-root .pbd-title-row .pbd-present{align-self:flex-start}}
+@media(max-width:760px){.dsh.pbd-root .pbd-title-row{gap:16px;flex-wrap:wrap}.dsh.pbd-root .pbd-metric .merl-metric-head{flex-wrap:wrap;padding-right:26px;min-height:72px!important}.dsh.pbd-root .pbd-metric .merl-metric-head>.merl-card-icon{display:none}}
 
 @media(max-width:560px){.dsh.pbd-root .pbd-metric:is(.funding,.utilised)>strong{font-size:clamp(18px,4.6vw,24px)!important}}
