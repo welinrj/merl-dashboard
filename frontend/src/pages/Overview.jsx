@@ -414,7 +414,7 @@ export default function Overview({ user }) {
           {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
         </div>
         <div className="ovx-heading-actions">
-          <button type="button" className="ovx-export" onClick={()=>setPresenting(true)}>{french?'Mode présentation':'Presentation mode'}</button>
+          <button type="button" className="ovx-export ovx-present" onClick={()=>setPresenting(true)}>{french?'Mode présentation':'Presentation mode'}</button>
           {canPublishPublic && <button type="button" className="ovx-publish"
             onClick={publishPublicPortal} disabled={publishingPublic}>
             <Send size={16} aria-hidden="true" />
