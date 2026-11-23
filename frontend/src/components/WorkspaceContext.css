@@ -9,3 +9,11 @@
 .wc-context :focus-visible { outline: 3px solid #315fc1; outline-offset: 3px; }
 @media (max-width: 640px) { .wc-context { margin: 12px 16px 0; padding: 10px 12px; } }
 @media print { .wc-context { display: none; } }
+
+/* Compact scope strip: role and period stay available without a large banner. */
+.wc-context { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 16px;margin:12px 24px 0;padding:6px 12px;border-radius:8px;background:#edf4f7;border-color:transparent; }
+.wc-account { gap:4px 12px;font-size:12px; }
+.wc-account strong { font-size:12px; }
+.wc-period summary { min-height:36px;padding:8px 0;font-size:12px; }
+.wc-period[open] { flex-basis:100%; }
+@media(max-width:640px){.wc-context{margin:10px 12px 0;padding:6px 10px;gap:0 8px}.wc-account{font-size:12px}.wc-period summary{min-height:32px;padding:6px 0}}

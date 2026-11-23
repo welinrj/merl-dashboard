@@ -130,6 +130,7 @@ const reportBlocks = () => {
 
 export default function Reports({ user }) {
   const { t, i18n } = useTranslation();
+  const fr = i18n.resolvedLanguage?.startsWith('fr');
   const lang = i18n.resolvedLanguage;
   const liveRevision = useLiveDashboard();
   const requested = new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -395,14 +396,14 @@ export default function Reports({ user }) {
 
       <ReportReadiness result={readiness} period={period} readOnly={user?.role === 'ROLE_VIEWER'} />
       {/* Controls */}
-      <div className="rp-noprint" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <div className="rp-noprint rp-controls">
         <div style={{ flex: '1 1 220px' }}>
-          <label className="field-label">{t('rpt.reportType')}</label>
-          <select className="field-input" value={type} onChange={(e) => { setType(e.target.value); setPreviewOpen(false); }}>
+          <label className="field-label" htmlFor="report-type">{t('rpt.reportType')}</label>
+          <select id="report-type" aria-describedby="report-selected-scope" className="field-input" value={type} onChange={(e) => { setType(e.target.value); setPreviewOpen(false); }}>
             {REPORT_TYPES.map((r) => <option key={r.key} value={r.key}>{t(r.label)}</option>)}
           </select>
         </div>
-        {type !== 'project' && <div style={{flex:'1 1 240px',minWidth:0}}><label className="field-label" htmlFor="report-project-scope">Project to include</label><select id="report-project-scope" className="field-input" value={scopeId} onChange={e=>{setScopeId(e.target.value);if(e.target.value)setProjectId(e.target.value);setPreviewOpen(false);}}><option value="">All projects with results frameworks</option>{sourceD.projects.map(p=><option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}</select></div>}
+        {type !== 'project' && <div style={{flex:'1 1 240px',minWidth:0}}><label className="field-label" htmlFor="report-project-scope">{fr ? 'Projet à inclure' : 'Project to include'}</label><select id="report-project-scope" className="field-input" value={scopeId} onChange={e=>{setScopeId(e.target.value);if(e.target.value)setProjectId(e.target.value);setPreviewOpen(false);}}><option value="">{fr ? 'Tous les projets avec un cadre de résultats' : 'All projects with results frameworks'}</option>{sourceD.projects.map(p=><option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}</select></div>}
         {type === 'project' && (
           <div style={{ flex: '1 1 240px' }}>
             <label className="field-label">{t('rpt.project')}</label>
@@ -429,7 +430,7 @@ export default function Reports({ user }) {
           </div>
         )}
         <div style={{ flex: '0 1 165px' }}>
-          <label className="field-label">Report frequency</label>
+          <label className="field-label">{fr ? 'Fréquence du rapport' : 'Report frequency'}</label>
           <select className="field-input" value={periodType} onChange={(e) => { setPeriodType(e.target.value); setPeriod(''); setPreviewOpen(false); }}>
             {PERIOD_TYPES.map((p) => <option key={p.value} value={p.value}>{p.value ? p.label : t('workspace.allFrequencies')}</option>)}</select>
         </div>
@@ -441,19 +442,25 @@ export default function Reports({ user }) {
             {periodOptions.map((p) => <option key={p.period_label} value={p.period_label}>{p.period_label}</option>)}</select>
         </div>
         <button onClick={showPreview} disabled={Boolean(exporting) || readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
-          <FileText size={16} /> Preview report
+          <FileText size={16} /> {fr ? 'Prévisualiser le rapport' : 'Preview report'}
         </button>
         {<>
           <button onClick={exportWord} disabled={Boolean(exporting) || readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: '1px solid var(--green-700)', cursor: exporting ? 'wait' : 'pointer', color: 'var(--green-800)', background: '#fff' }}>
-            <Download size={16} /> {exporting === 'word' ? 'Generating Word…' : 'Download Word'}
+            <Download size={16} /> {exporting === 'word' ? (fr ? 'Création du Word…' : 'Generating Word…') : (fr ? 'Télécharger Word' : 'Download Word')}
           </button>
           <button onClick={exportPdf} disabled={Boolean(exporting) || readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: exporting ? 'wait' : 'pointer', color: '#fff', background: 'var(--green-700)' }}>
-            <Download size={16} /> {exporting === 'pdf' ? 'Generating PDF…' : 'Download PDF'}
+            <Download size={16} /> {exporting === 'pdf' ? (fr ? 'Création du PDF…' : 'Generating PDF…') : (fr ? 'Télécharger PDF' : 'Download PDF')}
           </button>
         </>}
         {type !== 'full_me' && <button onClick={generate} disabled={readiness.empty} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', fontWeight: 600, borderRadius: 'var(--radius-control)', border: 'none', cursor: 'pointer', color: '#fff', background: 'var(--green-700)' }}>
           <Printer size={16} /> {t('rpt.generateReport')}
         </button>}
+      </div>
+      <div id="report-selected-scope" className="rp-selected-scope rp-noprint" role="status">
+        <strong>{i18n.resolvedLanguage?.startsWith('fr') ? 'Sélection du rapport' : 'Selected report scope'}</strong>
+        <span>{t(REPORT_TYPES.find(item => item.key === type)?.label || 'rpt.reports')}</span>
+        <span>{(type === 'project' ? projectId : scopeId) ? sourceD.projects.find(item => item.id === (type === 'project' ? projectId : scopeId))?.name : (i18n.resolvedLanguage?.startsWith('fr') ? 'Tous les projets avec un cadre de résultats' : 'All projects with results frameworks')}</span>
+        <span>{period || t('workspace.allPeriods')}{periodType ? ` · ${PERIOD_TYPES.find(item => item.value === periodType)?.label}` : ''}{type === 'geographic' && province ? ` · ${province}` : ''}{type === 'donor' && donor ? ` · ${donor}` : ''}</span>
       </div>
       {exportError && <div className="rp-noprint" role="alert" style={{ color: 'var(--red-700)', marginTop: '.6rem', fontSize: '.85rem' }}>{exportError}</div>}
 

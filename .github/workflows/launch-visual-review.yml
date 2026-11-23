@@ -1,0 +1,54 @@
+name: Launch visual review
+on:
+  push:
+    branches: [feat/launch-visual-polish]
+jobs:
+  sidebar:
+    name: Sidebar and Results layout
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Install browser QA
+        working-directory: frontend
+        run: |
+          npm install --no-save playwright@1.64.0
+          npx playwright install --with-deps chromium
+          sudo mkdir -p /opt/pw-browsers
+          PW_EXECUTABLE="$(node --input-type=module -e "import { chromium } from 'playwright'; console.log(chromium.executablePath())")"
+          sudo ln -sf "$PW_EXECUTABLE" /opt/pw-browsers/chromium
+      - run: npm run build
+        working-directory: frontend
+      - name: Start built portal
+        working-directory: frontend
+        run: |
+          nohup npx vite preview --host 127.0.0.1 --port 5199 --strictPort > /tmp/sidebar-preview.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:5199 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/sidebar-preview.log
+          exit 1
+      - name: Capture frontend visual review
+        working-directory: frontend
+        run: node qa/launch-visual-review.mjs
+      - name: Check Results editing and scrolling
+        working-directory: frontend
+        run: |
+          node qa/results-scroll-layout.mjs
+          node qa/results-framework-usability.mjs
+          node qa/results-audit-fixes.mjs
+          STUB_FILE=qa/fixture.json node qa/page-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-visual-review
+          path: frontend/qa-artifacts/launch-*
+          retention-days: 7

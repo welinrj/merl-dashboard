@@ -154,10 +154,10 @@ export default function ReviewApproval({ user }) {
       {canReview && <ProjectAssignmentManager />}
 
       {/* KPI cards */}
-      <div className="grid-kpi" style={{ marginBottom: '1rem' }}>
+      <div className="grid-kpi review-summary-grid" style={{ marginBottom: '1rem' }}>
         <StatTile label={t('merl.awaitingReview')} value={kpi.submitted} />
         <StatTile label={t('merl.underReview')} value={kpi.reviewed} />
-        <StatTile label={t('merl.returned')} value={kpi.returned} status={kpi.returned ? 'amber' : 'green'} />
+        <StatTile label={t('merl.returned')} value={kpi.returned} status={kpi.returned ? 'amber' : 'none'} />
         <StatTile label={t('merl.approved')} value={kpi.approved} />
         <StatTile label={t('merl.overdue')} value={kpi.overdue} status={kpi.overdue ? 'red' : 'green'} />
       </div>

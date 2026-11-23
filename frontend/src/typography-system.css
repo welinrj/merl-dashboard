@@ -5,10 +5,10 @@
    fast and reliable on low-bandwidth connections and offline-capable devices. */
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-sans: Arial, sans-serif;
   --font-display: var(--font-sans);
   --font-ui: var(--font-sans);
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --font-mono: Arial, sans-serif;
 
   --type-display: clamp(1.75rem, 1.5rem + 0.8vw, 2.35rem);
   --type-h1: clamp(1.55rem, 1.38rem + 0.55vw, 2rem);
