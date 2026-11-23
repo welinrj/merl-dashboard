@@ -1,7 +1,7 @@
 name: Launch visual review
 on:
   push:
-    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading, fix/section-card-colour-hierarchy]
+    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading, fix/section-card-colour-hierarchy, feat/institutional-merl-masthead]
 jobs:
   sidebar:
     name: Sidebar and Results layout
@@ -42,6 +42,8 @@ jobs:
       - name: Check Results editing and scrolling
         working-directory: frontend
         run: |
+          node qa/header-brand-layout.mjs
+          node qa/header-inline-auth.mjs
           node qa/results-scroll-layout.mjs
           node qa/results-framework-usability.mjs
           node qa/results-audit-fixes.mjs

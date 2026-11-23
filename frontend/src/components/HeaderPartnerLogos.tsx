@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import './header-partner-logos.css';
 
 // Reuse the institutional assets already supplied with the MERL portal.
@@ -7,6 +8,8 @@ const asset = (name: string) => `${import.meta.env.BASE_URL}${name}`;
 
 export default function HeaderPartnerLogos() {
   const groupRef = useRef<HTMLDivElement>(null);
+  const { i18n } = useTranslation();
+  const french = i18n.resolvedLanguage?.startsWith('fr');
 
   // The institutional band and controls can wrap at different widths. Keep
   // the existing sticky sidebar below the actual header, not a guessed height.
@@ -35,6 +38,7 @@ export default function HeaderPartnerLogos() {
   }, []);
 
   return (
+    <>
     <div
       ref={groupRef}
       className="merl-partner-logos"
@@ -44,5 +48,10 @@ export default function HeaderPartnerLogos() {
       <img className="merl-partner-crest" src={asset('vanuatu-coat-of-arms.svg')} alt="Coat of arms of Vanuatu" />
       <img className="merl-partner-docc" src={asset('docc-logo.png')} alt="Department of Climate Change, Vanuatu" />
     </div>
+    <div className="merl-header-identity">
+      <strong>MERL <span>{french ? 'Tableau de bord' : 'Dashboard'}</span></strong>
+      <span className="merl-header-purpose">{french ? 'Suivi · Évaluation · Rapports · Apprentissage' : 'Monitoring · Evaluation · Reporting · Learning'}</span>
+    </div>
+    </>
   );
 }
