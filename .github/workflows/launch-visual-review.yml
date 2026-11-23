@@ -1,7 +1,7 @@
 name: Launch visual review
 on:
   push:
-    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading, fix/section-card-colour-hierarchy, feat/institutional-merl-masthead]
+    branches: [feat/launch-visual-polish, fix/comfortable-dashboard-reading, fix/section-card-colour-hierarchy, feat/institutional-merl-masthead, fix/transparent-branding-and-basemaps]
 jobs:
   sidebar:
     name: Sidebar and Results layout
@@ -41,6 +41,7 @@ jobs:
         run: |
           MERL_HEADER_ONLY=1 node qa/launch-visual-review.mjs
           node qa/header-brand-layout.mjs
+          node qa/public-map-cartography.mjs
           STUB_FILE=qa/fixture.json node qa/header-inline-auth.mjs
           node qa/public-dashboard.mjs
           node qa/launch-visual-review.mjs
@@ -58,5 +59,8 @@ jobs:
         if: always()
         with:
           name: launch-visual-review
-          path: frontend/qa-artifacts/launch-*
+          path: |
+            frontend/qa-artifacts/launch-*
+            frontend/qa-artifacts/map-*
+            frontend/qa-artifacts/header-*
           retention-days: 7

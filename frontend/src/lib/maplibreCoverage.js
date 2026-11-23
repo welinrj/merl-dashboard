@@ -5,13 +5,20 @@ export const BASEMAP_URLS = {
   street: 'https://tiles.openfreemap.org/styles/liberty',
 };
 
+export const BASEMAP_IDS = ['light', 'street', 'terrain', 'satellite'];
+
 // Only bounded network reads: the local council map remains available offline.
 export async function loadBasemap(name, signal) {
-  if (name === 'satellite') return {
-    version: 8,
-    sources: { imagery: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community' } },
-    layers: [{ id: 'imagery', type: 'raster', source: 'imagery' }],
-  };
+  if (name === 'satellite' || name === 'terrain') {
+    const imagery = name === 'satellite';
+    const source = imagery ? 'imagery' : 'terrain';
+    return {
+      version: 8,
+      sources: { [source]: { type: 'raster', tiles: [`https://server.arcgisonline.com/ArcGIS/rest/services/${imagery ? 'World_Imagery' : 'World_Topo_Map'}/MapServer/tile/{z}/{y}/{x}`], tileSize: 256, maxzoom: 19,
+        attribution: imagery ? 'Imagery © Esri, Vantor, Earthstar Geographics, and the GIS User Community' : 'Tiles © Esri, HERE, Garmin, Intermap, GEBCO, USGS, FAO, NPS, NRCan, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, © OpenStreetMap contributors, and the GIS User Community' } },
+      layers: [{ id: source, type: 'raster', source }],
+    };
+  }
   const response = await fetch(BASEMAP_URLS[name] || BASEMAP_URLS.light, { signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]) });
   if (!response.ok) throw new Error('Basemap unavailable');
   return response.json();
@@ -71,8 +78,8 @@ export function mapStyle(base, data) {
       'fill-opacity': ['case', ['boolean', ['get', 'selected'], false], 0.38, ['>', ['coalesce', ['get', 'projectCount'], 0], 0], 0.24, 0],
       'fill-antialias': false,
     } },
-    { id: 'council-borders', type: 'line', source: 'shared-borders', maxzoom: 11.01, layout: { visibility: 'none', 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#466478', 'line-width': 0.8, 'line-opacity': 0.55 } },
-    { id: 'selected-council', type: 'line', source: 'councils', maxzoom: 11.01, filter: ['==', ['get', 'selected'], true], paint: { 'line-color': '#163d57', 'line-width': 2 } },
+    { id: 'council-borders', type: 'line', source: 'shared-borders', maxzoom: 11.01, layout: { visibility: 'none', 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': base?.sources?.imagery ? '#edf7fa' : '#466478', 'line-width': 0.8, 'line-opacity': 0.55 } },
+    { id: 'selected-council', type: 'line', source: 'councils', maxzoom: 11.01, filter: ['==', ['get', 'selected'], true], paint: { 'line-color': base?.sources?.imagery ? '#7bd5cd' : '#163d57', 'line-width': 2 } },
   ];
   layers.splice(firstLabel < 0 ? layers.length : firstLabel, 0, ...overlays);
   if (base?.glyphs) layers.push({ id: 'council-names', type: 'symbol', source: 'council-labels', minzoom: 8, maxzoom: 11.01,
