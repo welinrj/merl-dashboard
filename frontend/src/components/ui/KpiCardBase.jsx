@@ -22,7 +22,7 @@ function ScoreGauge({ value, displayValue }) {
       </svg>
       <div className="k21-gauge-copy">
         <span className="kpi-card-value">{displayValue}</span>
-        <span className="k21-gauge-unit">{t('visual.fullScale')}</span>
+        
       </div>
       <div className="k21-compact-track" aria-hidden="true">
         <span className="k21-compact-fill" style={{ width: `${pct}%` }} />
@@ -82,7 +82,7 @@ const OVERVIEW_METRIC_STYLES = `
   }
   .dsh .ovx .ovx-kpis .kpi-card-label{
     color:var(--visual-ink)!important;
-    font-size:.9375rem!important;
+    font-size:1rem!important;
     font-weight:700!important;
     line-height:1.35!important;
     letter-spacing:0!important;
@@ -105,7 +105,7 @@ const OVERVIEW_METRIC_STYLES = `
     margin:0!important;
     color:var(--visual-ink)!important;
     font-family:var(--font-display)!important;
-    font-size:clamp(1.75rem,2.1vw,2.25rem)!important;
+    font-size:clamp(2.25rem,3vw,2.75rem)!important;
     font-weight:780!important;
     font-variant-numeric:tabular-nums!important;
     letter-spacing:-.04em!important;
@@ -177,7 +177,7 @@ const OVERVIEW_METRIC_STYLES = `
     pointer-events:none;
   }
   .dsh .ovx .ovx-kpis .k21-gauge-copy .kpi-card-value{
-    font-size:clamp(1.5rem,2vw,1.9rem)!important;
+    font-size:clamp(1.9rem,2.5vw,2.25rem)!important;
   }
   .k21-gauge-unit{
     color:var(--visual-muted);
@@ -253,7 +253,7 @@ export default function KpiCard({
         <div className="kpi-card-head min-w-0">
           {Icon && <span className="merl-card-icon"><Icon size={30} /></span>}
           <div className="kpi-card-label text-[0.72rem] font-semibold leading-tight text-[var(--text-2)]">{label}</div>
-          {onExplain && <button type="button" className="kpi-card-explain" onClick={onExplain} aria-label={t('figure.explainMetric', { metric: label })}>{t('figure.explain')}</button>}
+          {onExplain && <button type="button" className="kpi-card-explain" onClick={onExplain} aria-label={t('figure.explainMetric', { metric: label })}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg></button>}
         </div>
         <div className="kpi-card-visual">
           {showGauge ? (

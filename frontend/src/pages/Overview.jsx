@@ -385,8 +385,7 @@ export default function Overview({ user }) {
       <section className="ovx-heading rp-noprint">
         <div>
           <h1>{t('overview.title')}</h1>
-          <p>{lang?.startsWith('fr') ? `${unfinishedProjects.length} projets avec un cadre de résultats, y compris les projets achevés. Les filtres portent sur ce périmètre.` : `${unfinishedProjects.length} projects with results frameworks, including completed projects. Filters apply to this scope.`}</p>
-          <p>{t('overview.subtitle')} <b>{dataAsAt}</b></p>
+          <p className="ovx-reading-caption">{lang?.startsWith('fr') ? 'Résultats du portefeuille' : 'Portfolio performance'}{dataAsAt && dataAsAt !== '—' && <> · {dataAsAt}</>}</p>
           {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
         </div>
         <div className="ovx-heading-actions">

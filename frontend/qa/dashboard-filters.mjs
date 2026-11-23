@@ -62,7 +62,9 @@ try {
   if (!(await toggle.evaluate(el => el === document.activeElement))) throw new Error('Closing filters must restore focus');
   await page.screenshot({ path: 'qa-artifacts/header-filter-phone.png', animations: 'disabled' });
   await page.setViewportSize({ width: 1440, height: 900 });
-  if (await panel.locator('select:visible').count() !== 7) throw new Error('Desktop fields must always be visible');
+  if (await panel.locator('select:visible').count()) throw new Error('Desktop filters should stay collapsed after resizing');
+  await toggle.click();
+  if (await panel.locator('select:visible').count() !== 7) throw new Error('Desktop filters must open on request');
   if (await panel.getByLabel('Province', { exact: true }).inputValue() !== 'TAFEA') throw new Error('Resizing changed the selected province');
   await chip.click();
   if (await panel.getByLabel('Province', { exact: true }).inputValue() !== '') throw new Error('Removing chip did not clear the field');
@@ -73,7 +75,7 @@ try {
   for (const field of await panel.locator('select').all()) if (await field.inputValue()) throw new Error('Clear all left a selected field');
   await page.screenshot({ path: 'qa-artifacts/header-filter-desktop.png', animations: 'disabled' });
   await page.setViewportSize({ width: 360, height: 780 });
-  await toggle.click();
+  if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
   const overflow = await panel.evaluate(el => el.scrollWidth > el.clientWidth + 1);
   if (overflow) throw new Error('Phone filter panel overflows');
   await page.screenshot({ path: 'qa-artifacts/header-filter-expanded-phone.png', animations: 'disabled' });

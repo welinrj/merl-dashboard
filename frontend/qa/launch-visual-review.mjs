@@ -44,6 +44,7 @@ try {
     await page.locator('.dsh-scroll').evaluate(el=>{el.scrollTop=0;});
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No page overflow: '+name+' '+width);
     assert.match(await page.evaluate(()=>getComputedStyle(document.body).fontFamily),/^Arial/);
+    if(name==='overview'){assert.equal(await page.locator('.dashboard-filter-fields').isVisible(),false,'Filters start closed at every width');assert.equal(await page.locator('.wg-start').isVisible(),false,'Shortcuts are on demand');}
     if(name==='reports')assert(await page.locator('.rp-selected-scope').innerText());
     if(name==='review' && width===390)assert.equal(await page.locator('.review-summary-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),2);
     if(name==='admin')assert(await page.locator('.admin-role-badge').first().evaluate(el=>el.getBoundingClientRect().width>=136));

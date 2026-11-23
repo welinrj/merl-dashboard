@@ -28,3 +28,12 @@
   .dsh .ovx .dashboard-filter-fields{margin-top:14px;}
 }
 @media(max-width:560px){.dsh .ovx .dashboard-filter-fields{grid-template-columns:1fr;}}
+
+/* Filters are optional controls at every width; selected chips stay visible. */
+.dsh .ovx .dashboard-filters-heading h2{display:none}
+.dsh .ovx .dashboard-filters-toggle{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#fff;color:#153b58;border:1px solid #a6bbc7;font-size:16px;font-weight:600;justify-content:space-between;min-width:200px}
+.dsh .ovx .dashboard-filters[data-open="false"] .dashboard-filter-fields{display:none}
+.dsh .ovx .dashboard-filter-results{display:block;grid-column:1/-1;justify-self:start;padding:10px 18px;border:0;background:#153b58;color:#fff;font-size:16px}
+.dsh .ovx .dashboard-filters-status{font-size:15px;margin:8px 0 0;color:#334e61}
+.dsh .ovx .dashboard-filter-fields{margin-top:16px}
+.dsh .ovx .dashboard-filter-field>span{font-size:15px}.dsh .ovx .dashboard-filter-field select{font-size:16px}
