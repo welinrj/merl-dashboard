@@ -1,5 +1,4 @@
 import FigureExplanation from '../components/FigureExplanation';
-import PresentationView, { PresentationMetric } from '../components/PresentationView';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { scopeWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import { PortfolioCardIcon, ProgressCardIcon, BudgetCardIcon, BeneficiariesCardIcon, AttentionCardIcon, ReportingCardIcon } from '../components/ui/MerlCardIcons';
@@ -109,7 +108,6 @@ export default function Overview({ user }) {
   const [progressPeriodType, setProgressPeriodType] = useState('quarterly');
   const [publishingPublic, setPublishingPublic] = useState(false);
   const [explainedMetric, setExplainedMetric] = useState(null);
-  const [presenting,setPresenting]=useState(false);
   const canPublishPublic = user?.role === 'ROLE_ADMIN';
 
   const publishPublicPortal = async () => {
@@ -392,19 +390,8 @@ export default function Overview({ user }) {
     attention:period&&!progress.length?t('workspace.noPeriodResults'):t('visual.cards.attentionCounts',{risk:fmtNum(atRiskProjects),delayed:fmtNum(delayedProjects)}),
     reporting:t('visual.cards.approvedPeriods',{approved:fmtNum(reportsApproved),total:fmtNum(reporting.length)}),
   };
-  const presentationMetrics = [
-    ['projects',t('visual.cards.projects'),fmtNum(total)],['progress',t('overview.overallProgress'),overallProgress==null?'—':`${overallProgress}%`],
-    ['budget',t('visual.cards.budget'),budgetUtilisation==null?'—':`${budgetUtilisation}%`],['beneficiaries',t('visual.cards.beneficiaries'),totalBeneficiaries==null?'—':fmtNum(totalBeneficiaries)],
-    ['attention',t('visual.cards.attention'),period&&!progress.length?'—':fmtNum(atRiskProjects+delayedProjects)],['reporting',t('visual.cards.reporting'),`${reportingCompletion}%`],
-  ];
-  const viewScope = `${period||(french?'Toutes les périodes':'All periods')} · ${total} ${french?'projets':'projects'}${Object.values(filters).some(Boolean)?` · ${french?'Vue filtrée':'Filtered view'}`:''}`;
   return (
     <div className="ovx">
-      {presenting&&<PresentationView title={t('overview.title')} subtitle={viewScope} lang={lang||'en'} onClose={()=>setPresenting(false)} slides={[
-        {id:'summary',label:french?'Vue d’ensemble':'At a glance',content:<><p className="presentation-note">{french?'Vue interne : les données soumises peuvent être en attente d’approbation.':'Internal view: submitted data may still be awaiting approval.'}</p><div className="presentation-grid">{presentationMetrics.map(([key,label,value])=><PresentationMetric key={key} label={label} value={value} stamp={cardStamps[key]}/>)}</div></>},
-        {id:'reporting',label:french?'Rapportage':'Reporting',content:<div className="presentation-reporting">{reportRows.length?reportRows.map(row=><article key={row.id}><h3>{row.project}</h3><p>{row.item}</p><p>{fmtDate(row.due)} · {row.status.label}</p></article>):<p>{french?'Aucune échéance de rapport enregistrée pour cette vue.':'No reporting deadlines recorded for this view.'}</p>}</div>},
-      ]}/>}
-
       <OverviewStyles />
 
       <section className="ovx-heading rp-noprint">
@@ -414,7 +401,6 @@ export default function Overview({ user }) {
           {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
         </div>
         <div className="ovx-heading-actions">
-          <button type="button" className="ovx-export ovx-present" onClick={()=>setPresenting(true)}>{french?'Mode présentation':'Presentation mode'}</button>
           {canPublishPublic && <button type="button" className="ovx-publish"
             onClick={publishPublicPortal} disabled={publishingPublic}>
             <Send size={16} aria-hidden="true" />
