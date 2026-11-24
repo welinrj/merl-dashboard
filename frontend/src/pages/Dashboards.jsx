@@ -60,6 +60,8 @@ const sum = (rows, f) => rows.reduce((a, r) => a + (Number(f(r)) || 0), 0);
 
 export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) => item.key) }) {
   const { t, i18n } = useTranslation();
+  const [projectParams, setProjectParams] = useSearchParams();
+  const requestedProject = projectParams.get('project') || '';
   // Records are localised where they are fetched, so switching language
   // refetches rather than leaving the previous language's copy on screen.
   const lang = i18n.resolvedLanguage;
@@ -72,11 +74,15 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
     const scoped = scopeWorkspacePeriod(sourceD, period);
     return scoped ? { ...scoped, progress: [...latestReportedBy(scoped.progress).values()] } : null;
   }, [sourceD, period]);
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(requestedProject);
   const [loading, setLoading] = useState(true);
   const visibleTabs = TABS.filter(({ key }) => allowedTabs.includes(key));
 
   useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+  useEffect(() => {
+    if (!d) return;
+    setProjectId(current => d.projects.some(p=>p.id===requestedProject) ? requestedProject : d.projects.some(p=>p.id===current) ? current : d.projects[0]?.id || '');
+  }, [requestedProject, d]);
 
   useEffect(() => {
     (async () => {
@@ -105,7 +111,6 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
         progress: withReportingDates(prog.data ?? [], rep.data ?? []), reporting: rep.data ?? [], frameworkNodes: nodes.data ?? [],
         areaCouncils: areas.data ?? [], organizations: orgs.data ?? [],
       }));
-      if ((proj.data ?? []).length && !projectId) setProjectId(officialPortfolioData({ projects: proj.data ?? [] }).projects[0]?.id);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,7 +181,7 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
       {tab === 'project' && (
         <div style={{ marginBottom: '0.5rem', maxWidth: 420 }}>
           <label className="field-label">{t('dash.tabProject')}</label>
-          <select className="field-input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+          <select className="field-input" value={projectId} onChange={(e) => {const id=e.target.value;setProjectId(id);setProjectParams(current=>{const next=new URLSearchParams(current);next.set('project',id);return next;},{replace:true});}}>
             {d.projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
           </select>
         </div>

@@ -24,6 +24,7 @@ import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
 import MetricInformation from '../components/MetricInformation';
 import { PublishedResultComparisons } from '../components/ResultComparisonCard';
+import { PublishedProjectProgressOverview } from '../components/ProjectProgressOverview';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { toVuv } from '../lib/docc/currency';
@@ -289,6 +290,7 @@ export default function PublicDashboard() {
           </section>
           <details className="pbd-method-note"><summary>{lang === 'fr' ? 'À propos des chiffres' : 'About these figures'}</summary><p>{c.fundingSub}. {c.utilisedSub}. {c.beneficiariesSub}.</p></details>
 
+          <PublishedProjectProgressOverview projects={filtered} lang={lang} onProject={viewProject}/>
           <section className="pbd-section pbd-location-section">
             <div className="pbd-section-head"><div><span><MapPin size={16} aria-hidden="true" />{c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
             {selectedArea && <div className="pbd-area-selection">{c.selectedArea} <strong>{selectedArea.area_council}, {selectedArea.province}</strong></div>}

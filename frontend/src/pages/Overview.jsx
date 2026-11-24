@@ -1,4 +1,6 @@
 import FigureExplanation from '../components/FigureExplanation';
+import ProjectProgressOverview from '../components/ProjectProgressOverview';
+import { projectResultsHref } from '../lib/projectProgressSummary';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { scopeWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import { PortfolioCardIcon, ProgressCardIcon, BudgetCardIcon, BeneficiariesCardIcon, AttentionCardIcon, ReportingCardIcon } from '../components/ui/MerlCardIcons';
@@ -427,7 +429,8 @@ export default function Overview({ user }) {
         value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 
-      <nav className="overview-section-nav" aria-label={t('reading.overviewSections')}>{[['ovx-summary','summary'],['ovx-period','progress'],['ovx-priorities','actions'],['ovx-reporting','reports']].map(([id,key]) => <button type="button" key={id} aria-controls={id} onClick={event => { event.preventDefault(); const target=document.getElementById(id); if(target){ target.focus({preventScroll:true}); target.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); } }}>{t(`reading.${key}`)}</button>)}</nav>
+      <nav className="overview-section-nav" aria-label={t('reading.overviewSections')}>{[['ovx-summary','summary'],['ovx-project-progress','progress'],['ovx-priorities','actions'],['ovx-reporting','reports']].map(([id,key]) => <button type="button" key={id} aria-controls={id} onClick={event => { event.preventDefault(); const target=document.getElementById(id); if(target){ target.focus({preventScroll:true}); target.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); } }}>{t(`reading.${key}`)}</button>)}</nav>
+      <ProjectProgressOverview projects={projects} indicators={indicators} progress={progress} periods={reporting} lang={lang} onProject={id=>nav(projectResultsHref(id,period))}/>
       <section id="ovx-summary" tabIndex={-1} className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
           className="ovx-kpi ovx-kpi-projects"
