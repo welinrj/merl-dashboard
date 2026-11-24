@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { projectProgressSummaries } from '../lib/projectProgressSummary';
 import { resultNumber } from '../lib/resultComparison';
 import './project-progress-overview.css';
@@ -10,15 +11,18 @@ const numeric=(n,lang)=>new Intl.NumberFormat(lang==='fr'?'fr-FR':'en-GB',{maxim
 function ProgressBar({value,label}) {
   return <div className="project-progress-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(0,Math.min(100,value))}><span style={{width:`${Math.max(0,Math.min(100,value))}%`}}/></div>;
 }
-export default function ProjectProgressOverview({projects,indicators,progress,periods,onProject,lang='en'}) {
+export default function ProjectProgressOverview({projects,indicators,progress,periods,onProject,lang='en',healthRows=[]}) {
+  const { t } = useTranslation();
+  const healthByProject = new Map(healthRows.map(row => [row.project.id, row.health]));
+  const finalByProject = new Map(healthRows.map(row => [row.project.id, row]));
   const language=lang?.startsWith('fr')?'fr':'en',c=copy[language];
   const rows=projectProgressSummaries(projects,indicators,progress,periods);
   return <section id="ovx-project-progress" tabIndex={-1} className="project-progress-overview" aria-labelledby="project-progress-title">
     <header><h2 id="project-progress-title">{c.title}</h2><p>{c.note}</p></header>
     <div className="project-progress-list">{rows.map(r=><article key={r.project.id} className={`project-progress-row${r.pending?' has-pending':''}${r.progress==null?' is-unreported':''}`}>
-      <div className="project-progress-name"><small>{r.project.code}</small><h3>{r.project.name}</h3></div>
+      <div className="project-progress-name"><small>{r.project.code}</small><h3>{r.project.name}</h3>{healthByProject.has(r.project.id)&&<span className={`executive-health-badge executive-health-badge--${healthByProject.get(r.project.id)}`}>{t(`executive.health.${healthByProject.get(r.project.id)}`)}</span>}</div>
       <div className="project-progress-measure"><div><span>{c.progress}</span><strong>{r.progress==null?'—':`${numeric(r.progress,language)}%`}</strong></div>{r.progress!=null?<ProgressBar value={r.progress} label={`${r.project.name}: ${c.progress}`}/>:<p>{r.total?c.none:c.definitions}</p>}</div>
-      <div className="project-progress-detail"><span><b>{r.reported} / {r.total}</b> {c.reported}</span><span><b>{r.achieved} / {r.total}</b> {c.achieved}</span>{r.reported>0&&<span>{r.approved} {c.approved}{r.pending>0&&<> · <b>{r.pending} {c.pending}</b></>}</span>}<small>{r.period||(r.periodCount>1?`${c.latest} · ${r.periodCount} ${c.periods}`:c.noPeriod)}{r.date&&!Number.isNaN(Date.parse(r.date))&&<> · <time dateTime={r.date}>{new Intl.DateTimeFormat(language==='fr'?'fr-FR':'en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(r.date))}</time></>}</small></div>
+      <div className="project-progress-detail"><span><b>{r.reported} / {r.total}</b> {c.reported}</span><span><b>{finalByProject.get(r.project.id)?.achieved ?? r.achieved} / {r.total}</b> {finalByProject.has(r.project.id)?t('executive.finalTargets'):c.achieved}</span>{r.reported>0&&<span>{r.approved} {c.approved}{r.pending>0&&<> · <b>{r.pending} {c.pending}</b></>}</span>}<small>{r.period||(r.periodCount>1?`${c.latest} · ${r.periodCount} ${c.periods}`:c.noPeriod)}{r.date&&!Number.isNaN(Date.parse(r.date))&&<> · <time dateTime={r.date}>{new Intl.DateTimeFormat(language==='fr'?'fr-FR':'en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(r.date))}</time></>}</small></div>
       <button type="button" className="project-progress-open" onClick={()=>onProject(r.project.id)} aria-label={`${c.view}: ${r.project.name}`}>{c.view}</button>
     </article>)}</div>
   </section>;
