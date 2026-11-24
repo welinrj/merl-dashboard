@@ -1,3 +1,5 @@
+import ExecutivePortfolioSummary from '../components/ExecutivePortfolioSummary';
+import { executivePortfolio } from '../lib/executivePortfolio';
 import FigureExplanation from '../components/FigureExplanation';
 import ProjectProgressOverview from '../components/ProjectProgressOverview';
 import { projectResultsHref } from '../lib/projectProgressSummary';
@@ -144,8 +146,8 @@ export default function Overview({ user }) {
           q('v_risks_issues', 'project_id, risk_rating, status, due_date'),
           q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, indirect, reporting_period, double_counting_check'),
           q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
-          q('v_project_indicators', 'project_id, id, code, name'),
-          q('v_indicator_progress', 'id, project_id, indicator_id, achievement_pct, performance_status, review_status, reporting_period, date_reported, created_at, updated_at'),
+          q('v_project_indicators', 'project_id, id, code, name, target_value, is_qualitative, higher_is_better'),
+          q('v_indicator_progress', 'id, project_id, indicator_id, achievement_pct, cumulative_actual, final_target, period_target, performance_status, schedule_status, review_status, reporting_period, date_reported, created_at, updated_at'),
           q('v_reporting_periods', 'id, project_id, period_label, period_start, period_end, submission_status, review_comments, approved_at, reporting_officer_name, updated_at'),
           supabase.from('v_project_organizations').select('project_id, role, name'),
           supabase.from('v_project_area_councils').select('project_id, province_code, area_council_name, coverage_status, feasibility_status'),
@@ -219,6 +221,7 @@ export default function Overview({ user }) {
       : p.status;
     return {
       ...p,
+      registered_status: p.status,
       status,
       donors: org.donors,
       donor: p.donor || org.donors[0] || '',
@@ -278,6 +281,7 @@ export default function Overview({ user }) {
   const reportedExpenditure = [...latestFinance.values()].filter(row => row.cumulative_expenditure != null);
   const totalExpenditure = reportedExpenditure.length ? sumReported(reportedExpenditure.map(row => toVuv(row.cumulative_expenditure, projects.find(p => p.id === row.project_id)?.currency))) : null;
   const budgetUtilisation = totalBudget && totalExpenditure != null ? Math.round(totalExpenditure / totalBudget * 100) : null;
+  const executive = executivePortfolio(projects, indicators, progress, reporting, { activities, period });
   const datedProgress = withReportingDates(progress, reporting);
   const latestProgress = latestReportedBy(datedProgress);
   const overallProgress = portfolioProgress(datedProgress);
@@ -430,8 +434,10 @@ export default function Overview({ user }) {
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 
       <nav className="overview-section-nav" aria-label={t('reading.overviewSections')}>{[['ovx-summary','summary'],['ovx-project-progress','progress'],['ovx-priorities','actions'],['ovx-reporting','reports']].map(([id,key]) => <button type="button" key={id} aria-controls={id} onClick={event => { event.preventDefault(); const target=document.getElementById(id); if(target){ target.focus({preventScroll:true}); target.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); } }}>{t(`reading.${key}`)}</button>)}</nav>
-      <ProjectProgressOverview projects={projects} indicators={indicators} progress={progress} periods={reporting} lang={lang} onProject={id=>nav(projectResultsHref(id,period))}/>
-      <section id="ovx-summary" tabIndex={-1} className="ovx-kpis" aria-label={t('overview.title')}>
+      <ExecutivePortfolioSummary summary={executive} period={period} onResults={()=>nav(`/analytics/results${period ? `?period=${encodeURIComponent(period)}` : ''}`)}/>
+      <ProjectProgressOverview healthRows={executive.rows} projects={projects} indicators={indicators} progress={progress} periods={reporting} lang={lang} onProject={id=>nav(projectResultsHref(id,period))}/>
+      <h2 className="ovx-supporting-title">{t('executive.supporting')}</h2>
+      <section className="ovx-kpis" aria-label={t('overview.title')}>
         <KpiCard
           className="ovx-kpi ovx-kpi-projects"
           concise stamp={cardStamps.projects}
@@ -448,7 +454,7 @@ export default function Overview({ user }) {
           concise stamp={cardStamps.progress}
           onExplain={() => setExplainedMetric('progress')}
           icon={ProgressCardIcon}
-          label={t('overview.overallProgress')}
+          label={t('executive.average')}
           value={overallProgress == null ? '—' : `${overallProgress}%`}
           sub={t('visual.cards.resultsBasis')}
           progress={overallProgress}
@@ -483,7 +489,7 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi"
-          label={t('visual.cards.attention')}
+          label={t('executive.signals')}
           concise stamp={cardStamps.attention}
           onExplain={() => setExplainedMetric('attention')}
           icon={AttentionCardIcon}
@@ -517,7 +523,7 @@ export default function Overview({ user }) {
         </div>
         <div className="ovx-period-label">{currentPeriodLabel}{latestPeriodEnd ? ` · ending ${fmtDate(latestPeriodEnd)}` : ''}</div>
         <div className="ovx-period-kpis">
-          <div><span>Overall progress</span><b>{periodPortfolioProgress == null ? '—' : `${periodPortfolioProgress}%`}</b><small>MERL average across reporting projects</small></div>
+          <div><span>{t('executive.average')}</span><b>{periodPortfolioProgress == null ? '—' : `${periodPortfolioProgress}%`}</b><small>MERL average across reporting projects</small></div>
           <div><span>Reporting completion</span><b>{currentPeriodRows.length ? `${periodReportingCompletion}%` : '—'}</b><small>{fmtNum(periodApproved)} / {fmtNum(currentPeriodRows.length)} project periods approved</small></div>
           <div><span>At-risk results</span><b>{fmtNum(periodAtRisk)}</b><small>Performance status</small></div>
           <div><span>Delayed results</span><b>{fmtNum(periodDelayed)}</b><small>Schedule status</small></div>

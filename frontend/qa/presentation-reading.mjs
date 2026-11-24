@@ -50,6 +50,14 @@ try{
     assert.equal(await page.locator('.pub-map-project-result').count(),2);
    }else{
     await page.locator('.ovx-kpis .ovx-kpi').first().waitFor();
+    const summary=page.locator('.executive-portfolio');await summary.waitFor();
+    assert.equal(await summary.locator('.executive-health').count(),5);
+    assert.equal((await summary.locator('[data-health="total"] strong').innerText()).trim(),'2');
+    assert.equal((await summary.locator('[data-health="critical"] strong').innerText()).trim(),'1');
+    assert.equal((await summary.locator('[data-health="unassessed"] strong').innerText()).trim(),'1');
+    assert.equal(await summary.getByRole('progressbar').getAttribute('aria-valuenow'),'0');
+    assert.ok(await summary.evaluate(root=>[...root.querySelectorAll('article, .executive-targets')].every(el=>el.getBoundingClientRect().right<=root.getBoundingClientRect().right+1)),'executive cards stay inside the panel');
+    await summary.screenshot({path:`qa-artifacts/executive-portfolio-${lang}-${width}.png`});
     const info=page.locator('.kpi-card-explain').first();await info.click();await page.locator('.figure-dialog .figure-context').waitFor();await page.keyboard.press('Escape');await page.locator('.figure-dialog').waitFor({state:'detached'});
    }
    await page.screenshot({path:`qa-artifacts/launch-reading-${auth?'internal':'public'}-${lang}-${width}.png`});

@@ -44,6 +44,20 @@ try {
     await page.setViewportSize({ width, height });
     await page.goto('http://127.0.0.1:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
     await page.locator('.ovx-kpis .ovx-kpi').first().waitFor({ timeout: 15000 });
+    const executive = page.locator('.executive-portfolio');
+    await executive.waitFor();
+    if (await executive.locator('.executive-health').count() !== 5
+      || (await executive.locator('[data-health="total"] strong').innerText()).trim() !== '2'
+      || (await executive.locator('[data-health="critical"] strong').innerText()).trim() !== '1'
+      || (await executive.locator('[data-health="unassessed"] strong').innerText()).trim() !== '1'
+      || await executive.getByRole('progressbar').getAttribute('aria-valuenow') !== '0') {
+      throw new Error('Executive health and final target counts do not reconcile with the fixture');
+    }
+    if (!await executive.evaluate(root => [...root.querySelectorAll('article, .executive-targets')].every(el => el.getBoundingClientRect().right <= root.getBoundingClientRect().right + 1 && el.scrollWidth <= el.clientWidth + 1))) {
+      throw new Error(`${width}px executive summary overflow`);
+    }
+    if ([360,1440,1920].includes(width)) await executive.screenshot({animations:'disabled',path:`qa-artifacts/header-executive-portfolio-en-${width}.png`});
+
     const result = await page.locator('.ovx-kpis').evaluate((root) => {
       const cards = [...root.querySelectorAll('.ovx-kpi')];
       const rect = (element) => element.getBoundingClientRect();
@@ -102,6 +116,14 @@ try {
       await page.locator('.ovx-kpi-progress').screenshot({animations:'disabled',path:`qa-artifacts/header-visual-progress-${width}.png`});
     }
     console.log(`✓ ${width}px: title → visual/number → context → action; three responsive progress visuals`);
+  }
+  await page.evaluate(() => localStorage.setItem('merl.lang','fr'));
+  for (const width of [1440,390]) {
+    await page.setViewportSize({width,height:900});
+    await page.reload({waitUntil:'domcontentloaded'});
+    const executive=page.locator('.executive-portfolio');await executive.waitFor();
+    if (!await executive.evaluate(root => [...root.querySelectorAll('article, .executive-targets')].every(el => el.getBoundingClientRect().right <= root.getBoundingClientRect().right + 1 && el.scrollWidth <= el.clientWidth + 1))) throw new Error(`French ${width}px executive overflow`);
+    await executive.screenshot({animations:'disabled',path:`qa-artifacts/header-executive-portfolio-fr-${width}.png`});
   }
 } finally {
   await browser.close();
