@@ -117,10 +117,11 @@ try {
     }
     console.log(`✓ ${width}px: title → visual/number → context → action; three responsive progress visuals`);
   }
-  await page.evaluate(() => localStorage.setItem('merl.lang','fr'));
   for (const width of [1440,390]) {
     await page.setViewportSize({width,height:900});
     await page.reload({waitUntil:'domcontentloaded'});
+    await page.locator('.dsh-lang button[lang="fr"]').click();
+    await page.getByRole('heading',{name:'État du portefeuille en un coup d’œil',exact:true}).waitFor();
     const executive=page.locator('.executive-portfolio');await executive.waitFor();
     if (!await executive.evaluate(root => [...root.querySelectorAll('article, .executive-targets')].every(el => el.getBoundingClientRect().right <= root.getBoundingClientRect().right + 1 && el.scrollWidth <= el.clientWidth + 1))) throw new Error(`French ${width}px executive overflow`);
     await executive.screenshot({animations:'disabled',path:`qa-artifacts/header-executive-portfolio-fr-${width}.png`});
