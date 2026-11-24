@@ -58,7 +58,7 @@ console.log('\nDASHBOARD KPIs (traced to the underlying records)');
 await go('/dashboards');
 let tx = await body();
 check('project count is 2', /\b2\b/.test(tx));
-check('Overall Progress KPI is present', /OVERALL PROGRESS/i.test(tx));
+check('Overall final target achievement is present', /OVERALL TARGET ACHIEVEMENT/i.test(tx));
 check('Reporting Completion KPI is present', /REPORTING COMPLETION/i.test(tx));
 check('Budget Utilisation KPI is present', /BUDGET UTILISATION/i.test(tx));
 check('At Risk KPI is present', /AT RISK/i.test(tx));

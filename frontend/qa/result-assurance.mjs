@@ -33,7 +33,7 @@ try {
  await page.locator('.wc-period summary').click();await page.locator('#workspace-period').selectOption('Q3 2026');
  await page.locator('.ovx-kpi-beneficiaries .kpi-card-value').filter({hasText:/^20$/}).waitFor();
  await page.locator('.wc-period summary').click();
- const explain=page.getByRole('button',{name:'Explain: Overall Progress',exact:true});await explain.click();
+ const explain=page.getByRole('button',{name:'Explain: Mean indicator progress',exact:true});await explain.click();
  const dialog=page.getByRole('dialog');await dialog.waitFor();assert.match(await dialog.innerText(),/Each project has an equal share/);assert.match(await dialog.innerText(),/Q3 2026/);assert.equal(await dialog.locator('details[open]').count(),0);await dialog.locator('.figure-sources summary').click();assert.match(await dialog.innerText(),/Approved/);
  await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});assert.equal(await explain.evaluate(el=>el===document.activeElement),true);
  await page.getByRole('button',{name:'Explain: Beneficiaries Reached',exact:true}).click();await dialog.waitFor();
