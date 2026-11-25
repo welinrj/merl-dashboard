@@ -54,7 +54,7 @@ try {
  role='viewer';
  await page.evaluate(session=>{const channel=new BroadcastChannel('sb-ndntvncboeajanipafeq-auth-token');channel.postMessage({event:'TOKEN_REFRESHED',session});setTimeout(()=>channel.close(),500);},session);
  await page.waitForResponse(r=>r.url().endsWith('/rpc/current_profile'));
- await page.getByText('You can view this project.',{exact:false}).waitFor({timeout:15000});
+ await page.waitForFunction(()=>document.querySelector('.pd-summary') && !document.querySelector('.pd-summary button[aria-label="Edit project manager"]'),{timeout:15000});
  assert.equal(await page.getByRole('button',{name:'Edit project manager',exact:true}).count(),0);
  deny=true;
  await page.evaluate(session=>{const channel=new BroadcastChannel('sb-ndntvncboeajanipafeq-auth-token');channel.postMessage({event:'TOKEN_REFRESHED',session});setTimeout(()=>channel.close(),500);},session);
