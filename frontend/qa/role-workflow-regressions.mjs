@@ -47,7 +47,7 @@ try {
    await page.keyboard.press('Escape');
   }
   if(role==='viewer'){
-   await page.goto('http://localhost:5199/#/review');await page.locator('.ovx-kpis').waitFor();
+   await page.goto('http://localhost:5199/#/review');await page.locator('.executive-portfolio').waitFor();
    assert.equal(await page.getByRole('button',{name:'Manage project assignments',exact:true}).count(),0);
    await page.goto('http://localhost:5199/#/reports');await page.locator('#report-preview').waitFor();
    assert.equal(await page.getByLabel('Include completed project history').count(),0);
