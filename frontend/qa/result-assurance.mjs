@@ -56,7 +56,7 @@ try {
  await page.locator('.report-readiness').getByText('No gaps found by the automated checks',{exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Download Word',exact:true}).isEnabled(),true);
  profileRole='viewer';
- await page.goto('http://localhost:5199/#/dashboards?period=Q3+2026');await page.reload();
+ await page.goto('http://localhost:5199/#/dashboards?period=Q3+2026');await page.reload();await openOverviewDetails(page);
  await page.getByRole('button',{name:'Explain: Budget Utilisation',exact:true}).waitFor({timeout:20000});
  await page.getByRole('button',{name:'Explain: Budget Utilisation',exact:true}).click();await dialog.waitFor();
  await dialog.locator('.figure-sources summary').click();
