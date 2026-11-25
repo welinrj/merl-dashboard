@@ -15,7 +15,6 @@ const Dashboards = lazy(() => loadPageModule(() => import('./pages/Dashboards'))
 const ResultsWorkspace = lazy(() => loadPageModule(() => import('./pages/ResultsWorkspace')));
 const ProjectPortfolioAnalysis = lazy(() => loadPageModule(() => import('./pages/ProjectPortfolioAnalysis')));
 const ProjectSetup = lazy(() => loadPageModule(() => import('./pages/ProjectSetup')));
-import WorkspaceGuide from './components/WorkspaceGuide';
 import { useBackdropDismiss } from './lib/useBackdropDismiss';
 const MerlReporting = lazy(() => loadPageModule(() => import('./pages/MerlReporting')));
 const Reports = lazy(() => loadPageModule(() => import('./pages/Reports')));
@@ -557,7 +556,6 @@ export default function App({ publicEntryManaged = false }: { publicEntryManaged
         <div className="dsh-scroll scrollbar-thin">
           <WorkspaceContextProvider key={user.id} user={user}>
           <ErrorBoundary key={location.pathname}>
-            <WorkspaceGuide user={user} />
             <Suspense fallback={<div role="status" className="page-pad">{t('common.loading')}</div>}><Routes>
               <Route path="/" element={<Navigate to={defaultPath} replace />} />
               <Route path="/dashboards" element={gate('/dashboards') ? <Overview user={user} /> : <Navigate to={defaultPath} replace />} />

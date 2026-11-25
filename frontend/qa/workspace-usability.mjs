@@ -27,7 +27,7 @@ try {
  await context.route('https://services.arcgis.com/**',r=>r.abort());
  const page=await context.newPage();
  await page.goto('http://localhost:5199/#/dashboards');
- await page.getByText('How to use this page',{exact:true}).click();
+ await page.locator('.wg-guide > summary').click();
  await page.getByRole('navigation',{name:'Start here'}).waitFor({timeout:20000});
  assert.equal(await page.locator('.wg-guide li').count(),3);
  await openOverviewDetails(page);

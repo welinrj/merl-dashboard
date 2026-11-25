@@ -147,7 +147,9 @@ function ProjectCard({ project, areas, copy, lang }) {
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
   return <FeatureCardGradient id={`public-project-${project.id}`} tabIndex={-1} className="pbd-project-card">
     <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><StatusBadge className={`pbd-status pbd-status-${statusOf(project)}`} label={copy[statusOf(project)]} tone={statusOf(project) === 'upcoming' ? 'warning' : statusOf(project) === 'other' ? 'neutral' : 'success'} /></header>
-    <p className="pbd-project-description">{project.description || project.expected_primary_outcome || copy.noDescription}</p>
+    {project.description && project.description !== project.expected_primary_outcome
+      ? <p className="pbd-project-description">{project.description}</p>
+      : !project.expected_primary_outcome && <p className="pbd-project-description">{copy.noDescription}</p>}
     <PublishedResultComparisons project={project} lang={lang}/>
     <dl className="pbd-project-facts">
       <div><dt>{copy.manager}</dt><dd>{project.project_manager || copy.unknown}</dd></div>

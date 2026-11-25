@@ -3,12 +3,12 @@ import './DashboardFilterPanel.css';
 
 const COPY = {
   en: {
-    title: 'Filter dashboard', hide: 'Hide filters', all: 'All', clear: 'Clear all',
+    short: 'Filters', title: 'Filter dashboard', hide: 'Hide filters', all: 'All', clear: 'Clear all',
     none: 'No filters applied', applied: 'filters applied', appliedOne: 'filter applied', results: 'Show results',
     remove: 'Remove filter',
   },
   fr: {
-    title: 'Filtrer le tableau de bord', hide: 'Masquer les filtres', all: 'Tous', clear: 'Tout effacer',
+    short: 'Filtres', title: 'Filtrer le tableau de bord', hide: 'Masquer les filtres', all: 'Tous', clear: 'Tout effacer',
     none: 'Aucun filtre appliqué', applied: 'filtres appliqués', appliedOne: 'filtre appliqué', results: 'Afficher les résultats',
     remove: 'Supprimer le filtre',
   },
@@ -25,11 +25,11 @@ export default function DashboardFilterPanel({ fields, filters, setFilter, reset
     <div className="dashboard-filters-heading">
       <h2>{c.title}</h2>
       <button ref={toggle} type="button" className="dashboard-filters-toggle"
-        aria-expanded={open} aria-controls="overview-filter-fields" onClick={() => setOpen(value => !value)}>
+        aria-label={open ? c.hide : c.title} aria-expanded={open} aria-controls="overview-filter-fields" onClick={() => setOpen(value => !value)}>
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
           <path d="M4 6h16M4 12h16M4 18h16" /><circle cx="8" cy="6" r="2" fill="white" /><circle cx="16" cy="12" r="2" fill="white" /><circle cx="10" cy="18" r="2" fill="white" />
         </svg>
-        {open ? c.hide : c.title}
+        {c.short}
         <span aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
       {selected.length > 0 && <button type="button" className="dashboard-filters-clear" onClick={reset}>{c.clear}</button>}
