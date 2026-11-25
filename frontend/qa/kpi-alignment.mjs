@@ -46,6 +46,9 @@ try {
     await page.goto('http://127.0.0.1:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
     await page.reload({waitUntil:'domcontentloaded'});
     await page.locator('.executive-portfolio').waitFor();
+    if(await page.locator('.wc-account').count())throw new Error('No repeated account banner');
+    if(await page.locator('.executive-portfolio>header, .executive-portfolio-scope').count())throw new Error('No duplicate overview headings');
+    if(await page.locator('.ovx-publish').isVisible())throw new Error('Publishing stays in Actions');
     const optional=page.locator('.ovx-details');
     if (await optional.count() !== 4 || await optional.evaluateAll(es=>es.some(e=>e.open))) throw new Error('Overview details must start closed');
     if (await page.locator('.project-progress-overview').isVisible() || await page.locator('.ovx-kpis').isVisible()) throw new Error('Detailed statistics must be on demand');
@@ -135,7 +138,7 @@ try {
     await page.setViewportSize({width,height:900});
     await page.reload({waitUntil:'domcontentloaded'});
     await page.locator('.dsh-lang button[lang="fr"]').click();
-    await page.getByRole('heading',{name:'État du portefeuille en un coup d’œil',exact:true}).waitFor();
+    await page.locator('.dsh-lang button[lang="fr"][aria-pressed="true"]').waitFor();
     const executive=page.locator('.executive-portfolio');await executive.waitFor();
     if (!await executive.evaluate(root => [...root.querySelectorAll('article, .executive-targets')].every(el => el.getBoundingClientRect().right <= root.getBoundingClientRect().right + 1 && el.scrollWidth <= el.clientWidth + 1))) throw new Error(`French ${width}px executive overflow`);
     await executive.screenshot({animations:'disabled',path:`qa-artifacts/header-executive-portfolio-fr-${width}.png`});

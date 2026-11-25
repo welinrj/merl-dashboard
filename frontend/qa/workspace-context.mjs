@@ -29,24 +29,28 @@ try {
   const page=await context.newPage();
   await page.goto('http://localhost:5199/#/dashboards');
   const account=page.locator('.wc-context');
-  await account.getByText('Test account',{exact:true}).waitFor({timeout:20000});
-  await account.getByText(role==='system_admin' ? '1 project with a results framework available' : '0 projects with results frameworks available',{exact:true}).waitFor();
+  await page.locator('.wc-context[aria-busy="false"]').waitFor({timeout:20000});
+  assert.equal(await account.locator('.wc-account').count(),0,'Repeated account banner is removed');
+  assert.equal(await page.locator('.wc-context .wg-guide').count(),1,'Period and help share one compact row');
   if(role==='project_manager') {
-   assert.match(await account.innerText(),/Project Manager/);
+   await page.locator('.dsh-user').click();
+   await page.getByText('Test account',{exact:true}).last().waitFor();
+   assert.match(await page.locator('.dsh-head').innerText(),/Project Manager/);
+   await page.locator('.dsh-account-backdrop').click({position:{x:5,y:100}});
    assert.match(await account.innerText(),/check your assignments/);
-   await account.locator('summary').click();
+   await account.locator('.wc-period > summary').click();
    assert.equal(await account.locator('option').count(),1);
   } else {
-   await account.locator('summary').click();
+   await account.locator('.wc-period > summary').click();
    await page.locator('#workspace-period').selectOption('Q2 2026');
    await page.waitForURL(url=>url.hash.includes('period=Q2'));
-   await account.locator('summary').click();
+   await account.locator('.wc-period > summary').click();
    await page.locator('.dsh-mobile-nav').getByRole('link',{name:'Results',exact:true}).click();
    await page.getByRole('heading',{name:'Results Framework',exact:true}).waitFor();
-   assert.match(await account.locator('summary').innerText(),/Q2 2026/);
+   assert.match(await account.locator('.wc-period > summary').innerText(),/Q2 2026/);
    await page.locator('.rf2-tools select').selectOption('pa');
    await page.waitForURL(url=>url.hash.includes('project=pa'));
-   await account.locator('summary').click();
+   await account.locator('.wc-period > summary').click();
    await page.locator('#workspace-period').selectOption('Q3 2026');
    await page.waitForURL(url=>url.hash.includes('period=Q3') && url.hash.includes('project=pa'));
    await page.reload();
@@ -59,7 +63,7 @@ try {
    await page.locator('.wc-period summary').click();
    await page.locator('.dsh-mobile-nav').getByRole('link',{name:'Reports',exact:true}).click();
    await page.locator('#report-preview').waitFor();
-   assert.match(await account.locator('summary').innerText(),/Q2 2026/);
+   assert.match(await account.locator('.wc-period > summary').innerText(),/Q2 2026/);
    await page.getByRole('combobox').first().selectOption('financial');
    const report=await page.locator('#report-preview').innerText();
    assert.doesNotMatch(report,/\b90\b/); // Newer expenditure must never replace a missing period.

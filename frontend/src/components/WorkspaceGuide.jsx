@@ -14,7 +14,7 @@ const steps = {
 };
 export default function WorkspaceGuide({ user }) {
   const { pathname } = useLocation();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const fr = i18n.resolvedLanguage?.startsWith('fr');
   const canEdit = ['ROLE_ADMIN','ROLE_DOCC_MEO','ROLE_PROJ_MANAGER'].includes(user?.role);
   const guide = steps[pathname] || ['Choose a view and its filters.', 'Read the results for the selected projects and reporting periods.', 'Use Projects, Update Progress or Reports for your next task.'];
@@ -29,7 +29,7 @@ export default function WorkspaceGuide({ user }) {
     '/admin': ['Recherchez la personne ou le paramètre.', 'Vérifiez le rôle et les projets autorisés.', 'Enregistrez puis vérifiez les informations.'],
   };
   return <div className="wg-wrap rp-noprint">
-    <details className="wg-guide" key={pathname}><summary><HelpIcon size={24} /> {fr ? 'Comment utiliser cette page' : 'How to use this page'}</summary>    {pathname === '/dashboards' && <nav className="wg-start" aria-label={fr ? 'Commencer' : 'Start here'}>
+    <details className="wg-guide" key={pathname}><summary aria-label={fr ? 'Comment utiliser cette page' : 'How to use this page'}><HelpIcon size={20} /> {t('quietUi.help')}</summary>    {pathname === '/dashboards' && <nav className="wg-start" aria-label={fr ? 'Commencer' : 'Start here'}>
       <a href="#/project-setup"><ProjectsIcon size={22} />{fr ? 'Voir les projets' : 'View projects'}</a>
       {canEdit && <a href="#/merl-reporting"><UpdateProgressIcon size={22} />{fr ? 'Saisir les progrès' : 'Update progress'}</a>}
       <a href="#/reports"><ReportsIcon size={22} />{fr ? 'Générer un rapport' : 'Generate a report'}</a>

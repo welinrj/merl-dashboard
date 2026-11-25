@@ -17,3 +17,18 @@
 .wc-period summary { min-height:36px;padding:8px 0;font-size:12px; }
 .wc-period[open] { flex-basis:100%; }
 @media(max-width:640px){.wc-context{margin:10px 12px 0;padding:6px 10px;gap:0 8px}.wc-account{font-size:12px}.wc-period summary{min-height:32px;padding:6px 0}}
+
+/* One utility row; account identity is available in the header/account menu. */
+.dsh .wc-context{justify-content:flex-end;gap:8px;margin:4px 24px 0;padding:0;background:transparent;border:0;min-height:44px}
+.dsh .wc-context .wc-period>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 8px;font:400 14px/1.4 Arial,sans-serif;list-style:none}
+.dsh .wc-context .wc-period>summary::-webkit-details-marker{display:none}
+.dsh .wc-context .wc-period>summary strong{font-weight:500}
+.dsh .wc-context .wc-period[open]{padding:8px 12px;border:1px solid #d5e1e7;border-radius:8px;background:white}
+.dsh .wc-context .wg-wrap{margin:0;padding:0;max-width:none;flex:0 0 auto}
+.dsh .wc-context .wg-guide{padding:0;margin:0}
+.dsh .wc-context .wg-guide>summary{display:flex;align-items:center;gap:6px;min-height:44px;padding:4px 8px;font:500 14px/1.4 Arial,sans-serif;list-style:none}
+.dsh .wc-context .wg-guide>summary::-webkit-details-marker{display:none}
+.dsh .wc-context:has(.wg-guide[open]) .wg-wrap{flex-basis:100%}
+.dsh .wc-context .wg-guide[open]{padding:8px 12px;background:white;border:1px solid #d5e1e7;border-radius:8px}
+.dsh .wc-context .wc-note{flex-basis:100%;margin:4px 0}
+@media(max-width:640px){.dsh .wc-context{margin:2px 12px 0;gap:4px}}

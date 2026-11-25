@@ -1,3 +1,22 @@
 .ovx-simple-actions{margin:1.25rem 0;padding:1rem 1.25rem;border:1px solid #d5e1e7;border-radius:12px;background:#fff;font-family:Arial,sans-serif}.ovx-simple-actions h2,.ovx-explore-heading h2{font:700 1.15rem/1.4 Arial,sans-serif;color:#18394c;margin:0 0 .5rem}.ovx-simple-actions ul{padding:0;margin:0;list-style:none}.ovx-simple-actions li+li{border-top:1px solid #e0e8ec}.ovx-simple-actions button{display:flex;align-items:center;justify-content:space-between;gap:1rem;width:100%;min-height:48px;padding:.7rem 0;background:none;border:0;color:#244c61;text-align:left;font:400 .95rem/1.5 Arial,sans-serif;cursor:pointer}.ovx-simple-actions b{font-variant-numeric:tabular-nums;margin-right:.3rem}.ovx-simple-actions p,.ovx-explore-heading p{color:#526575;font:.9rem/1.6 Arial,sans-serif;margin:.3rem 0}.ovx-explore-heading{margin:1.5rem 0 .9rem}.ovx-details{margin:.75rem 0;border:1px solid #d5e1e7;border-radius:12px;background:#fff;min-width:0}.ovx-details>summary{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:72px;padding:1rem 1.25rem;cursor:pointer;list-style:none;color:#18394c;font-family:Arial,sans-serif}.ovx-details>summary::-webkit-details-marker{display:none}.ovx-details>summary::after{content:'+';font-size:1.5rem;line-height:1;flex-shrink:0;color:#236b75}.ovx-details[open]>summary::after{content:'−'}.ovx-details>summary strong{display:block;font-size:1rem;line-height:1.5}.ovx-details>summary small{display:block;font-size:.875rem;line-height:1.6;color:#526575;margin-top:.2rem}.ovx-details[open]>summary{border-bottom:1px solid #d5e1e7}.ovx-details-content{padding:0 1rem 1rem;min-width:0}.ovx-details-content>.project-progress-overview{border:0;padding:.5rem 0;margin:1rem 0}.ovx-details-content>.ovx-kpis{margin-top:1rem}.ovx-details-content .ovx-card{box-shadow:none}.ovx-details>summary:focus-visible,.ovx-simple-actions button:focus-visible{outline:3px solid #177b83;outline-offset:3px}.ovx .ovx-review-note{font-size:.875rem;color:#526575;margin:.4rem 0 0}
 @media(max-width:600px){.ovx-details>summary{padding:.9rem 1rem}.ovx-details-content{padding:0 .75rem .75rem}.ovx-simple-actions{padding:1rem}}
 @media print{.ovx-details:not([open])>.ovx-details-content{display:block!important;content-visibility:visible!important}.ovx-details>summary::after{display:none}.ovx-details>summary{border-bottom:1px solid #d5e1e7}}
+
+.quiet-ui-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.dsh .ovx .ovx-heading{align-items:center;flex-direction:row;gap:12px;margin-bottom:12px}
+.dsh .ovx .ovx-heading h1{font-size:1.6rem;margin:0}
+.dsh .ovx .ovx-reading-caption{font-size:.8rem;margin:4px 0 0;color:#526575}
+.ovx-page-actions{position:relative;flex-shrink:0}
+.ovx-page-actions>summary{list-style:none;min-height:44px;align-content:center;padding:6px 12px;border:1px solid #c4d4dc;border-radius:8px;background:white;color:#244c61;font:600 .875rem/1.5 Arial,sans-serif;cursor:pointer}
+.ovx-page-actions>summary::-webkit-details-marker{display:none}
+.ovx-page-actions[open]>.ovx-heading-actions{position:absolute;right:0;top:100%;z-index:20;display:grid;width:max-content;max-width:calc(100vw - 32px);min-width:210px;margin-top:5px;padding:8px;border:1px solid #c4d4dc;border-radius:10px;background:white;box-shadow:0 8px 24px #153e5020}
+.dsh .ovx .dashboard-filters{margin:0 0 10px;padding:0}
+.dsh .ovx .dashboard-filters-toggle{width:auto;min-width:0;flex:0 0 auto;gap:12px;min-height:44px;padding:6px 12px;font-size:14px}
+.dsh .ovx .executive-portfolio{margin:0 0 12px;padding:16px}
+.dsh .ovx .executive-health-grid{margin:0 0 14px;gap:8px}
+.dsh .ovx .executive-health{padding:12px;gap:5px}
+.dsh .ovx .executive-health>span{font-size:.875rem}
+.dsh .ovx .executive-targets{padding:16px}
+.dsh .ovx .executive-targets p{font-size:.82rem}
+.dsh .ovx .executive-method{margin-top:8px}
+@media(max-width:600px){.dsh .ovx .ovx-heading h1{font-size:1.4rem}.dsh .ovx .executive-portfolio{padding:12px}.dsh .ovx .executive-health-grid{gap:7px}.dsh .ovx .executive-health{padding:10px}.dsh .ovx .executive-targets{padding:12px}}

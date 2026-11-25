@@ -11,7 +11,7 @@ const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'}
 // Keep compatibility wording so the smoke test detects a broken page, not a
 // deliberate navigation-label change.
 const pages=[
-  ['Overview','/dashboards',/Dashboard Overview|MERL Dashboard/i],
+  ['Overview','/dashboards',/Overview|MERL Dashboard/i],
   ['Project Register','/project-setup',/Project Register|Project Setup|Project Registration|\bProjects\b/i],
   ['Results & Indicators','/analytics/results',/Results|Indicators/i],
   ['Project Portfolio Analysis','/analytics/project-portfolio?project=pa',/Project portfolio(?: analysis)?/i],

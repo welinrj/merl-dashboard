@@ -1,3 +1,4 @@
+import WorkspaceGuide from './WorkspaceGuide';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -59,12 +60,10 @@ export default function WorkspaceContextProvider({ user, children }) {
   const value = useMemo(() => ({ period, selectPeriod, periods: access.periods,
     periodInfo: access.periods.find(row => row.period_label === period) }), [period, access.periods, selectPeriod]);
   return <Context.Provider value={value}>
-    <section className="wc-context" aria-label={t('workspace.context')}>
-      <div className="wc-account"><strong>{user.name}</strong><span>{t(`roles.${user.role}`)}</span>
-        <span role="status">{access.loading ? t('workspace.checking') : access.error ? t('workspace.accessError') : t('workspace.projectCount', { count: access.projects.length })}</span>
-      </div>
+    <section className="wc-context" aria-label={t('workspace.context')} aria-busy={access.loading}>
+      {access.error && <p className="wc-note" role="alert">{t('workspace.accessError')}</p>}
       {!access.loading && !access.error && access.projects.length === 0 && <p className="wc-note">{t('workspace.noAccess')}</p>}
-      {periodPage && <details className="wc-period"><summary>{t('workspace.period')}: <strong>{period || t('workspace.allPeriods')}</strong></summary>
+      {periodPage && <details className="wc-period"><summary aria-label={`${t('workspace.period')}: ${period || t('workspace.allPeriods')}`}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18"/></svg><strong>{period || t('workspace.allPeriods')}</strong></summary>
         <label htmlFor="workspace-period">{t('workspace.period')}</label>
         <select id="workspace-period" className="wc-period-select" value={period} onChange={event => selectPeriod(event.target.value)} disabled={access.loading || access.error}>
           <option value="">{t('workspace.allPeriods')}</option>
@@ -72,6 +71,7 @@ export default function WorkspaceContextProvider({ user, children }) {
           {access.periods.map(row => <option key={row.period_label} value={row.period_label}>{row.period_label}</option>)}
         </select><p className="wc-note">{t('workspace.periodBasis')}</p>
       </details>}
+      <WorkspaceGuide user={user} />
     </section>
     {children}
   </Context.Provider>;

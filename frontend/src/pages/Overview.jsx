@@ -409,11 +409,10 @@ export default function Overview({ user }) {
 
       <section className="ovx-heading rp-noprint">
         <div>
-          <h1>{t('overview.title')}</h1>
-          <p className="ovx-reading-caption">{dataAsAt !== '—' ? t('simpleOverview.updated',{date:fmtDate(dataAsAt)}) : t('simpleOverview.noUpdate')}</p>
-          {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p className="ovx-review-note" role="status">{t('simpleOverview.pending')}</p>}
+          <h1>{t('quietUi.overview')}</h1>
+          <p className="ovx-reading-caption">{dataAsAt !== '—' ? t('quietUi.updated',{date:fmtDate(dataAsAt)}) : t('simpleOverview.noUpdate')}</p>
         </div>
-        <div className="ovx-heading-actions">
+        <details className="ovx-page-actions"><summary>{t('quietUi.actions')}</summary><div className="ovx-heading-actions">
           {canPublishPublic && <button type="button" className="ovx-publish"
             onClick={publishPublicPortal} disabled={publishingPublic}>
             <Send size={16} aria-hidden="true" />
@@ -422,7 +421,7 @@ export default function Overview({ user }) {
           <button type="button" className="ovx-export" onClick={printOverview}>
             <Printer size={15} aria-hidden="true" /> {t('ui.export')}
           </button>
-        </div>
+        </div></details>
       </section>
 
       <DashboardFilterPanel filters={filters} setFilter={setFilter} reset={reset} lang={lang}
@@ -445,7 +444,7 @@ export default function Overview({ user }) {
         <h2 id="ovx-action-title">{t('simpleOverview.actions')}</h2>
         {attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).length ? <ul>{attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).slice(0,3).map(item=><li key={item.key}><button type="button" onClick={()=>nav(item.to)}><span><b>{fmtNum(item.value)}</b> {t(`simpleOverview.actionLabels.${item.key}`)}</span><ArrowRight size={16} aria-hidden="true"/></button></li>)}</ul> : <p>{t('simpleOverview.noActions')}</p>}
       </section>
-      <div className="ovx-explore-heading"><h2>{t('simpleOverview.more')}</h2><p>{t('simpleOverview.moreHelp')}</p></div>
+      <div className="ovx-explore-heading"><h2>{t('simpleOverview.more')}</h2></div>
       <details className="ovx-details" data-section="projects">
         <summary><span><strong>{t('simpleOverview.projects')}</strong><small>{t('simpleOverview.projectsHelp')}</small></span></summary>
         <div className="ovx-details-content">
