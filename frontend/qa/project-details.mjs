@@ -26,6 +26,13 @@ try {
   const page=await context.newPage();
   await page.goto('http://localhost:5199/#/project-setup');
   await page.getByRole('heading',{name:'Find your project',exact:true}).waitFor({timeout:20000});
+  await page.getByRole('searchbox').waitFor();
+  assert.equal(await page.locator('.pd-summary,.pd-project-list,.ps-settings').count(),0,'No project information is shown by default');
+  await page.getByRole('checkbox',{name:'Show full project register'}).check();
+  await page.getByRole('button',{name:/Vanuatu Coastal Adaptation Project/}).waitFor();
+  assert.equal(await page.locator('.pd-summary').count(),0,'Opening the register does not select a project');
+  await page.getByRole('checkbox',{name:'Show full project register'}).uncheck();
+  assert.equal(await page.locator('.pd-project-list,.pd-summary').count(),0);
   await page.getByRole('searchbox').fill('VCAP2');
   await page.getByRole('button',{name:/Vanuatu Coastal Adaptation Project/}).click();
   assert.equal(await page.getByRole('button',{name:'Edit project manager',exact:true}).count(),role==='system_admin'?1:0);
@@ -44,7 +51,11 @@ try {
   }
   await page.setViewportSize({width:390,height:844});
 
-  if(role==='viewer'){assert.equal(writes.length,0);await context.close();continue;}
+  if(role==='viewer'){
+   await page.getByRole('searchbox').fill('');
+   assert.equal(await page.locator('.pd-project-list,.pd-summary,.ps-settings').count(),0,'Clearing search returns to the empty state');
+   assert.equal(writes.length,0);await context.close();continue;
+  }
   await page.getByRole('button',{name:'Edit project manager',exact:true}).click();
   await page.getByLabel('Project manager',{exact:false}).fill('New manager');
   assert.equal(await page.getByLabel('Approved budget (Vanuatu vatu)',{exact:false}).count(),0);

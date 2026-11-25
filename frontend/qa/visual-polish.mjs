@@ -72,6 +72,7 @@ try {
   await fits();await page.screenshot({animations:'disabled',path:'qa-artifacts/header-visual-review-360.png'});
   await page.goto('http://localhost:5199/#/project-setup');
   await page.getByRole('heading',{name:'Find your project',exact:true}).waitFor();
+  await page.getByRole('searchbox').fill('Community');
   await page.getByRole('button',{name:/Community Coastal Resilience/}).click();
   await page.getByRole('button',{name:'Edit project manager',exact:true}).click();
   const input=page.getByLabel('Project manager',{exact:false});await input.waitFor();

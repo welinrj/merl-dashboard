@@ -26,6 +26,8 @@ try {
  const page=await context.newPage();
  await page.goto('http://localhost:5199/#/project-setup');
  await page.getByRole('heading',{name:'Find your project',exact:true}).waitFor({timeout:20000});
+ await page.getByRole('searchbox').fill('VCAP2');
+ await page.getByRole('button',{name:/Test coastal project/}).click();
  const menu=page.locator('.dsh-mobile-nav button');
  await menu.click();
  await page.locator('.dsh-side.open').waitFor();
