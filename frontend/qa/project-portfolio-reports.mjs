@@ -32,8 +32,7 @@ try{
  });
  const page=await context.newPage();
  await page.goto('http://localhost:5199/#/project-setup');
- await page.getByRole('heading',{name:'Find your project',exact:true}).waitFor({timeout:20000});
- await page.getByRole('searchbox').fill('Selected coastal');
+ await page.locator('.pd-project-list').waitFor({timeout:20000});
  await page.getByRole('button',{name:/Selected coastal project/}).click();
  await page.getByRole('link',{name:'View project portfolio & reports',exact:true}).click();
  await page.getByRole('link',{name:'Generate project reports',exact:true}).waitFor({timeout:20000});

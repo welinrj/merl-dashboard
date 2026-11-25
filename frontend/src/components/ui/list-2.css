@@ -19,3 +19,10 @@
 .ps-config .pd-list2 .merl-list2-action[aria-pressed=true]{border-color:#16727d;background:#d3e8e6;box-shadow:none}
 @media(max-width:767px){.merl-list2-row{grid-template-columns:minmax(0,1fr);gap:16px;padding:20px 14px}.merl-list2-description{grid-column:1/-1}.merl-list2-icon{width:40px;height:44px}.merl-list2-meta{min-width:0;gap:10px}.merl-list2-action{max-width:100%}}
 @media(prefers-reduced-motion:reduce){.merl-list2-row{transition:none}}
+/* Official marks keep their proportions; unverified identities use plain initials. */
+.ps-config .pd-list2 .merl-list2-icon{width:104px;height:76px;background:#fff;border:1px solid #dce5eb;padding:6px}
+.pd-project-logo{display:flex;width:100%;height:100%;align-items:center;justify-content:center;min-width:0}
+.pd-project-logo img{display:block;width:100%;height:100%;max-width:100%;object-fit:contain}
+.pd-project-initials{font:700 .85rem/1.3 Arial,sans-serif;text-align:center;overflow-wrap:anywhere;color:#16727d}
+.ps-config .pd-project-browser{margin:0}
+.ps-config .pd-summary{scroll-margin-top:100px}

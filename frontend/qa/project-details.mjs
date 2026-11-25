@@ -25,32 +25,26 @@ try {
   });
   const page=await context.newPage();
   await page.goto('http://localhost:5199/#/project-setup');
-  await page.getByRole('heading',{name:'Find your project',exact:true}).waitFor({timeout:20000});
-  await page.getByRole('searchbox').waitFor();
-  assert.equal(await page.locator('.pd-summary,.pd-project-list,.ps-settings').count(),0,'No project information is shown by default');
-  mkdirSync('qa-artifacts',{recursive:true});
-  await page.screenshot({path:`qa-artifacts/header-list2-empty-${role}.png`});
-  await page.getByRole('checkbox',{name:'Show full project register'}).check();
-  await page.getByRole('button',{name:/Vanuatu Coastal Adaptation Project/}).waitFor();
-  assert.equal(await page.locator('.pd-summary').count(),0,'Opening the register does not select a project');
+  await page.locator('.pd-project-list').waitFor({timeout:20000});
+  assert.equal(await page.locator('.pd-summary,.ps-settings,.pd-finder,.pd-show-all').count(),0,'List opens immediately without finder or selected project');
   assert.equal(await page.locator('.merl-list2-row').count(),2);
+  await page.waitForFunction(()=>{const image=document.querySelector('.pd-project-logo img');return image?.complete && image.naturalWidth>0;});
+  assert.equal(await page.locator('.pd-project-initials').innerText(),'NAP');
+  mkdirSync('qa-artifacts',{recursive:true});
   for(const width of [360,1440]){
    await page.setViewportSize({width,height:900});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Project rows fit the viewport');
    await page.locator('.pd-list2').scrollIntoViewIfNeeded();
-   await page.screenshot({path:`qa-artifacts/header-list2-register-${role}-${width}.png`});
+   await page.screenshot({path:`qa-artifacts/header-project-logos-${role}-${width}.png`});
   }
   await page.setViewportSize({width:390,height:844});
-  await page.getByRole('checkbox',{name:'Show full project register'}).uncheck();
-  assert.equal(await page.locator('.pd-project-list,.pd-summary').count(),0);
-  await page.getByRole('searchbox').fill('VCAP2');
   await page.getByRole('button',{name:/Vanuatu Coastal Adaptation Project/}).click();
   assert.equal(await page.getByRole('button',{name:'Edit project manager',exact:true}).count(),role==='system_admin'?1:0);
   mkdirSync('qa-artifacts',{recursive:true});
   for(const width of [390,1440]){
    await page.setViewportSize({width,height:900});
    const separation=await page.evaluate(()=>{
-    const finder=document.querySelector('.pd-finder'),detail=document.querySelector('.pd-summary'),active=document.querySelector('.pd-project-list button[aria-pressed=true]');
+    const finder=document.querySelector('.pd-project-browser'),detail=document.querySelector('.pd-summary'),active=document.querySelector('.pd-project-list button[aria-pressed=true]');
     return {gap:detail.getBoundingClientRect().top-finder.getBoundingClientRect().bottom,
       distinct:getComputedStyle(finder).backgroundColor!==getComputedStyle(detail).backgroundColor,
       border:parseFloat(getComputedStyle(active).borderTopWidth),overflow:document.documentElement.scrollWidth>innerWidth};
@@ -61,11 +55,7 @@ try {
   }
   await page.setViewportSize({width:390,height:844});
 
-  if(role==='viewer'){
-   await page.getByRole('searchbox').fill('');
-   assert.equal(await page.locator('.pd-project-list,.pd-summary,.ps-settings').count(),0,'Clearing search returns to the empty state');
-   assert.equal(writes.length,0);await context.close();continue;
-  }
+  if(role==='viewer'){assert.equal(writes.length,0);await context.close();continue;}
   await page.getByRole('button',{name:'Edit project manager',exact:true}).click();
   await page.getByLabel('Project manager',{exact:false}).fill('New manager');
   assert.equal(await page.getByLabel('Approved budget (Vanuatu vatu)',{exact:false}).count(),0);
@@ -85,5 +75,5 @@ try {
   assert.equal(await page.getByRole('button',{name:'Save changes',exact:true}).isEnabled(),true);
   await context.close();
  }
- console.log('PASS Phone project search, section editing, preserved data, cancel, failed save and read-only access');
+ console.log('PASS Default project list, logos, section editing, preserved data, cancel, failed save and read-only access');
 }finally{await browser.close();}
