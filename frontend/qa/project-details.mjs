@@ -2,7 +2,7 @@
 // All authentication and writes are mocked; no real project data is edited.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 const fixture = JSON.parse(readFileSync(process.env.STUB_FILE,'utf8'));
 const HOST='https://ndntvncboeajanipafeq.supabase.co';
 const now=Math.floor(Date.now()/1000),b64=v=>Buffer.from(JSON.stringify(v)).toString('base64url');
@@ -29,6 +29,21 @@ try {
   await page.getByRole('searchbox').fill('VCAP2');
   await page.getByRole('button',{name:/Vanuatu Coastal Adaptation Project/}).click();
   assert.equal(await page.getByRole('button',{name:'Edit project manager',exact:true}).count(),role==='system_admin'?1:0);
+  mkdirSync('qa-artifacts',{recursive:true});
+  for(const width of [390,1440]){
+   await page.setViewportSize({width,height:900});
+   const separation=await page.evaluate(()=>{
+    const finder=document.querySelector('.pd-finder'),detail=document.querySelector('.pd-summary'),active=document.querySelector('.pd-project-list button[aria-pressed=true]');
+    return {gap:detail.getBoundingClientRect().top-finder.getBoundingClientRect().bottom,
+      distinct:getComputedStyle(finder).backgroundColor!==getComputedStyle(detail).backgroundColor,
+      border:parseFloat(getComputedStyle(active).borderTopWidth),overflow:document.documentElement.scrollWidth>innerWidth};
+   });
+   assert.ok(separation.gap>=24 && separation.distinct && separation.border>=2 && !separation.overflow,'Project list and selected details have a clear boundary');
+   await page.locator('.pd-project-heading').scrollIntoViewIfNeeded();
+   await page.screenshot({path:`qa-artifacts/header-project-separation-${role}-${width}.png`});
+  }
+  await page.setViewportSize({width:390,height:844});
+
   if(role==='viewer'){assert.equal(writes.length,0);await context.close();continue;}
   await page.getByRole('button',{name:'Edit project manager',exact:true}).click();
   await page.getByLabel('Project manager',{exact:false}).fill('New manager');
