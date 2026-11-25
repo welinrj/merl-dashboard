@@ -1,0 +1,62 @@
+import { ArrowRight, Award, Building2, HeartHandshake, Leaf, Lightbulb, Trophy } from "lucide-react";
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import "./list-2.css";
+
+export interface ListItem {
+  id?: string;
+  icon: React.ReactNode;
+  title: string;
+  category: string;
+  description: string;
+  link: string;
+}
+interface List2Props {
+  heading?: string;
+  items?: ListItem[];
+  className?: string;
+  selectedId?: string;
+  onSelect?: (item: ListItem) => void;
+}
+export const List2 = ({
+  heading = "Our Achievements & Recognition",
+  items = [
+    { icon: <Trophy />, title: "Industry Recognition", category: "Achievement", description: "Outstanding Performance Award.", link: "#" },
+    { icon: <Award />, title: "Excellence Award", category: "Recognition", description: "Best in Category Winner.", link: "#" },
+    { icon: <Lightbulb />, title: "Innovation Prize", category: "Technology", description: "Breakthrough Solution of the Year.", link: "#" },
+    { icon: <HeartHandshake />, title: "Customer Success", category: "Service", description: "Top-Rated Solution Provider.", link: "#" },
+    { icon: <Building2 />, title: "Global Leadership", category: "Management", description: "Executive Team of the Year.", link: "#" },
+    { icon: <Leaf />, title: "Sustainability Impact", category: "Environmental", description: "Green Initiative Excellence.", link: "#" },
+  ],
+  className, selectedId, onSelect,
+}: List2Props) => (
+  <section className={cn("merl-list2 py-32", className)} aria-label={heading || "Choose a project"}>
+    <div className="container mx-auto px-0 md:px-8">
+      {heading && <h2 className="mb-10 px-4 text-3xl font-semibold md:mb-14 md:text-4xl">{heading}</h2>}
+      <div className="flex flex-col">
+        <Separator />
+        {items.map((item, index) => {
+          const selected = Boolean(item.id && item.id === selectedId);
+          const label = <><span>{selected ? "Viewing project" : "View project"}</span><ArrowRight className="h-4 w-4" aria-hidden="true" /></>;
+          return <React.Fragment key={item.id || index}>
+            <div className="merl-list2-row grid items-center gap-4 px-4 py-5 md:grid-cols-4" data-selected={selected}>
+              <div className="merl-list2-meta order-2 flex items-center gap-2 md:order-none">
+                <span className="merl-list2-icon flex h-14 w-16 shrink-0 items-center justify-center rounded-md bg-muted" aria-hidden="true">{item.icon}</span>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <h3 className="font-semibold">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.category}</p>
+                </div>
+              </div>
+              <p className="merl-list2-description order-1 text-xl font-semibold md:order-none md:col-span-2">{item.description}</p>
+              {onSelect ? <Button type="button" variant="outline" className="merl-list2-action order-3 ml-auto w-fit gap-2 md:order-none" aria-label={`${selected ? "Viewing project" : "View project"}: ${item.description}`} aria-pressed={selected} onClick={() => onSelect(item)}>{label}</Button>
+                : <Button variant="outline" asChild><a className="merl-list2-action order-3 ml-auto w-fit gap-2 md:order-none" href={item.link}>{label}</a></Button>}
+            </div>
+            <Separator />
+          </React.Fragment>;
+        })}
+      </div>
+    </div>
+  </section>
+);

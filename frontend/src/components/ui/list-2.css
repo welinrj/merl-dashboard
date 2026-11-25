@@ -1,0 +1,21 @@
+/* Shared list follows MERL's existing light, navy and teal design. */
+.merl-list2{font-family:Arial,sans-serif;color:#173e59;--color-muted:#eaf2f5;--color-muted-foreground:#486176;--color-border:#bdced8}
+.merl-list2 [data-orientation=horizontal]{background:#bdced8;height:1px}
+.merl-list2-row{min-width:0;transition:background-color 150ms ease;border-left:4px solid transparent}
+.merl-list2-row[data-selected=true]{background:#e2f3f1;border-left-color:#16727d}
+.merl-list2-meta h3,.merl-list2-meta p,.merl-list2-description{margin:0;overflow-wrap:anywhere}
+.merl-list2-icon{background:#eaf2f5;color:#16727d}
+.merl-list2-icon svg{height:24px;width:24px;stroke-width:1.75}
+.merl-list2-meta h3{font-size:1rem;line-height:1.4}
+.merl-list2-meta p{font-size:.875rem;color:#486176;line-height:1.5;text-transform:capitalize}
+.merl-list2-description{font-size:1.125rem;line-height:1.5}
+.merl-list2-action{min-height:44px;border:2px solid #b8cbd6;background:#fff;color:#006b76;font-family:Arial,sans-serif;text-decoration:none;cursor:pointer}
+.merl-list2-action:hover{background:#eaf4f3}
+.merl-list2-action:focus-visible{outline:3px solid #245bb5;outline-offset:3px}
+.ps-config .pd-project-list.pd-list2{display:block;max-height:none;overflow:visible;padding:0;background:#fff;border:1px solid #bdced8;border-radius:12px;scrollbar-gutter:auto}
+.ps-config .pd-list2>.container{max-width:none;padding:0}
+.ps-config .pd-list2 .merl-list2-action{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 14px;border:2px solid #b8cbd6;border-radius:8px;box-shadow:none;font-size:.875rem;line-height:1.4;white-space:nowrap}
+.ps-config .pd-list2 .merl-list2-action span{font-size:inherit;color:inherit}
+.ps-config .pd-list2 .merl-list2-action[aria-pressed=true]{border-color:#16727d;background:#d3e8e6;box-shadow:none}
+@media(max-width:767px){.merl-list2-row{grid-template-columns:minmax(0,1fr);gap:16px;padding:20px 14px}.merl-list2-description{grid-column:1/-1}.merl-list2-icon{width:40px;height:44px}.merl-list2-meta{min-width:0;gap:10px}.merl-list2-action{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.merl-list2-row{transition:none}}

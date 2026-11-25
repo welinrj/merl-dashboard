@@ -1,3 +1,5 @@
+import { Building2 } from 'lucide-react';
+import { List2 } from '../components/ui/list-2';
 import { officialProjects, currentProjects } from '../lib/docc/projectScope';
 import ProjectDetailsForm from '../components/ProjectDetailsForm';
 import ProjectDetailsSummary from '../components/ProjectDetailsSummary';
@@ -289,10 +291,17 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
       <h2>Find your project</h2>
       <label className="pd-field"><span>Search by project name, short name or code</span><input type="search" className="field-input" value={search} onChange={event => { setSearch(event.target.value); setProjectId(''); }} placeholder="For example, VCAP2" /></label>
       <label className="pd-show-all"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked && !currentProjects(projects).some(p => p.id === projectId)) setProjectId(''); }} /> Show full project register</label>
-      {(search.trim() || showCompletedProjects) && <div className="pd-project-list" aria-label="Choose a project">
-        {loadingProjects ? <p role="status">Loading projects…</p> : visibleProjects.filter(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())).map(p => <button type="button" key={p.id} aria-pressed={p.id === projectId} onClick={() => setProjectId(p.id)}><strong>{p.name}</strong><span>{p.code || p.acronym || 'Open project'}{p.id === projectId ? ' · Selected' : ''}</span><span className="pd-project-meta">{p.status ? p.status.replaceAll('_', ' ') : 'Status not recorded'} · {p.islands?.length ? p.islands.join(', ') : p.provinces?.length ? p.provinces.join(', ') : 'Location not recorded'}</span><span className="pd-project-open">{p.id === projectId ? 'Viewing project' : 'View project'} <span aria-hidden="true">→</span></span></button>)}
+      {(search.trim() || showCompletedProjects) && <>
+        {loadingProjects ? <p role="status">Loading projects…</p> : <List2
+          heading="" className="pd-project-list pd-list2 !py-0"
+          selectedId={projectId} onSelect={item => setProjectId(item.id)}
+          items={visibleProjects.filter(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())).map(p => ({
+            id: p.id, icon: <Building2 />, title: p.acronym || p.code || 'Project',
+            category: p.status ? p.status.replaceAll('_', ' ') : 'Status not recorded',
+            description: p.name, link: `#/project-setup?project=${encodeURIComponent(p.id)}`,
+          }))} />}
         {!loadingProjects && !visibleProjects.some(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())) && <p role="status">No matching projects. Try another name or show the full register.</p>}
-      </div>}
+      </>}
     </div>
     {projectId && projects.find(p => p.id === projectId) && <ProjectDetailsSummary project={projects.find(p => p.id === projectId)} canEdit={canEdit} onEdit={onEditProject} />}
     {projectId && <details className="ps-settings" key={projectId}><summary>Partners & activities</summary><div className="ps-config-grid">

@@ -20,7 +20,7 @@ try {
    if(path.endsWith('/rpc/current_profile'))return json([{id:'u1',email:'test@example.com',full_name:'Test officer',role}]);
    if(path.endsWith('/rpc/upsert_project')){if(failSave)return json({message:'Save temporarily unavailable'},500);const args=req.postDataJSON();writes.push(args);project.project_manager=args.p_project_manager;return json('pa');}
    if(path==='/auth/v1/user')return json({id:'u1',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{}});
-   if(path.startsWith('/rest/v1/')){const rel=path.split('/').pop();return json(rel==='v_projects'?[project]:fixture[rel]||[]);}
+   if(path.startsWith('/rest/v1/')){const rel=path.split('/').pop();return json(rel==='v_projects'?[project,{...project,id:'pb',code:'NAP',acronym:'NAP',name:'National Adaptation Planning and Community Climate Resilience Programme',status:'pipeline'}]:fixture[rel]||[]);}
    return json([]);
   });
   const page=await context.newPage();
@@ -28,9 +28,19 @@ try {
   await page.getByRole('heading',{name:'Find your project',exact:true}).waitFor({timeout:20000});
   await page.getByRole('searchbox').waitFor();
   assert.equal(await page.locator('.pd-summary,.pd-project-list,.ps-settings').count(),0,'No project information is shown by default');
+  mkdirSync('qa-artifacts',{recursive:true});
+  await page.screenshot({path:`qa-artifacts/header-list2-empty-${role}.png`});
   await page.getByRole('checkbox',{name:'Show full project register'}).check();
   await page.getByRole('button',{name:/Vanuatu Coastal Adaptation Project/}).waitFor();
   assert.equal(await page.locator('.pd-summary').count(),0,'Opening the register does not select a project');
+  assert.equal(await page.locator('.merl-list2-row').count(),2);
+  for(const width of [360,1440]){
+   await page.setViewportSize({width,height:900});
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Project rows fit the viewport');
+   await page.locator('.pd-list2').scrollIntoViewIfNeeded();
+   await page.screenshot({path:`qa-artifacts/header-list2-register-${role}-${width}.png`});
+  }
+  await page.setViewportSize({width:390,height:844});
   await page.getByRole('checkbox',{name:'Show full project register'}).uncheck();
   assert.equal(await page.locator('.pd-project-list,.pd-summary').count(),0);
   await page.getByRole('searchbox').fill('VCAP2');
