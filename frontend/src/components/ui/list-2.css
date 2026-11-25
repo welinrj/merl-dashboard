@@ -8,7 +8,7 @@
 .merl-list2-icon svg{height:24px;width:24px;stroke-width:1.75}
 .merl-list2-meta h3{font-size:1rem;line-height:1.4}
 .merl-list2-meta p{font-size:.875rem;color:#486176;line-height:1.5;text-transform:capitalize}
-.merl-list2-description{font-size:1.125rem;line-height:1.5}
+.merl-list2 .merl-list2-description{font-size:1.125rem;font-weight:600;line-height:1.5;color:#173e59}
 .merl-list2-action{min-height:44px;border:2px solid #b8cbd6;background:#fff;color:#006b76;font-family:Arial,sans-serif;text-decoration:none;cursor:pointer}
 .merl-list2-action:hover{background:#eaf4f3}
 .merl-list2-action:focus-visible{outline:3px solid #245bb5;outline-offset:3px}
