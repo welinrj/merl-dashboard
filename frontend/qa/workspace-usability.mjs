@@ -1,3 +1,4 @@
+import { openOverviewDetails } from './overview-details.mjs';
 // Check the guided reporting flow and review cards on a phone.
 // All authentication and writes are mocked; no real project data is edited.
 import { chromium } from 'playwright';
@@ -29,6 +30,7 @@ try {
  await page.getByText('How to use this page',{exact:true}).click();
  await page.getByRole('navigation',{name:'Start here'}).waitFor({timeout:20000});
  assert.equal(await page.locator('.wg-guide li').count(),3);
+ await openOverviewDetails(page);
  await page.getByRole('heading',{name:'My tasks',exact:true}).waitFor();
  await page.getByRole('link',{name:'Make corrections',exact:true}).click();
  await page.locator('.mr-tabs').waitFor({timeout:15000});

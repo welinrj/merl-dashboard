@@ -1,3 +1,4 @@
+import { openOverviewDetails } from './overview-details.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { readFileSync,mkdirSync } from 'node:fs';
@@ -35,6 +36,7 @@ try{
    await page.setViewportSize({width,height:width===390?844:1000});
    await page.goto('http://127.0.0.1:5199/#/dashboards');
    const modeName=lang==='fr'?'Mode présentation':'Presentation mode';
+   if(auth)await openOverviewDetails(page);
    await page.locator(auth?'.ovx-kpis .ovx-kpi':'.pbd-metric').first().waitFor();
    assert.equal(await page.getByRole('button',{name:modeName,exact:true}).count(),0,'presentation mode is removed');
    if(!auth){

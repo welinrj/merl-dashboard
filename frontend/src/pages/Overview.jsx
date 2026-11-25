@@ -1,3 +1,4 @@
+import './overview-simple.css';
 import ExecutivePortfolioSummary from '../components/ExecutivePortfolioSummary';
 import { executivePortfolio } from '../lib/executivePortfolio';
 import FigureExplanation from '../components/FigureExplanation';
@@ -113,6 +114,12 @@ export default function Overview({ user }) {
   const [publishingPublic, setPublishingPublic] = useState(false);
   const [explainedMetric, setExplainedMetric] = useState(null);
   const canPublishPublic = user?.role === 'ROLE_ADMIN';
+  const printOverview = () => {
+    const closed = [...document.querySelectorAll('.ovx-details:not([open])')];
+    closed.forEach(section => { section.open = true; });
+    window.addEventListener('afterprint', () => closed.forEach(section => { section.open = false; }), { once: true });
+    window.print();
+  };
 
   const publishPublicPortal = async () => {
     if (!canPublishPublic || publishingPublic) return;
@@ -403,8 +410,8 @@ export default function Overview({ user }) {
       <section className="ovx-heading rp-noprint">
         <div>
           <h1>{t('overview.title')}</h1>
-          <p className="ovx-reading-caption">{lang?.startsWith('fr') ? 'Résultats du portefeuille' : 'Portfolio performance'}{dataAsAt && dataAsAt !== '—' && <> · {dataAsAt}</>}</p>
-          {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p role="status">Includes submitted results awaiting review. Public results follow approval and publication settings.</p>}
+          <p className="ovx-reading-caption">{dataAsAt !== '—' ? t('simpleOverview.updated',{date:fmtDate(dataAsAt)}) : t('simpleOverview.noUpdate')}</p>
+          {progress.some(row => ['submitted', 'under_review', 'resubmitted'].includes(row.review_status)) && <p className="ovx-review-note" role="status">{t('simpleOverview.pending')}</p>}
         </div>
         <div className="ovx-heading-actions">
           {canPublishPublic && <button type="button" className="ovx-publish"
@@ -412,7 +419,7 @@ export default function Overview({ user }) {
             <Send size={16} aria-hidden="true" />
             {publishingPublic ? publicationCopy.publishing : publicationCopy.action}
           </button>}
-          <button type="button" className="ovx-export" onClick={() => window.print()}>
+          <button type="button" className="ovx-export" onClick={printOverview}>
             <Printer size={15} aria-hidden="true" /> {t('ui.export')}
           </button>
         </div>
@@ -433,35 +440,22 @@ export default function Overview({ user }) {
         value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 
-      <nav className="overview-section-nav" aria-label={t('reading.overviewSections')}>{[['ovx-summary','summary'],['ovx-project-progress','progress'],['ovx-priorities','actions'],['ovx-reporting','reports']].map(([id,key]) => <button type="button" key={id} aria-controls={id} onClick={event => { event.preventDefault(); const target=document.getElementById(id); if(target){ target.focus({preventScroll:true}); target.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); } }}>{t(`reading.${key}`)}</button>)}</nav>
-      <ExecutivePortfolioSummary summary={executive} period={period} onResults={()=>nav(`/analytics/results${period ? `?period=${encodeURIComponent(period)}` : ''}`)}/>
+      <ExecutivePortfolioSummary onExplainProjects={()=>setExplainedMetric('projects')} summary={executive} period={period} onResults={()=>nav(`/analytics/results${period ? `?period=${encodeURIComponent(period)}` : ''}`)}/>
+      <section className="ovx-simple-actions" aria-labelledby="ovx-action-title">
+        <h2 id="ovx-action-title">{t('simpleOverview.actions')}</h2>
+        {attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).length ? <ul>{attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).slice(0,3).map(item=><li key={item.key}><button type="button" onClick={()=>nav(item.to)}><span><b>{fmtNum(item.value)}</b> {t(`simpleOverview.actionLabels.${item.key}`)}</span><ArrowRight size={16} aria-hidden="true"/></button></li>)}</ul> : <p>{t('simpleOverview.noActions')}</p>}
+      </section>
+      <div className="ovx-explore-heading"><h2>{t('simpleOverview.more')}</h2><p>{t('simpleOverview.moreHelp')}</p></div>
+      <details className="ovx-details" data-section="projects">
+        <summary><span><strong>{t('simpleOverview.projects')}</strong><small>{t('simpleOverview.projectsHelp')}</small></span></summary>
+        <div className="ovx-details-content">
       <ProjectProgressOverview healthRows={executive.rows} projects={projects} indicators={indicators} progress={progress} periods={reporting} lang={lang} onProject={id=>nav(projectResultsHref(id,period))}/>
-      <h2 className="ovx-supporting-title">{t('executive.supporting')}</h2>
+        </div>
+      </details>
+      <details className="ovx-details" data-section="finance">
+        <summary><span><strong>{t('simpleOverview.finance')}</strong><small>{t('simpleOverview.financeHelp')}</small></span></summary>
+        <div className="ovx-details-content">
       <section className="ovx-kpis" aria-label={t('overview.title')}>
-        <KpiCard
-          className="ovx-kpi ovx-kpi-projects"
-          concise stamp={cardStamps.projects}
-          onExplain={() => setExplainedMetric('projects')}
-          icon={PortfolioCardIcon}
-          label={t('visual.cards.projects')}
-          value={fmtNum(total)}
-          sub={t('visual.cards.projectStatus',{active:fmtNum(lifecycleCounts.active),planned:fmtNum(lifecycleCounts.planned),completed:fmtNum(lifecycleCounts.completed)})}
-          linkLabel={t('overview.viewProjects')}
-          onClick={() => nav('/project-setup')}
-        />
-        <KpiCard
-          className="ovx-kpi ovx-kpi-progress"
-          concise stamp={cardStamps.progress}
-          onExplain={() => setExplainedMetric('progress')}
-          icon={ProgressCardIcon}
-          label={t('executive.average')}
-          value={overallProgress == null ? '—' : `${overallProgress}%`}
-          sub={t('visual.cards.resultsBasis')}
-          progress={overallProgress}
-          progressColor={C.violet}
-          linkLabel={t('overview.viewPerformance')}
-          onClick={() => nav('/analytics/results')}
-        />
         <KpiCard
           className="ovx-kpi ovx-kpi-budget"
           concise stamp={cardStamps.budget}
@@ -489,17 +483,6 @@ export default function Overview({ user }) {
         />
         <KpiCard
           className="ovx-kpi"
-          label={t('executive.signals')}
-          concise stamp={cardStamps.attention}
-          onExplain={() => setExplainedMetric('attention')}
-          icon={AttentionCardIcon}
-          value={period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects)}
-          sub={period && !progress.length ? t('workspace.noPeriodResults') : t('visual.cards.attentionCounts',{risk:fmtNum(atRiskProjects),delayed:fmtNum(delayedProjects)})}
-          linkLabel={t('overview.viewPerformance')}
-          onClick={() => nav('/analytics/portfolio')}
-        />
-        <KpiCard
-          className="ovx-kpi"
           label={t('visual.cards.reporting')}
           concise stamp={cardStamps.reporting}
           onExplain={() => setExplainedMetric('reporting')}
@@ -513,6 +496,11 @@ export default function Overview({ user }) {
         />
       </section>
 
+        </div>
+      </details>
+      <details className="ovx-details" data-section="reporting">
+        <summary><span><strong>{t('simpleOverview.reporting')}</strong><small>{t('simpleOverview.reportingHelp')}</small></span></summary>
+        <div className="ovx-details-content">
       <MyTasks periods={reporting} projects={projects} user={user} />
       <PendingResultsFrameworks projects={registeredProjects} user={user} />
 
@@ -528,70 +516,6 @@ export default function Overview({ user }) {
           <div><span>At-risk results</span><b>{fmtNum(periodAtRisk)}</b><small>Performance status</small></div>
           <div><span>Delayed results</span><b>{fmtNum(periodDelayed)}</b><small>Schedule status</small></div>
         </div>
-      </section>
-
-      <section className="ovx-card ovx-assurance-card" aria-labelledby="ovx-assurance-title">
-        <div className="ovx-assurance-heading">
-          <div>
-            <span className="ovx-assurance-eyebrow">{frenchAssurance ? 'ASSURANCE DU PORTEFEUILLE' : 'PORTFOLIO ASSURANCE'}</span>
-            <h2 id="ovx-assurance-title">{frenchAssurance ? 'Couverture des données à vérifier' : 'Data coverage to verify'}</h2>
-            <p>{frenchAssurance
-              ? 'Complétez ces enregistrements à partir de sources vérifiées. Les comptes suivent les filtres sélectionnés.'
-              : 'Complete these records using verified sources. Counts follow the selected filters.'}</p>
-          </div>
-          <span className={`ovx-assurance-total${assuranceTotal ? ' has-gaps' : ''}`}>
-            {fmtNum(assuranceTotal)} {frenchAssurance ? 'éléments à vérifier' : 'records to verify'}
-          </span>
-        </div>
-        <div className="ovx-assurance-grid">
-          {assuranceSignals.map((signal) => (
-            <button key={signal.key} type="button" className="ovx-assurance-signal"
-              onClick={() => nav(signal.to)} aria-label={`${signal.value} ${signal.label}. ${signal.source}`}>
-              <span className="ovx-assurance-value">{fmtNum(signal.value)}</span>
-              <span className="ovx-assurance-copy">
-                <strong>{signal.label}</strong>
-                <small>{signal.source}</small>
-              </span>
-              <ArrowRight size={15} aria-hidden="true" />
-            </button>
-          ))}
-        </div>
-        <div className="ovx-assurance-footnote">
-          {frenchAssurance ? 'Les comptes s’actualisent avec les filtres ci-dessus.' : 'Counts update with the filters above.'}
-        </div>
-      </section>
-
-      <section id="ovx-priorities" tabIndex={-1} className="ovx-priority-grid">
-        <article className="ovx-card ovx-attention-card">
-          <CardHeading icon={<AlertTriangle size={17} aria-hidden="true" />} title={t('overview.needsAttention')} />
-          <div className="ovx-attention-grid">
-            {attention.map((item) => (
-              <button key={item.key} type="button" className={`ovx-attention-item tone-${item.tone}`} onClick={() => nav(item.to)}>
-                <span className="ovx-attention-number">{fmtNum(item.value)}</span>
-                <span className="ovx-attention-label">{item.label}</span>
-                <span className="ovx-attention-action">{t('overview.viewAll')} <ArrowRight size={12} /></span>
-              </button>
-            ))}
-          </div>
-        </article>
-
-        <article className="ovx-card">
-          <CardHeading title={t('overview.implementation')} />
-          <div className="ovx-implementation">
-            <Donut data={statusData} total={total} onSlice={(slice) => setFilter('status', slice.key)} />
-            <div className="ovx-status-list">
-              {statusData.map((item) => (
-                <button key={item.key} type="button" className="ovx-status-row" onClick={() => setFilter('status', item.key)}>
-                  <span className="ovx-status-dot" style={{ background: item.color }} />
-                  <span className="ovx-status-name">{item.name}</span>
-                  <b>{fmtNum(item.value)}</b>
-                  <span>{pct(item.value, total)}%</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <CardLink onClick={() => nav('/analytics/portfolio')}>{t('overview.viewPerformance')}</CardLink>
-        </article>
       </section>
 
       <section id="ovx-reporting" tabIndex={-1} className="ovx-card ovx-reporting-card">
@@ -625,7 +549,44 @@ export default function Overview({ user }) {
         <CardLink onClick={() => nav('/analytics/reporting')}>{t('overview.viewAllReports')}</CardLink>
       </section>
 
-      <div className="ovx-updated">{t('overview.subtitle')} <b>{dataAsAt}</b></div>
+        </div>
+      </details>
+      <details className="ovx-details" data-section="data">
+        <summary><span><strong>{t('simpleOverview.data')}</strong><small>{t('simpleOverview.dataHelp')}</small></span></summary>
+        <div className="ovx-details-content">
+      <section className="ovx-card ovx-assurance-card" aria-labelledby="ovx-assurance-title">
+        <div className="ovx-assurance-heading">
+          <div>
+            <span className="ovx-assurance-eyebrow">{frenchAssurance ? 'ASSURANCE DU PORTEFEUILLE' : 'PORTFOLIO ASSURANCE'}</span>
+            <h2 id="ovx-assurance-title">{frenchAssurance ? 'Couverture des données à vérifier' : 'Data coverage to verify'}</h2>
+            <p>{frenchAssurance
+              ? 'Complétez ces enregistrements à partir de sources vérifiées. Les comptes suivent les filtres sélectionnés.'
+              : 'Complete these records using verified sources. Counts follow the selected filters.'}</p>
+          </div>
+          <span className={`ovx-assurance-total${assuranceTotal ? ' has-gaps' : ''}`}>
+            {fmtNum(assuranceTotal)} {frenchAssurance ? 'éléments à vérifier' : 'records to verify'}
+          </span>
+        </div>
+        <div className="ovx-assurance-grid">
+          {assuranceSignals.map((signal) => (
+            <button key={signal.key} type="button" className="ovx-assurance-signal"
+              onClick={() => nav(signal.to)} aria-label={`${signal.value} ${signal.label}. ${signal.source}`}>
+              <span className="ovx-assurance-value">{fmtNum(signal.value)}</span>
+              <span className="ovx-assurance-copy">
+                <strong>{signal.label}</strong>
+                <small>{signal.source}</small>
+              </span>
+              <ArrowRight size={15} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+        <div className="ovx-assurance-footnote">
+          {frenchAssurance ? 'Les comptes s’actualisent avec les filtres ci-dessus.' : 'Counts update with the filters above.'}
+        </div>
+      </section>
+
+        </div>
+      </details>
     </div>
   );
 }

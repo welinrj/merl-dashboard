@@ -239,7 +239,8 @@ export default function KpiCard({
 }) {
   const { t } = useTranslation();
   const Tag = onClick && !onExplain ? 'button' : 'div';
-  const injectOverviewStyles = typeof className === 'string' && className.includes('ovx-kpi-progress');
+  // Keep the shared layout when the overview omits the average-progress card.
+  const injectOverviewStyles = typeof className === 'string' && (className.includes('ovx-kpi-progress') || className.includes('ovx-kpi-budget'));
   const showGauge = progress != null;
 
   return (

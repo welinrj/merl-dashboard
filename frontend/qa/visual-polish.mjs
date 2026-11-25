@@ -1,3 +1,4 @@
+import { openOverviewDetails } from './overview-details.mjs';
 // Regression for the user-approved 21st.dev hierarchy: title, chart with its
 // value inside, context, and destination. No production data is modified.
 import { chromium } from 'playwright';
@@ -46,9 +47,11 @@ try {
   const fits=async()=>assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal body overflow');
   await page.setViewportSize({width:360,height:900});
   await page.goto('http://localhost:5199/#/dashboards');
+  await openOverviewDetails(page);
   await page.locator('.ovx-kpis .ovx-kpi').first().waitFor({timeout:20000});
   await page.locator('.dsh-lang button[lang=fr]').click();
   await page.waitForFunction(()=>document.documentElement.lang==='fr');
+  await openOverviewDetails(page);
   await fits();
   const textFits=await page.locator('.ovx-kpi').evaluateAll(cards=>cards.every(card=>{
     const bounds=card.getBoundingClientRect();
@@ -59,7 +62,7 @@ try {
   }));
   assert.ok(textFits,'French card labels and actions are fully visible');
   await page.locator('.ovx-kpi').first().screenshot({animations:'disabled',path:'qa-artifacts/header-visual-kpis-fr-360.png'});
-  await page.locator('.ovx-kpi-progress').screenshot({animations:'disabled',path:'qa-artifacts/header-visual-progress-fr-360.png'});
+  await page.locator('.ovx-kpi-budget').screenshot({animations:'disabled',path:'qa-artifacts/header-visual-progress-fr-360.png'});
   await page.locator('.dsh-lang button[lang=en]').click();
   await page.goto('http://localhost:5199/#/review');
   await page.locator('.merl-status-badge:visible').first().waitFor();

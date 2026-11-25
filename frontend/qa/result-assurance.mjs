@@ -1,3 +1,4 @@
+import { openOverviewDetails } from './overview-details.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { readFileSync, mkdirSync } from 'node:fs';
@@ -24,8 +25,9 @@ try {
  });
  const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto('http://localhost:5199/#/dashboards');
- await page.locator('.ovx-kpis .ovx-kpi').first().waitFor({timeout:20000});
- await page.getByRole('button',{name:'Explain: Projects in Portfolio',exact:true}).click();
+ await openOverviewDetails(page);
+  await page.locator('.ovx-kpis .ovx-kpi').first().waitFor({timeout:20000});
+ await page.locator('.executive-method > summary').click();await page.locator('.executive-project-source').click();
  const projectExplanation=page.getByRole('dialog');await projectExplanation.waitFor();
  assert.match(await projectExplanation.innerText(),/a list of what they aim to achieve/);assert.doesNotMatch(await projectExplanation.innerText(),/non-audit|Source records|Current project register/);assert.equal(await projectExplanation.locator('details[open]').count(),0);
  mkdirSync('qa-artifacts',{recursive:true});await page.screenshot({path:'qa-artifacts/header-figure-project-explanation-390.png'});
@@ -33,9 +35,9 @@ try {
  await page.locator('.wc-period summary').click();await page.locator('#workspace-period').selectOption('Q3 2026');
  await page.locator('.ovx-kpi-beneficiaries .kpi-card-value').filter({hasText:/^20$/}).waitFor();
  await page.locator('.wc-period summary').click();
- const explain=page.getByRole('button',{name:'Explain: Mean indicator progress',exact:true});await explain.click();
- const dialog=page.getByRole('dialog');await dialog.waitFor();assert.match(await dialog.innerText(),/Each project has an equal share/);assert.match(await dialog.innerText(),/Q3 2026/);assert.equal(await dialog.locator('details[open]').count(),0);await dialog.locator('.figure-sources summary').click();assert.match(await dialog.innerText(),/Approved/);
- await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});assert.equal(await explain.evaluate(el=>el===document.activeElement),true);
+ const method=page.locator('.executive-method');if(!await method.evaluate(el=>el.open))await method.locator(':scope > summary').click();
+ assert.match(await method.innerText(),/Each framework indicator counts as one target/);
+ const dialog=page.getByRole('dialog');
  await page.getByRole('button',{name:'Explain: Beneficiaries Reached',exact:true}).click();await dialog.waitFor();
  assert.match(await dialog.innerText(),/same person may be counted/);await dialog.locator('.figure-details summary').first().click();assert.match(await dialog.innerText(),/largest reported total/);assert.equal(await dialog.locator('dd').first().innerText(),'20');
  for(const width of [360,1440,1920]) {await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(await dialog.evaluate(el=>el.getBoundingClientRect().width<=innerWidth));}
@@ -54,7 +56,7 @@ try {
  await page.locator('.report-readiness').getByText('No gaps found by the automated checks',{exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Download Word',exact:true}).isEnabled(),true);
  profileRole='viewer';
- await page.goto('http://localhost:5199/#/dashboards?period=Q3+2026');await page.reload();
+ await page.goto('http://localhost:5199/#/dashboards?period=Q3+2026');await page.reload();await openOverviewDetails(page);
  await page.getByRole('button',{name:'Explain: Budget Utilisation',exact:true}).waitFor({timeout:20000});
  await page.getByRole('button',{name:'Explain: Budget Utilisation',exact:true}).click();await dialog.waitFor();
  await dialog.locator('.figure-sources summary').click();
@@ -62,7 +64,7 @@ try {
  await dialog.getByRole('link',{name:'Open this project or report',exact:true}).first().click();
  await page.getByRole('heading',{name:'Project portfolio',exact:true}).waitFor();
  await page.locator('.dsh-lang button[lang=fr]').click();await page.waitForFunction(()=>document.documentElement.lang==='fr');
- await page.goto('http://localhost:5199/#/dashboards');await page.locator('.ovx-kpi-projects .kpi-card-explain').click();await dialog.waitFor();assert.match(await dialog.innerText(),/un plan de résultats/);assert.equal(await dialog.locator('details[open]').count(),0);
+ await page.goto('http://localhost:5199/#/dashboards');await openOverviewDetails(page);await page.locator('.executive-method > summary').click();await page.locator('.executive-project-source').click();await dialog.waitFor();assert.match(await dialog.innerText(),/un plan de résultats/);assert.equal(await dialog.locator('details[open]').count(),0);
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'qa-artifacts/header-figure-project-explanation-fr-390.png'});await page.keyboard.press('Escape');
  assert.deepEqual(errors,[]);console.log('PASS: figure explanation, Escape/focus, period-matched beneficiaries, phone/desktop widths, scoped readiness, Word qualifications and valid zero expenditure');
  await context.close();
