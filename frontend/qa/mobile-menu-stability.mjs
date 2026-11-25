@@ -56,7 +56,11 @@ try {
  role='viewer';
  await page.evaluate(session=>{const channel=new BroadcastChannel('sb-ndntvncboeajanipafeq-auth-token');channel.postMessage({event:'TOKEN_REFRESHED',session});setTimeout(()=>channel.close(),500);},session);
  await page.waitForResponse(r=>r.url().endsWith('/rpc/current_profile'));
- await page.waitForFunction(()=>document.querySelector('.pd-summary') && !document.querySelector('.pd-summary button[aria-label="Edit project manager"]'),{timeout:15000});
+ await page.locator('.ps-mode-tabs').waitFor({state:'detached',timeout:15000});
+ assert.equal(await page.locator('.pd-summary').count(),0,'Changing access returns to the empty project finder');
+ await page.getByRole('searchbox').fill('VCAP2');
+ await page.getByRole('button',{name:/Test coastal project/}).click();
+ await page.locator('.pd-summary').waitFor({timeout:15000});
  assert.equal(await page.getByRole('button',{name:'Edit project manager',exact:true}).count(),0);
  deny=true;
  await page.evaluate(session=>{const channel=new BroadcastChannel('sb-ndntvncboeajanipafeq-auth-token');channel.postMessage({event:'TOKEN_REFRESHED',session});setTimeout(()=>channel.close(),500);},session);
