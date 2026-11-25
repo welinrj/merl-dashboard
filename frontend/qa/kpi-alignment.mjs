@@ -44,6 +44,7 @@ try {
   for (const [width, height] of [[2560, 1440], [1920, 1080], [1440, 900], [1024, 768], [768, 1024], [390, 844], [360, 780]]) {
     await page.setViewportSize({ width, height });
     await page.goto('http://127.0.0.1:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
+    await page.reload({waitUntil:'domcontentloaded'});
     await page.locator('.executive-portfolio').waitFor();
     const optional=page.locator('.ovx-details');
     if (await optional.count() !== 4 || await optional.evaluateAll(es=>es.some(e=>e.open))) throw new Error('Overview details must start closed');
