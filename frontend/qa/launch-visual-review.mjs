@@ -1,3 +1,4 @@
+import { openOverviewDetails } from './overview-details.mjs';
 // Exercise Results scrolling with 301 synthetic indicators; never write live records.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -44,6 +45,7 @@ try {
     await page.locator('.dsh-scroll').evaluate(el=>{el.scrollTop=0;});
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No page overflow: '+name+' '+width);
     assert.match(await page.evaluate(()=>getComputedStyle(document.body).fontFamily),/^Arial/);
+    if(name==='overview')await openOverviewDetails(page);
     if(name==='overview'){assert(await page.locator('.kpi-card-explain svg').first().isVisible(),'Metric explanation icon is visible');assert.equal(await page.locator('.dashboard-filter-fields').isVisible(),false,'Filters start closed at every width');assert.equal(await page.locator('.wg-start').isVisible(),false,'Shortcuts are on demand');}
     if(name==='reports')assert(await page.locator('.rp-selected-scope').innerText());
     if(name==='review' && width===390)assert.equal(await page.locator('.review-summary-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),2);
@@ -60,7 +62,7 @@ try {
     if(name==='overview'){
       const colour=await page.locator('.kpi-card-head').first().evaluate(el=>getComputedStyle(el).backgroundColor);
       assert.equal(colour,'rgb(234, 242, 247)','Result card headings use the shared pale blue');
-      for(const selector of ['.ovx-beneficiary-summary','.ovx-status-summary']){
+      for(const selector of ['.ovx-beneficiary-summary']){
         const section=page.locator(selector);await section.scrollIntoViewIfNeeded();
         const heading=section.locator(selector.includes('beneficiary')?'.bene-head':':scope > h2');
         assert.equal(await heading.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(23, 62, 89)','Section headings use the shared navy');

@@ -1,3 +1,4 @@
+import { openOverviewDetails } from './overview-details.mjs';
 // Data integrity, filters, search, sorting, export and responsive behaviour.
 //
 // The stub holds values chosen so every KPI can be worked out by hand, and the
@@ -45,7 +46,7 @@ await ctx.route(`${HOST}/**`, async (r) => {
   return r.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
 });
 const page = await ctx.newPage();
-const go = async (r) => { await page.goto(`http://localhost:5199/#${r}`, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2300); };
+const go = async (r) => { await page.goto(`http://localhost:5199/#${r}`, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2300); if(r==='/dashboards')await openOverviewDetails(page); };
 const body = async () => (await page.locator('body').innerText()).replace(/\s+/g, ' ');
 
 // ── KPI reconciliation ───────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { openOverviewDetails } from './overview-details.mjs';
 // Isolated role and reporting fixtures. Every auth/data/write request is intercepted.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -41,6 +42,7 @@ try {
   await context.route('https://services.arcgis.com/**',route=>route.abort());
   const page=await context.newPage();currentPage=page;page.on('pageerror',error=>errors.push(error.message));
   await page.goto('http://localhost:5199/#/dashboards');
+  await openOverviewDetails(page);
   await page.locator('.ovx-kpis').waitFor({timeout:20000});
   if(role==='viewer')assert.equal(await page.locator('.my-tasks').count(),0);
   else {

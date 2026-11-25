@@ -1,3 +1,4 @@
+import { openOverviewDetails } from './overview-details.mjs';
 // Regression for the user-approved 21st.dev hierarchy: title, chart with its
 // value inside, context, and destination. No production data is modified.
 import { chromium } from 'playwright';
@@ -43,7 +44,19 @@ try {
   for (const [width, height] of [[2560, 1440], [1920, 1080], [1440, 900], [1024, 768], [768, 1024], [390, 844], [360, 780]]) {
     await page.setViewportSize({ width, height });
     await page.goto('http://127.0.0.1:5199/#/dashboards', { waitUntil: 'domcontentloaded' });
-    await page.locator('.ovx-kpis .ovx-kpi').first().waitFor({ timeout: 15000 });
+    await page.locator('.executive-portfolio').waitFor();
+    const optional=page.locator('.ovx-details');
+    if (await optional.count() !== 4 || await optional.evaluateAll(es=>es.some(e=>e.open))) throw new Error('Overview details must start closed');
+    if (await page.locator('.project-progress-overview').isVisible() || await page.locator('.ovx-kpis').isVisible()) throw new Error('Detailed statistics must be on demand');
+    if (await page.locator('.ovx-simple-actions li').count()>3) throw new Error('Opening action list must stay short');
+    if ([360,1440,1920].includes(width)) await page.screenshot({animations:'disabled',path:`qa-artifacts/header-simple-overview-${width}.png`});
+    const projectToggle=page.locator('.ovx-details[data-section="projects"] > summary');
+    await projectToggle.press('Enter');
+    await page.locator('.project-progress-overview').waitFor();
+    await projectToggle.press('Enter');
+    if(await page.locator('.project-progress-overview').isVisible())throw new Error('Keyboard must close optional project information');
+    await openOverviewDetails(page);
+  await page.locator('.ovx-kpis .ovx-kpi').first().waitFor({ timeout: 15000 });
     const executive = page.locator('.executive-portfolio');
     await executive.waitFor();
     if (await executive.locator('.executive-health').count() !== 5
@@ -106,16 +119,16 @@ try {
       const aligned = groups.every((row) => row.every((record) => Math.abs(record.titleTop - row[0].titleTop) <= 1));
       return { count: cards.length, records, aligned, gaugeCount: records.filter((r) => r.hasGauge).length };
     });
-    if (result.count !== 6 || !result.aligned || result.gaugeCount !== 3 || result.records.some((r) => !r.hierarchy || !r.withinCard || !r.gaugeValid || !r.iconValid || r.duplicateValue)) {
+    if (result.count !== 3 || !result.aligned || result.gaugeCount !== 2 || result.records.some((r) => !r.hierarchy || !r.withinCard || !r.gaugeValid || !r.iconValid || r.duplicateValue)) {
       throw new Error(`${width}px KPI hierarchy failure: ${JSON.stringify(result)}`);
     }
     if (width <= 390 && result.records.some(r => r.cardHeight > 270)) throw new Error(`Phone cards should stay compact: ${JSON.stringify(result.records)}`);
     if ([360,1440,1920].includes(width)) {
       await page.locator('.ovx-kpi').first().scrollIntoViewIfNeeded();
       await page.screenshot({animations:'disabled',path:`qa-artifacts/header-visual-kpis-${width}.png`});
-      await page.locator('.ovx-kpi-progress').screenshot({animations:'disabled',path:`qa-artifacts/header-visual-progress-${width}.png`});
+      await page.locator('.ovx-kpi-budget').screenshot({animations:'disabled',path:`qa-artifacts/header-visual-progress-${width}.png`});
     }
-    console.log(`✓ ${width}px: title → visual/number → context → action; three responsive progress visuals`);
+    console.log(`✓ ${width}px: title → visual/number → context → action; two responsive progress visuals`);
   }
   for (const width of [1440,390]) {
     await page.setViewportSize({width,height:900});
