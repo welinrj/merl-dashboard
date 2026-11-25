@@ -25,8 +25,7 @@ try {
  });
  const page=await context.newPage();
  await page.goto('http://localhost:5199/#/project-setup');
- await page.getByRole('heading',{name:'Find your project',exact:true}).waitFor({timeout:20000});
- await page.getByRole('searchbox').fill('VCAP2');
+ await page.locator('.pd-project-list').waitFor({timeout:20000});
  await page.getByRole('button',{name:/Test coastal project/}).click();
  const menu=page.locator('.dsh-mobile-nav button');
  await menu.click();
@@ -58,7 +57,6 @@ try {
  await page.waitForResponse(r=>r.url().endsWith('/rpc/current_profile'));
  await page.locator('.ps-mode-tabs').waitFor({state:'detached',timeout:15000});
  assert.equal(await page.locator('.pd-summary').count(),0,'Changing access returns to the empty project finder');
- await page.getByRole('searchbox').fill('VCAP2');
  await page.getByRole('button',{name:/Test coastal project/}).click();
  await page.locator('.pd-summary').waitFor({timeout:15000});
  assert.equal(await page.getByRole('button',{name:'Edit project manager',exact:true}).count(),0);

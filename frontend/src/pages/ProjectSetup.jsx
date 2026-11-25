@@ -1,6 +1,6 @@
-import { Building2 } from 'lucide-react';
+import ProjectLogo from '../components/ProjectLogo';
 import { List2 } from '../components/ui/list-2';
-import { officialProjects, currentProjects } from '../lib/docc/projectScope';
+import { officialProjects } from '../lib/docc/projectScope';
 import ProjectDetailsForm from '../components/ProjectDetailsForm';
 import ProjectDetailsSummary from '../components/ProjectDetailsSummary';
 import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
@@ -206,10 +206,7 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     } catch { return ''; }
   })();
   const [projects, setProjects] = useState([]);
-  const [search, setSearch] = useState('');
   const [loadingProjects, setLoadingProjects] = useState(true);
-  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
-  const visibleProjects = showCompletedProjects ? projects : currentProjects(projects);
   const [projectId, setProjectId] = useState('');
   const [organizations, setOrganizations] = useState([]);
   const [orgEdit, setOrgEdit] = useState({ id:null, name:'', short_name:'', organization_type:'', role:'implementing_partner', is_primary:false });
@@ -226,7 +223,6 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
     setProjectId((old) => {
       const requested = preferredProjectId || routeProjectId;
       const preferred = officialProjects(ps || []).some((p) => p.id === requested) ? requested : '';
-      if (preferred && !currentProjects(ps || []).some(p => p.id === preferred)) setShowCompletedProjects(true);
       const existing = officialProjects(ps || []).some((p) => p.id === old) ? old : '';
       return preferred || existing;
     });
@@ -242,6 +238,9 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
   useEffect(() => { loadOrganizations(projectId); }, [projectId, loadOrganizations]);
+  useEffect(() => {
+    if (projectId) document.querySelector('.pd-summary')?.scrollIntoView({ block: 'start' });
+  }, [projectId]);
 
   const saveOrganization = async () => {
     if (!projectId || !orgEdit.name.trim()) { toast.error('Organization name is required.'); return; }
@@ -286,23 +285,18 @@ function ProjectConfiguration({ preferredProjectId, canEdit, isAdmin, onEditProj
   };
 
   return <section className="ps-config">
-    {showCompletedProjects && <PendingResultsFrameworks projects={projects} user={user} onSelect={id => { setShowCompletedProjects(true); setProjectId(id); }} />}
-    <div className="pd-finder">
-      <h2>Find your project</h2>
-      <label className="pd-field"><span>Search by project name, short name or code</span><input type="search" className="field-input" value={search} onChange={event => { setSearch(event.target.value); setProjectId(''); }} placeholder="For example, VCAP2" /></label>
-      <label className="pd-show-all"><input type="checkbox" checked={showCompletedProjects} onChange={event => { setShowCompletedProjects(event.target.checked); if (!event.target.checked && !currentProjects(projects).some(p => p.id === projectId)) setProjectId(''); }} /> Show full project register</label>
-      {(search.trim() || showCompletedProjects) && <>
-        {loadingProjects ? <p role="status">Loading projects…</p> : <List2
-          heading="" className="pd-project-list pd-list2 !py-0"
-          selectedId={projectId} onSelect={item => setProjectId(item.id)}
-          items={visibleProjects.filter(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())).map(p => ({
-            id: p.id, icon: <Building2 />, title: p.acronym || p.code || 'Project',
-            category: p.status ? p.status.replaceAll('_', ' ') : 'Status not recorded',
-            description: p.name, link: `#/project-setup?project=${encodeURIComponent(p.id)}`,
-          }))} />}
-        {!loadingProjects && !visibleProjects.some(p => `${p.name} ${p.acronym || ''} ${p.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())) && <p role="status">No matching projects. Try another name or show the full register.</p>}
-      </>}
+    <div className="pd-project-browser">
+      {loadingProjects ? <p role="status">Loading projects…</p> : <List2
+        heading="" className="pd-project-list pd-list2 !py-0"
+        selectedId={projectId} onSelect={item => setProjectId(item.id)}
+        items={projects.map(p => ({
+          id: p.id, icon: <ProjectLogo project={p} />, title: p.acronym || p.code || 'Project',
+          category: p.status ? p.status.replaceAll('_', ' ') : 'Status not recorded',
+          description: p.name, link: `#/project-setup?project=${encodeURIComponent(p.id)}`,
+        }))} />}
+      {!loadingProjects && projects.length === 0 && <p role="status">No projects available.</p>}
     </div>
+    <PendingResultsFrameworks projects={projects} user={user} onSelect={setProjectId} />
     {projectId && projects.find(p => p.id === projectId) && <ProjectDetailsSummary project={projects.find(p => p.id === projectId)} canEdit={canEdit} onEdit={onEditProject} />}
     {projectId && <details className="ps-settings" key={projectId}><summary>Partners & activities</summary><div className="ps-config-grid">
       <div className="ps-config-card">
