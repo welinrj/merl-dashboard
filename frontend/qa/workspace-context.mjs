@@ -33,7 +33,10 @@ try {
   assert.equal(await account.locator('.wc-account').count(),0,'Repeated account banner is removed');
   assert.equal(await page.locator('.wc-context .wg-guide').count(),1,'Period and help share one compact row');
   if(role==='project_manager') {
+   await page.locator('.dsh-user').click();
+   await page.getByText('Test account',{exact:true}).last().waitFor();
    assert.match(await page.locator('.dsh-head').innerText(),/Project Manager/);
+   await page.locator('.dsh-account-backdrop').click({position:{x:5,y:100}});
    assert.match(await account.innerText(),/check your assignments/);
    await account.locator('.wc-period > summary').click();
    assert.equal(await account.locator('option').count(),1);
