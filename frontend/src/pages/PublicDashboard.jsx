@@ -23,8 +23,7 @@ import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
 import MetricInformation from '../components/MetricInformation';
-import { PublishedResultComparisons } from '../components/ResultComparisonCard';
-import { PublishedProjectProgressOverview } from '../components/ProjectProgressOverview';
+import { PublishedProjectProgress } from '../components/ProjectProgressOverview';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { toVuv } from '../lib/docc/currency';
@@ -147,10 +146,12 @@ function ProjectCard({ project, areas, copy, lang }) {
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
   return <FeatureCardGradient id={`public-project-${project.id}`} tabIndex={-1} className="pbd-project-card">
     <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><StatusBadge className={`pbd-status pbd-status-${statusOf(project)}`} label={copy[statusOf(project)]} tone={statusOf(project) === 'upcoming' ? 'warning' : statusOf(project) === 'other' ? 'neutral' : 'success'} /></header>
+    <PublishedProjectProgress project={project} lang={lang}/>
+    <details className="pbd-project-information">
+      <summary>{lang === 'fr' ? 'Informations sur le projet' : 'Project information'}</summary>
     {project.description && project.description !== project.expected_primary_outcome
       ? <p className="pbd-project-description">{project.description}</p>
       : !project.expected_primary_outcome && <p className="pbd-project-description">{copy.noDescription}</p>}
-    <PublishedResultComparisons project={project} lang={lang}/>
     <dl className="pbd-project-facts">
       <div><dt>{copy.manager}</dt><dd>{project.project_manager || copy.unknown}</dd></div>
       <div><dt>{copy.implementation}</dt><dd>{places.length ? places.join(', ') : copy.unknown}</dd></div>
@@ -160,6 +161,7 @@ function ProjectCard({ project, areas, copy, lang }) {
       <div><dt>{copy.theme}</dt><dd>{ThemeIcon && <ThemeIcon size={16} style={{ marginRight: 4 }} />}{themesOf(project).map(theme => lang === 'fr' ? ({'Loss and Damage':'Pertes et préjudices',Mitigation:'Atténuation'}[theme] || theme) : theme).join(', ') || copy.unknown}</dd></div>
     </dl>
     {project.expected_primary_outcome && <div className="pbd-project-outcome"><strong>{copy.outcome}</strong><p>{project.expected_primary_outcome}</p></div>}
+    </details>
   </FeatureCardGradient>;
 }
 
@@ -292,7 +294,10 @@ export default function PublicDashboard() {
           </section>
           <details className="pbd-method-note"><summary>{lang === 'fr' ? 'À propos des chiffres' : 'About these figures'}</summary><p>{c.fundingSub}. {c.utilisedSub}. {c.beneficiariesSub}.</p></details>
 
-          <PublishedProjectProgressOverview projects={filtered} lang={lang} onProject={viewProject}/>
+          <section className="pbd-section pbd-portfolio">
+            <div className="pbd-section-head"><div><h2 className="pbd-progress-summary-title"><ProjectsIcon size={20} aria-hidden="true" />{lang === 'fr' ? 'Progrès par projet' : 'Progress by project'}</h2><p>{lang === 'fr' ? 'Résumés des résultats approuvés et publiés.' : 'Approved, published result summaries.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
+            <div className="pbd-project-grid">{filtered.length ? filtered.map(project => <ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang} />) : <div className="pbd-empty">{c.noProjects}</div>}</div>
+          </section>
           <section className="pbd-section pbd-location-section">
             <div className="pbd-section-head"><div><span><MapPin size={16} aria-hidden="true" />{c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
             {selectedArea && <div className="pbd-area-selection">{c.selectedArea} <strong>{selectedArea.area_council}, {selectedArea.province}</strong></div>}
@@ -348,10 +353,7 @@ export default function PublicDashboard() {
             })}</div>{activeCategory && <div className="pbd-activity-details" id="pbd-activity-details"><h3>{c.activityCategoryLabels[activeCategory.key] || c.activityCategoryLabels.other} <small>({num(activeDetails.length, lang)})</small></h3><div className="pbd-activity-list">{activeDetails.map(row => <article key={row.indicator_id} className="pbd-activity-item"><div><span className="pbd-activity-label">{c.activity}</span><strong>{row.indicator_name}</strong>{row.indicator_code && <small>{row.indicator_code}</small>}</div><div><span className="pbd-activity-label">{c.target}</span><span>{row.target_text || (finite(row.target_value) ? `${num(row.target_value, lang)}${row.unit ? ` ${row.unit}` : ''}` : c.noTarget)}</span></div><div><span className="pbd-activity-label">{c.implementingProject}</span><span>{row.project_name}</span></div></article>)}</div></div>}</> : <div className="pbd-empty">{c.noIndicators}</div>}
           </section>
 
-          <section className="pbd-section pbd-portfolio">
-            <div className="pbd-section-head"><div><span><ProjectsIcon size={20} aria-hidden="true" />{c.portfolio}</span><p>{c.portfolioIntro}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
-            <div className="pbd-project-grid">{filtered.length ? filtered.map(project => <ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang} />) : <div className="pbd-empty">{c.noProjects}</div>}</div>
-          </section>
+
           <footer className="pbd-footer"><span>{c.source}</span></footer>
         </>}
       </div></main>

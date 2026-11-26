@@ -4,8 +4,8 @@ import { resultNumber } from '../lib/resultComparison';
 import './project-progress-overview.css';
 
 const copy = {
-  en:{title:'Progress by project',note:'Average progress across indicators with reported results. Check how many indicators are reported before comparing projects.',progress:'Reported indicator progress',none:'No reported results',definitions:'No indicators recorded',reported:'indicators with progress',achieved:'targets reported achieved',approved:'approved',pending:'awaiting approval',periods:'reporting periods',latest:'Latest available results',noPeriod:'Reporting period not recorded',view:'View project results',published:'Progress',unpublished:'Not published',publicCount:'indicators with published results'},
-  fr:{title:'Progrès par projet',note:'Progression moyenne des indicateurs renseignés. Vérifiez le nombre d’indicateurs renseignés avant de comparer les projets.',progress:'Progression des indicateurs renseignés',none:'Aucun résultat rapporté',definitions:'Aucun indicateur enregistré',reported:'indicateurs renseignés',achieved:'cibles déclarées atteintes',approved:'approuvés',pending:'en attente d’approbation',periods:'périodes de rapport',latest:'Derniers résultats disponibles',noPeriod:'Période non renseignée',view:'Voir les résultats du projet',published:'Progrès',unpublished:'Non publié',publicCount:'indicateurs avec résultats publiés'},
+  en:{title:'Progress by project',note:'Average progress across indicators with reported results. Check how many indicators are reported before comparing projects.',progress:'Reported indicator progress',none:'No reported results',definitions:'No indicators recorded',reported:'indicators with progress',achieved:'targets reported achieved',approved:'approved',pending:'awaiting approval',periods:'reporting periods',latest:'Latest available results',noPeriod:'Reporting period not recorded',view:'View project results',published:'Published indicator progress',unpublished:'Awaiting published update',publicCount:'indicators with published results'},
+  fr:{title:'Progrès par projet',note:'Progression moyenne des indicateurs renseignés. Vérifiez le nombre d’indicateurs renseignés avant de comparer les projets.',progress:'Progression des indicateurs renseignés',none:'Aucun résultat rapporté',definitions:'Aucun indicateur enregistré',reported:'indicateurs renseignés',achieved:'cibles déclarées atteintes',approved:'approuvés',pending:'en attente d’approbation',periods:'périodes de rapport',latest:'Derniers résultats disponibles',noPeriod:'Période non renseignée',view:'Voir les résultats du projet',published:'Progrès des indicateurs publiés',unpublished:'En attente de résultats publiés',publicCount:'indicateurs avec résultats publiés'},
 };
 const numeric=(n,lang)=>new Intl.NumberFormat(lang==='fr'?'fr-FR':'en-GB',{maximumFractionDigits:1}).format(n);
 function ProgressBar({value,label}) {
@@ -29,10 +29,11 @@ export default function ProjectProgressOverview({projects,indicators,progress,pe
 }
 export function PublishedProjectProgress({project,lang='en'}) {
   const c=copy[lang]||copy.en,pct=resultNumber(project.progress_pct),count=resultNumber(project.published_indicator_count);
-  return <div className="published-project-progress">
+  const accent=pct==null?'#64748b':pct>=100?'#15803d':pct>=90?'#0e7490':pct>=60?'#b45309':'#b3402f';
+  return <div className="published-project-progress" style={{'--project-progress-accent':accent}}>
     <div><span>{c.published}</span><strong>{pct==null?'—':`${numeric(pct,lang)}%`}</strong></div>
     {pct==null?<p>{c.unpublished}</p>:<ProgressBar value={pct} label={`${project.name}: ${c.published}`}/>}
-    {(count!=null||project.last_published_period)&&<small>{count!=null&&<span>{numeric(count,lang)} {c.publicCount}</span>}{project.last_published_period&&<span>{project.last_published_period}</span>}</small>}
+    {(count!=null||project.last_published_period)&&<small>{count!=null&&<span>{numeric(count,lang)} {lang==='fr' ? (count===1?'indicateur publié':'indicateurs publiés') : (count===1?'published indicator':'published indicators')}</span>}{project.last_published_period&&<span>{project.last_published_period}</span>}</small>}
   </div>;
 }
 export function PublishedProjectProgressOverview({projects=[],onProject,lang='en'}) {
