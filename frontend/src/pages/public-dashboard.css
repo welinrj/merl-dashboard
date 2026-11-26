@@ -301,3 +301,12 @@
 @media(max-width:760px){.dsh.pbd-root .pbd-title-row{gap:16px;flex-wrap:wrap}.dsh.pbd-root .pbd-metric .merl-metric-head{flex-wrap:wrap;padding-right:26px;min-height:72px!important}.dsh.pbd-root .pbd-metric .merl-metric-head>.merl-card-icon{display:none}}
 
 @media(max-width:560px){.dsh.pbd-root .pbd-metric:is(.funding,.utilised)>strong{font-size:clamp(18px,4.6vw,24px)!important}}
+
+/* Public project cards lead with a short result summary; profile detail is optional. */
+.pbd-progress-summary-title{display:flex;align-items:center;gap:10px;font:700 1.2rem/1.4 Arial,sans-serif;color:#173e59;margin:0}
+.pbd-project-information{margin-top:12px;border-top:1px solid #d8e2e9;padding-top:8px}
+.pbd-project-information>summary{min-height:44px;display:list-item;align-content:center;font:600 .9rem/1.5 Arial,sans-serif;color:#176571;cursor:pointer}
+.pbd-project-information>summary:focus-visible{outline:3px solid #245bb5;outline-offset:3px}
+.pbd-project-card .published-project-progress{margin:12px 0 0;border:0}
+.pbd-project-card .published-project-progress>div:first-child{align-items:flex-start}
+.pbd-project-card .published-project-progress strong{color:var(--project-progress-accent)}

@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 // Public regression: one overview, public snapshot reads, finance, locations and filters.
 import { chromium } from 'playwright';
 const HOST = 'https://ndntvncboeajanipafeq.supabase.co';
@@ -51,8 +52,9 @@ check('framework project funding is shown',await hasMetric('VT 3,000,000'));
 check('framework project utilisation is shown',await hasMetric('VT 900,000') && await hasMetric('30%'));
 check('framework project beneficiaries are shown',await hasMetric('120'));
 check('all published framework project cards are shown',await page.locator('.pbd-project-card').count()===2);
-check('project progress comparison is visible near the top',await page.getByRole('heading',{name:'Progress by project',exact:true}).count()===1 && await page.locator('.project-progress-row--public').count()===2);
-check('project progress bars retain their published values',JSON.stringify(await page.locator('.project-progress-row--public [role=progressbar]').evaluateAll(es=>es.map(e=>e.getAttribute('aria-valuenow'))))===JSON.stringify(['40','100']));
+check('project progress comparison is visible near the top',await page.getByRole('heading',{name:'Progress by project',exact:true}).count()===1 && await page.locator('.pbd-project-card .published-project-progress').count()===2);
+check('project progress bars retain their published values',JSON.stringify(await page.locator('.pbd-project-card .published-project-progress [role=progressbar]').evaluateAll(es=>es.map(e=>e.getAttribute('aria-valuenow'))))===JSON.stringify(['40','100']));
+check('public project cards show only a progress summary by default',await page.locator('.pbd-project-information[open]').count()===0 && await page.locator('.published-result-comparisons').count()===0);
 check('completed framework projects and their status filter are visible',await page.locator('.pbd-project-card').getByRole('heading',{name:'Water Security'}).count()===1 && await page.locator('.pbd-filters select').first().locator('option[value="completed"]').count()===1);
 check('project image is shown beside its matching name',await page.locator('.pbd-project-card').getByRole('heading',{name:'Coastal Resilience'}).locator('xpath=ancestor::header').locator('img[src$="/project-images/vcap2.webp"]').count()===1);
 check('framework project managers are visible',await page.getByText('Lina Kalo',{exact:true}).count()===1 && await page.getByText('Tom Nalo',{exact:true}).count()===1);
@@ -101,12 +103,20 @@ check('header contains one credentials form',await page.locator('.pbd-root .dsh-
 await page.goto('http://127.0.0.1:5199/#/project-setup',{waitUntil:'domcontentloaded'});
 await page.locator('.pbd-root .pbd-metrics').waitFor({timeout:15000});
 check('anonymous private route returns to the one public overview',new URL(page.url()).hash==='#/dashboards');
+fixtures.public_portal_projects[0]={...fixtures.public_portal_projects[0],progress_pct:0};
+fixtures.public_portal_projects[1]={...fixtures.public_portal_projects[1],progress_pct:null};
+await go('');
+check('reported zero is preserved as a real progress bar',await page.locator('#public-project-pa [role=progressbar]').getAttribute('aria-valuenow')==='0');
+check('unpublished results do not become zero progress',await page.locator('#public-project-pb [role=progressbar]').count()===0 && (await page.locator('#public-project-pb').innerText()).includes('Awaiting published update'));
 for(const width of [1024,768,390,360,320]) {
   await page.setViewportSize({width,height:844});
   await go('#/dashboards');
   if(width===320) console.log(await page.locator('.pbd-metric').evaluateAll(ns=>ns.slice(0,2).map(n=>({card:n.getBoundingClientRect().toJSON(),head:n.querySelector('.merl-metric-head').getBoundingClientRect().toJSON(),min:getComputedStyle(n.querySelector('.merl-metric-head')).minHeight,value:n.querySelector('strong').getBoundingClientRect().toJSON()}))));
   check(`${width}px: public metric values align across the first row`,await page.locator('.pbd-metric>strong').evaluateAll(nodes=>Math.abs(nodes[0].getBoundingClientRect().top-nodes[1].getBoundingClientRect().top)<2));
   check(`${width}px: no page-wide horizontal overflow`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2));
+  mkdirSync('qa-artifacts',{recursive:true});
+  await page.locator('.pbd-project-card').first().scrollIntoViewIfNeeded();
+  await page.screenshot({path:`qa-artifacts/header-public-summary-${width}.png`});
   if(width<=760) {
     const menu=page.getByRole('button',{name:'Open menu'});
     await menu.click();
