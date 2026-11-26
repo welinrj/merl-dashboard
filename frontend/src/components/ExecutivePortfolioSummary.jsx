@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import ProjectTargetContributions from './ProjectTargetContributions';
 import './executive-portfolio-summary.css';
 
 export default function ExecutivePortfolioSummary({ summary, period, onResults, onExplainProjects }) {
@@ -14,6 +15,7 @@ export default function ExecutivePortfolioSummary({ summary, period, onResults, 
       <div><h3>{t('executive.overall')}</h3><p>{t('executive.targetRatio', { achieved: number(targets.achieved), total: number(targets.total) })}</p><strong className="executive-target-value">{targets.percentage === null ? '—' : `${number(targets.percentage)}%`}</strong></div>
       <div className="executive-target-context">{targets.percentage !== null && <div className="executive-target-track" role="progressbar" aria-label={t('executive.overall')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={targets.percentage}><span style={{ width: `${targets.percentage}%` }} /></div>}<p>{t('quietUi.resultsAvailable', { reported: number(targets.reported), total: number(targets.total), missing: number(targets.total - targets.reported) })}</p><p>{t('quietUi.reviewCounts', { approved: number(targets.approvedAchieved), pending: number(targets.pending) })}</p><button type="button" onClick={onResults}>{t('executive.viewResults')}</button></div>
     </div>
+    <ProjectTargetContributions summary={summary} french={french} period={period}/>
     <details className="executive-method"><summary>{t('executive.methodTitle')}</summary><p>{french ? 'Le total comprend les projets actuels du registre. Les indicateurs proviennent des cadres de résultats disponibles. Les filtres sélectionnés s’appliquent.' : 'The total includes current registered projects. Indicator figures use the available results frameworks. Selected filters apply.'}</p><p>{t('executive.targetMethod')}</p><p>{french ? 'Les alertes critiques et les retards déclarés ont priorité. Un projet en bonne voie nécessite une évaluation positive de tous ses indicateurs. Les mises à jour reçues dont les évaluations restent incomplètes nécessitent aussi une attention. Sans résultats déclarés, le projet reste non évalué.' : 'Recorded critical warnings and delays take precedence. On track requires a positive assessment for every indicator. Projects with received updates but incomplete assessments also need attention. Projects without reported updates remain not yet assessed. A low final-target percentage alone does not mean a project is failing.'}</p><p>{t('executive.notPrediction')}</p>{onExplainProjects&&<button className="executive-project-source" type="button" onClick={onExplainProjects}>{t('simpleOverview.includedProjects')}</button>}</details>
   </section>;
 }
