@@ -75,7 +75,7 @@ try{
  await page.locator('#ppa-geography').getByText('No project locations recorded',{exact:true}).waitFor();
  assert.doesNotMatch(await page.locator('#ppa-geography').innerText(),/Espiritu Santo/);
  await expectCounts({achieved:1,on_track:0,below_target:0,not_yet_due:0,no_data:0});
- assert.equal(await pie.locator('svg circle').count(),1,'A single status renders a complete pie');
+ assert.equal(await pie.locator('.indicator-status-pie-visual circle').count(),1,'A single status renders a complete pie');
  assert.equal(await page.locator('#ppa-project option').count(),3);
  await page.locator('#ppa-project').selectOption('pa');
  // Router navigation commits asynchronously; verify both URL and project data before exporting.
