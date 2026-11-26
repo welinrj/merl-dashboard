@@ -23,6 +23,18 @@ test('true zero is reported, missing percentages are not; empty denominator is u
  assert.equal(data.targets.reported,1);assert.equal(data.targets.percentage,0);
  assert.equal(executivePortfolio([],[],[]).targets.percentage,null);
 });
+
+test('a draft-only historical period stays unassessed rather than becoming zero achievement',()=>{
+ const project={id:'a',code:'VCAP2',has_results_framework:true};
+ const own=[{id:'a1',project_id:'a',target_value:10},{id:'a2',project_id:'a',target_value:20}];
+ const draft=row('a1',100,'target_achieved',{review_status:'draft',reporting_period:'2025 PIR'});
+ const s=executivePortfolio([project],own,[draft],[],{period:'2025 PIR'});
+ assert.equal(s.draftUpdates,1);assert.equal(s.targets.total,2);
+ assert.equal(s.targets.reported,0);assert.equal(s.targets.achieved,0);assert.equal(s.targets.percentage,null);
+ assert.equal(s.counts.unassessed,1);
+ const actualZero=executivePortfolio([project],own,[{...draft,cumulative_actual:0,review_status:'submitted'}]);
+ assert.equal(actualZero.targets.percentage,0);assert.equal(actualZero.targets.reported,1);
+});
 test('current operational warnings never leak into a selected historical period',()=>{
  const project={id:'a',registered_status:'suspended'};
  const opts={activities:[{project_id:'a',status:'delayed'}]};
