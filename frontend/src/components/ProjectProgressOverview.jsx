@@ -30,7 +30,7 @@ export default function ProjectProgressOverview({projects,indicators,progress,pe
 }
 export function PublishedProjectProgress({project,lang='en'}) {
   const french=lang==='fr',model=publicTargetProgress(project),pct=model.pct;
-  const title=french?'Cibles atteintes':'Targets achieved';
+  const title=french?'Cibles du projet atteintes':'Project targets achieved';
   const accent=pct==null?'#64748b':pct>=100?'#15803d':pct>=90?'#0e7490':pct>=60?'#b45309':'#b3402f';
   const unavailable=model.kind==='no_framework'?(french?'Cadre de résultats non disponible':'Results framework unavailable'):
     model.kind==='unassessed' && project.target_summary_period?(french?'Évaluation des cibles en attente':'Target assessment pending'):
