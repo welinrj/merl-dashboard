@@ -12,7 +12,11 @@ export default function ProjectDetailsSummary({ project, canEdit, onEdit }) {
       {card('about', 'About the project', <><p>{text(project.description)}</p><dl><dt>Short name</dt><dd>{text(project.acronym)}</dd><dt>Status</dt><dd>{text(project.status)?.replaceAll('_', ' ')}</dd><dt>Lead organisation</dt><dd>{text(project.lead_agency)}</dd></dl></>)}
       {card('funding', 'Funding', <dl><dt>Who funds it?</dt><dd>{text(project.donor)}</dd><dt>Approved budget (Vanuatu vatu)</dt><dd>{project.budget_vuv == null ? 'Not yet added' : `VT ${Number(project.budget_vuv).toLocaleString()}`}</dd><dt>Start date</dt><dd>{text(project.start_date)}</dd><dt>End date</dt><dd>{text(project.end_date)}</dd></dl>)}
       {card('locations', 'Locations', <><p><strong>Provinces:</strong> {project.provinces?.length ? project.provinces.join(', ') : 'Not yet added'}</p><p><strong>Islands:</strong> {project.islands?.length ? project.islands.join(', ') : 'Not yet added'}</p><p><strong>Area Councils:</strong> {project.area_councils?.length ? project.area_councils.join(', ') : 'Not yet added'}</p><p><strong>Communities:</strong> {project.communities?.length ? project.communities.join(', ') : 'Not yet added'}</p></>)}
-      {card('contacts', 'Project manager', <dl><dt>Project manager</dt><dd>{text(project.project_manager)}</dd><dt>Monitoring contact</dt><dd>{text(project.me_officer)}</dd><dt>Finance contact</dt><dd>{text(project.finance_officer)}</dd></dl>)}
+      {card('contacts', 'Project team', <dl style={{ display: 'grid', gap: '.85rem', margin: 0 }}>{[
+        ['Project Manager', project.project_manager],
+        ['Monitoring & Evaluation (M&E) contact', project.me_officer],
+        ['Finance contact', project.finance_officer],
+      ].map(([role, name]) => <div key={role} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '.65rem', minWidth: 0 }}><dt style={{ margin: 0 }}>{role}</dt><dd style={{ marginTop: '.2rem', overflowWrap: 'anywhere' }}>{text(name)}</dd></div>)}</dl>)}
       {card('goals', 'Goals & activities', <><p>{text(project.expected_primary_outcome)}</p><p>Project goals, activities, indicators and targets are in the results framework.</p><a className="btn btn-secondary" href={`#/results-framework?project=${encodeURIComponent(project.id)}`}>Open goals & activities</a></>)}
     </div>
   </div>;
