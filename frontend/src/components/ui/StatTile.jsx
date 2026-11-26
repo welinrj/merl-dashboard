@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 const STATUS_DOT = { green: '#1a8c4e', amber: '#d99a2b', red: '#b3402f', none: '#9a9186' };
 const STATUS_LABEL = { green:'status.on_track', amber:'status.attention', red:'status.critical', none:'status.no_data' };
 
-export default function StatTile({ label, value, sub, status, placeholder = false, style, icon: Icon }) {
+export default function StatTile({ label, value, sub, status, placeholder = false, style, icon: Icon, children }) {
   const { t } = useTranslation();
   return (
     <div className="stat-tile island-metric" style={style}>
@@ -30,6 +30,7 @@ export default function StatTile({ label, value, sub, status, placeholder = fals
       {sub && (
         <div className="stat-tile-sub">{sub}</div>
       )}
+      {children}
     </div>
   );
 }
