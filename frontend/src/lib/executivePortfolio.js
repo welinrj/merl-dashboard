@@ -24,10 +24,13 @@ export function finalTargetAttained(indicator, row) {
 export function executivePortfolio(projects = [], indicators = [], progress = [], periods = [], { activities = [], period = '' } = {}) {
   const counts = { total: projects.length, on_track: 0, attention: 0, critical: 0, unassessed: 0 };
   const targets = { total: 0, achieved: 0, reported: 0, pending: 0, approvedAchieved: 0, percentage: null };
+  let draftUpdates = 0;
   const rows = projects.map(project => {
     const own = [...new Map(indicators.filter(i => i.project_id === project.id).map(i => [i.id, i])).values()];
     const ids = new Set(own.map(i => i.id));
-    const latest = [...latestReportedBy(withReportingDates(progress.filter(r => r.project_id === project.id && ids.has(r.indicator_id)), periods)).values()];
+    const dated = withReportingDates(progress.filter(r => r.project_id === project.id && ids.has(r.indicator_id)), periods);
+    const latest = [...latestReportedBy(dated).values()];
+    draftUpdates += [...latestReportedBy(dated, 'indicator_id', {includeDraft:true}).values()].filter(r=>r.review_status==='draft').length;
     const byId = new Map(own.map(i => [i.id, i]));
     const measured = latest.filter(r => finalTargetAttained(byId.get(r.indicator_id), r) !== null);
     const achieved = measured.filter(r => finalTargetAttained(byId.get(r.indicator_id), r) === true);
@@ -55,7 +58,7 @@ export function executivePortfolio(projects = [], indicators = [], progress = []
     targets.approvedAchieved += achieved.filter(r => approved.has(r.review_status)).length;
     return { project, health, healthBasis, total: own.length, achieved: achieved.length, reported: measured.length };
   });
-  targets.percentage = targets.total ? Math.round(targets.achieved / targets.total * 1000) / 10 : null;
-  return { counts, targets, rows, frameworks: projects.filter(p => p.has_results_framework !== false).length,
+  targets.percentage = targets.total && targets.reported ? Math.round(targets.achieved / targets.total * 1000) / 10 : null;
+  return { counts, targets, rows, draftUpdates, frameworks: projects.filter(p => p.has_results_framework !== false).length,
     assessmentGaps: rows.filter(row => row.healthBasis === 'assessment_gaps').length };
 }

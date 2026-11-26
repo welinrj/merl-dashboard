@@ -106,7 +106,7 @@ export default function Overview({ user }) {
 
   const liveRevision = useLiveDashboard();
   const [sourceData, setData] = useState(null);
-  const { period, periodInfo } = useWorkspaceContext();
+  const { period, periodInfo, selectPeriod } = useWorkspaceContext();
   const data = scopeWorkspacePeriod(sourceData, period);
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -412,7 +412,7 @@ export default function Overview({ user }) {
       <section className="ovx-heading rp-noprint">
         <div>
           <h1>{t('quietUi.overview')}</h1>
-          <p className="ovx-reading-caption">{dataAsAt !== '—' ? t('quietUi.updated',{date:fmtDate(dataAsAt)}) : t('simpleOverview.noUpdate')}</p>
+          <p className="ovx-reading-caption">{dataAsAt !== '—' ? t('quietUi.updated',{date:fmtDate(dataAsAt)}) : executive.draftUpdates>0 ? `${fmtNum(executive.draftUpdates)} ${french?'mises à jour en brouillon':'draft updates awaiting submission'}` : period ? (french?'Aucun résultat soumis pour cette période.':'No submitted results for this period.') : t('simpleOverview.noUpdate')}</p>
         </div>
         <details className="ovx-page-actions"><summary>{t('quietUi.actions')}</summary><div className="ovx-heading-actions">
           {canPublishPublic && <button type="button" className="ovx-publish"
@@ -441,7 +441,7 @@ export default function Overview({ user }) {
         value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 
-      <ExecutivePortfolioSummary  summary={executive} period={period} onResults={()=>nav(`/analytics/results${period ? `?period=${encodeURIComponent(period)}` : ''}`)}/>
+      <ExecutivePortfolioSummary  summary={executive} period={period} onAllPeriods={()=>selectPeriod('')} onResults={()=>nav(`/analytics/results${period ? `?period=${encodeURIComponent(period)}` : ''}`)}/>
       <section className="ovx-simple-actions" aria-labelledby="ovx-action-title">
         <h2 id="ovx-action-title">{t('simpleOverview.actions')}</h2>
         {attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).length ? <ul>{attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).slice(0,3).map(item=><li key={item.key}><button type="button" onClick={()=>nav(item.to)}><span><b>{fmtNum(item.value)}</b> {t(`simpleOverview.actionLabels.${item.key}`)}</span><ArrowRight size={16} aria-hidden="true"/></button></li>)}</ul> : <p>{t('simpleOverview.noActions')}</p>}
