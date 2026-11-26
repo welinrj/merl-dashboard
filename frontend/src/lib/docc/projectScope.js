@@ -1,9 +1,10 @@
 // The audit fixture remains available for administration, never official reporting.
-export const isOfficialProject = project => String(project.code || '').trim().toUpperCase() !== 'AUDIT-2026';
+export const isOfficialProject = project => String(project.code || '').trim().toUpperCase() !== 'AUDIT-2026' && !isCompletedProject(project);
 export const officialProjects = projects => projects.filter(isOfficialProject);
-export const isCompletedProject = project => ['completed', 'closed'].includes(String(project.lifecycle_status || project.status || '').trim().toLowerCase());
+export const isCompletedProject = project => [project.lifecycle_status, project.status]
+  .some(status => ['completed', 'closed'].includes(String(status || '').trim().toLowerCase()));
 export const hasResultsFramework = project => project.has_results_framework === true;
-// The full register remains available for historical records and administration.
+// Completed records stay in storage, outside every dashboard register.
 export const isCurrentPortfolioProject = project => isOfficialProject(project)
   && project.excluded_from_current_portfolio !== true && !isCompletedProject(project)
   && String(project.status || '').trim().toLowerCase() !== 'cancelled';

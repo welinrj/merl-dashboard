@@ -1,5 +1,5 @@
 import AssignProjectsModal from '../components/AssignProjectsModal';
-import { officialProjects, currentProjects } from '../lib/docc/projectScope';
+import { officialProjects, currentProjects, isCompletedProject } from '../lib/docc/projectScope';
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '../supabaseClient';
 import { confirmDialog } from '../lib/confirm';
@@ -238,8 +238,8 @@ function ProjectsTab() {
   const [projects, setProjects] = useState([]);
   const [showTestProjects, setShowTestProjects] = useState(false);
   const official = officialProjects(projects);
-  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
-  const visibleProjects = showTestProjects ? projects : showCompletedProjects ? official : currentProjects(projects);
+  const [showAllProjects, setShowAllProjects] = useState(false);
+  const visibleProjects = showTestProjects ? projects.filter(project => !isCompletedProject(project)) : showAllProjects ? official : currentProjects(projects);
   const [loading, setLoading]   = useState(true);
   const [err, setErr]           = useState('');       // page-level load error
   const [form, setForm]         = useState(EMPTY_FORM);
@@ -507,12 +507,12 @@ function ProjectsTab() {
       )}
 
       <p className="text-sm text-gray-600">{currentProjects(projects).length} projects with results frameworks. Other projects are available in the register.</p>
-      <label className="text-sm"><input type="checkbox" checked={showCompletedProjects} onChange={event => setShowCompletedProjects(event.target.checked)} /> Include all registered projects</label>
+      <label className="text-sm"><input type="checkbox" checked={showAllProjects} onChange={event => setShowAllProjects(event.target.checked)} /> Include projects without results frameworks</label>
       <label className="text-sm"><input type="checkbox" checked={showTestProjects} onChange={event => setShowTestProjects(event.target.checked)} /> Show test projects</label>
       {/* Projects table */}
       <AdminDataTable title={t('adm.projects')} rows={visibleProjects} loading={loading} selection
         searchPlaceholder="Search projects…" empty={t('adm.noProjectsAdd')} onRefresh={load}
-        filters={[{key:'status',label:t('adm.status'),options:STATUS_OPTIONS.map(s=>({value:s,label:s.charAt(0).toUpperCase()+s.slice(1)}))},{key:'category',label:t('adm.category'),options:CATEGORIES.map(c=>({value:c.id,label:t(c.label)}))}]}
+        filters={[{key:'status',label:t('adm.status'),options:STATUS_OPTIONS.filter(s=>!['completed','closed'].includes(s)).map(s=>({value:s,label:s.charAt(0).toUpperCase()+s.slice(1)}))},{key:'category',label:t('adm.category'),options:CATEGORIES.map(c=>({value:c.id,label:t(c.label)}))}]}
         columns={[
           {key:'name',label:t('adm.projectName'),required:true,render:p=><span className="font-semibold text-gray-800">{p.name}</span>},
           {key:'code',label:t('adm.code'),render:p=><span className="font-mono text-xs">{p.code}</span>},

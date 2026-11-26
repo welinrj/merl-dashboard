@@ -1,13 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { officialProjects, currentProjects, isCurrentPortfolioProject, officialPortfolioData } from '../src/lib/docc/projectScope.js';
+import { officialProjects, currentProjects, isCompletedProject, isCurrentPortfolioProject, officialPortfolioData } from '../src/lib/docc/projectScope.js';
 import { projectMatches } from '../src/lib/dashboardFilters.jsx';
 import { enrichPublishedProject } from '../src/lib/publicSnapshot.js';
 const projects = [{id:'a',code:'A',status:'active',has_results_framework:true}, {id:'b',code:'B',status:'planning',has_results_framework:false}, {id:'c',code:'C',status:'completed',has_results_framework:true}, {id:'t',code:'AUDIT-2026',status:'pipeline'}, {id:'x',code:'X',status:'active',has_results_framework:true,excluded_from_current_portfolio:true}];
-test('official register keeps archived projects and excludes the fixture', () => {
-  assert.equal(officialProjects(projects).length,4);
+test('every official register excludes completed projects and the fixture', () => {
+  assert.equal(officialProjects(projects).length,3);
   assert.deepEqual(currentProjects(projects).map(p=>p.id),['a']);
   assert.equal(projectMatches(projects[3], {}),false);
+});
+
+test('either source status can exclude a completed project without hiding completed work in active projects',()=>{
+ for(const project of [{status:' Closed '},{lifecycle_status:'COMPLETED'},{status:'completed',lifecycle_status:'ongoing'}]) {
+  assert.equal(isCompletedProject(project),true);
+  assert.deepEqual(officialProjects([{...project,id:'done',code:'DONE'}]),[]);
+ }
+ const scoped=officialPortfolioData({projects,activities:[{project_id:'a',status:'completed'},{project_id:'c',status:'active'}],financial:[{project_id:'c',amount:999}],progress:[{project_id:'c',achievement_pct:100}]});
+ assert.deepEqual(scoped.activities,[{project_id:'a',status:'completed'}]);
+ assert.deepEqual(scoped.financial,[]);assert.deepEqual(scoped.progress,[]);
 });
 test('official portfolio excludes fixture results, activities and expenditure together', () => {
   const data=officialPortfolioData({projects,activities:[{project_id:'a'},{project_id:'t'}],financial:[{project_id:'t'}]});

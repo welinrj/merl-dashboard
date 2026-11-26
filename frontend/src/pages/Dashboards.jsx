@@ -378,7 +378,6 @@ function Portfolio({ d, onNavigate }) {
       </div>
       <MetricStrip title={t('dash.portfolioSummary')} style={{ marginTop: '0.7rem' }} items={[
         { label: t('dash.active'), value: m.active },
-        { label: t('dash.completed'), value: m.completed },
         { label: 'At risk', value: m.atRisk, tone: m.atRisk ? 'warning' : undefined },
         { label: 'Delayed', value: m.delayed, tone: m.delayed ? 'danger' : undefined },
         { label: `${t('dash.expenditure')} (VUV)`, value: fmtAmount(m.totalExp) },
