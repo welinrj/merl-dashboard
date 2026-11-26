@@ -148,6 +148,31 @@ const TARGET_CATEGORY_COLORS = {
   finance:'#1d6f8f', 'learning-delivery':'#596b83', beneficiaries:'#c5543d',
   other:'#7a6d60', undisclosed:'#94a3b8'
 };
+// Public names are read only from the published indicator detail snapshot.
+function ThematicIndicatorNames({ records, lang, copy, showProject = true, achievedOnly = false }) {
+  const fr=lang==='fr';
+  const unique=[...new Map(records.filter(d=>d.indicator_id).map(d=>[d.indicator_id,d])).values()];
+  const visible=unique.filter(d=>!achievedOnly||d.final_target_attained===true);
+  const sorted=[...visible].sort((a,b)=>String(a.project_name||'').localeCompare(String(b.project_name||''))||String(a.indicator_code||'').localeCompare(String(b.indicator_code||''),undefined,{numeric:true})||String(a.indicator_name||'').localeCompare(String(b.indicator_name||'')));
+  if(!sorted.length)return <p style={{fontSize:'.8rem',color:'#526476',margin:'.45rem 0'}}>{achievedOnly?(fr?'Aucune cible atteinte publiée dans cette catégorie.':'No achieved targets published in this category.'):(fr?'Aucun intitulé publié.':'No published indicator names available.')}</p>;
+  return <ul style={{listStyle:'none',padding:0,margin:'.45rem 0',display:'grid',gap:'.55rem'}}>
+    {sorted.map(d=>{
+      const attained=d.final_target_attained;
+      const status=attained===true?(fr?'Atteinte':'Achieved'):attained===false?(fr?'Évaluée, non atteinte':'Assessed, not achieved'):(fr?'Non évaluée':'Not assessed');
+      const target=d.target_text||(finite(d.target_value)?`${num(d.target_value,lang)}${d.unit?' '+d.unit:''}`:copy.noTarget);
+      return <li key={d.indicator_id} style={{borderTop:'1px solid #e2e8f0',paddingTop:'.55rem',overflowWrap:'anywhere'}}>
+        <strong style={{display:'block',fontSize:'.83rem',lineHeight:1.45}}>{d.indicator_name||copy.unknown}</strong>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'.2rem .65rem',fontSize:'.75rem',color:'#526476',marginTop:'.2rem'}}>
+          {d.indicator_code&&<span>{d.indicator_code}</span>}{showProject&&d.project_name&&<span>{d.project_name}</span>}
+        </div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'.25rem .75rem',fontSize:'.75rem',marginTop:'.25rem'}}>
+          <span>{copy.target}: {target}</span><span style={{fontWeight:600,color:attained===true?'#15803d':'#526476'}}>{status}</span>
+        </div>
+      </li>;
+    })}
+  </ul>;
+}
+
 function PublicProgressChart({ projects, details, lang, copy, onProject }) {
   const fr = lang === 'fr';
   const n = value => new Intl.NumberFormat(fr ? 'fr-FR' : 'en-GB', {maximumFractionDigits:1}).format(value);
@@ -181,6 +206,8 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
     }
   }
   const activeKeys=keys.filter(k=>totals[k]?.total>0);
+  const validProjectIds=new Set(rows.filter(r=>r.valid).map(r=>String(r.project.id)));
+  const recordsFor=(k,projectId=null)=>details.filter(d=>validProjectIds.has(String(d.project_id))&&(projectId==null||String(d.project_id)===String(projectId))&&(keys.includes(d.category_key)&&d.category_key!=='undisclosed'?d.category_key:'other')===k);
   const countLabel=(v)=>`${n(v.achieved)} / ${n(v.total)} ${fr?'atteintes':'achieved'} · ${n(v.assessed)} ${fr?'évaluées':'assessed'}`;
   const percent=(v)=>v.total>0&&v.assessed>0?n(v.achieved/v.total*100)+'%':'—';
   const bar=(segments,denominator,accessible)=> <div role="img" aria-label={accessible} style={{display:'flex',height:22,borderRadius:5,overflow:'hidden',background:'#e2e8f0'}}>
@@ -196,6 +223,10 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
         <div style={{display:'flex',justifyContent:'space-between',gap:'.75rem',alignItems:'baseline'}}><strong style={{fontSize:'.85rem'}}>{labels[k]}</strong><strong>{percent(v)}</strong></div>
         <div style={{margin:'.55rem 0'}}>{bar([[k,v.achieved]],v.total,`${labels[k]}: ${countLabel(v)}`)}</div>
         <small style={{color:'#526476'}}>{countLabel(v)}</small>
+        {k==='undisclosed'?<p style={{fontSize:'.8rem',color:'#526476'}}>{fr?'Les intitulés de ces indicateurs ne sont pas publics.':'Indicator names in this group are not publicly available.'}</p>:<>
+          {v.achieved>0&&<div style={{marginTop:'.6rem'}}><strong style={{fontSize:'.8rem'}}>{fr?'Indicateurs atteints':'Achieved indicators'}</strong><ThematicIndicatorNames records={recordsFor(k)} lang={lang} copy={copy} achievedOnly /></div>}
+          <details style={{marginTop:'.6rem'}}><summary style={{cursor:'pointer',fontSize:'.8rem',fontWeight:600,color:'#173e59'}}>{fr?'Voir tous les indicateurs':'View all indicator names'} ({n(v.total)})</summary><ThematicIndicatorNames records={recordsFor(k)} lang={lang} copy={copy}/></details>
+        </>}
       </section>;})}
     </div>
     <h3 style={{margin:'0 0 .5rem',fontSize:'1rem',color:'#173e59'}}>{fr?'Contribution thématique par projet':'Thematic achievement by project'}</h3>
@@ -207,6 +238,12 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
       {row.valid&&row.total>0?<><div style={{margin:'.45rem 0'}}>{bar(keys.map(k=>[k,row.categories[k]?.achieved||0]),row.total,`${row.project.name}: ${countLabel(row)}`)}</div>
         <small style={{color:'#526476'}}>{countLabel(row)}</small>
         <div style={{display:'flex',flexWrap:'wrap',gap:'.35rem .8rem',marginTop:'.4rem',fontSize:'.78rem'}}>{keys.filter(k=>row.categories[k]?.total>0).map(k=><span key={k} style={{display:'inline-flex',alignItems:'center',gap:'.25rem'}}><i aria-hidden="true" style={{width:9,height:9,borderRadius:2,background:TARGET_CATEGORY_COLORS[k]}}/>{labels[k]}: {n(row.categories[k].achieved)}/{n(row.categories[k].total)}</span>)}</div>
+        <details style={{marginTop:'.6rem'}}><summary style={{cursor:'pointer',fontSize:'.85rem',fontWeight:600,color:'#173e59'}}>{fr?'Voir les indicateurs de ce projet':'View project indicator names'}</summary>
+          {keys.filter(k=>row.categories[k]?.total>0).map(k=><section key={k} style={{borderLeft:`3px solid ${TARGET_CATEGORY_COLORS[k]}`,paddingLeft:'.65rem',margin:'.75rem 0'}}>
+            <strong style={{fontSize:'.85rem'}}>{labels[k]} · {n(row.categories[k].achieved)}/{n(row.categories[k].total)}</strong>
+            {k==='undisclosed'?<p style={{fontSize:'.8rem',color:'#526476'}}>{fr?'Intitulés non publics.':'Indicator names not publicly available.'}</p>:<ThematicIndicatorNames records={recordsFor(k,row.project.id)} lang={lang} copy={copy} showProject={false}/>}
+          </section>)}
+        </details>
       </>:<p style={{fontSize:'.85rem',color:'#526476'}}>{row.total===0?(fr?'Cadre de résultats non disponible':'Results framework unavailable'):(fr?'Ventilation thématique indisponible':'Thematic breakdown unavailable')}</p>}
     </div>)}
     <p style={{fontSize:'.8rem',color:'#526476',margin:'.8rem 0 0'}}>{fr?'Les cibles dont la catégorie n’est pas publique sont présentées séparément, sans déduire leur thème. Un tiret indique une absence d’évaluation.':'Targets without a publicly available category are shown separately, without inferring a theme. A dash means no assessment is available. Percentages use all recorded final targets, not just assessed targets.'}</p>
