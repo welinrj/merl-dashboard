@@ -20,10 +20,10 @@ export default function ProjectTargetContributions({summary,french=false,period=
       </div>
       <ul className="target-contributions-legend">{model.rows.map(r=><li key={r.project.id} data-project-code={r.project.code}>
         <i aria-hidden="true" style={{background:r.colour}}/><div><strong title={r.project.name}>{label(r.project)}</strong><small>{number(r.achieved)} {french?'cibles atteintes':'targets achieved'}</small></div>
-        <span><b>{number(r.share)}%</b><small>{number(r.points)} {french?'points au total':'points overall'}</small></span>
+        <span><b>{number(r.share)}%</b><small>{number(r.points)}% {french?'des cibles du portefeuille':'of total portfolio targets'}</small></span>
       </li>)}</ul>
     </div>:model.valid?<p className="target-contributions-empty">{french?'Aucune cible atteinte enregistrée dans cette sélection.':'No achieved targets recorded in this selection.'}</p>:null}
     {model.others.length>0&&<details className="target-contributions-others"><summary>{french?'Autres projets':'Other projects'} ({model.others.length})</summary><ul>{model.others.map(r=><li key={r.project.id}><strong>{label(r.project)}</strong><span>{r.reported===0?(french?'Résultats non enregistrés':'Results not recorded'):(french?'Aucune cible atteinte enregistrée':'No achieved targets recorded')}</span></li>)}</ul></details>}
-    {model.rows.length>0&&<p className="target-contributions-note">{french?'Part = cibles atteintes du projet ÷ total des cibles atteintes. Les points montrent sa contribution au pourcentage global.':'Share = project’s achieved targets ÷ all achieved targets. Points show its contribution to the overall percentage.'}</p>}
+    {model.rows.length>0&&<p className="target-contributions-note">{french?'Part = cibles atteintes du projet ÷ total des cibles atteintes. Contribution globale = cibles atteintes du projet ÷ toutes les cibles du portefeuille.':'Share = project’s achieved targets ÷ all achieved targets. Overall contribution = project’s achieved targets ÷ all portfolio targets.'}</p>}
   </section>;
 }
