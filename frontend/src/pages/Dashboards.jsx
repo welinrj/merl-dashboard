@@ -326,7 +326,6 @@ function Portfolio({ d, onNavigate }) {
       attention, pf, gedsi,
       total: projects.length,
       active: projects.filter((p) => ACTIVE_STATUSES.includes(p.status)).length,
-      completed: projects.filter((p) => ['completed', 'closed'].includes(p.status)).length,
       atRisk: projects.filter((p) => p.status === 'at_risk').length,
       delayed: projects.filter((p) => p.status === 'delayed').length,
       totalBudget, totalExp, util: utilisationPct(totalBudget, totalExp),

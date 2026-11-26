@@ -270,7 +270,7 @@ export default function Overview({ user }) {
   const periodAtRisk = currentPeriodRows.reduce((n,r) => n + Number(r.at_risk_results || 0),0);
   const periodDelayed = currentPeriodRows.reduce((n,r) => n + Number(r.delayed_results || 0),0);
   const total = projects.length;
-  const byBucket = { completed: 0, on_track: 0, attention: 0, at_risk: 0, delayed: 0, not_started: 0 };
+  const byBucket = { on_track: 0, attention: 0, at_risk: 0, delayed: 0, not_started: 0 };
   for (const p of projects) {
     const key = bucketOf(p.status);
     if (key in byBucket) byBucket[key] += 1;
@@ -280,10 +280,9 @@ export default function Overview({ user }) {
   const lifecycleCounts = projects.reduce((counts, project) => {
     const status = bucketOf(project.status);
     if (status === 'not_started') counts.planned += 1;
-    else if (status === 'completed') counts.completed += 1;
     else if (status !== 'cancelled') counts.active += 1;
     return counts;
-  }, { active: 0, planned: 0, completed: 0 });
+  }, { active: 0, planned: 0 });
   const latestFinance = latestReportedBy(withReportingDates(financial, reporting), 'project_id');
   const totalBudget = sumReported(projects.map(p => toVuv(p.budget_vuv, p.currency)));
   const reportedExpenditure = [...latestFinance.values()].filter(row => row.cumulative_expenditure != null);
@@ -399,7 +398,7 @@ export default function Overview({ user }) {
   const reportStamp = rows => period || withReportingDates(rows,reporting).map(row=>row.period_end||row.date_reported).filter(Boolean).sort().at(-1)?.slice(0,10) || noDate;
   const cardStamps = {projects:french?'Registre actuel':'Current register',progress:period||dataAsAt,budget:reportStamp(financial),beneficiaries:reportStamp(beneficiaries),attention:period||(french?'État actuel':'Current status'),reporting:reporting.map(row=>row.period_end).filter(Boolean).sort().at(-1)?.slice(0,10)||noDate};
   const cardDetails = {
-    projects:t('visual.cards.projectStatus',{active:fmtNum(lifecycleCounts.active),planned:fmtNum(lifecycleCounts.planned),completed:fmtNum(lifecycleCounts.completed)}),
+    projects:t('visual.cards.projectStatus',{active:fmtNum(lifecycleCounts.active),planned:fmtNum(lifecycleCounts.planned)}),
     progress:t('visual.cards.resultsBasis'),
     budget:totalExpenditure==null?t('visual.cards.noFinancial'):t('visual.cards.spent',{amount:fmtVUV(totalExpenditure)}),
     beneficiaries:[genderSummary,beneficiaryState.periods.join(' · '),beneficiaryState.unpublished?(french?'Inclut des rapports non approuvés ; exclus du total public.':'Includes unapproved reports; excluded from the public total.'):null,beneficiaryState.unchecked?(french?'Vérification des doubles comptes requise.':'Double-counting verification required.'):null].filter(Boolean).join(' · '),
@@ -430,7 +429,7 @@ export default function Overview({ user }) {
       <DashboardFilterPanel filters={filters} setFilter={setFilter} reset={reset} lang={lang}
         fields={[
           { key: 'fy', label: t('overview.filterFy'), options: years.map(y => ({ value: String(y), label: String(y) })) },
-          { key: 'status', label: t('overview.filterStatus'), options: Object.keys(STATUS_BUCKETS).map(key => ({ value: key, label: statusLabel(key, t) })) },
+          { key: 'status', label: t('overview.filterStatus'), options: Object.keys(STATUS_BUCKETS).filter(key => key !== 'completed').map(key => ({ value: key, label: statusLabel(key, t) })) },
           { key: 'theme', label: t('overview.filterTheme'), options: themes.map(theme => ({ value: theme, label: theme })) },
           { key: 'province', label: t('overview.filterProvince'), options: PROVINCE_LIST.map(province => ({ value: province, label: province })) },
           { key: 'areaCouncil', label: lang?.startsWith('fr') ? 'Conseil de zone' : 'Area Council', options: areaCouncilOptions.map(name => ({ value: name, label: name })) },

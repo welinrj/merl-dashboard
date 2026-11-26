@@ -40,7 +40,7 @@ test('dashboard views use the same framework-backed published scope', () => {
   assert.match(dashboard, /allProjects\.filter\(project => !isCompletedProject\(project\)\)/);
   assert.match(dashboard, /\['ongoing', 'upcoming', 'other'\]\.map/);
   assert.match(authenticatedOverview, /unfinishedProjects = currentProjects\(registeredProjects\)/);
-  assert.match(authenticatedOverview, /lifecycleCounts\.completed/);
+  assert.doesNotMatch(authenticatedOverview, /lifecycleCounts\.completed/);
 });
 
 test('every public indicator category has a distinct web-library icon', () => {
