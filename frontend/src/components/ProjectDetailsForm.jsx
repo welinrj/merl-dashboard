@@ -1,6 +1,60 @@
+import { useState } from 'react';
 import * as OPT from '../constants/formOptions';
-import { PROVINCE_LIST } from '../constants/vanuatuGeo';
+import { PROVINCE_LIST, AREA_COUNCILS_BY_PROVINCE } from '../constants/vanuatuGeo';
 import './ProjectDetailsForm.css';
+
+// Use the same 71-council reference as the geographic reporting forms.
+function AreaCouncilPicker({ provinces, value, onChange }) {
+  const [query, setQuery] = useState('');
+  const selected = [...new Set((value || []).map(name => String(name).trim()).filter(Boolean))];
+  const provinceCodes = (provinces || []).map(p => String(p).trim().toUpperCase());
+  const visibleProvinces = PROVINCE_LIST.filter(p => provinceCodes.includes(p));
+  const availableProvinces = visibleProvinces.length ? visibleProvinces : PROVINCE_LIST;
+  const matches = (name, province = '') => (name + ' ' + province).toLowerCase().includes(query.trim().toLowerCase());
+  const groups = availableProvinces.map(province => ({
+    province, names: (AREA_COUNCILS_BY_PROVINCE[province] || []).filter(name => matches(name, province)),
+  })).filter(group => group.names.length);
+  const available = new Set(availableProvinces.flatMap(p => AREA_COUNCILS_BY_PROVINCE[p] || []));
+  const existing = selected.filter(name => !available.has(name));
+  const toggle = (name, checked) => onChange(checked ? [...new Set([...selected, name])] : selected.filter(n => n !== name));
+  const choice = name => (
+    <label key={name} style={{ display: 'flex', alignItems: 'center', gap: '.65rem', minHeight: 44, padding: '.3rem .5rem', overflowWrap: 'anywhere', cursor: 'pointer' }}>
+      <input type="checkbox" checked={selected.includes(name)} onChange={e => toggle(name, e.target.checked)}
+        style={{ width: 20, height: 20, flexShrink: 0 }} />
+      <span>{name}</span>
+    </label>
+  );
+  return <div className="pd-field pd-wide">
+    <span id="pd-area-councils-label">Area councils</span>
+    <details style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '.2rem .65rem', minWidth: 0 }}>
+      <summary style={{ cursor: 'pointer', minHeight: 44, fontSize: '1rem', fontWeight: 600 }}>
+        {selected.length ? selected.length + ' area council' + (selected.length === 1 ? '' : 's') + ' selected' : 'Select area councils'}
+      </summary>
+      <label className="pd-field"><span>Search area councils</span>
+        <input className="field-input" type="search" value={query} placeholder="Search by council or province"
+          onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} />
+      </label>
+      <div role="group" aria-labelledby="pd-area-councils-label" style={{ maxHeight: 320, overflowY: 'auto', overscrollBehavior: 'contain', padding: '.25rem 0' }}>
+        {groups.map(({ province, names }) => <div key={province} style={{ margin: '.5rem 0' }}>
+          <strong style={{ display: 'block', padding: '.3rem .5rem', color: 'var(--text-2)', fontSize: '.85rem', background: 'var(--surface-1)' }}>{province}</strong>
+          {names.map(choice)}
+        </div>)}
+        {!groups.length && <p>No matching area councils.</p>}
+        {existing.length > 0 && <div>
+          <strong style={{ display: 'block', padding: '.3rem .5rem', color: 'var(--text-2)', fontSize: '.85rem' }}>Previously saved (outside selected provinces or legacy names)</strong>
+          {existing.map(choice)}
+        </div>}
+      </div>
+    </details>
+    {selected.length > 0 && <div aria-live="polite" style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem' }}>
+      {selected.map(name => <button type="button" key={name} aria-label={'Remove ' + name} onClick={() => toggle(name, false)}
+        style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-1)', color: 'var(--text-1)', padding: '.4rem .6rem', font: 'inherit', minHeight: 44, maxWidth: '100%', overflowWrap: 'anywhere', cursor: 'pointer' }}>
+        {name} ×
+      </button>)}
+    </div>}
+    <small>Choose one or more councils from the official reference list. Options follow the selected provinces; existing selections are retained until removed.</small>
+  </div>;
+}
 
 export default function ProjectDetailsForm({ values: v, onChange, onSubmit, onCancel, saving, editing, section = 'all', onSectionChange, error }) {
   const change = (key, value) => onChange(current => ({ ...current, [key]: value }));
@@ -28,7 +82,9 @@ export default function ProjectDetailsForm({ values: v, onChange, onSubmit, onCa
       {show('locations') && <section className="pd-section"><h3>Locations</h3><div className="pd-grid">
         {select('coverage_type', 'Where does the project work?', OPT.COVERAGE_TYPE)}
         <fieldset className="pd-provinces pd-wide"><legend>Provinces — choose all that apply</legend>{[...new Set([...PROVINCE_LIST, ...v.provinces])].map(province => <label key={province}><input type="checkbox" checked={v.provinces.includes(province)} onChange={e => change('provinces', e.target.checked ? [...v.provinces, province] : v.provinces.filter(p => p !== province))} />{province}</label>)}</fieldset>
-        {['islands','area_councils','communities'].map(key => <label className="pd-field pd-wide" key={key}><span>{key === 'area_councils' ? 'Area councils' : key === 'islands' ? 'Islands' : 'Communities'}</span><textarea className="field-input" rows={3} value={(v[key] || []).join('\n')} onChange={e => change(key, e.target.value.split('\n'))} /><small>Enter one name on each line.</small></label>)}
+        <label className="pd-field pd-wide"><span>Islands</span><textarea className="field-input" rows={3} value={(v.islands || []).join('\n')} onChange={e => change('islands', e.target.value.split('\n'))} /><small>Enter one name on each line.</small></label>
+        <AreaCouncilPicker provinces={v.provinces} value={v.area_councils} onChange={names => change('area_councils', names)} />
+        <label className="pd-field pd-wide"><span>Communities</span><textarea className="field-input" rows={3} value={(v.communities || []).join('\n')} onChange={e => change('communities', e.target.value.split('\n'))} /><small>Enter one name on each line.</small></label>
       </div></section>}
       {show('contacts') && <section className="pd-section"><h3>Project manager and contacts</h3><p>Enter the name of the person responsible for each role.</p><div className="pd-grid">
         {input('project_manager', 'Project manager', 'text', 'For example, Mary John.')}
