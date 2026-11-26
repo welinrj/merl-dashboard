@@ -9,3 +9,5 @@
 @media(max-width:1000px){.target-contributions-layout{grid-template-columns:minmax(0,1fr);gap:4px}.target-contributions-legend{width:100%;justify-self:center}.target-contributions-legend li{gap:10px}.target-contributions-note{font-size:.8125rem}}
 
 @media(max-width:700px){.target-contributions-chart{max-width:320px}}
+
+@media(max-width:700px){.target-contributions-legend li{grid-template-columns:12px minmax(0,1fr);gap:4px 10px}.target-contributions-legend li>span{grid-column:2;text-align:left;max-width:none}.target-contributions-legend i{align-self:start;margin-top:6px}}
