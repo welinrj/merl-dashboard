@@ -14,6 +14,7 @@ export function targetContributions(summary) {
   if(!valid)return {valid:false,rows:[],others:[],totalAchieved:null,totalTargets:null};
   const rows=all.filter(r=>r.achieved>0).map(r=>({...r,
     share:r.achieved/targets.achieved*100,
+    projectPercentage:Math.round(r.achieved/r.total*1000)/10,
     points:targets.total?r.achieved/targets.total*100:null,
     colour:contributionColour(r.project),
   })).sort((a,b)=>b.achieved-a.achieved||String(a.project.code).localeCompare(String(b.project.code)));

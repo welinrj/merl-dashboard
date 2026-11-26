@@ -51,6 +51,7 @@ check('separate Projects and Results public pages are removed',await page.locato
 await page.locator('.pbd-target-achievement .recharts-pie-sector').first().waitFor();
 check('public achievement uses all published targets',(await page.locator('.pbd-target-achievement .executive-target-value').innerText())==='80%' && (await page.locator('.pbd-target-achievement').innerText()).includes('12 achieved / 15 total targets'));
 check('public contribution percentages reconcile',(await page.locator('.target-contributions [data-project-code="PUB-1"]').innerText()).includes('16.67%') && (await page.locator('.target-contributions [data-project-code="PUB-1"]').innerText()).includes('13.33% of total portfolio targets'));
+check('public pie reconciles visibly with project cards',(await page.locator('.target-contributions [data-project-code="PUB-1"]').innerText()).includes('40% project achievement') && (await page.locator('.target-contributions [data-project-code="PUB-1"]').innerText()).includes('2 / 5 project targets achieved') && (await page.locator('.target-contributions [data-project-code="PUB-1"]').innerText()).includes('of 12 achieved targets'));
 check('completed projects cannot enter the public pie',await page.locator('.target-contributions [data-project-code="PUB-DONE"]').count()===0);
 for(const width of [1366,390,320]) {
  await page.setViewportSize({width,height:900});

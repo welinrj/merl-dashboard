@@ -10,7 +10,7 @@ export default function ProjectTargetContributions({summary,french=false,period=
   return <section className="target-contributions" aria-labelledby={id}>
     <header><h3 id={id}>{french?'Contribution par projet':'Contribution by project'}</h3><p>{model.valid?(french?`Part des ${number(model.totalAchieved)} cibles atteintes`:`Share of the ${number(model.totalAchieved)} achieved targets`):(french?'Répartition non disponible':'Breakdown unavailable')}{period&&<> · {period}</>}</p></header>
     {model.rows.length>0?<div className="target-contributions-layout">
-      <div className="target-contributions-chart" role="img" aria-label={model.rows.map(r=>`${label(r.project)}: ${number(r.share)}%`).join('; ')}>
+      <div className="target-contributions-chart" role="img" aria-label={model.rows.map(r=>`${label(r.project)}: ${number(r.share)}% ${french?'des cibles atteintes du portefeuille':'of achieved portfolio targets'}`).join('; ')}>
         <ResponsiveContainer width="100%" height="100%"><PieChart accessibilityLayer={false}>
           <Pie data={model.rows} dataKey="achieved" cx="50%" cy="50%" innerRadius="57%" outerRadius="88%" startAngle={90} endAngle={-270} paddingAngle={model.rows.length>1?2:0} isAnimationActive={false} stroke="#fff" strokeWidth={2}>
             {model.rows.map(r=><Cell key={r.project.id} fill={r.colour}/>)}</Pie>
@@ -19,8 +19,8 @@ export default function ProjectTargetContributions({summary,french=false,period=
         </PieChart></ResponsiveContainer>
       </div>
       <ul className="target-contributions-legend">{model.rows.map(r=><li key={r.project.id} data-project-code={r.project.code}>
-        <i aria-hidden="true" style={{background:r.colour}}/><div><strong title={r.project.name}>{label(r.project)}</strong><small>{number(r.achieved)} {french?'cibles atteintes':'targets achieved'}</small></div>
-        <span><b>{number(r.share)}%</b><small>{number(r.points)}% {french?'des cibles du portefeuille':'of total portfolio targets'}</small></span>
+        <i aria-hidden="true" style={{background:r.colour}}/><div><strong title={r.project.name}>{label(r.project)}</strong><small>{number(r.achieved)} / {number(r.total)} {french?'cibles du projet atteintes':'project targets achieved'}</small><small>{number(r.projectPercentage)}% {french?'du projet':'project achievement'}</small></div>
+        <span><b>{number(r.share)}% {french?'de part':'share'}</b><small>{french?`des ${number(model.totalAchieved)} cibles atteintes`:`of ${number(model.totalAchieved)} achieved targets`}</small><small>{number(r.points)}% {french?'des cibles du portefeuille':'of total portfolio targets'}</small></span>
       </li>)}</ul>
     </div>:model.valid?<p className="target-contributions-empty">{french?'Aucune cible atteinte enregistrée dans cette sélection.':'No achieved targets recorded in this selection.'}</p>:null}
     {model.others.length>0&&<details className="target-contributions-others"><summary>{french?'Autres projets':'Other projects'} ({model.others.length})</summary><ul>{model.others.map(r=><li key={r.project.id}><strong>{label(r.project)}</strong><span>{r.reported===0?(french?'Résultats non enregistrés':'Results not recorded'):(french?'Aucune cible atteinte enregistrée':'No achieved targets recorded')}</span></li>)}</ul></details>}

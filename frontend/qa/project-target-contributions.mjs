@@ -58,6 +58,7 @@ try {
   if(await chart.locator('.recharts-pie-sector').count()!==4)throw Error('Expected one pie segment per contributing project');
   const vcap=chart.locator('[data-project-code="23A398"]'),vccrp=chart.locator('[data-project-code="VCCRP-001"]');
   if(!(await vcap.innerText()).includes('31.25%')||!(await vcap.innerText()).includes('1.66% of total portfolio targets'))throw Error('VCAP contribution denominator is wrong');
+  if(!(await vcap.innerText()).includes('21.7% project achievement')||!(await vcap.innerText()).includes('5 / 23 project targets achieved')||!(await vcap.innerText()).includes('of 16 achieved targets'))throw Error('Project achievement and portfolio share must have explicit denominators');
   if(!(await vccrp.innerText()).includes('12.5%'))throw Error('VCCRP contribution denominator is wrong');
   if((await chart.innerText()).includes('points overall'))throw Error('Overall-point labels must be removed');
   if(width>=1366&&(await chart.locator('.target-contributions-chart').boundingBox()).width<350)throw Error('Desktop pie must be enlarged');

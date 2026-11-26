@@ -8,6 +8,8 @@ test('project shares decompose 16 achieved targets and their 5.3% portfolio figu
  const m=targetContributions({rows,targets:{total:301,achieved:16}});
  assert.equal(m.valid,true);assert.equal(m.totalAchieved,16);
  assert.equal(m.rows.find(r=>r.project.id==='VCAP2').share,31.25);
+ assert.equal(m.rows.find(r=>r.project.id==='VCAP2').projectPercentage,21.7);
+ assert.equal(m.rows.find(r=>r.project.id==='VCCRP').projectPercentage,6.5);
  assert.equal(m.rows.find(r=>r.project.id==='VCCRP').share,12.5);
  assert.equal(m.rows.reduce((n,r)=>n+r.share,0),100);
  assert.ok(Math.abs(m.rows.reduce((n,r)=>n+r.points,0)-16/301*100)<1e-10);
