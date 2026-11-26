@@ -1,3 +1,4 @@
+import { publicTargetTotals } from './publicTargetProgress';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { markBackgroundRead } from './readAvailability';
@@ -64,7 +65,7 @@ export const total = values => {
 };
 export function publicTotals(projects, summary, allScope) {
   if (allScope) return {
-    progress: summary?.overall_progress_pct ?? null,
+    progress: publicTargetTotals(projects).pct,
     investment: summary?.total_investment_vuv ?? null,
     beneficiaries: summary?.published_beneficiaries ?? null,
     utilised: summary?.total_utilised_vuv ?? null,
@@ -73,7 +74,7 @@ export function publicTotals(projects, summary, allScope) {
   const investment = total(projects.map(project => project.budget_vuv));
   const utilised = total(projects.map(project => project.cumulative_expenditure_vuv));
   return {
-    progress: average(projects.map(project => project.progress_pct)),
+    progress: publicTargetTotals(projects).pct,
     investment,
     beneficiaries: total(projects.map(project => project.published_beneficiaries)),
     utilised,
