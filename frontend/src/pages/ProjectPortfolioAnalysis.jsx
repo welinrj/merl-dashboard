@@ -210,8 +210,79 @@ function Comparison({ comparison }) {
 
 const DIMENSIONS = ['financial', 'schedule', 'results', 'risk', 'dataQuality'];
 
+// Keep the guide next to the KPI cards; definitions follow the analysis engine.
+function PortfolioReadingGuide() {
+  const { i18n } = useTranslation();
+  const fr = (i18n.resolvedLanguage || i18n.language || 'en').startsWith('fr');
+  const health = [
+    ['green', fr ? 'Vert — En bonne voie' : 'Green — On track', fr ? 'Toutes les dimensions évaluées sont satisfaisantes.' : 'All assessed dimensions are satisfactory.'],
+    ['amber', fr ? 'Orange — À surveiller' : 'Amber — Needs attention', fr ? 'Au moins une dimension est orange et aucune n’est rouge.' : 'At least one assessed dimension is amber and none is red. Follow-up is needed.'],
+    ['red', fr ? 'Rouge — Critique' : 'Red — Critical', fr ? 'Au moins une dimension évaluée est rouge.' : 'At least one assessed dimension is red. Corrective action is needed.'],
+    ['unknown', fr ? 'Gris — Non évalué' : 'Grey — Assessment unavailable', fr ? 'Les données disponibles ne permettent pas une évaluation.' : 'There is insufficient information to assess this measure. It does not mean zero performance.'],
+  ];
+  const indicators = [
+    ['#15803d', fr ? 'Vert — Atteint' : 'Green — Achieved', fr ? 'Cible atteinte selon le résultat ou le statut enregistré.' : 'The target is met according to the measured result or recorded assessment.'],
+    ['#0e7490', fr ? 'Bleu sarcelle — En bonne voie' : 'Teal — On track', fr ? 'Statut en bonne voie enregistré ou au moins 90 % de la cible pour un indicateur quantitatif, sauf statut défavorable.' : 'Recorded as on track, or at least 90% of the applicable numeric target unless a recorded adverse status overrides it.'],
+    ['#b45309', fr ? 'Orange — À surveiller' : 'Orange — Needs attention', fr ? 'Résultat sous le seuil ou statut défavorable enregistré.' : 'Below the on-track threshold or a recorded adverse performance status.'],
+    ['#6366f1', fr ? 'Violet — Pas encore dû' : 'Purple — Not yet due', fr ? 'Aucun résultat enregistré et échéance non dépassée.' : 'No result recorded and the target date has not passed.'],
+    ['#94a3b8', fr ? 'Gris — Non renseigné' : 'Grey — Not reported', fr ? 'Aucun résultat ou statut exploitable.' : 'No usable reported result or assessment.'],
+  ];
+  const metrics = fr ? [
+    ['Budget utilisé', 'Dépenses déclarées divisées par le budget approuvé, en pourcentage.'],
+    ['Mise en œuvre', 'Part des effets atteints. Un effet est atteint lorsque toutes ses cibles d’indicateurs sont atteintes.'],
+    ['Résultats', 'Indicateurs atteints ou en bonne voie divisés par les indicateurs évalués (hors indicateurs non renseignés et pas encore dus). Ce n’est pas le taux de cibles finales atteintes.'],
+    ['Temps écoulé', 'Part de la durée prévue entre les dates de début et de fin déjà écoulée.'],
+    ['Bénéficiaires', 'Nombre de bénéficiaires déclarés, comparé à la cible si disponible.'],
+  ] : [
+    ['Budget used', 'Reported expenditure divided by approved budget, as a percentage. Missing financial records do not prove zero expenditure.'],
+    ['Implementation', 'Share of outcomes achieved. An outcome is achieved when all its outcome-level indicator targets are met.'],
+    ['Results', 'Achieved or on-track indicators divided by assessed indicators (excludes not-yet-due and unreported indicators). This is not the percentage of final targets achieved.'],
+    ['Time elapsed', 'Share of the planned period between the start and end dates that has passed.'],
+    ['Beneficiaries', 'Reported beneficiary reach, compared with the target when available.'],
+  ];
+  const legendRow = (color, label, explanation) => (
+    <div key={label} style={{ display: 'flex', gap: '.55rem', alignItems: 'baseline', margin: '.45rem 0' }}>
+      <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', background: color, flex: '0 0 10px' }} />
+      <span><strong>{label}:</strong> {explanation}</span>
+    </div>
+  );
+  return (
+    <details className="card rp-noprint" style={{ padding: '.8rem 1rem', fontSize: '.85rem', lineHeight: 1.55, color: 'var(--text-2)' }}>
+      <summary style={{ cursor: 'pointer', fontWeight: 700, color: 'var(--text-1)' }}>
+        {fr ? 'Comprendre les couleurs, les statuts et les chiffres' : 'Understanding the colours, ratings and figures'}
+      </summary>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '1rem', marginTop: '.75rem' }}>
+        <div>
+          <h3 style={{ fontSize: '.95rem', margin: '0 0 .4rem' }}>{fr ? 'Santé du projet' : 'Project health'}</h3>
+          {health.map(([status, label, explanation]) => legendRow(TONE[status].bar, label, explanation))}
+          <p>{fr ? 'La dimension évaluée la plus défavorable détermine la note globale : finances, calendrier, résultats, risques et qualité des données. Les dimensions non évaluées sont exclues. Sélectionnez la carte Santé du projet pour voir les raisons.' : 'The worst assessed dimension determines overall health: financial, schedule, results, risk and data quality. Unassessed dimensions are excluded. Select the Project health card to see the reasons.'}</p>
+        </div>
+        <div>
+          <h3 style={{ fontSize: '.95rem', margin: '0 0 .4rem' }}>{fr ? 'État des indicateurs (graphique)' : 'Indicator status (pie chart)'}</h3>
+          {indicators.map(([color, label, explanation]) => legendRow(color, label, explanation))}
+          <p>{fr ? 'Pour les indicateurs qualitatifs ou à amélioration décroissante, le statut enregistré fait foi.' : 'For qualitative or lower-is-better indicators, the recorded assessment determines the status.'}</p>
+        </div>
+        <div>
+          <h3 style={{ fontSize: '.95rem', margin: '0 0 .4rem' }}>{fr ? 'Chiffres clés' : 'Key figures'}</h3>
+          {metrics.map(([label, explanation]) => <p key={label} style={{ margin: '.45rem 0' }}><strong>{label}:</strong> {explanation}</p>)}
+          <p>{fr ? 'Graphique temps, budget et résultats : vert pour un écart de moins de 10 points de pourcentage, orange de 10 à 30, rouge au-delà de 30. Le temps écoulé sert de référence.' : 'Time vs money vs results bars: green for a gap below 10 percentage points, amber for 10–30, red above 30. Time elapsed is the reference.'}</p>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function healthCardExplanation(a, t, french) {
+  const assessed = DIMENSIONS.filter(key => a.dimensions[key].status !== UNKNOWN);
+  const drivers = assessed.filter(key => a.dimensions[key].status === a.health.status);
+  const count = french ? `${assessed.length}/5 dimensions évaluées` : `${assessed.length}/5 dimensions assessed`;
+  if (a.health.status === UNKNOWN || a.health.status === 'green') return count;
+  const reason = drivers.map(key => t(`ppa.dim_${key}`)).join(', ');
+  return `${count} · ${french ? 'À examiner' : 'Attention needed'}: ${reason}`;
+}
+
 function Health({ health, dimensions, completeness }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(null);
 
   return (
@@ -223,7 +294,7 @@ function Health({ health, dimensions, completeness }) {
           {t(`ppa.health_${health.status}`)}
         </span>
         <span style={{ fontSize: '0.76rem', color: 'var(--text-3)' }}>
-          {health.status === UNKNOWN ? t('ppa.healthUnknownWhy') : t('ppa.healthFrom')}
+          {health.status === UNKNOWN ? t('ppa.healthUnknownWhy') : t('ppa.healthFrom')} {health.status !== UNKNOWN && (i18n.resolvedLanguage?.startsWith('fr') ? `${DIMENSIONS.filter(key => dimensions[key].status !== UNKNOWN).length}/5 dimensions évaluées.` : `${DIMENSIONS.filter(key => dimensions[key].status !== UNKNOWN).length}/5 dimensions assessed.`)}
         </span>
       </div>
 
@@ -779,7 +850,7 @@ export default function ProjectPortfolioAnalysis() {
             <button type="button" onClick={() => jump('ppa-health')} className="kpi-jump">
               <StatTile icon={ReviewIcon} label={t('ppa.kpiHealth')} status={tile(a.health.status)}
                 value={t(`ppa.health_${a.health.status}`)}
-                sub={t('ppa.kpiHealthSub')} />
+                sub={healthCardExplanation(a, t, lang?.startsWith('fr'))} />
             </button>
             <button type="button" onClick={() => jump('ppa-financial')} className="kpi-jump">
               <StatTile icon={BudgetUsageIcon} label={t('ppa.kpiBudget')} status={tile(a.dimensions.financial.status)}
@@ -818,6 +889,8 @@ export default function ProjectPortfolioAnalysis() {
                   : t('ppa.noBeneficiaryTarget')} />
             </button>
           </div>
+
+          <PortfolioReadingGuide />
 
           <Section
             id="ppa-indicator-status"
