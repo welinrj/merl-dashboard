@@ -1,3 +1,4 @@
+import { outcomeImplementation } from './outcomeImplementation';
 // =============================================================================
 // projectAnalysis.js — every number the Project Portfolio Analysis page shows.
 //
@@ -645,8 +646,8 @@ export function analyseProject(d, period = '', asOf = new Date()) {
   const indicators = d.indicators ?? [];
 
   const buckets = activityBuckets(activities, today);
-  const implementation = implementationProgress(activities);
   const results = resultsPerformance(indicators, withReportingDates(d.progress ?? [], d.periods ?? []), period, today);
+  const implementation = outcomeImplementation(d.frameworkNodes ?? [], results.rows);
   const financial = financialSummary(period ? { ...project, spent_vuv: null } : project, withReportingDates((d.financial ?? []).filter(row => !period || row.reporting_period === period), d.periods ?? []), asOf);
   const beneficiaries = beneficiarySummary(project, d.beneficiaries ?? [], period);
   const risks = riskSummary(d.risks ?? [], today);

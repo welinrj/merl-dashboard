@@ -789,15 +789,11 @@ export default function ProjectPortfolioAnalysis() {
                   ? t('ppa.kpiBudgetSub', { spent: fmtAmount(a.financial.spent), budget: fmtAmount(a.financial.approved) })
                   : t('ppa.noFinancialRecords')} />
             </button>
-            <button type="button" onClick={() => jump('ppa-implementation')} className="kpi-jump">
-              <StatTile icon={UpdateProgressIcon} label={t('ppa.kpiImplementation')} status={tile(a.dimensions.schedule.status)}
+            <button type="button" onClick={() => jump('ppa-outcomes')} className="kpi-jump" data-outcome-implementation>
+              <StatTile icon={UpdateProgressIcon} label={t('ppa.kpiImplementation')}
                 value={typeof a.implementation.pct === 'number' ? fmtPct(a.implementation.pct) : t('ppa.notReported')}
                 placeholder={typeof a.implementation.pct !== 'number'}
-                sub={a.implementation.basis === 'physical'
-                  ? t('ppa.basisPhysical', { counted: a.implementation.counted, total: a.implementation.total })
-                  : a.implementation.basis === 'status'
-                    ? t('ppa.basisStatus', { counted: a.implementation.counted, total: a.implementation.total })
-                    : t('ppa.noActivities')} />
+                sub={a.implementation.total ? t('ppa.basisOutcomes', { counted: a.implementation.counted, total: a.implementation.total }) : t('ppa.outcomeMeasuresMissing')} />
             </button>
             <button type="button" onClick={() => jump('ppa-results')} className="kpi-jump">
               <StatTile icon={ResultsIcon} label={t('ppa.kpiResults')} status={tile(a.dimensions.results.status)}
@@ -851,6 +847,27 @@ export default function ProjectPortfolioAnalysis() {
           {/* 5 — Time vs Money vs Results */}
           <Section title={t('ppa.comparisonTitle')} description={t('ppa.comparisonDesc')}>
             <Comparison comparison={a.comparison} />
+            <p style={{ fontSize: '.875rem', color: 'var(--text-2)', margin: '12px 0 0' }}>
+              {t('ppa.kpiImplementation')}: {a.implementation.total ? t('ppa.basisOutcomes', { counted: a.implementation.counted, total: a.implementation.total }) : t('ppa.outcomeMeasuresMissing')}
+            </p>
+          </Section>
+
+          <Section id="ppa-outcomes" title={t('ppa.outcomesTitle')} description={t('ppa.outcomesMethod')}
+            error={errors.frameworkNodes || errors.indicators || errors.progress} onRetry={() => load(projectId)}
+            empty={!a.implementation.total} emptyTitle={t('ppa.noOutcomes')} emptyText={t('ppa.outcomeMeasuresMissing')}>
+            <p style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 12px' }}>
+              {t('ppa.basisOutcomes', { counted: a.implementation.counted, total: a.implementation.total })}
+            </p>
+            {a.implementation.unassessed > 0 && <p>{t('ppa.outcomeAssessmentPending', { count: a.implementation.unassessed })}</p>}
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {a.implementation.rows.map(row => <li key={row.outcome.id} data-outcome-status={row.status}
+                style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+                <span style={{ flex: '1 1 220px' }}>{row.outcome.node_code} {row.outcome.title}</span>
+                <span style={{ fontWeight: 700, color: row.status === 'achieved' ? '#166534' : row.status === 'in_progress' ? '#92400e' : '#526476' }}>
+                  {row.status === 'achieved' ? (lang?.startsWith('fr') ? 'Atteint' : 'Achieved') : t(row.status === 'in_progress' ? 'ppa.outcomeInProgress' : 'ppa.outcomeNotAssessed')}
+                </span>
+              </li>)}
+            </ul>
           </Section>
 
           {/* 6 — Project health */}
