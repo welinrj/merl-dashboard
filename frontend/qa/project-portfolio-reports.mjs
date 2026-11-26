@@ -11,7 +11,17 @@ const token=`${b64({alg:'HS256',typ:'JWT'})}.${b64({sub:'u1',role:'authenticated
 const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 const projects=[{id:'pa',code:'VCAP2',name:'Selected coastal project',has_results_framework:true,status:'active',currency:'VUV',budget_vuv:100,provinces:['SANMA'],islands:['Espiritu Santo','Epi'],area_councils:[],communities:[]},{id:'pb',code:'OTHER',name:'Other project',has_results_framework:true,status:'active',currency:'VUV',budget_vuv:900,provinces:[]}];
 const rows={v_projects:projects,v_financial_progress:[{id:'fa',project_id:'pa',approved_budget:100,cumulative_expenditure:40,reporting_period:'Q3 2026'},{id:'fb',project_id:'pb',approved_budget:900,cumulative_expenditure:600,reporting_period:'Q3 2026'}],v_reporting_periods:projects.map(p=>({id:'period-'+p.id,project_id:p.id,period_type:'quarterly',period_label:'Q3 2026',submission_status:'approved',period_end:'2026-09-30'})),v_project_indicators:[{id:'ia',project_id:'pa',code:'CI1',name:'Selected project indicator',target_value:10},{id:'ib',project_id:'pb',code:'OTHER-IND',name:'Other project indicator',target_value:999}]};
+rows.v_project_indicators.push(
+ {id:'on-track',project_id:'pa',code:'TRACK',name:'On track indicator',target_value:10},
+ {id:'attention',project_id:'pa',code:'ATTN',name:'Below target indicator',target_value:10},
+ {id:'not-due',project_id:'pa',code:'FUTURE',name:'Future indicator',target_value:10,target_date:'2999-12-31'},
+ {id:'unreported',project_id:'pa',code:'MISSING',name:'Unreported indicator',target_value:10},
+);
 rows.v_indicator_progress=projects.map(p=>({id:'progress-'+p.id,project_id:p.id,indicator_id:p.id==='pa'?'ia':'ib',indicator_code:p.id==='pa'?'CI1':'OTHER-IND',indicator_name:p.id==='pa'?'Selected project indicator':'Other project indicator',reporting_period:'Q3 2026',cumulative_actual:p.id==='pa'?5:999,final_target:p.id==='pa'?10:999,date_reported:'2026-09-30',review_status:'approved'}));
+rows.v_indicator_progress.push(
+ {id:'progress-track',project_id:'pa',indicator_id:'on-track',reporting_period:'Q3 2026',cumulative_actual:9,final_target:10,review_status:'submitted',date_reported:'2026-09-30'},
+ {id:'progress-attention',project_id:'pa',indicator_id:'attention',reporting_period:'Q3 2026',cumulative_actual:3,final_target:10,review_status:'submitted',date_reported:'2026-09-30'},
+);
 rows.v_indicator_targets=[{id:'target-ia',indicator_id:'ia',target_type:'final',numeric_value:20,created_at:'2026-01-01'}];
 rows.v_evidence=[{id:'ev-ia',project_id:'pa',indicator_id:'ia',code:'EV-1',title:'Coastal delivery monitoring',document_date:'2026-09-30',reporting_period:'Q3 2026',verification_status:'verified'}];
 rows.v_evidence_analysis=[{id:'analysis-ia',project_id:'pa',indicator_id:'ia',evidence_id:'ev-ia',source_location:'Page 7',review_state:'accepted',reviewed_by_name:'Review officer',created_at:'2026-10-01'}];
@@ -39,9 +49,33 @@ try{
  await page.locator('#ppa-geography').getByText('Espiritu Santo, Epi',{exact:true}).waitFor();
  assert.match(await page.locator('#ppa-geography').innerText(),/SANMA/);
  assert.doesNotMatch(await page.locator('#ppa-geography').innerText(),/No Area Councils recorded/);
+ const pie=page.locator('#ppa-indicator-status');
+ const expectCounts=async(expected)=>{
+   await pie.locator('.indicator-status-pie').waitFor();
+   const counts=await pie.locator('.indicator-status-pie-legend li').evaluateAll(items=>Object.fromEntries(items.map(item=>[item.dataset.status,Number(item.dataset.count)])));
+   assert.deepEqual(counts,expected);
+   assert.equal(Number(await pie.locator('figure').getAttribute('data-total')),Object.values(expected).reduce((sum,count)=>sum+count,0));
+ };
+ await expectCounts({achieved:1,on_track:1,below_target:1,not_yet_due:1,no_data:1});
+ assert.match(await pie.getByRole('img').getAttribute('aria-label'),/Achieved: 1/);
+ mkdirSync('qa-artifacts',{recursive:true});
+ for(const width of [360,1440]){
+   await page.setViewportSize({width,height:900});
+   await pie.scrollIntoViewIfNeeded();
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Indicator pie fits the screen');
+   await page.screenshot({path:`qa-artifacts/header-indicator-status-${width}.png`});
+ }
+ const periodSelect=page.locator('.page-pad select').filter({has:page.locator('option[value="Q2 2026"]')}).first();
+ await periodSelect.selectOption('Q2 2026');
+ await expectCounts({achieved:0,on_track:0,below_target:1,not_yet_due:1,no_data:3});
+ await periodSelect.selectOption('');
+ await expectCounts({achieved:1,on_track:1,below_target:1,not_yet_due:1,no_data:1});
+ await page.setViewportSize({width:390,height:844});
  await page.locator('#ppa-project').selectOption('pb');
  await page.locator('#ppa-geography').getByText('No project locations recorded',{exact:true}).waitFor();
  assert.doesNotMatch(await page.locator('#ppa-geography').innerText(),/Espiritu Santo/);
+ await expectCounts({achieved:1,on_track:0,below_target:0,not_yet_due:0,no_data:0});
+ assert.equal(await pie.locator('.indicator-status-pie-visual circle').count(),1,'A single status renders a complete pie');
  assert.equal(await page.locator('#ppa-project option').count(),3);
  await page.locator('#ppa-project').selectOption('pa');
  // Router navigation commits asynchronously; verify both URL and project data before exporting.

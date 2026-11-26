@@ -1,0 +1,14 @@
+.indicator-status-pie{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);align-items:center;gap:28px;margin:0;font-family:Arial,sans-serif;color:#173e59}
+.indicator-status-pie-visual{display:block;width:100%;max-width:240px;height:auto;justify-self:center}
+.indicator-status-pie-caption{min-width:0}
+.indicator-status-pie-total{margin:0 0 16px;font-size:1rem;color:#486176}
+.indicator-status-pie-total strong{font-size:1.75rem;color:#173e59}
+.indicator-status-pie-legend{list-style:none;margin:0;padding:0}
+.indicator-status-pie-legend li{display:grid;grid-template-columns:12px minmax(0,1fr) 32px 48px;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e1e9ee;font-size:1rem;line-height:1.4}
+.indicator-status-pie-legend li:last-child{border:0}
+.indicator-status-pie-legend strong,.indicator-status-pie-percent{text-align:right;font-variant-numeric:tabular-nums}
+.indicator-status-pie-percent{font-size:.875rem;color:#486176}
+.indicator-status-pie-dot{width:12px;height:12px;border-radius:50%}
+.indicator-pie-empty{color:#486176}
+@media(max-width:600px){.indicator-status-pie{grid-template-columns:minmax(0,1fr);gap:12px}.indicator-status-pie-visual{max-width:220px}.indicator-status-pie-total{text-align:center}.indicator-status-pie-legend li{font-size:.9375rem;gap:8px}}
+@media print{.indicator-status-pie{break-inside:avoid}.indicator-status-pie-visual{print-color-adjust:exact}}

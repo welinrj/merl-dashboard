@@ -1,3 +1,4 @@
+import IndicatorStatusPie from '../components/IndicatorStatusPie';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { ReviewIcon, BudgetUsageIcon, UpdateProgressIcon, ResultsIcon, BeneficiariesIcon } from '../components/ui/MerlIcons';
 import ProjectLocations from '../components/ProjectLocations';
@@ -821,6 +822,19 @@ export default function ProjectPortfolioAnalysis() {
             </button>
           </div>
 
+          <Section
+            id="ppa-indicator-status"
+            title={lang?.startsWith('fr') ? 'État des indicateurs' : 'Indicator status'}
+            description={period ? t('ppa.periodLabelCurrent', { period }) : t('ppa.periodLabelCumulative')}
+            error={errors.indicators || errors.progress}
+            onRetry={() => load(projectId)}
+            empty={!errors.indicators && d.indicators.length === 0}
+            emptyTitle={t('ppa.noIndicators')}
+            emptyText={t('ppa.noIndicatorsText')}
+          >
+            <IndicatorStatusPie results={a.results} />
+          </Section>
+
           {d.kpiConfig.length > 0 && (
             <Section title="Project Result KPIs" description="Featured indicators configured from this project's official results framework.">
               <div className="grid-kpi-6">
@@ -975,17 +989,6 @@ export default function ProjectPortfolioAnalysis() {
             emptyTitle={t('ppa.noIndicators')}
             emptyText={t('ppa.noIndicatorsText')}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: '0.7rem', marginBottom: '1rem' }}>
-              {[['total', d.indicators.length], ['achieved', a.results.counts.achieved], ['on_track', a.results.counts.on_track],
-                ['below_target', a.results.counts.below_target], ['not_yet_due', a.results.counts.not_yet_due], ['no_data', a.results.counts.no_data]].map(([k, v]) => (
-                <div key={k} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', padding: '0.5rem 0.6rem' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-1)' }}>{fmtNum(v)}</div>
-                  <div style={{ fontSize: '0.66rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {k === 'total' ? t('ppa.ind_total') : t(`ppa.ind_${k}`)}
-                  </div>
-                </div>
-              ))}
-            </div>
             <Framework d={d} results={a.results} onIndicator={setIndicator} />
           </Section>
 
