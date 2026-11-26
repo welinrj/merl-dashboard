@@ -326,7 +326,6 @@ function Portfolio({ d, onNavigate }) {
       attention, pf, gedsi,
       total: projects.length,
       active: projects.filter((p) => ACTIVE_STATUSES.includes(p.status)).length,
-      completed: projects.filter((p) => ['completed', 'closed'].includes(p.status)).length,
       atRisk: projects.filter((p) => p.status === 'at_risk').length,
       delayed: projects.filter((p) => p.status === 'delayed').length,
       totalBudget, totalExp, util: utilisationPct(totalBudget, totalExp),
@@ -378,7 +377,6 @@ function Portfolio({ d, onNavigate }) {
       </div>
       <MetricStrip title={t('dash.portfolioSummary')} style={{ marginTop: '0.7rem' }} items={[
         { label: t('dash.active'), value: m.active },
-        { label: t('dash.completed'), value: m.completed },
         { label: 'At risk', value: m.atRisk, tone: m.atRisk ? 'warning' : undefined },
         { label: 'Delayed', value: m.delayed, tone: m.delayed ? 'danger' : undefined },
         { label: `${t('dash.expenditure')} (VUV)`, value: fmtAmount(m.totalExp) },

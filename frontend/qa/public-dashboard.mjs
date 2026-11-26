@@ -4,8 +4,9 @@ import { chromium } from 'playwright';
 const HOST = 'https://ndntvncboeajanipafeq.supabase.co';
 const projects = [
   {id:'pa',code:'PUB-1',name:'Coastal Resilience',project_manager:'Lina Kalo',provinces:['SANMA'],primary_climate_theme:'Adaptation',docc_themes:['Adaptation','Mitigation'],lifecycle_status:'ongoing',budget_vuv:1000000,cumulative_expenditure_vuv:300000,utilisation_pct:30,progress_pct:100,progress_basis:'final_targets',total_target_count:5,assessed_target_count:4,achieved_target_count:2,target_summary_period:'2026 Q2',published_indicator_count:1,published_beneficiaries:50,last_published_period:'2026 Q2',expected_primary_outcome:'Coastal communities are resilient',docc_image_url:'/project-images/vcap2.webp'},
-  {id:'pb',code:'PUB-2',name:'Water Security',project_manager:'Tom Nalo',provinces:['TORBA','SANMA'],primary_climate_theme:'Water Security',lifecycle_status:'completed',budget_vuv:2000000,cumulative_expenditure_vuv:600000,utilisation_pct:30,progress_pct:100,progress_basis:'final_targets',total_target_count:10,assessed_target_count:10,achieved_target_count:10,published_beneficiaries:70,expected_primary_outcome:'Reliable water supply'},
+  {id:'pb',code:'PUB-2',name:'Water Security',project_manager:'Tom Nalo',provinces:['TORBA','SANMA'],primary_climate_theme:'Water Security',lifecycle_status:'ongoing',budget_vuv:2000000,cumulative_expenditure_vuv:600000,utilisation_pct:30,progress_pct:100,progress_basis:'final_targets',total_target_count:10,assessed_target_count:10,achieved_target_count:10,published_beneficiaries:70,expected_primary_outcome:'Reliable water supply'},
 ];
+projects.push({id:'pc',code:'PUB-DONE',name:'Historic completed project',status:'completed',lifecycle_status:'ongoing',budget_vuv:999999999,cumulative_expenditure_vuv:999999999,published_beneficiaries:99999,progress_pct:100,progress_basis:'final_targets',total_target_count:100,assessed_target_count:100,achieved_target_count:100});
 const fixtures = {
   public_portal_summary:[{project_count:2,overall_progress_pct:80,total_target_count:15,assessed_target_count:14,achieved_target_count:12,published_beneficiaries:120,total_investment_vuv:3000000,total_utilised_vuv:900000,financial_utilisation_pct:30,updated_at:'2026-07-01T00:00:00Z'}],
   public_portal_projects:projects,
@@ -55,7 +56,7 @@ check('all published framework project cards are shown',await page.locator('.pbd
 check('project progress comparison is visible near the top',await page.getByRole('heading',{name:'Progress by project',exact:true}).count()===1 && await page.locator('.pbd-project-card .published-project-progress').count()===2);
 check('project progress bars use all targets rather than the legacy featured KPI average',JSON.stringify(await page.locator('.pbd-project-card .published-project-progress [role=progressbar]').evaluateAll(es=>es.map(e=>e.getAttribute('aria-valuenow'))))===JSON.stringify(['40','100']));
 check('public project cards show only a progress summary by default',await page.locator('.pbd-project-information[open]').count()===0 && await page.locator('.published-result-comparisons').count()===0);
-check('completed framework projects and their status filter are visible',await page.locator('.pbd-project-card').getByRole('heading',{name:'Water Security'}).count()===1 && await page.locator('.pbd-filters select').first().locator('option[value="completed"]').count()===1);
+check('completed projects and their status filter are absent',await page.locator('.pbd-project-card').getByRole('heading',{name:'Historic completed project'}).count()===0 && await page.locator('.pbd-filters select').first().locator('option[value="completed"]').count()===0);
 check('project image is shown beside its matching name',await page.locator('.pbd-project-card').getByRole('heading',{name:'Coastal Resilience'}).locator('xpath=ancestor::header').locator('img[src$="/project-images/vcap2.webp"]').count()===1);
 check('framework project managers are visible',await page.getByText('Lina Kalo',{exact:true}).count()===1 && await page.getByText('Tom Nalo',{exact:true}).count()===1);
 check('all official themes are shown for multi-theme projects',await page.getByText('Adaptation, Mitigation',{exact:true}).count()===1);
@@ -82,7 +83,7 @@ check('theme filter includes a project under either official theme',await page.l
 check('indicator category totals follow the selected projects',await page.locator('.pbd-activity-category').count()===2 && await page.locator('.pbd-activity-section').getByText('5 indicators',{exact:true}).count()===1);
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 await page.locator('.pbd-filters select').nth(2).selectOption('Torba');
-check('province filter includes the completed framework project',await page.locator('.pbd-project-card').count()===1 && await page.locator('.pbd-project-card').getByRole('heading',{name:'Water Security'}).count()===1);
+check('province filter includes the active framework project',await page.locator('.pbd-project-card').count()===1 && await page.locator('.pbd-project-card').getByRole('heading',{name:'Water Security'}).count()===1);
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 await page.locator('.pbd-search input').fill('Coastal Resilience');
 check('search filters projects on the same page',await page.locator('.pbd-project-card').count()===1);
