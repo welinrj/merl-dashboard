@@ -27,6 +27,7 @@ import PublicCoverageMap from '../components/PublicCoverageMap';
 import MetricInformation from '../components/MetricInformation';
 import { PublishedProjectProgress } from '../components/ProjectProgressOverview';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
+import { publicTargetProgress } from '../lib/publicTargetProgress';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { toVuv } from '../lib/docc/currency';
 import { PROVINCES } from '../lib/publicProvinces';
@@ -137,6 +138,60 @@ function Metric({ label, value, detail, stamp, french, tone = '' }) {
   const [open,setOpen]=useState(false);
   const Icon = METRIC_ICONS[tone] || OverviewIcon;
   return <article className={`pbd-metric island-metric ${tone}`}><div className="merl-metric-head"><span className="merl-card-icon"><Icon size={30} /></span><span>{label}</span><button type="button" className="pbd-metric-info" onClick={()=>setOpen(true)} aria-label={`${french?'À propos de':'About'} ${label}`}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg></button></div><strong>{value}</strong><small>{stamp}</small>{open&&<MetricInformation label={label} value={value} detail={detail} stamp={stamp} french={french} onClose={()=>setOpen(false)}/>}</article>;
+}
+
+// The chart uses the exact same published final-target counts as the cards and
+// overall achievement. Theme combinations are exclusive, so totals are not
+// counted twice for projects working across several themes.
+function PublicProgressChart({ projects, lang, onProject }) {
+  const fr = lang === 'fr';
+  const n = value => new Intl.NumberFormat(fr ? 'fr-FR' : 'en-GB', { maximumFractionDigits: 1 }).format(value);
+  const labelTheme = theme => fr ? ({'Loss and Damage':'Pertes et préjudices',Mitigation:'Atténuation',Adaptation:'Adaptation'}[theme] || theme) : theme;
+  const themeLabel = names => names.length ? names.map(labelTheme).join(' · ') : fr ? 'Thème non renseigné' : 'Theme not recorded';
+  const rows = projects.map(project => ({ project, ...publicTargetProgress(project), themes: [...themesOf(project)].sort() }));
+  const groups = new Map();
+  for (const row of rows) {
+    const groupKey = JSON.stringify(row.themes);
+    if (!groups.has(groupKey)) groups.set(groupKey, { themes: row.themes, rows: [] });
+    groups.get(groupKey).rows.push(row);
+  }
+  const groupsSorted = [...groups.values()].sort((a,b) => themeLabel(a.themes).localeCompare(themeLabel(b.themes)));
+  const colors = { achieved:'#15803d', assessed:'#d99a2b', pending:'#cbd5e1' };
+  const labels = { achieved:fr?'Atteintes':'Achieved', assessed:fr?'Évaluées, non atteintes':'Assessed, not achieved', pending:fr?'Non évaluées':'Not assessed' };
+  const Bar = ({row}) => {
+    if (!row.total) return <span style={{ color:'#64748b',fontSize:'.85rem' }}>{row.kind==='no_framework'?(fr?'Cadre de résultats non disponible':'Results framework unavailable'):(fr?'Données indisponibles':'Data unavailable')}</span>;
+    const segments = [['achieved',row.achieved],['assessed',row.assessed-row.achieved],['pending',row.total-row.assessed]];
+    return <div role="img" aria-label={segments.map(([k,v])=>n(v)+' '+labels[k]).join(', ')} style={{display:'flex',height:20,borderRadius:5,overflow:'hidden',background:'#e2e8f0'}}>
+      {segments.map(([k,v])=>v>0&&<span key={k} title={n(v)+' '+labels[k]} style={{width:(v/row.total*100)+'%',background:colors[k]}}/>)}
+    </div>;
+  };
+  const summary = group => {
+    const known = group.rows.filter(row=>row.total!=null);
+    if (known.length!==group.rows.length) return {total:null,assessed:null,achieved:null,pct:null,kind:'unavailable'};
+    const total=known.reduce((sum,r)=>sum+r.total,0), assessed=known.reduce((sum,r)=>sum+r.assessed,0), achieved=known.reduce((sum,r)=>sum+r.achieved,0);
+    return {total,assessed,achieved,pct:total&&assessed?Math.round(achieved/total*1000)/10:null,kind:total?'measured':'no_framework'};
+  };
+  const counts = row => row.total>0 ? `${n(row.achieved)} / ${n(row.total)} ${fr?'atteintes':'achieved'} · ${n(row.assessed)} ${fr?'évaluées':'assessed'}` : row.total===0?(fr?'Aucune cible enregistrée':'No targets recorded'):(fr?'Non renseigné':'Not recorded');
+  const chartRow = row => <div key={row.project.id} className="pbd-theme-chart-row" style={{display:'grid',gridTemplateColumns:'minmax(0,1fr)',gap:'.4rem',padding:'.75rem 0',borderTop:'1px solid #e2e8f0'}}>
+    <div style={{display:'flex',flexWrap:'wrap',alignItems:'baseline',justifyContent:'space-between',gap:'.35rem 1rem'}}>
+      <button type="button" onClick={()=>onProject(row.project.id)} style={{textAlign:'left',font:'inherit',fontWeight:700,color:'#173e59',border:0,background:'transparent',padding:0,cursor:'pointer',overflowWrap:'anywhere',flex:'1 1 220px'}}>{row.project.acronym||row.project.code||row.project.name}<small style={{display:'block',fontWeight:400,color:'#526476',fontSize:'.8rem'}}>{row.project.name}</small></button>
+      <strong style={{fontSize:'1.05rem',color:'#173e59'}}>{row.pct==null?'—':n(row.pct)+'%'}</strong>
+    </div>
+    <Bar row={row}/>
+    <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:'.3rem',fontSize:'.8rem',color:'#526476'}}><span>{counts(row)}</span>{row.kind==='unassessed'&&<span>{fr?'En attente de résultats approuvés':'Awaiting approved update'}</span>}{row.project.target_summary_period&&<span>{row.project.target_summary_period}</span>}</div>
+  </div>;
+  if (!rows.length) return null;
+  return <div className="pbd-theme-progress-chart" style={{margin:'0 0 1rem',border:'1px solid #d4dfe6',borderRadius:12,padding:'clamp(.75rem,2vw,1.25rem)',background:'#fff',fontFamily:'Arial, sans-serif',minWidth:0}}>
+    <h3 style={{margin:'0 0 .35rem',fontSize:'1rem',color:'#173e59'}}>{fr?'Cibles atteintes par projet et thème':'Targets achieved by project and thematic area'}</h3>
+    <p style={{fontSize:'.85rem',color:'#526476',margin:'0 0 .9rem'}}>{fr?'Chaque barre représente 100 % des cibles finales enregistrées. Les projets multithématiques sont regroupés une seule fois.':'Each bar represents 100% of recorded final targets. Projects with multiple themes are grouped once to avoid double counting.'}</p>
+    <div style={{display:'flex',flexWrap:'wrap',gap:'.5rem 1rem',fontSize:'.8rem',marginBottom:'.8rem'}}>{Object.keys(labels).map(k=><span key={k} style={{display:'inline-flex',alignItems:'center',gap:'.35rem'}}><i aria-hidden="true" style={{width:12,height:12,borderRadius:2,background:colors[k]}}/>{labels[k]}</span>)}</div>
+    {groupsSorted.map(group=>{const model=summary(group);return <section key={JSON.stringify(group.themes)} style={{border:'1px solid #dce5eb',borderRadius:8,marginTop:'.8rem',padding:'.8rem',minWidth:0}}>
+      <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'baseline',gap:'.35rem 1rem',marginBottom:'.5rem'}}><h4 style={{fontSize:'.95rem',margin:0,color:'#173e59'}}>{themeLabel(group.themes)}</h4><span style={{fontSize:'.8rem',color:'#526476'}}>{group.rows.length} {fr?'projet(s)':'project(s)'} · {counts(model)}{model.pct!=null?' · '+n(model.pct)+'%':''}</span></div>
+      {group.rows.length>1&&model.total>0&&<div style={{marginBottom:'.6rem'}}><Bar row={model}/></div>}
+      {group.rows.map(chartRow)}
+    </section>;})}
+    <p style={{fontSize:'.8rem',color:'#526476',margin:'.8rem 0 0'}}>{fr?'Le pourcentage est le nombre de cibles finales atteintes divisé par toutes les cibles enregistrées. Un tiret signifie que les résultats ne sont pas disponibles.':'Percentage = final targets achieved ÷ all registered targets. A dash means achievement cannot be assessed from the published results.'}</p>
+  </div>;
 }
 
 function ProjectCard({ project, areas, copy, lang }) {
@@ -297,6 +352,7 @@ export default function PublicDashboard() {
 
           <section className="pbd-section pbd-portfolio">
             <div className="pbd-section-head"><div><h2 className="pbd-progress-summary-title"><ProjectsIcon size={20} aria-hidden="true" />{lang === 'fr' ? 'Progrès par projet' : 'Progress by project'}</h2><p>{lang === 'fr' ? 'Résumés des résultats approuvés et publiés.' : 'Approved, published result summaries.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
+            <PublicProgressChart projects={filtered} lang={lang} onProject={viewProject} />
             <div className="pbd-project-grid">{filtered.length ? filtered.map(project => <ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang} />) : <div className="pbd-empty">{c.noProjects}</div>}</div>
           </section>
           <section className="pbd-section pbd-location-section">
