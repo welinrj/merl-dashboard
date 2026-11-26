@@ -15,6 +15,7 @@ fixture.v_projects=spec.map(([code,acronym])=>({id:code,code,acronym,name:acrony
 fixture.v_project_indicators=spec.flatMap(([code,_,total])=>Array.from({length:total},(_,n)=>({id:code+'-'+n,project_id:code,code:code+'-'+n,name:'Target '+n,target_value:100})));
 fixture.v_indicator_progress=spec.flatMap(([code,_,total,achieved,reported])=>Array.from({length:reported},(_,n)=>({id:code+'-update-'+n,project_id:code,indicator_id:code+'-'+n,cumulative_actual:n<achieved?100:0,achievement_pct:n<achieved?100:0,review_status:'approved',reporting_period:'Q4 2026',period_end:'2026-12-31'})));
 fixture.v_reporting_periods=spec.map(([code])=>({project_id:code,period_label:'Q4 2026',period_end:'2026-12-31',submission_status:'approved'}));
+fixture.v_project_portfolio_status=spec.map(([code,_,total,achieved,reported])=>({project_id:code,performance_status:code==='24B298'?'attention':reported>0?'on_track':'no_data',progress_pct:reported>0?50:null,schedule_status:'on_schedule'}));
 const historicalPeriod='2025 PIR (to Jun 2025)';
 fixture.v_indicator_progress.push(...Array.from({length:5},(_,n)=>({id:'historical-'+n,project_id:'23A398',indicator_id:'23A398-'+n,cumulative_actual:100,achievement_pct:100,review_status:'draft',reporting_period:historicalPeriod,period_end:'2025-06-30'})));
 fixture.v_reporting_periods.push({project_id:'23A398',period_label:historicalPeriod,period_end:'2025-06-30',submission_status:'draft'});
@@ -72,18 +73,18 @@ try {
  await page.locator('.target-contributions').getByText('Part des 5 cibles atteintes',{exact:true}).waitFor();
  await page.locator('.dsh-lang button[lang=en]').click();
  await page.goto('http://127.0.0.1:5199/#/dashboards?period='+encodeURIComponent(historicalPeriod));await page.reload();
- await page.locator('.executive-period-notice').getByText('5 updates are still drafts and are not included.',{exact:true}).waitFor();
- if((await page.locator('.executive-target-value').innerText()).trim()!=='—')throw Error('Draft-only period became 0%');
- if(await page.locator('.executive-targets [role=progressbar]').count()||await page.locator('.target-contributions').count())throw Error('Unknown assessment must not show a zero bar or empty contribution chart');
- if(!(await page.locator('.ovx-reading-caption').innerText()).includes('5 draft updates'))throw Error('Header conceals draft updates');
+ await page.locator('.target-contributions').getByText('Share of the 16 achieved targets',{exact:true}).waitFor();
+ if((await page.locator('.executive-target-value').innerText()).trim()!=='5.3%')throw Error('Historical details period erased current executive results');
+ if(await page.locator('.executive-period-notice').count())throw Error('Historical empty-period warning must not replace the current snapshot');
+ if((await page.locator('#workspace-period').evaluate(el=>el.value))!==historicalPeriod)throw Error('Detail period selection was silently changed');
+ await page.locator('.executive-current-scope').getByText('Latest portfolio results',{exact:true}).waitFor();
+ if((await page.locator('.executive-health--on_track strong').innerText()).trim()!=='3'||(await page.locator('.executive-health--attention strong').innerText()).trim()!=='1')throw Error('Current recorded project assessments were discarded');
+ if((await page.locator('.executive-health--unassessed').innerText()).includes('Not yet assessed'))throw Error('Missing dashboard updates are not proof an assessment never happened');
  for(const width of [390,1366]) {
   await page.setViewportSize({width,height:900});
-  if(!await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))throw Error('Empty-period overflow');
-  await page.locator('.executive-period-notice').screenshot({path:`qa-artifacts/target-contributions-empty-period-${width}.png`});
+  if(!await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))throw Error('Current snapshot overflow');
+  await page.locator('.executive-health-grid').screenshot({path:`qa-artifacts/target-contributions-latest-period-${width}.png`});
  }
- await page.getByRole('button',{name:'Show all periods',exact:true}).click();
- await page.locator('.target-contributions').getByText('Share of the 16 achieved targets',{exact:true}).waitFor();
- if((await page.locator('.executive-target-value').innerText()).trim()!=='5.3%')throw Error('All-period recovery did not restore current results');
  fixture.v_indicator_progress=fixture.v_indicator_progress.map(r=>({...r,cumulative_actual:0,achievement_pct:0}));await page.reload();
  await page.locator('.target-contributions-empty').waitFor();
  if((await page.locator('.executive-target-value').innerText()).trim()!=='0%')throw Error('Actual assessed zero must remain 0%');

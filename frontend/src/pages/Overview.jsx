@@ -1,6 +1,6 @@
 import './overview-simple.css';
 import ExecutivePortfolioSummary from '../components/ExecutivePortfolioSummary';
-import { executivePortfolio } from '../lib/executivePortfolio';
+import { latestExecutivePortfolio } from '../lib/executivePortfolio';
 import FigureExplanation from '../components/FigureExplanation';
 import ProjectProgressOverview from '../components/ProjectProgressOverview';
 import { projectResultsHref } from '../lib/projectProgressSummary';
@@ -289,8 +289,7 @@ export default function Overview({ user }) {
   const totalExpenditure = reportedExpenditure.length ? sumReported(reportedExpenditure.map(row => toVuv(row.cumulative_expenditure, projects.find(p => p.id === row.project_id)?.currency))) : null;
   const budgetUtilisation = totalBudget && totalExpenditure != null ? Math.round(totalExpenditure / totalBudget * 100) : null;
   const executiveProjects = portfolioProjects.filter(p => projectMatches(p, filters, { includeWithoutFramework: true }));
-  const executiveIds = new Set(executiveProjects.map(p => p.id));
-  const executive = executivePortfolio(executiveProjects, indicators, progress, reporting, { activities: data.activities.filter(row => executiveIds.has(row.project_id)), period });
+  const executive = latestExecutivePortfolio(executiveProjects, sourceData);
   const datedProgress = withReportingDates(progress, reporting);
   const latestProgress = latestReportedBy(datedProgress);
   const overallProgress = portfolioProgress(datedProgress);
@@ -412,7 +411,7 @@ export default function Overview({ user }) {
       <section className="ovx-heading rp-noprint">
         <div>
           <h1>{t('quietUi.overview')}</h1>
-          <p className="ovx-reading-caption">{dataAsAt !== '—' ? t('quietUi.updated',{date:fmtDate(dataAsAt)}) : executive.draftUpdates>0 ? `${fmtNum(executive.draftUpdates)} ${french?'mises à jour en brouillon':'draft updates awaiting submission'}` : period ? (french?'Aucun résultat soumis pour cette période.':'No submitted results for this period.') : t('simpleOverview.noUpdate')}</p>
+          <p className="ovx-reading-caption">{executive.asAt ? t('quietUi.updated',{date:fmtDate(executive.asAt)}) : (french?'Mises à jour des résultats non enregistrées.':'Result updates not recorded.')}</p>
         </div>
         <details className="ovx-page-actions"><summary>{t('quietUi.actions')}</summary><div className="ovx-heading-actions">
           {canPublishPublic && <button type="button" className="ovx-publish"
@@ -441,7 +440,7 @@ export default function Overview({ user }) {
         value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 
-      <ExecutivePortfolioSummary  summary={executive} period={period} onAllPeriods={()=>selectPeriod('')} onResults={()=>nav(`/analytics/results${period ? `?period=${encodeURIComponent(period)}` : ''}`)}/>
+      <ExecutivePortfolioSummary  summary={executive} period="" onAllPeriods={()=>selectPeriod('')} onResults={()=>nav('/analytics/results?period=')}/>
       <section className="ovx-simple-actions" aria-labelledby="ovx-action-title">
         <h2 id="ovx-action-title">{t('simpleOverview.actions')}</h2>
         {attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).length ? <ul>{attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).slice(0,3).map(item=><li key={item.key}><button type="button" onClick={()=>nav(item.to)}><span><b>{fmtNum(item.value)}</b> {t(`simpleOverview.actionLabels.${item.key}`)}</span><ArrowRight size={16} aria-hidden="true"/></button></li>)}</ul> : <p>{t('simpleOverview.noActions')}</p>}
