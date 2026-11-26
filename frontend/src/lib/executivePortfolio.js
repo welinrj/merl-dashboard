@@ -21,7 +21,7 @@ export function finalTargetAttained(indicator, row) {
   return indicator?.higher_is_better === false ? actual <= target : actual >= target;
 }
 
-export function executivePortfolio(projects = [], indicators = [], progress = [], periods = [], { activities = [], period = '' } = {}) {
+export function executivePortfolio(projects = [], indicators = [], progress = [], periods = [], { activities = [], period = '', portfolioStatus = [] } = {}) {
   const counts = { total: projects.length, on_track: 0, attention: 0, critical: 0, unassessed: 0 };
   const targets = { total: 0, achieved: 0, reported: 0, pending: 0, approvedAchieved: 0, percentage: null };
   let draftUpdates = 0;
@@ -37,18 +37,21 @@ export function executivePortfolio(projects = [], indicators = [], progress = []
     const pending = measured.filter(r => !approved.has(r.review_status)).length;
     // Global register/activity status is not evidence for a selected past period.
     const register = period ? '' : project.registered_status ?? project.status;
-    const delayed = latest.some(r => r.schedule_status === 'delayed') || (!period && activities.some(a => a.project_id === project.id && a.status === 'delayed'));
+    const assessment = period ? null : portfolioStatus.find(r=>r.project_id===project.id);
+    const delayed = latest.some(r => r.schedule_status === 'delayed') || assessment?.schedule_status==='delayed' || (!period && activities.some(a => a.project_id === project.id && a.status === 'delayed'));
     const hasUpdate = latest.some(r => resultNumber(r.cumulative_actual) !== null
       || resultNumber(r.actual_this_period) !== null || resultNumber(r.achievement_pct) !== null
       || positive.has(r.performance_status) || critical.has(r.performance_status) || attention.has(r.performance_status)
       || (typeof r.narrative === 'string' && r.narrative.trim()));
     const fullyPositive = own.length > 0 && latest.length === own.length
       && latest.every(r => positive.has(r.performance_status) || finalTargetAttained(byId.get(r.indicator_id),r) === true);
-    const health = latest.some(r => critical.has(r.performance_status)) || ['at_risk','off_track','suspended'].includes(register) ? 'critical'
-      : delayed || latest.some(r => attention.has(r.performance_status)) || ['attention','attention_required','on_hold','delayed'].includes(register) ? 'attention'
-      : fullyPositive ? 'on_track'
+    const recordedPositive = assessment?.performance_status==='on_track'
+      && (hasUpdate || resultNumber(assessment.progress_pct)!==null);
+    const health = latest.some(r => critical.has(r.performance_status)) || critical.has(assessment?.performance_status) || ['at_risk','off_track','suspended'].includes(register) ? 'critical'
+      : delayed || latest.some(r => attention.has(r.performance_status)) || attention.has(assessment?.performance_status) || ['attention','attention_required','on_hold','delayed'].includes(register) ? 'attention'
+      : fullyPositive || recordedPositive ? 'on_track'
       : hasUpdate ? 'attention' : 'unassessed';
-    const healthBasis = health === 'attention' && !delayed && !latest.some(r => attention.has(r.performance_status))
+    const healthBasis = health === 'attention' && !delayed && !attention.has(assessment?.performance_status) && !latest.some(r => attention.has(r.performance_status))
       && !['attention','attention_required','on_hold','delayed'].includes(register) ? 'assessment_gaps' : health;
     counts[health]++;
     targets.total += own.length;
@@ -61,4 +64,17 @@ export function executivePortfolio(projects = [], indicators = [], progress = []
   targets.percentage = targets.total && targets.reported ? Math.round(targets.achieved / targets.total * 1000) / 10 : null;
   return { counts, targets, rows, draftUpdates, frameworks: projects.filter(p => p.has_results_framework !== false).length,
     assessmentGaps: rows.filter(row => row.healthBasis === 'assessment_gaps').length };
+}
+
+// The executive overview is a current snapshot. A saved historical period is
+// used by detailed views, never to erase the latest portfolio assessments.
+export function latestExecutivePortfolio(projects=[],data={}) {
+  const ids=new Set(projects.map(p=>p.id));
+  const rows=key=>(data[key]||[]).filter(r=>ids.has(r.project_id));
+  const progress=rows('progress'),reporting=rows('reporting');
+  const summary=executivePortfolio(projects,rows('indicators'),progress,reporting,
+    {activities:rows('activities'),portfolioStatus:rows('portfolioStatus')});
+  const dates=[...latestReportedBy(withReportingDates(progress,reporting)).values()]
+    .map(r=>r.period_end||r.date_reported).filter(Boolean).sort();
+  return {...summary,scope:'latest',asAt:dates.at(-1)?.slice(0,10)||null};
 }

@@ -23,7 +23,7 @@ export default function ProjectTargetContributions({summary,french=false,period=
         <span><b>{number(r.share)}%</b><small>{number(r.points)} {french?'points au total':'points overall'}</small></span>
       </li>)}</ul>
     </div>:model.valid?<p className="target-contributions-empty">{french?'Aucune cible atteinte enregistrée dans cette sélection.':'No achieved targets recorded in this selection.'}</p>:null}
-    {model.others.length>0&&<details className="target-contributions-others"><summary>{french?'Autres projets':'Other projects'} ({model.others.length})</summary><ul>{model.others.map(r=><li key={r.project.id}><strong>{label(r.project)}</strong><span>{r.reported===0?(french?'Pas encore évalué':'Not yet assessed'):(french?'Aucune cible atteinte enregistrée':'No achieved targets recorded')}</span></li>)}</ul></details>}
+    {model.others.length>0&&<details className="target-contributions-others"><summary>{french?'Autres projets':'Other projects'} ({model.others.length})</summary><ul>{model.others.map(r=><li key={r.project.id}><strong>{label(r.project)}</strong><span>{r.reported===0?(french?'Résultats non enregistrés':'Results not recorded'):(french?'Aucune cible atteinte enregistrée':'No achieved targets recorded')}</span></li>)}</ul></details>}
     {model.rows.length>0&&<p className="target-contributions-note">{french?'Part = cibles atteintes du projet ÷ total des cibles atteintes. Les points montrent sa contribution au pourcentage global.':'Share = project’s achieved targets ÷ all achieved targets. Points show its contribution to the overall percentage.'}</p>}
   </section>;
 }
