@@ -1,3 +1,4 @@
+import ProjectResultKpi from '../components/ProjectResultKpi';
 import IndicatorStatusPie from '../components/IndicatorStatusPie';
 import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { ReviewIcon, BudgetUsageIcon, UpdateProgressIcon, ResultsIcon, BeneficiariesIcon } from '../components/ui/MerlIcons';
@@ -836,26 +837,12 @@ export default function ProjectPortfolioAnalysis() {
           </Section>
 
           {d.kpiConfig.length > 0 && (
-            <Section title="Project Result KPIs" description="Featured indicators configured from this project's official results framework.">
+            <Section title={lang?.startsWith('fr') ? 'Résultats clés du projet' : 'Project results'} description={lang?.startsWith('fr') ? 'Progrès par rapport aux cibles.' : 'Progress against indicator targets.'}>
               <div className="grid-kpi-6">
                 {[...d.kpiConfig].sort((a,b) => a.display_order - b.display_order).map((cfg) => {
                   const entry = a.results.rows.find((r) => r.indicator.id === cfg.indicator_id);
                   if (!entry) return null;
-                  const actual = entry.progress?.cumulative_actual ?? entry.progress?.actual_this_period;
-                  const target = entry.progress?.final_target ?? entry.indicator.target_value;
-                  return (
-                    <button type="button" key={cfg.id} onClick={() => setIndicator(entry)} className="kpi-jump">
-                      <StatTile
-                        label={cfg.short_label}
-                        status={entry.status === 'below_target' ? 'red' : entry.status === 'on_track' || entry.status === 'achieved' ? 'green' : 'none'}
-                        value={actual != null ? `${fmtNum(actual)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : t('ppa.notReported')}
-                        placeholder={actual == null}
-                        sub={cfg.show_progress && typeof entry.pct === 'number'
-                          ? `${fmtPct(entry.pct)} progress`
-                          : cfg.show_target && target != null ? `Target: ${fmtNum(target)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : entry.indicator.code}
-                      />
-                    </button>
-                  );
+                  return <ProjectResultKpi key={cfg.id} entry={entry} config={cfg} onClick={() => setIndicator(entry)} />;
                 })}
               </div>
             </Section>

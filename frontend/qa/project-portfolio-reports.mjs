@@ -22,6 +22,7 @@ rows.v_indicator_progress.push(
  {id:'progress-track',project_id:'pa',indicator_id:'on-track',reporting_period:'Q3 2026',cumulative_actual:9,final_target:10,review_status:'submitted',date_reported:'2026-09-30'},
  {id:'progress-attention',project_id:'pa',indicator_id:'attention',reporting_period:'Q3 2026',cumulative_actual:3,final_target:10,review_status:'submitted',date_reported:'2026-09-30'},
 );
+rows.v_dashboard_kpi_config=rows.v_project_indicators.filter(i=>i.project_id==='pa').map((i,index)=>({id:'kpi-'+i.id,project_id:'pa',indicator_id:i.id,short_label:i.name,display_order:index,show_progress:true,show_target:true}));
 rows.v_indicator_targets=[{id:'target-ia',indicator_id:'ia',target_type:'final',numeric_value:20,created_at:'2026-01-01'}];
 rows.v_evidence=[{id:'ev-ia',project_id:'pa',indicator_id:'ia',code:'EV-1',title:'Coastal delivery monitoring',document_date:'2026-09-30',reporting_period:'Q3 2026',verification_status:'verified'}];
 rows.v_evidence_analysis=[{id:'analysis-ia',project_id:'pa',indicator_id:'ia',evidence_id:'ev-ia',source_location:'Page 7',review_state:'accepted',reviewed_by_name:'Review officer',created_at:'2026-10-01'}];
@@ -58,6 +59,22 @@ try{
  };
  await expectCounts({achieved:1,on_track:1,below_target:1,not_yet_due:1,no_data:1});
  assert.match(await pie.getByRole('img').getAttribute('aria-label'),/Achieved: 1/);
+ const grade=async(id)=>page.locator(`.project-result-kpi[data-indicator="${id}"]`).getAttribute('data-grade');
+ assert.equal(await grade('ia'),'achieved');
+ assert.equal(await grade('on-track'),'on-track');
+ assert.equal(await grade('attention'),'low');
+ assert.equal(await grade('unreported'),'neutral');
+ assert.equal(await page.locator('.project-result-kpi[data-indicator="unreported"] .project-result-grade-track').count(),0,'Unknown progress has no fake zero bar');
+ for(const width of [360,1440]){
+   await page.setViewportSize({width,height:900});
+   await page.locator('.project-result-kpi').first().scrollIntoViewIfNeeded();
+   const colors=await page.locator('.project-result-kpi>.stat-tile').evaluateAll(cards=>cards.map(card=>getComputedStyle(card).backgroundColor));
+   assert.ok(new Set(colors).size>=4,'Achievement, near target, low and unreported have distinct surfaces');
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+   mkdirSync('qa-artifacts',{recursive:true});
+   await page.screenshot({path:`qa-artifacts/header-result-grades-${width}.png`});
+ }
+
  mkdirSync('qa-artifacts',{recursive:true});
  for(const width of [360,1440]){
    await page.setViewportSize({width,height:900});
