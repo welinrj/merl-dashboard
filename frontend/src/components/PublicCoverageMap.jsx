@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { THEME_AREA_COLOURS, THEME_AREA_ORDER } from '../lib/publicPortfolioCategories';
 import './public-coverage-map.css';
 import PublicBoundaryFallback from './PublicBoundaryFallback';
-import { publishedMapResult } from '../lib/publishedMapResult';
 import { mapLabelPoint } from '../lib/publicMapLabels';
 import { coverageFeatures, geometryBounds, mapStyle, loadBasemap, BASEMAP_IDS } from '../lib/maplibreCoverage';
 
@@ -236,15 +235,14 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
 
       {recordedAreas.length>1&&onAreaSelect&&<label className="pub-map-choose"><span>{copy.choose}</span><select value={chosen?key(chosen.province,chosen.area_council):''} onChange={e=>{const a=recordedAreas.find(a=>key(a.province,a.area_council)===e.target.value);onAreaSelect?.(a?{province:a.province,area_council:a.area_council}:null);}}><option value="">—</option>{recordedAreas.map(a=><option key={key(a.province,a.area_council)} value={key(a.province,a.area_council)}>{a.area_council}, {a.province}</option>)}</select></label>}
       {chosen&&<div className="pub-map-selection" aria-live="polite"><strong>{chosen.area_council}</strong><span>{chosen.province} · {copy.themes[chosen.theme_category]||copy.themes['not-recorded']}</span>
-        <p className="pub-map-result-note">{fr?'Résultats du projet entier, et non des totaux pour ce conseil de zone.':'Project-wide results, not totals for this Area Council.'}</p>
+        <p className="pub-map-result-note">{fr?'Seules les activités et les résultats explicitement rattachés à ce conseil de zone sont affichés ici.':'Only activities and results explicitly linked to this Area Council are shown here.'}</p>
         <ul>{(chosen.project_ids||[]).map((id,i)=>{
           const project=projects.find(p=>String(p.id)===String(id));
-          const result=project?publishedMapResult(project):null;
           const status=project?.lifecycle_status||project?.status;
           const statusLabel=({ongoing:fr?'En cours':'Ongoing',active:fr?'En cours':'Ongoing',completed:fr?'Achevé':'Completed',closed:fr?'Achevé':'Completed',upcoming:fr?'À venir':'Upcoming'})[status];
-          const resultLabel=result?.kind==='indicator'?result.label:result?.kind==='beneficiaries'?(fr?'Bénéficiaires directs publiés':'Published direct beneficiaries'):(fr?'Progrès déclaré':'Reported progress');
-          return <li key={id} className="pub-map-project-result"><h4>{project?.name||chosen.project_names?.[i]||copy.view}</h4><p>{chosen.area_council}, {chosen.province}{statusLabel&&<> · {statusLabel}</>}</p>
-            {result?<><span>{resultLabel}</span><strong>{new Intl.NumberFormat(fr?'fr-FR':'en-US',{maximumFractionDigits:2}).format(result.value)}{result.kind==='progress'?'%':result.unit?` ${result.unit}`:''}</strong><small>{fr?'Période approuvée':'Approved period'}: {result.period||(fr?'Non renseignée':'Not recorded')}</small></>:<p>{fr?'Aucun résultat approuvé publié pour ce projet.':'No approved results published for this project.'}</p>}
+          const local = (Array.isArray(chosen.local_details) ? chosen.local_details : []).filter(row=>String(row.project_id)===String(id));
+          return <li key={id} className="pub-map-project-result"><h4>{project?.name||chosen.project_names?.[i]||copy.view}</h4><p>{chosen.area_council}, {chosen.province}{statusLabel&&<> · {fr?'Statut du projet':'Project status'}: {statusLabel}</>}</p>
+            {local.length ? <ul>{local.map((entry,j)=><li key={entry.id||j}><span>{entry.label}</span>{entry.value!=null&&<strong>{new Intl.NumberFormat(fr?'fr-FR':'en-US',{maximumFractionDigits:2}).format(entry.value)}{entry.unit?` ${entry.unit}`:''}</strong>}{entry.period&&<small>{fr?'Période':'Period'}: {entry.period}</small>}</li>)}</ul>:<p>{fr?'Lieu du projet enregistré. Aucune activité ni aucun résultat propre à ce conseil de zone n’a été publié.':'Project location recorded. No Area Council-specific activities or results have been published.'}</p>}
             {onViewProject&&<button type="button" onClick={()=>{setExpanded(false);onViewProject(id);}}>{copy.view}</button>}
           </li>;
         })}</ul></div>}
