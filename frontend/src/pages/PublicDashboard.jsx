@@ -20,6 +20,7 @@ import {
 import { Activity, LayoutDashboard, MapPin, Menu, Pause, Play, Wallet } from '../components/ui/icons';
 import { FeatureCardGradient } from '../components/ui/feature-section-with-card-gradient';
 import { IndicatorProgressCard } from '../components/ui/indicator-progress-card';
+import PublicTargetAchievement from '../components/PublicTargetAchievement';
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
@@ -291,6 +292,8 @@ export default function PublicDashboard() {
             {metricRows.map(row=><Metric key={row.tone} {...row} stamp={row.stamp||stamp} french={lang==='fr'}/>)}
           </section>
           <details className="pbd-method-note"><summary>{lang === 'fr' ? 'À propos des chiffres' : 'About these figures'}</summary><p>{c.fundingSub}. {c.utilisedSub}. {c.beneficiariesSub}.</p></details>
+
+          <PublicTargetAchievement projects={filtered} french={lang === 'fr'} />
 
           <section className="pbd-section pbd-portfolio">
             <div className="pbd-section-head"><div><h2 className="pbd-progress-summary-title"><ProjectsIcon size={20} aria-hidden="true" />{lang === 'fr' ? 'Progrès par projet' : 'Progress by project'}</h2><p>{lang === 'fr' ? 'Résumés des résultats approuvés et publiés.' : 'Approved, published result summaries.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>

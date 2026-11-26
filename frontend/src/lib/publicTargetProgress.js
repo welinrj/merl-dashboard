@@ -20,3 +20,15 @@ export function publicTargetTotals(projects = []) {
     achieved=rows.reduce((sum,row)=>sum+row.achieved,0);
   return {total,assessed,achieved,pct:total>0 && assessed>0?Math.round(achieved/total*1000)/10:null};
 }
+
+// Adapt only published counts to the shared contribution chart contract.
+export function publicTargetSummary(projects = []) {
+  const totals = publicTargetTotals(projects);
+  return {
+    targets: { total: totals.total, reported: totals.assessed, achieved: totals.achieved, percentage: totals.pct },
+    rows: projects.map(project => {
+      const progress = publicTargetProgress(project);
+      return { project, total: progress.total, reported: progress.assessed, achieved: progress.achieved };
+    }),
+  };
+}

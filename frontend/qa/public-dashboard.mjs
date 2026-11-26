@@ -48,6 +48,20 @@ check('bare URL resolves to the shared dashboard',new URL(page.url()).hash==='#/
 check('anonymous visitor sees one public overview',await page.getByRole('heading',{name:'Public Overview'}).count()===1);
 check('sidebar contains only one public destination',await page.locator('.pbd-root .dsh-nav button').count()===1);
 check('separate Projects and Results public pages are removed',await page.locator('.pbd-root .dsh-nav').getByRole('button',{name:/^(Projects|Results)$/}).count()===0);
+await page.locator('.pbd-target-achievement .recharts-pie-sector').first().waitFor();
+check('public achievement uses all published targets',(await page.locator('.pbd-target-achievement .executive-target-value').innerText())==='80%' && (await page.locator('.pbd-target-achievement').innerText()).includes('12 achieved / 15 total targets'));
+check('public contribution percentages reconcile',(await page.locator('.target-contributions [data-project-code="PUB-1"]').innerText()).includes('16.67%') && (await page.locator('.target-contributions [data-project-code="PUB-1"]').innerText()).includes('13.33% of total portfolio targets'));
+check('completed projects cannot enter the public pie',await page.locator('.target-contributions [data-project-code="PUB-DONE"]').count()===0);
+for(const width of [1366,390,320]) {
+ await page.setViewportSize({width,height:900});
+ check(`${width}px: public achievement has no overflow`,await page.locator('.pbd-target-achievement').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+ mkdirSync('qa-artifacts',{recursive:true});
+ await page.locator('.pbd-target-achievement').screenshot({animations:'disabled',path:`qa-artifacts/header-public-summary-achievement-${width}.png`});
+}
+await page.setViewportSize({width:1440,height:1000});
+await page.locator('.pbd-root .dsh-lang button[lang="fr"]').click();
+check('public achievement and contribution translate',await page.getByRole('heading',{name:'Contribution par projet',exact:true}).count()===1 && await page.getByRole('heading',{name:'Atteinte globale des cibles',exact:true}).count()===1);
+await page.locator('.pbd-root .dsh-lang button[lang="en"]').click();
 check('framework project count is shown',await hasMetric('2'));
 check('framework project funding is shown',await hasMetric('VT 3,000,000'));
 check('framework project utilisation is shown',await hasMetric('VT 900,000') && await hasMetric('30%'));
@@ -80,6 +94,7 @@ await page.locator('.pbd-activity-capacity').click();
 check('missing targets are identified without inventing values',await page.locator('.pbd-activity-details').getByText('Not recorded').count()===1);
 await page.locator('.pbd-filters select').nth(1).selectOption('Mitigation');
 check('theme filter includes a project under either official theme',await page.locator('.pbd-project-card').count()===1 && await page.locator('.pbd-project-card').getByRole('heading',{name:'Coastal Resilience'}).count()===1);
+check('public achievement and pie follow filters',(await page.locator('.pbd-target-achievement .executive-target-value').innerText())==='40%' && await page.locator('.pbd-target-achievement .recharts-pie-sector').count()===1);
 check('indicator category totals follow the selected projects',await page.locator('.pbd-activity-category').count()===2 && await page.locator('.pbd-activity-section').getByText('5 indicators',{exact:true}).count()===1);
 await page.getByRole('button',{name:'Reset',exact:true}).click();
 await page.locator('.pbd-filters select').nth(2).selectOption('Torba');
@@ -107,6 +122,7 @@ check('anonymous private route returns to the one public overview',new URL(page.
 fixtures.public_portal_projects[0]={...fixtures.public_portal_projects[0],progress_pct:100,achieved_target_count:0};
 fixtures.public_portal_projects[1]={...fixtures.public_portal_projects[1],progress_pct:100,assessed_target_count:0,achieved_target_count:0};
 await go('');
+check('public assessed zero has no fictitious pie',(await page.locator('.pbd-target-achievement .executive-target-value').innerText())==='0%' && await page.locator('.pbd-target-achievement .recharts-pie-sector').count()===0);
 check('reported zero is preserved as a real progress bar',await page.locator('#public-project-pa [role=progressbar]').getAttribute('aria-valuenow')==='0');
 check('unpublished results do not become zero progress',await page.locator('#public-project-pb [role=progressbar]').count()===0 && (await page.locator('#public-project-pb').innerText()).includes('Awaiting approved update'));
 for(const width of [1024,768,390,360,320]) {

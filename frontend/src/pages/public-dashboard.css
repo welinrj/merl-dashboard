@@ -310,3 +310,5 @@
 .pbd-project-card .published-project-progress{margin:12px 0 0;border:0}
 .pbd-project-card .published-project-progress>div:first-child{align-items:flex-start}
 .pbd-project-card .published-project-progress strong{color:var(--project-progress-accent)}
+
+.pbd-target-achievement .executive-targets h2{margin:0 0 .7rem;color:#fff;font:700 1.25rem/1.4 Arial,sans-serif}.pbd-target-achievement{font-family:Arial,sans-serif;min-width:0}.pbd-target-achievement .target-contributions{min-width:0}
