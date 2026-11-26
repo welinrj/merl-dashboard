@@ -22,8 +22,8 @@ export default function ProjectResultKpi({ entry, config, onClick }) {
   return <button type="button" className={`kpi-jump project-result-kpi grade-${grade.tone}`}
     data-grade={grade.tone} data-indicator={entry.indicator.id} onClick={onClick}>
     <StatTile label={config.short_label}
-      value={actual != null ? `${fmtNum(actual)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : t('ppa.notReported')}
-      placeholder={actual == null}
+      value={actual != null ? `${fmtNum(actual)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : entry.status === 'achieved' ? (french ? 'Terminé' : 'Completed') : entry.progress ? (french ? 'Mise à jour reçue' : 'Update recorded') : t('ppa.notReported')}
+      placeholder={actual == null && entry.status !== 'achieved'}
       sub={config.show_progress && grade.pct != null
         ? `${fmtPct(grade.pct)} ${french ? 'atteint' : 'progress'}`
         : config.show_target && target != null ? `${french ? 'Cible' : 'Target'}: ${fmtNum(target)}${entry.indicator.unit ? ` ${entry.indicator.unit}` : ''}` : entry.indicator.code}>
