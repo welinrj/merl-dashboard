@@ -289,7 +289,7 @@ export default function Overview({ user }) {
   const reportedExpenditure = [...latestFinance.values()].filter(row => row.cumulative_expenditure != null);
   const totalExpenditure = reportedExpenditure.length ? sumReported(reportedExpenditure.map(row => toVuv(row.cumulative_expenditure, projects.find(p => p.id === row.project_id)?.currency))) : null;
   const budgetUtilisation = totalBudget && totalExpenditure != null ? Math.round(totalExpenditure / totalBudget * 100) : null;
-  const executiveProjects = portfolioProjects.filter(p => projectMatches(p, filters));
+  const executiveProjects = portfolioProjects.filter(p => projectMatches(p, filters, { includeWithoutFramework: true }));
   const executiveIds = new Set(executiveProjects.map(p => p.id));
   const executive = executivePortfolio(executiveProjects, indicators, progress, reporting, { activities: data.activities.filter(row => executiveIds.has(row.project_id)), period });
   const datedProgress = withReportingDates(progress, reporting);
