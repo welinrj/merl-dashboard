@@ -35,18 +35,27 @@ export function executivePortfolio(projects = [], indicators = [], progress = []
     // Global register/activity status is not evidence for a selected past period.
     const register = period ? '' : project.registered_status ?? project.status;
     const delayed = latest.some(r => r.schedule_status === 'delayed') || (!period && activities.some(a => a.project_id === project.id && a.status === 'delayed'));
+    const hasUpdate = latest.some(r => resultNumber(r.cumulative_actual) !== null
+      || resultNumber(r.actual_this_period) !== null || resultNumber(r.achievement_pct) !== null
+      || positive.has(r.performance_status) || critical.has(r.performance_status) || attention.has(r.performance_status)
+      || (typeof r.narrative === 'string' && r.narrative.trim()));
+    const fullyPositive = own.length > 0 && latest.length === own.length
+      && latest.every(r => positive.has(r.performance_status) || finalTargetAttained(byId.get(r.indicator_id),r) === true);
     const health = latest.some(r => critical.has(r.performance_status)) || ['at_risk','off_track','suspended'].includes(register) ? 'critical'
       : delayed || latest.some(r => attention.has(r.performance_status)) || ['attention','attention_required','on_hold','delayed'].includes(register) ? 'attention'
-      : own.length > 0 && latest.length === own.length && latest.every(r => positive.has(r.performance_status)) ? 'on_track'
-      : 'unassessed';
+      : fullyPositive ? 'on_track'
+      : hasUpdate ? 'attention' : 'unassessed';
+    const healthBasis = health === 'attention' && !delayed && !latest.some(r => attention.has(r.performance_status))
+      && !['attention','attention_required','on_hold','delayed'].includes(register) ? 'assessment_gaps' : health;
     counts[health]++;
     targets.total += own.length;
     targets.reported += measured.length;
     targets.achieved += achieved.length;
     targets.pending += pending;
     targets.approvedAchieved += achieved.filter(r => approved.has(r.review_status)).length;
-    return { project, health, total: own.length, achieved: achieved.length, reported: measured.length };
+    return { project, health, healthBasis, total: own.length, achieved: achieved.length, reported: measured.length };
   });
   targets.percentage = targets.total ? Math.round(targets.achieved / targets.total * 1000) / 10 : null;
-  return { counts, targets, rows };
+  return { counts, targets, rows, frameworks: projects.filter(p => p.has_results_framework !== false).length,
+    assessmentGaps: rows.filter(row => row.healthBasis === 'assessment_gaps').length };
 }

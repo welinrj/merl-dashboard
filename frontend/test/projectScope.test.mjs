@@ -32,3 +32,12 @@ test('framework scope excludes archived and completed projects and requires fram
   assert.deepEqual(scoped.financial, [{project_id:'a'}]);
   assert.deepEqual(scoped.progress, []);
 });
+
+test('executive register scope can include missing frameworks while preserving filters and exclusions',()=>{
+ const pending={id:'pending',code:'PENDING',status:'active',has_results_framework:false,provinces:['SANMA']};
+ assert.equal(projectMatches(pending,{}),false);
+ assert.equal(projectMatches(pending,{}, {includeWithoutFramework:true}),true);
+ assert.equal(projectMatches(pending,{province:'TORBA'}, {includeWithoutFramework:true}),false);
+ assert.equal(projectMatches({...pending,status:'completed'},{}, {includeWithoutFramework:true}),false);
+ assert.equal(projectMatches({...pending,excluded_from_current_portfolio:true},{}, {includeWithoutFramework:true}),false);
+});

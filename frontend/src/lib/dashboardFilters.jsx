@@ -1,5 +1,5 @@
 // Shared filters and operational status classification for the MERL dashboard.
-import { isDashboardProject } from './docc/projectScope';
+import { isDashboardProject, isCurrentPortfolioProject } from './docc/projectScope';
 import { createContext, useContext, useMemo, useState, useCallback } from 'react';
 
 const EMPTY = { fy: '', status: '', theme: '', province: '', areaCouncil: '', donor: '', partner: '' };
@@ -47,8 +47,8 @@ export function useDashboardFilters() {
   return v;
 }
 
-export function projectMatches(p, filters) {
-  if (!isDashboardProject(p)) return false;
+export function projectMatches(p, filters, { includeWithoutFramework = false } = {}) {
+  if (!(includeWithoutFramework ? isCurrentPortfolioProject(p) : isDashboardProject(p))) return false;
   if (filters.status && bucketOf(p.status) !== filters.status) return false;
   if (filters.theme && p.category !== filters.theme) return false;
   if (filters.donor && p.donor !== filters.donor && !(p.donors || []).includes(filters.donor)) return false;
