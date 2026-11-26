@@ -1,3 +1,4 @@
+import { publicTargetProgress } from '../lib/publicTargetProgress';
 import { useTranslation } from 'react-i18next';
 import { projectProgressSummaries } from '../lib/projectProgressSummary';
 import { resultNumber } from '../lib/resultComparison';
@@ -28,12 +29,20 @@ export default function ProjectProgressOverview({projects,indicators,progress,pe
   </section>;
 }
 export function PublishedProjectProgress({project,lang='en'}) {
-  const c=copy[lang]||copy.en,pct=resultNumber(project.progress_pct),count=resultNumber(project.published_indicator_count);
+  const french=lang==='fr',model=publicTargetProgress(project),pct=model.pct;
+  const title=french?'Cibles atteintes':'Targets achieved';
   const accent=pct==null?'#64748b':pct>=100?'#15803d':pct>=90?'#0e7490':pct>=60?'#b45309':'#b3402f';
-  return <div className="published-project-progress" style={{'--project-progress-accent':accent}}>
-    <div><span>{c.published}</span><strong>{pct==null?'—':`${numeric(pct,lang)}%`}</strong></div>
-    {pct==null?<p>{c.unpublished}</p>:<ProgressBar value={pct} label={`${project.name}: ${c.published}`}/>}
-    {(count!=null||project.last_published_period)&&<small>{count!=null&&<span>{numeric(count,lang)} {lang==='fr' ? (count===1?'indicateur publié':'indicateurs publiés') : (count===1?'published indicator':'published indicators')}</span>}{project.last_published_period&&<span>{project.last_published_period}</span>}</small>}
+  const unavailable=model.kind==='no_framework'?(french?'Cadre de résultats non disponible':'Results framework unavailable'):
+    model.kind==='unassessed' && project.target_summary_period?(french?'Évaluation des cibles en attente':'Target assessment pending'):
+    (french?'En attente de résultats approuvés':'Awaiting approved update');
+  return <div className="published-project-progress" data-progress-basis={project.progress_basis || 'unavailable'} style={{'--project-progress-accent':accent}}>
+    <div><span title={french?'Cibles finales atteintes ÷ toutes les cibles du projet.':'Achieved final targets ÷ all project targets.'}>{title}</span><strong>{pct==null?'—':`${numeric(pct,lang)}%`}</strong></div>
+    {pct==null?<p>{unavailable}</p>:<ProgressBar value={pct} label={`${project.name}: ${title}`}/>}
+    {model.total>0 && <small className="public-target-coverage">
+      {pct!=null&&<span>{numeric(model.achieved,lang)} / {numeric(model.total,lang)} {french?'cibles atteintes':'targets achieved'}</span>}
+      <span>{numeric(model.assessed,lang)} / {numeric(model.total,lang)} {french?'évaluées':'assessed'}</span>
+    </small>}
+    {project.target_summary_period&&<small>{project.target_summary_period}</small>}
   </div>;
 }
 export function PublishedProjectProgressOverview({projects=[],onProject,lang='en'}) {
