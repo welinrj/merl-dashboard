@@ -8,7 +8,7 @@ import { useWorkspaceContext } from '../components/WorkspaceContext';
 import { scopeWorkspacePeriod } from '../lib/docc/workspacePeriod';
 import { PortfolioCardIcon, ProgressCardIcon, BudgetCardIcon, BeneficiariesCardIcon, AttentionCardIcon, ReportingCardIcon } from '../components/ui/MerlCardIcons';
 import { beneficiaryPublicationState } from '../lib/dataCoverage';
-import { officialProjects, currentProjects } from '../lib/docc/projectScope';
+import { officialProjects, currentProjects, isCurrentPortfolioProject } from '../lib/docc/projectScope';
 import MyTasks from '../components/MyTasks';
 import PendingResultsFrameworks from '../components/PendingResultsFrameworks';
 import { toVuv, sumReported } from '../lib/docc/currency';
@@ -154,7 +154,7 @@ export default function Overview({ user }) {
           q('v_beneficiaries', 'project_id, total_direct, female, male, other_gender, youth, persons_with_disability, indirect, reporting_period, double_counting_check'),
           q('v_project_activities', 'project_id, name, status, planned_end_date, next_action, next_action_due'),
           q('v_project_indicators', 'project_id, id, code, name, target_value, is_qualitative, higher_is_better'),
-          q('v_indicator_progress', 'id, project_id, indicator_id, achievement_pct, cumulative_actual, final_target, period_target, performance_status, schedule_status, review_status, reporting_period, date_reported, created_at, updated_at'),
+          q('v_indicator_progress', 'id, project_id, indicator_id, achievement_pct, cumulative_actual, final_target, period_target, performance_status, schedule_status, review_status, narrative, reporting_period, date_reported, created_at, updated_at'),
           q('v_reporting_periods', 'id, project_id, period_label, period_start, period_end, submission_status, review_comments, approved_at, reporting_officer_name, updated_at'),
           supabase.from('v_project_organizations').select('project_id, role, name'),
           supabase.from('v_project_area_councils').select('project_id, province_code, area_council_name, coverage_status, feasibility_status'),
@@ -217,7 +217,7 @@ export default function Overview({ user }) {
     areasByProject.get(row.project_id).push(row.area_council_name);
   }
   const statusByProject = new Map((data.portfolioStatus || []).map((row) => [row.project_id, row]));
-  const allProjects = unfinishedProjects.map((p) => {
+  const portfolioProjects = registeredProjects.filter(isCurrentPortfolioProject).map((p) => {
     const org = orgsByProject.get(p.id) || { donors: [], partners: p.implementing_partners || [] };
     const rollup = statusByProject.get(p.id);
     const rawBucket = bucketOf(p.status);
@@ -236,6 +236,7 @@ export default function Overview({ user }) {
       areaCouncils: areasByProject.get(p.id) || [],
     };
   });
+  const allProjects = portfolioProjects.filter(p => p.has_results_framework === true);
   const donors = [...new Set(allProjects.flatMap((p) => p.donors || []).filter(Boolean))].sort();
   const partners = [...new Set(allProjects.flatMap((p) => p.partners || []).filter(Boolean))].sort();
   const areaCouncilOptions = [...new Set(allProjects.flatMap((p) => p.areaCouncils || []).filter(Boolean))].sort();
@@ -288,7 +289,9 @@ export default function Overview({ user }) {
   const reportedExpenditure = [...latestFinance.values()].filter(row => row.cumulative_expenditure != null);
   const totalExpenditure = reportedExpenditure.length ? sumReported(reportedExpenditure.map(row => toVuv(row.cumulative_expenditure, projects.find(p => p.id === row.project_id)?.currency))) : null;
   const budgetUtilisation = totalBudget && totalExpenditure != null ? Math.round(totalExpenditure / totalBudget * 100) : null;
-  const executive = executivePortfolio(projects, indicators, progress, reporting, { activities, period });
+  const executiveProjects = portfolioProjects.filter(p => projectMatches(p, filters));
+  const executiveIds = new Set(executiveProjects.map(p => p.id));
+  const executive = executivePortfolio(executiveProjects, indicators, progress, reporting, { activities: data.activities.filter(row => executiveIds.has(row.project_id)), period });
   const datedProgress = withReportingDates(progress, reporting);
   const latestProgress = latestReportedBy(datedProgress);
   const overallProgress = portfolioProgress(datedProgress);
@@ -439,7 +442,7 @@ export default function Overview({ user }) {
         value={{ projects: fmtNum(total), progress: overallProgress == null ? '—' : `${overallProgress}%`, budget: budgetUtilisation == null ? '—' : `${budgetUtilisation}%`, beneficiaries: totalBeneficiaries == null ? '—' : fmtNum(totalBeneficiaries), attention: period && !progress.length ? '—' : fmtNum(atRiskProjects + delayedProjects), reporting: `${reportingCompletion}%` }[explainedMetric]}
         data={{ projects, indicators, progress: datedProgress, financial: withReportingDates(financial, reporting), beneficiaries, reporting, portfolioStatus }} />}
 
-      <ExecutivePortfolioSummary onExplainProjects={()=>setExplainedMetric('projects')} summary={executive} period={period} onResults={()=>nav(`/analytics/results${period ? `?period=${encodeURIComponent(period)}` : ''}`)}/>
+      <ExecutivePortfolioSummary  summary={executive} period={period} onResults={()=>nav(`/analytics/results${period ? `?period=${encodeURIComponent(period)}` : ''}`)}/>
       <section className="ovx-simple-actions" aria-labelledby="ovx-action-title">
         <h2 id="ovx-action-title">{t('simpleOverview.actions')}</h2>
         {attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).length ? <ul>{attention.filter(item=>item.value>0 && (item.key!=='review'||['ROLE_ADMIN','ROLE_DOCC_MEO'].includes(user?.role))).slice(0,3).map(item=><li key={item.key}><button type="button" onClick={()=>nav(item.to)}><span><b>{fmtNum(item.value)}</b> {t(`simpleOverview.actionLabels.${item.key}`)}</span><ArrowRight size={16} aria-hidden="true"/></button></li>)}</ul> : <p>{t('simpleOverview.noActions')}</p>}

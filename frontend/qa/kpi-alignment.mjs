@@ -10,6 +10,7 @@ const now = Math.floor(Date.now() / 1000);
 const b64 = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
 const jwt = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'u1', role: 'authenticated', aud: 'authenticated', iat: now, exp: now + 99999 })}.sig`;
 const fixture = JSON.parse(readFileSync(process.env.STUB_FILE || 'qa/fixture.json', 'utf8'));
+fixture.v_projects.push({id:'no-framework',code:'PENDING-RF',name:'Current project awaiting framework',status:'active',has_results_framework:false,excluded_from_current_portfolio:false});
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 await context.addInitScript(([ref, token, exp]) => {
@@ -64,9 +65,9 @@ try {
     const executive = page.locator('.executive-portfolio');
     await executive.waitFor();
     if (await executive.locator('.executive-health').count() !== 5
-      || (await executive.locator('[data-health="total"] strong').innerText()).trim() !== '2'
+      || (await executive.locator('[data-health="total"] strong').innerText()).trim() !== '3'
       || (await executive.locator('[data-health="critical"] strong').innerText()).trim() !== '1'
-      || (await executive.locator('[data-health="unassessed"] strong').innerText()).trim() !== '1'
+      || (await executive.locator('[data-health="unassessed"] strong').innerText()).trim() !== '2'
       || await executive.getByRole('progressbar').getAttribute('aria-valuenow') !== '0') {
       throw new Error('Executive health and final target counts do not reconcile with the fixture');
     }

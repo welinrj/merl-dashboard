@@ -10,7 +10,7 @@ test('combined achievement counts targets once, not averages of percentages or u
 });
 test('health buckets are exclusive, warnings take precedence and missing statuses cannot turn green',()=>{
  const data=executivePortfolio(projects,indicators,[row('a1',10),row('a2',30),row('b1',30,'attention_required'),row('b2',70,'at_risk'),row('c1',0,'attention_required'),row('d1',100),row('e1',90,'')]);
- assert.deepEqual(data.counts,{total:5,on_track:1,attention:1,critical:1,unassessed:2});
+ assert.deepEqual(data.counts,{total:5,on_track:1,attention:3,critical:1,unassessed:0});
  assert.equal(data.rows.find(r=>r.project.id==='b').health,'critical');
 });
 test('chronology, drafts, returned reports, duplicate targets and foreign rows do not inflate totals',()=>{
@@ -38,4 +38,16 @@ test('final targets cannot be inflated by achieved interim targets; direction an
  assert.equal(finalTargetAttained({}, {achievement_pct:100, actual_this_period:20}), null);
  assert.equal(finalTargetAttained({is_qualitative:true}, {achievement_pct:100,period_target:10}), null);
  assert.equal(finalTargetAttained({is_qualitative:true}, {achievement_pct:100}), true);
+});
+
+test('received partial and narrative updates need assessment rather than counting as no updates',()=>{
+ const partial=executivePortfolio(projects,indicators,[row('a1',30,''),row('b1',null,'',{cumulative_actual:null,narrative:'Pending completion'}),row('c1',100,'target_achieved')]);
+ assert.equal(partial.counts.attention,3);assert.equal(partial.counts.unassessed,2);
+ assert.equal(partial.assessmentGaps,3);
+ assert.equal(Object.entries(partial.counts).filter(([key])=>key!=='total').reduce((sum,[,n])=>sum+n,0),partial.counts.total);
+});
+test('current projects without frameworks remain in project count, not target denominator',()=>{
+ const p=[{id:'a',has_results_framework:true},{id:'missing',has_results_framework:false}];
+ const s=executivePortfolio(p,[{id:'a1',project_id:'a',target_value:10}],[row('a1',100,'target_achieved')]);
+ assert.equal(s.counts.total,2);assert.equal(s.frameworks,1);assert.equal(s.targets.total,1);assert.equal(s.counts.unassessed,1);
 });
