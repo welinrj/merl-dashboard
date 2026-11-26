@@ -57,8 +57,10 @@ try {
   await chart.locator('.recharts-pie-sector').first().waitFor();
   if(await chart.locator('.recharts-pie-sector').count()!==4)throw Error('Expected one pie segment per contributing project');
   const vcap=chart.locator('[data-project-code="23A398"]'),vccrp=chart.locator('[data-project-code="VCCRP-001"]');
-  if(!(await vcap.innerText()).includes('31.25%')||!(await vcap.innerText()).includes('1.66 points overall'))throw Error('VCAP contribution denominator is wrong');
+  if(!(await vcap.innerText()).includes('31.25%'))throw Error('VCAP contribution denominator is wrong');
   if(!(await vccrp.innerText()).includes('12.5%'))throw Error('VCCRP contribution denominator is wrong');
+  if((await chart.innerText()).includes('points overall'))throw Error('Overall-point labels must be removed');
+  if(width>=1366&&(await chart.locator('.target-contributions-chart').boundingBox()).width<350)throw Error('Desktop pie must be enlarged');
   if(await chart.locator('.target-contributions-others[open]').count())throw Error('Unassessed projects must stay collapsed');
   if(!await chart.evaluate(el=>el.scrollWidth<=el.clientWidth+1))throw Error(width+'px chart overflow');
   if(!await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))throw Error(width+'px page overflow');
@@ -92,5 +94,5 @@ try {
  await page.locator('.executive-results-empty').waitFor();
  if(await page.locator('.target-contributions .recharts-pie-sector').count())throw Error('No fictitious pie for missing achievements');
  if(errors.length)throw Error(errors.join('; '));
- console.log('PASS contribution shares, overall points, selected scope, zero/missing results, French and 320/390/1366/1920px layouts');
+ console.log('PASS contribution shares, enlarged chart, selected scope, zero/missing results, French and 320/390/1366/1920px layouts');
 } finally {await browser.close();}
