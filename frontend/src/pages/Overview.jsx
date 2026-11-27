@@ -139,7 +139,9 @@ export default function Overview({ user }) {
 
   useEffect(() => {
     let mounted = true;
-    const background = isLiveRefresh();
+    // Quiet only when figures are already on screen; during the first load a
+    // recheck must still be able to show its error instead of a stuck skeleton.
+    const background = isLiveRefresh() && data !== null && !loadError;
     if (!background) {
       setData(null);
       setLoadError(null);

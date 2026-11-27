@@ -164,7 +164,7 @@ export default function Reports({ user }) {
   useEffect(() => { void loadRuns(); }, [loadRuns]);
 
   useEffect(() => {
-    const background = isLiveRefresh();
+    const background = isLiveRefresh() && !!sourceD && !dataError;
     (async () => {
       if (!background) setDataError('');
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
