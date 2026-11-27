@@ -27,6 +27,7 @@ import PublicCoverageMap from '../components/PublicCoverageMap';
 import MetricInformation from '../components/MetricInformation';
 import { PublishedProjectProgress } from '../components/ProjectProgressOverview';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
+import { publicTargetProgress } from '../lib/publicTargetProgress';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { toVuv } from '../lib/docc/currency';
 import { PROVINCES } from '../lib/publicProvinces';
@@ -137,6 +138,103 @@ function Metric({ label, value, detail, stamp, french, tone = '' }) {
   const [open,setOpen]=useState(false);
   const Icon = METRIC_ICONS[tone] || OverviewIcon;
   return <article className={`pbd-metric island-metric ${tone}`}><div className="merl-metric-head"><span className="merl-card-icon"><Icon size={30} /></span><span>{label}</span><button type="button" className="pbd-metric-info" onClick={()=>setOpen(true)} aria-label={`${french?'À propos de':'About'} ${label}`}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg></button></div><strong>{value}</strong><small>{stamp}</small>{open&&<MetricInformation label={label} value={value} detail={detail} stamp={stamp} french={french} onClose={()=>setOpen(false)}/>}</article>;
+}
+
+// Use the existing public indicator categories, not climate policy themes or
+// status colours. The remaining portion of the chart is deliberately neutral.
+const TARGET_CATEGORY_COLORS = {
+  ecosystems:'#19805d', livelihoods:'#a46716', 'climate-risk':'#2463c7',
+  infrastructure:'#397b93', governance:'#7651b5', capacity:'#b25378',
+  finance:'#1d6f8f', 'learning-delivery':'#596b83', beneficiaries:'#c5543d',
+  other:'#7a6d60', undisclosed:'#94a3b8'
+};
+// Public names are read only from the published indicator detail snapshot.
+function ThematicIndicatorNames({ records, lang, copy, showProject = true, achievedOnly = false }) {
+  const fr=lang==='fr';
+  const unique=[...new Map(records.filter(d=>d.indicator_id).map(d=>[d.indicator_id,d])).values()];
+  const visible=unique.filter(d=>!achievedOnly||d.final_target_attained===true);
+  const sorted=[...visible].sort((a,b)=>String(a.project_name||'').localeCompare(String(b.project_name||''))||String(a.indicator_code||'').localeCompare(String(b.indicator_code||''),undefined,{numeric:true})||String(a.indicator_name||'').localeCompare(String(b.indicator_name||'')));
+  if(!sorted.length)return <p style={{fontSize:'.8rem',color:'#526476',margin:'.45rem 0'}}>{achievedOnly?(fr?'Aucune cible atteinte publiée dans cette catégorie.':'No achieved targets published in this category.'):(fr?'Aucun intitulé publié.':'No published indicator names available.')}</p>;
+  return <ul style={{listStyle:'none',padding:0,margin:'.45rem 0',display:'grid',gap:'.55rem'}}>
+    {sorted.map(d=>{
+      const attained=d.final_target_attained;
+      const status=attained===true?(fr?'Atteinte':'Achieved'):attained===false?(fr?'Évaluée, non atteinte':'Assessed, not achieved'):(fr?'Non évaluée':'Not assessed');
+      const target=d.target_text||(finite(d.target_value)?`${num(d.target_value,lang)}${d.unit?' '+d.unit:''}`:copy.noTarget);
+      return <li key={d.indicator_id} style={{borderTop:'1px solid #e2e8f0',paddingTop:'.55rem',overflowWrap:'anywhere'}}>
+        <strong style={{display:'block',fontSize:'.83rem',lineHeight:1.45}}>{d.indicator_name||copy.unknown}</strong>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'.2rem .65rem',fontSize:'.75rem',color:'#526476',marginTop:'.2rem'}}>
+          {d.indicator_code&&<span>{d.indicator_code}</span>}{showProject&&d.project_name&&<span>{d.project_name}</span>}
+        </div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'.25rem .75rem',fontSize:'.75rem',marginTop:'.25rem'}}>
+          <span>{copy.target}: {target}</span><span style={{fontWeight:600,color:attained===true?'#15803d':'#526476'}}>{status}</span>
+        </div>
+      </li>;
+    })}
+  </ul>;
+}
+
+function PublicProgressChart({ projects, details, lang, copy, onProject }) {
+  const fr = lang === 'fr';
+  const n = value => new Intl.NumberFormat(fr ? 'fr-FR' : 'en-GB', {maximumFractionDigits:1}).format(value);
+  const labels = {...copy.activityCategoryLabels, undisclosed:fr?'Catégorie non publiée':'Category not published'};
+  const keys=Object.keys(TARGET_CATEGORY_COLORS);
+  const rows=projects.map(project=>{
+    const model=publicTargetProgress(project), categories={};
+    const seen=new Set();
+    const records=details.filter(d=>String(d.project_id)===String(project.id));
+    let categorized=0, assessed=0, achieved=0;
+    for(const d of records){
+      if(!d.indicator_id||seen.has(d.indicator_id))continue;
+      seen.add(d.indicator_id);
+      const k=keys.includes(d.category_key)&&d.category_key!=='undisclosed'?d.category_key:'other';
+      const v=categories[k] ||= {total:0,assessed:0,achieved:0};
+      v.total++;categorized++;
+      if(typeof d.final_target_attained==='boolean'){v.assessed++;assessed++;}
+      if(d.final_target_attained===true){v.achieved++;achieved++;}
+    }
+    const complete=records.every(d=>Object.prototype.hasOwnProperty.call(d,'final_target_attained'));
+    const residual={total:model.total-categorized,assessed:model.assessed-assessed,achieved:model.achieved-achieved};
+    const valid=model.total!=null&&complete&&residual.total>=0&&residual.assessed>=0&&residual.achieved>=0&&residual.achieved<=residual.assessed&&residual.assessed<=residual.total;
+    if(valid&&residual.total>0)categories.undisclosed=residual;
+    return {project,...model,categories,valid};
+  });
+  const totals={};
+  for(const row of rows.filter(r=>r.valid)){
+    for(const [k,v] of Object.entries(row.categories)){
+      const t=totals[k] ||= {total:0,assessed:0,achieved:0};
+      t.total+=v.total;t.assessed+=v.assessed;t.achieved+=v.achieved;
+    }
+  }
+  const activeKeys=keys.filter(k=>totals[k]?.total>0);
+  const validProjectIds=new Set(rows.filter(r=>r.valid).map(r=>String(r.project.id)));
+  const recordsFor=(k,projectId=null)=>details.filter(d=>validProjectIds.has(String(d.project_id))&&(projectId==null||String(d.project_id)===String(projectId))&&(keys.includes(d.category_key)&&d.category_key!=='undisclosed'?d.category_key:'other')===k);
+  const countLabel=(v)=>`${n(v.achieved)} / ${n(v.total)} ${fr?'atteintes':'achieved'} · ${n(v.assessed)} ${fr?'évaluées':'assessed'}`;
+  const bar=(segments,denominator,accessible)=> <div role="img" aria-label={accessible} style={{display:'flex',height:22,borderRadius:5,overflow:'hidden',background:'#e2e8f0'}}>
+    {segments.map(([k,value])=>value>0&&<span key={k} title={`${labels[k]}: ${n(value)}`} style={{width:`${value/denominator*100}%`,background:TARGET_CATEGORY_COLORS[k]}}/>)}
+  </div>;
+  if(!rows.length)return null;
+  return <div className="pbd-theme-progress-chart" style={{margin:'0 0 1rem',border:'1px solid #d4dfe6',borderRadius:12,padding:'clamp(.75rem,2vw,1.25rem)',background:'#fff',fontFamily:'Arial, sans-serif',minWidth:0}}>
+    <h3 style={{margin:'0 0 .5rem',fontSize:'1rem',color:'#173e59'}}>{fr?'Contribution thématique par projet':'Thematic achievement by project'}</h3>
+    <p style={{fontSize:'.85rem',color:'#526476',margin:'0 0 .9rem'}}>{fr?'Les couleurs correspondent aux catégories des indicateurs. La partie grise claire représente les cibles non atteintes ou non évaluées.':'Colours match the indicator categories in the thematic overview. Light grey represents targets not yet achieved or not assessed. Only approved, published assessments are used.'}</p>
+    <div style={{display:'flex',flexWrap:'wrap',gap:'.5rem 1rem',fontSize:'.8rem',marginBottom:'1rem'}}>{activeKeys.map(k=><span key={k} style={{display:'inline-flex',alignItems:'center',gap:'.35rem'}}><i aria-hidden="true" style={{width:12,height:12,borderRadius:2,background:TARGET_CATEGORY_COLORS[k]}}/>{labels[k]}</span>)}</div>
+    {rows.map(row=><div key={row.project.id} style={{padding:'.8rem 0',borderTop:'1px solid #e2e8f0'}}>
+      <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:'.4rem',alignItems:'baseline'}}>
+        <button type="button" onClick={()=>onProject(row.project.id)} style={{textAlign:'left',font:'inherit',fontWeight:700,color:'#173e59',border:0,background:'transparent',padding:0,cursor:'pointer',overflowWrap:'anywhere',flex:'1 1 220px'}}>{row.project.acronym||row.project.code||row.project.name}<small style={{display:'block',fontWeight:400,color:'#526476',fontSize:'.8rem'}}>{row.project.name}</small></button>
+        <strong>{row.pct==null?'—':n(row.pct)+'%'}</strong>
+      </div>
+      {row.valid&&row.total>0?<><div style={{margin:'.45rem 0'}}>{bar(keys.map(k=>[k,row.categories[k]?.achieved||0]),row.total,`${row.project.name}: ${countLabel(row)}`)}</div>
+        <small style={{color:'#526476'}}>{countLabel(row)}</small>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'.35rem .8rem',marginTop:'.4rem',fontSize:'.78rem'}}>{keys.filter(k=>row.categories[k]?.total>0).map(k=><span key={k} style={{display:'inline-flex',alignItems:'center',gap:'.25rem'}}><i aria-hidden="true" style={{width:9,height:9,borderRadius:2,background:TARGET_CATEGORY_COLORS[k]}}/>{labels[k]}: {n(row.categories[k].achieved)}/{n(row.categories[k].total)}</span>)}</div>
+        <details style={{marginTop:'.6rem'}}><summary style={{cursor:'pointer',fontSize:'.85rem',fontWeight:600,color:'#173e59'}}>{fr?'Voir les indicateurs de ce projet':'View project indicator names'}</summary>
+          {keys.filter(k=>row.categories[k]?.total>0).map(k=><section key={k} style={{borderLeft:`3px solid ${TARGET_CATEGORY_COLORS[k]}`,paddingLeft:'.65rem',margin:'.75rem 0'}}>
+            <strong style={{fontSize:'.85rem'}}>{labels[k]} · {n(row.categories[k].achieved)}/{n(row.categories[k].total)}</strong>
+            {k==='undisclosed'?<p style={{fontSize:'.8rem',color:'#526476'}}>{fr?'Intitulés non publics.':'Indicator names not publicly available.'}</p>:<ThematicIndicatorNames records={recordsFor(k,row.project.id)} lang={lang} copy={copy} showProject={false}/>}
+          </section>)}
+        </details>
+      </>:<p style={{fontSize:'.85rem',color:'#526476'}}>{row.total===0?(fr?'Cadre de résultats non disponible':'Results framework unavailable'):(fr?'Ventilation thématique indisponible':'Thematic breakdown unavailable')}</p>}
+    </div>)}
+    <p style={{fontSize:'.8rem',color:'#526476',margin:'.8rem 0 0'}}>{fr?'Les cibles dont la catégorie n’est pas publique sont présentées séparément, sans déduire leur thème. Un tiret indique une absence d’évaluation.':'Targets without a publicly available category are shown separately, without inferring a theme. A dash means no assessment is available. Percentages use all recorded final targets, not just assessed targets.'}</p>
+  </div>;
 }
 
 function ProjectCard({ project, areas, copy, lang }) {
@@ -297,6 +395,7 @@ export default function PublicDashboard() {
 
           <section className="pbd-section pbd-portfolio">
             <div className="pbd-section-head"><div><h2 className="pbd-progress-summary-title"><ProjectsIcon size={20} aria-hidden="true" />{lang === 'fr' ? 'Progrès par projet' : 'Progress by project'}</h2><p>{lang === 'fr' ? 'Résumés des résultats approuvés et publiés.' : 'Approved, published result summaries.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
+            <PublicProgressChart projects={filtered} details={visibleIndicatorDetails} lang={lang} copy={c} onProject={viewProject} />
             <div className="pbd-project-grid">{filtered.length ? filtered.map(project => <ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang} />) : <div className="pbd-empty">{c.noProjects}</div>}</div>
           </section>
           <section className="pbd-section pbd-location-section">
