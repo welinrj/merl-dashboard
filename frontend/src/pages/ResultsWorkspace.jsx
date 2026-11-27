@@ -1,3 +1,4 @@
+import ImplementationLocationManager from '../components/ImplementationLocationManager';
 import ReadingDensity, { useReadingDensity } from '../components/ReadingDensity';
 import { draftKey, useFormDraft } from '../lib/formDraft';
 import DraftStatus from '../components/ui/DraftStatus';
@@ -410,6 +411,7 @@ export default function ResultsWorkspace({ user }) {
       <p className="rf2-project-context"><strong>{t('rf.viewing')}</strong> {projectFilter === 'all' ? t('rf.allProjects') : data.projects.find(project => project.id === projectFilter)?.name || t('rf.selectedProject')} · {t('rf.indicatorCount', { count:filtered.filter(row => row.indicator).length })}</p>
     </section>
     {!loading && !error && data.projects.filter(project => (projectFilter === 'all' || project.id === projectFilter) && data.nodes.some(node => node.project_id === project.id) && !data.indicators.some(indicator => indicator.project_id === project.id)).map(project => <div key={project.id} className="rf2-note" role="status"><strong>{project.name}</strong> — {t('rf.structureNote')}</div>)}
+    {!loading&&!error&&<ImplementationLocationManager projects={data.projects.filter(p=>editableIds.has(p.id))} indicators={data.indicators} activities={data.activities} projectFilter={projectFilter}/>}
     {saveFeedback && <div className="rf2-save-feedback" role="status">{saveFeedback}</div>}
 
     {permissionError && <div className="rf2-note" role="alert">{permissionError} <button type="button" className="btn btn-secondary" onClick={reload}>{t('rf.retry')}</button></div>}

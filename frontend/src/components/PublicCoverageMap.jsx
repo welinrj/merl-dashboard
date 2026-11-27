@@ -101,9 +101,11 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     return candidates.length===1?candidates[0].category_key:null;
   };
   const layerAreas=useMemo(()=>activityLayer?areas.map(area=>{
-    const local=(Array.isArray(area.local_details)?area.local_details:[]).filter(entry=>localCategory(entry)===activityLayer&&area.project_ids?.some(id=>String(id)===String(entry.project_id)));
-    const ids=[...new Set(local.map(entry=>String(entry.project_id)))];
-    return {...area,local_details:local,project_ids:ids,project_names:ids.map(id=>projects.find(p=>String(p.id)===id)?.name||id),project_count:ids.length};
+    const scoped=entry=>area.project_ids?.some(id=>String(id)===String(entry.project_id));
+    const local=(Array.isArray(area.local_details)?area.local_details:[]).filter(entry=>localCategory(entry)===activityLayer&&scoped(entry));
+    const assignments=(Array.isArray(area.implementation_details)?area.implementation_details:[]).filter(entry=>entry.category_key===activityLayer&&scoped(entry));
+    const ids=[...new Set([...local,...assignments].map(entry=>String(entry.project_id)))];
+    return {...area,local_details:local,implementation_details:assignments,project_ids:ids,project_names:ids.map(id=>projects.find(p=>String(p.id)===id)?.name||id),project_count:ids.length};
   }).filter(a=>a.project_count>0):areas,[activityLayer,areas,indicatorDetails,projects]);
   stateRef.current={areas:layerAreas,selectedArea,onAreaSelect};
   const selectedKey=selectedArea&&layerAreas.some(a=>key(a.province,a.area_council)===key(selectedArea.province,selectedArea.area_council))?key(selectedArea.province,selectedArea.area_council):'';
@@ -253,7 +255,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     <div className="pub-map-canvas"><div ref={ref} hidden={fallback} className="pub-leaflet pub-maplibre" aria-label={copy.aria}/>{fallback&&<PublicBoundaryFallback data={boundaryData} collection={coverage.collection} locationsOnly={locationsOnly} showBorders={showBorders} onSelect={onAreaSelect?chooseFallbackArea:undefined} label={copy.aria}/>}
       {(fallback||(!err&&(detailZoom||basemapState==='loading'||basemapState==='failed')))&&<div className="pub-map-context-note" role="status">{fallback?copy.basemapFailed:detailZoom?copy.zoomNote:basemapState==='failed'?copy.basemapFailed:copy.basemapLoading}</div>}{err&&!fallback&&<div className="pub-map-error" role="status">{err}<button type="button" onClick={()=>setRetry(n=>n+1)}>{fr?'Réessayer':'Try again'}</button></div>}</div>
     <div className="pub-map-key"><strong>{activityLayer?categoryLabels[activityLayer]:copy.keyTitle}</strong>
-      {activityLayer?<small>{recordedAreas.length? (fr?`${recordedAreas.length} conseils avec résultats locaux publiés`:`${recordedAreas.length} Area Councils with published local results`):(fr?'Aucun résultat local publié pour cette catégorie.':'No council-specific published results for this category.')}</small>:<div className="pub-map-legend">{legendRows(activeThemes)}</div>}
+      {activityLayer?<small>{recordedAreas.length? (fr?`${recordedAreas.length} conseils avec lieux d’activité ou d’indicateur publiés`:`${recordedAreas.length} Area Councils with published activity or indicator locations`):(fr?'Aucun lieu d’activité ou d’indicateur publié pour cette catégorie.':'No published activity or indicator locations for this category.')}</small>:<div className="pub-map-legend">{legendRows(activeThemes)}</div>}
       {!activityLayer&&!activeThemes.length&&(ready||fallback)&&<small role="status">{copy.noLocations}</small>}
 
       {recordedAreas.length>1&&onAreaSelect&&<label className="pub-map-choose"><span>{copy.choose}</span><select value={chosen?key(chosen.province,chosen.area_council):''} onChange={e=>{const a=recordedAreas.find(a=>key(a.province,a.area_council)===e.target.value);onAreaSelect?.(a?{province:a.province,area_council:a.area_council}:null);}}><option value="">—</option>{recordedAreas.map(a=><option key={key(a.province,a.area_council)} value={key(a.province,a.area_council)}>{a.area_council}, {a.province}</option>)}</select></label>}
@@ -264,8 +266,10 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
           const status=project?.lifecycle_status||project?.status;
           const statusLabel=({ongoing:fr?'En cours':'Ongoing',active:fr?'En cours':'Ongoing',completed:fr?'Achevé':'Completed',closed:fr?'Achevé':'Completed',upcoming:fr?'À venir':'Upcoming'})[status];
           const local = (Array.isArray(chosen.local_details) ? chosen.local_details : []).filter(row=>String(row.project_id)===String(id));
+          const assigned=(Array.isArray(chosen.implementation_details)?chosen.implementation_details:[]).filter(row=>String(row.project_id)===String(id));
           return <li key={id} className="pub-map-project-result"><div className="pub-map-project-identity">{project&&<ProjectLogo project={project}/>}<h4>{project?.name||chosen.project_names?.[i]||copy.view}</h4></div><p>{chosen.area_council}, {chosen.province}{statusLabel&&<> · {fr?'Statut du projet':'Project status'}: {statusLabel}</>}</p>
-            {local.length ? <ul>{local.map((entry,j)=><li key={entry.id||j}><span>{entry.label}</span>{entry.value!=null&&<strong>{new Intl.NumberFormat(fr?'fr-FR':'en-US',{maximumFractionDigits:2}).format(entry.value)}{entry.unit?` ${entry.unit}`:''}</strong>}{entry.period&&<small>{fr?'Période':'Period'}: {entry.period}</small>}</li>)}</ul>:<p>{fr?'Lieu du projet enregistré. Aucune activité ni aucun résultat propre à ce conseil de zone n’a été publié.':'Project location recorded. No Area Council-specific activities or results have been published.'}</p>}
+            {assigned.length>0&&<div><strong>{fr?'Lieux de mise en œuvre associés':'Associated activities and indicators'}</strong><ul>{assigned.map(entry=><li key={entry.id}><span>{entry.label}</span><small>{entry.kind==='activity'?(fr?'Activité':'Activity'):(fr?'Indicateur':'Indicator')} · {categoryLabels[entry.category_key]||entry.category_key}</small></li>)}</ul><small>{fr?'Lieu associé, pas un résultat mesuré.':'Location assignment, not a measured achievement.'}</small></div>}
+            {local.length ? <ul>{local.map((entry,j)=><li key={entry.id||j}><span>{entry.label}</span>{entry.value!=null&&<strong>{new Intl.NumberFormat(fr?'fr-FR':'en-US',{maximumFractionDigits:2}).format(entry.value)}{entry.unit?` ${entry.unit}`:''}</strong>}{entry.period&&<small>{fr?'Période':'Period'}: {entry.period}</small>}</li>)}</ul>:<p>{fr?'Lieu du projet enregistré. Aucun résultat propre à ce conseil de zone n’a été publié.':'Project location recorded. No Area Council-specific results have been published.'}</p>}
             {onViewProject&&<button type="button" onClick={()=>{setExpanded(false);onViewProject(id);}}>{copy.view}</button>}
           </li>;
         })}</ul></div>}
