@@ -55,6 +55,9 @@ function ProjectAssignments({projectId,project,indicators,activities,fr}){
 }
 function AssignmentEditor({fr,projectId,project,kind,item,councils,current,onSaved}){
  const [selected,setSelected]=useState(current.map(a=>String(a.council_id))),[category,setCategory]=useState(current[0]?.category_key||''),[search,setSearch]=useState(''),[saving,setSaving]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false);
+ const provinces=['TORBA','SANMA','PENAMA','MALAMPA','SHEFA','TAFEA'];
+ const matching=councils.filter(c=>`${c.name} ${c.province}`.toLowerCase().includes(search.toLowerCase().trim()));
+ const grouped=provinces.map(province=>({province,items:matching.filter(c=>String(c.province).toUpperCase()===province).sort((a,b)=>a.name.localeCompare(b.name))})).filter(g=>g.items.length);
  const available=new Set(councils.map(c=>String(c.id)));
  const valid=selected.filter(id=>available.has(id));
  const toggle=id=>{setSaved(false);setSelected(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);};
@@ -64,10 +67,17 @@ function AssignmentEditor({fr,projectId,project,kind,item,councils,current,onSav
   {kind==='activity'&&<label style={{display:'grid',gap:5}}>{fr?'Domaine thématique':'Thematic area'}<select className="field-input" value={category} onChange={e=>{setCategory(e.target.value);setSaved(false);}}><option value="">{fr?'Choisir…':'Choose thematic area…'}</option>{categories.map(([k,en,f])=><option key={k} value={k}>{fr?f:en}</option>)}</select></label>}
   {kind==='indicator'&&<small>{fr?'Le domaine est repris de la catégorie de l’indicateur publié.':'The thematic area follows the existing published indicator category.'}</small>}
   <label style={{display:'grid',gap:5}}>{fr?'Rechercher un conseil':'Search Area Councils'}<input className="field-input" type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder={fr?'Nom ou province':'Council or province'}/></label>
-  <div role="group" aria-label={fr?'Conseils de zone':'Area Councils'} style={{maxHeight:300,overflowY:'auto',border:'1px solid var(--border)',borderRadius:6,padding:8}}>
-   {councils.filter(c=>`${c.name} ${c.province}`.toLowerCase().includes(search.toLowerCase().trim())).map(c=><label key={c.id} style={{display:'flex',alignItems:'center',gap:8,minHeight:40}}><input type="checkbox" checked={selected.includes(String(c.id))} onChange={()=>toggle(String(c.id))}/><span>{c.name} · {c.province}</span></label>)}
-   {!councils.length&&<small>{fr?'Aucun lieu disponible':'No locations available'}</small>}
+  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+   <strong>{fr?`${matching.length} sur ${councils.length} conseils enregistrés`:`${matching.length} of ${councils.length} registered Area Councils`}</strong>
+   <a href={`#/project-setup?project=${encodeURIComponent(projectId)}`}>{fr?'Gérer les lieux du projet':'Manage project locations'}</a>
   </div>
+  <div role="group" aria-label={fr?'Conseils de zone':'Area Councils'} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,225px),1fr))',alignItems:'start',gap:10}}>
+   {grouped.map(group=><fieldset key={group.province} style={{minWidth:0,margin:0,border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px'}}><legend style={{fontWeight:700,padding:'0 6px'}}>{group.province} ({group.items.length})</legend>
+     {group.items.map(c=><label key={c.id} style={{display:'flex',alignItems:'center',gap:9,minHeight:36,overflowWrap:'anywhere'}}><input type="checkbox" style={{flexShrink:0}} checked={selected.includes(String(c.id))} onChange={()=>toggle(String(c.id))}/><span>{c.name}</span></label>)}
+   </fieldset>)}
+   {!matching.length&&<small>{councils.length?(fr?'Aucun conseil correspondant.':'No matching Area Councils.'):(fr?'Aucun lieu disponible.':'No registered Area Councils.')}</small>}
+  </div>
+  {valid.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}}><strong style={{fontSize:'.8rem'}}>{fr?'Sélectionnés :':'Selected:'}</strong>{councils.filter(c=>valid.includes(String(c.id))).map(c=><span key={c.id} style={{fontSize:'.8rem',border:'1px solid var(--border)',padding:'3px 8px',borderRadius:6}}>{c.name}</span>)}</div>}
   <small>{valid.length} {fr?'conseils sélectionnés':'Area Councils selected'}{current.length>0&&` · ${current.filter(a=>a.published).length} ${fr?'déjà publiés':'previously published'}`}</small>
   {selected.length!==valid.length&&<small role="alert">{fr?'Les lieux qui ne sont plus enregistrés seront retirés à l’enregistrement.':'Previously assigned councils no longer registered for the project will be removed on save.'}</small>}
   {['CBIT-VU','BOLD-VU'].includes(project?.code)&&<small>{fr?'Les restrictions de publication de ce projet restent applicables.':'Existing public disclosure restrictions for this project still apply.'}</small>}
