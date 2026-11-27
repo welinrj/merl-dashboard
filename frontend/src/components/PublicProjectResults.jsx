@@ -13,6 +13,12 @@ export function projectColor(project) {
   const [ink, background] = COLORS[hash % COLORS.length];
   return { '--project-ink': ink, '--project-bg': background };
 }
+// Distinct colours for a list shown together (neighbours never share one
+// until the palette runs out); position is the project's order in the list.
+export function projectColorAt(position) {
+  const [ink, background] = COLORS[((position % COLORS.length) + COLORS.length) % COLORS.length];
+  return { '--project-ink': ink, '--project-bg': background };
+}
 export function ProjectIdentity({ project, children, className = '', onClick, selected = false }) {
   const props = { className: `ppr-identity ${className}`, style: projectColor(project) };
   return onClick ? <button type="button" {...props} aria-pressed={selected} onClick={onClick}>{children}</button>

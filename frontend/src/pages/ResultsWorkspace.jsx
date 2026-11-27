@@ -25,7 +25,7 @@ import { useLiveDashboard, useLiveRefreshFlag } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import { localised, localiseRows, sourceRow, i18nCols } from '../lib/contentLocale';
 import { dbErrorMessage } from '../lib/dbError';
-import { projectColor } from '../components/PublicProjectResults';
+import { projectColorAt } from '../components/PublicProjectResults';
 import * as OPT from '../constants/formOptions';
 import IndicatorEvidencePanel, { EvidenceBadge } from '../components/IndicatorEvidencePanel';
 import { fetchEvidenceStatus } from '../lib/evidenceIntelligence';
@@ -284,6 +284,9 @@ export default function ResultsWorkspace({ user }) {
     });
   }, [data.projects, data.nodes, data.indicators, nodesById, latestProgress, workingProgress, narrativeByProgress, targetsByIndicator, data.progress, reportingPeriods]);
 
+  // One colour per project, by its order in the project list, so each
+  // project's rows read as a band and neighbouring projects never match.
+  const projectColours = useMemo(() => new Map(data.projects.map((project, index) => [project.id, projectColorAt(index)])), [data.projects]);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
@@ -433,7 +436,7 @@ export default function ResultsWorkspace({ user }) {
       {!showFullTable && filtered.length > 0 && <FrameworkMobileResults key={`${projectFilter}:${search}`} rows={filtered}
         canEdit={canEdit} editRow={editRow} editNode={editNode} attachIndicator={attachIndicator}
         status={status} nodeTypeLabel={nodeTypeLabel} onEvidence={setEvidenceIndicator} workingState={workingState}
-        activities={data.activities} activityError={activityError} onRetry={reload} />}
+        activities={data.activities} activityError={activityError} onRetry={reload} projectColours={projectColours} />}
     </div>}
 
     {!loading && !error && showFullTable && <p className="rf2-table-help">{t('rf.tableHelp')}</p>}
@@ -455,9 +458,10 @@ export default function ResultsWorkspace({ user }) {
             const rowKey = row.indicator?.id || row.node?.id || idx;
             const columns = frameworkColumns(row.path);
             const narrativeOpen = openNarratives.has(rowKey);
-            return <tr key={rowKey} className={row.indicator ? undefined : 'rf2-row-node'}>
+            const projectStart = idx === 0 || filtered[idx - 1].project.id !== row.project.id;
+            return <tr key={rowKey} style={projectColours.get(row.project.id)} className={['rf2-project-row', row.indicator ? '' : 'rf2-row-node', projectStart ? 'rf2-project-start' : ''].filter(Boolean).join(' ')}>
               <td className="rf2-project">
-                <div className="rf2-project-mark" style={projectColor(row.project)}>
+                <div className="rf2-project-mark">
                   <small>{row.project.code || row.project.acronym || t('rf.noCode')}</small>
                   <b>{row.project.name}</b>
                 </div>
