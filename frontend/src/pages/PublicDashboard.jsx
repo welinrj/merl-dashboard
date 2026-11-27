@@ -199,14 +199,6 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
     if(valid&&residual.total>0)categories.undisclosed=residual;
     return {project,...model,categories,valid};
   });
-  const totals={};
-  for(const row of rows.filter(r=>r.valid)){
-    for(const [k,v] of Object.entries(row.categories)){
-      const t=totals[k] ||= {total:0,assessed:0,achieved:0};
-      t.total+=v.total;t.assessed+=v.assessed;t.achieved+=v.achieved;
-    }
-  }
-  const activeKeys=keys.filter(k=>totals[k]?.total>0);
   const validProjectIds=new Set(rows.filter(r=>r.valid).map(r=>String(r.project.id)));
   const recordsFor=(k,projectId=null)=>details.filter(d=>validProjectIds.has(String(d.project_id))&&(projectId==null||String(d.project_id)===String(projectId))&&(keys.includes(d.category_key)&&d.category_key!=='undisclosed'?d.category_key:'other')===k);
   const countLabel=(v)=>`${n(v.achieved)} / ${n(v.total)} ${fr?'atteintes':'achieved'} · ${n(v.assessed)} ${fr?'évaluées':'assessed'}`;
@@ -216,8 +208,6 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
   if(!rows.length)return null;
   return <div className="pbd-theme-progress-chart" style={{margin:'0 0 1rem',border:'1px solid #d4dfe6',borderRadius:12,padding:'clamp(.75rem,2vw,1.25rem)',background:'#fff',fontFamily:'Arial, sans-serif',minWidth:0}}>
     <h3 style={{margin:'0 0 .5rem',fontSize:'1rem',color:'#173e59'}}>{fr?'Contribution thématique par projet':'Thematic achievement by project'}</h3>
-    <p style={{fontSize:'.85rem',color:'#526476',margin:'0 0 .9rem'}}>{fr?'Les couleurs correspondent aux catégories des indicateurs. La partie grise claire représente les cibles non atteintes ou non évaluées.':'Colours match the indicator categories in the thematic overview. Light grey represents targets not yet achieved or not assessed. Only approved, published assessments are used.'}</p>
-    <div style={{display:'flex',flexWrap:'wrap',gap:'.5rem 1rem',fontSize:'.8rem',marginBottom:'1rem'}}>{activeKeys.map(k=><span key={k} style={{display:'inline-flex',alignItems:'center',gap:'.35rem'}}><i aria-hidden="true" style={{width:12,height:12,borderRadius:2,background:TARGET_CATEGORY_COLORS[k]}}/>{labels[k]}</span>)}</div>
     {rows.map(row=><div key={row.project.id} style={{padding:'.8rem 0',borderTop:'1px solid #e2e8f0'}}>
       <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:'.4rem',alignItems:'baseline'}}>
         <button type="button" onClick={()=>onProject(row.project.id)} style={{textAlign:'left',font:'inherit',fontWeight:700,color:'#173e59',border:0,background:'transparent',padding:0,cursor:'pointer',overflowWrap:'anywhere',flex:'1 1 220px'}}><span style={{display:'flex',alignItems:'center',gap:'.65rem',minWidth:0}}><span className="pbd-name-logo"><ProjectLogo project={row.project}/></span><span style={{minWidth:0}}>{row.project.acronym||row.project.code||row.project.name}<small style={{display:'block',fontWeight:400,color:'#526476',fontSize:'.8rem'}}>{row.project.name}</small></span></span></button>
@@ -234,7 +224,6 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
         </details>
       </>:<p style={{fontSize:'.85rem',color:'#526476'}}>{row.total===0?(fr?'Cadre de résultats non disponible':'Results framework unavailable'):(fr?'Ventilation thématique indisponible':'Thematic breakdown unavailable')}</p>}
     </div>)}
-    <p style={{fontSize:'.8rem',color:'#526476',margin:'.8rem 0 0'}}>{fr?'Les cibles dont la catégorie n’est pas publique sont présentées séparément, sans déduire leur thème. Un tiret indique une absence d’évaluation.':'Targets without a publicly available category are shown separately, without inferring a theme. A dash means no assessment is available. Percentages use all recorded final targets, not just assessed targets.'}</p>
   </div>;
 }
 
