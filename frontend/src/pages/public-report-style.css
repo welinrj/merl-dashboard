@@ -1,21 +1,16 @@
 /* Public overview — government report presentation.
-   Typography: Cambria for titles and headings, Arial for everything else.
    Structure: numbered sections divided by rules on a single page, not a grid
    of floating cards. Caveats live in each section's "Notes and sources".
    Specificity (.dsh.pbd-root.pbd-report …) plus !important is needed because
    visual-polish.css / typography-system.css style these with !important. */
 
 .dsh.pbd-root.pbd-report{
-  --font-display:Arial,Helvetica,sans-serif;
   --report-rule:#b9c7cf;
   --report-ink:#1d2f3a;
   --report-muted:#4f6270;
   --report-head:#123b2b;
-  font-family:Arial,Helvetica,sans-serif!important;
   color:var(--report-ink);
 }
-.dsh.pbd-root.pbd-report .pbd-view :is(p,span,small,li,label,select,input,button,summary,td,th,b,strong,dt,dd){font-family:Arial,Helvetica,sans-serif}
-.dsh.pbd-root.pbd-report .pbd-view :is(h1,h2,h3,.pbd-report-h2){font-family:Cambria,'Times New Roman',Georgia,serif!important;letter-spacing:0!important;text-transform:none!important}
 
 /* Page: one white sheet on a light ground */
 .dsh.pbd-root.pbd-report .dsh-scroll{background:#eef1f3!important}
@@ -30,7 +25,7 @@
 /* Filters: a plain bordered panel */
 .dsh.pbd-root.pbd-report .pbd-filters{border-radius:2px!important;box-shadow:none!important;background:#f7f9fa!important;border:1px solid #dde3e7!important}
 
-/* Sections: separated by rules, numbered Cambria headings */
+/* Sections: separated by rules, numbered headings */
 .dsh.pbd-root.pbd-report .pbd-section{background:transparent!important;border:0!important;border-top:1px solid var(--report-rule)!important;border-radius:0!important;box-shadow:none!important;padding:22px 0 10px!important;margin:0 0 8px!important}
 .dsh.pbd-root.pbd-report .pbd-section .pbd-section{border-top:0!important;padding:0!important;margin:0!important}
 .dsh.pbd-root.pbd-report .pbd-section-head{margin-bottom:14px!important}
@@ -50,14 +45,14 @@
 .dsh.pbd-root.pbd-report .pbd-metric .merl-card-icon{display:none!important}
 .dsh.pbd-root.pbd-report .pbd-metric .merl-metric-head{min-height:0!important;padding-right:30px}
 .dsh.pbd-root.pbd-report .pbd-metric .merl-metric-head>span{font-size:13px!important;font-weight:700!important;color:var(--report-muted)!important}
-.dsh.pbd-root.pbd-report .pbd-metric>strong{margin:10px 0 6px!important;color:var(--report-head)!important;font-family:Arial,Helvetica,sans-serif!important;font-size:clamp(19px,1.8vw,23px)!important;font-weight:700!important;letter-spacing:0!important}
+.dsh.pbd-root.pbd-report .pbd-metric>strong{margin:10px 0 6px!important;color:var(--report-head)!important;font-size:clamp(19px,1.8vw,23px)!important;font-weight:700!important;letter-spacing:0!important}
 .dsh.pbd-root.pbd-report .pbd-metric>small{font-size:12px!important;color:var(--report-muted)!important}
 
 /* Target achievement: light panel with a rule instead of a dark slab */
 .dsh.pbd-root.pbd-report .executive-targets{background:#f7f9fa!important;color:var(--report-ink)!important;border:1px solid #dde3e7!important;border-left:4px solid var(--report-head)!important}
 .dsh.pbd-root.pbd-report .executive-targets :is(h2,p,strong,span){color:var(--report-ink)!important}
 .dsh.pbd-root.pbd-report .executive-targets h2{font-size:18px!important}
-.dsh.pbd-root.pbd-report .executive-target-value{color:var(--report-head)!important;font-family:Arial,Helvetica,sans-serif!important;letter-spacing:0!important}
+.dsh.pbd-root.pbd-report .executive-target-value{color:var(--report-head)!important;letter-spacing:0!important}
 .dsh.pbd-root.pbd-report .executive-target-track{background:#dfe6ea!important}
 .dsh.pbd-root.pbd-report .executive-target-track span{background:var(--report-head)!important}
 
