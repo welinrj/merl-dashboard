@@ -37,3 +37,19 @@ repairs of 1 m² or more, and pairwise overlaps of 100 m² or more. This is a
 rendering repair, not a replacement administrative boundary survey. Administrative
 areas indicate recorded project locations, not hectares of project interventions.
 The embedded source SHA-256 identifies the exact reviewed input.
+
+## 2026 population and household estimates
+
+`vanuatu-area-councils-population-2026.json` holds estimated 2026 population and
+households for each of the 71 Area Councils in the 2025 snapshot. It is built by
+`scripts/build-area-council-population.py` from the VNSO 2020 National Population
+and Housing Census (AC2022 units). Counts are projected to November 2026 as
+P2026 = P2020 × (1 + r)^6, using the VNSO 2009–2020 average annual growth rates
+(Basic Tables Vol 1, Table 1). Port Vila uses 1.0 %, Luganville 2.7 %, and every
+other council uses its province's rural rate. Households are held at the 2020
+average household size. The figures are then moved onto the 2025 boundaries using
+the 2020 census dwelling GPS points. Town dwellings outside the 2025 polygons are
+kept as separate `municipalities` rows and are not drawn on the map. These are
+estimates, not official VNSO statistics. The public map and the Population reach
+analysis panel use them to show who lives where activities are recorded. They do
+not count beneficiaries.

@@ -23,6 +23,7 @@ import PublicTargetAchievement from '../components/PublicTargetAchievement';
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
+import PublicReachAnalysis from '../components/PublicReachAnalysis';
 import MetricInformation from '../components/MetricInformation';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { publicTargetProgress } from '../lib/publicTargetProgress';
@@ -357,6 +358,8 @@ export default function PublicDashboard() {
               </div>
             </div>
           </section>
+
+          <PublicReachAnalysis areas={visibleAreas} projects={filtered} categoryLabels={c.activityCategoryLabels} activityLayer={activityLayer} lang={lang} onAreaSelect={area=>{setSelectedArea(area);if(area)requestAnimationFrame(()=>document.querySelector('.pbd-location-section')?.scrollIntoView({block:'start',behavior:'auto'}));}}/>
 
           <section className="pbd-section pbd-activity-section">
             <div className="pbd-section-head"><div><span><Activity size={16} aria-hidden="true" />{c.activityAreas}</span><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>

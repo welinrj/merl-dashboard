@@ -5,36 +5,13 @@ import './public-coverage-map.css';
 import ProjectLogo from './ProjectLogo';
 import PublicBoundaryFallback from './PublicBoundaryFallback';
 import { mapLabelPoint } from '../lib/publicMapLabels';
+import { areaKey, loadAreaPopulation, populationColour, POPULATION_BREAKS, POPULATION_COLOURS } from '../lib/areaCouncilPopulation';
 import { coverageFeatures, geometryBounds, mapStyle, loadBasemap, BASEMAP_IDS } from '../lib/maplibreCoverage';
 
 // Reviewed WGS84 snapshot, including all 71 councils and shared linework.
 const BOUNDARY_URL=`${import.meta.env.BASE_URL}data/vanuatu-area-councils-map.geojson`;
-const norm=(v)=>String(v||'').toLowerCase().replace(/\b(area council|council)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim();
-const AREA_ALIASES=new Map(Object.entries({
-  'vanua lava':'east vanualava',
-  'west vanua lava':'west vanualava',
-  'merelava merig':'merelava merig',
-  'north west santo':'northwest santo',
-  'south east santo':'southeast santo',
-  'south santo 1':'south santo one 1',
-  'south santo 2':'south santo two 2',
-  'central pentecost 1':'central pentecost one cp1',
-  'central pentecost 2':'central pentecost two cp2',
-  'north east malekula':'northeast malekula',
-  'north west malekula':'northwest malekula',
-  'south east malekula':'southeast malekula',
-  'south west malekula':'southwest malekula',
-  'south east ambrym':'southeast ambrym',
-  'north west efate':'northwest efate',
-  'nguna pele':'nguna pele',
-  'makira mataso':'makira mataso',
-  'tongariki buninga':'tongariki buninga',
-  'south east tanna':'southeast tanna',
-  'south west tanna':'southwest tanna'
-}));
-const canonicalArea=(v)=>AREA_ALIASES.get(norm(v))||norm(v);
 const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-const key=(province,area)=>`${norm(province)}|${canonicalArea(area)}`;
+const key=areaKey;
 let boundaryPromise;
 function boundaries(){
   if(!boundaryPromise) boundaryPromise=fetch(BOUNDARY_URL).then(async r=>{
@@ -64,7 +41,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     keyBody:'Les zones non colorées n’ont pas de lieu de mise en œuvre enregistré.',
     themes:{adaptation:'Adaptation',mitigation:'Atténuation',both:'Plusieurs thèmes','loss-damage':'Pertes et préjudices','not-recorded':'Thème non renseigné'},
     areaOne:'conseil',areaMany:'conseils',
-    aria:'Carte publique de la couverture des projets',
+    aria:'Carte publique de la couverture des projets',popLayer:'Population 2026 (est.)',popTitle:'Population estimée 2026 par conseil de zone',popKey:'Personnes par conseil · contour vert foncé = lieu de projet enregistré',people:'personnes',households:'ménages',popSource:'Estimation 2026 à partir du recensement VNSO 2020 et des taux de croissance 2009-2020. Pas un chiffre officiel.',popUnavailable:'Estimations de population indisponibles.',
   } : {
     overview:'Overview',reset:'Show all Vanuatu',neutral:'No recorded project location',source:'Area Council boundaries · 2025 snapshot',countNote:'Counts are Area Councils, not projects.',zoomIn:'Zoom in',zoomOut:'Zoom out',layers:'Layers',street:'Street map',satellite:'Satellite',one:'project', many:'projects', none:'no recorded implementation location',
     noneDetail:'No implementation location is recorded for this Area Council. This does not necessarily mean there is no project activity.',
@@ -72,7 +49,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     keyBody:'Uncoloured areas have no recorded implementation location.',
     themes:{adaptation:'Adaptation',mitigation:'Mitigation',both:'Multiple themes','loss-damage':'Loss and Damage','not-recorded':'Theme not recorded'},
     areaOne:'Area Council',areaMany:'Area Councils',
-    aria:'Public project coverage map',
+    aria:'Public project coverage map',popLayer:'Population 2026 (est.)',popTitle:'Estimated 2026 population by Area Council',popKey:'People per council · dark green outline = recorded project location',people:'people',households:'households',popSource:'2026 estimate from the VNSO 2020 census and 2009–2020 growth rates. Not an official figure.',popUnavailable:'Population estimates unavailable.',
   };
   const wrapRef=useRef(null), expandRef=useRef(null);
   const [expanded,setExpanded]=useState(false);
@@ -90,6 +67,11 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const [showBorders,setShowBorders]=useState(false);
   bordersRef.current=showBorders;
   const [retry,setRetry]=useState(0);
+  const [population,setPopulation]=useState(null);
+  const [popError,setPopError]=useState(false);
+  const [showPopulation,setShowPopulation]=useState(false);
+  const popRef=useRef(null); popRef.current=population;
+  useEffect(()=>{let alive=true;loadAreaPopulation().then(d=>alive&&setPopulation(d)).catch(()=>alive&&setPopError(true));return()=>{alive=false;};},[]);
   const [boundaryData,setBoundaryData]=useState(null);
   const [locationsOnly,setLocationsOnly]=useState(null);
   const layerAreas=useMemo(()=>scopeThematicAreas(areas,activityLayer,indicatorDetails,projects),[activityLayer,areas,indicatorDetails,projects]);
@@ -104,8 +86,13 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
       const colour=({ecosystems:'#19805d',livelihoods:'#a46716','climate-risk':'#2463c7',infrastructure:'#397b93',governance:'#7651b5',capacity:'#b25378',finance:'#1d6f8f','learning-delivery':'#596b83',beneficiaries:'#c5543d',other:'#7a6d60'})[activityLayer]||'#19805d';
       model.collection.features.forEach(f=>{if(f.properties.projectCount>0)f.properties.colour=colour;});
     }
+    if(population)model.collection.features.forEach(f=>{
+      const row=population.byKey.get(f.properties.areaKey);
+      f.properties.pop2026=row?.pop2026??null;f.properties.hh2026=row?.hh2026??null;
+      if(showPopulation&&row){f.properties.colour=populationColour(row.pop2026);f.properties.popFill=true;if(f.properties.projectCount>0)f.properties.edgeColour='#123b2b';}
+    });
     return model;
-  },[boundaryData,layerAreas,selectedKey,activityLayer]);
+  },[boundaryData,layerAreas,selectedKey,activityLayer,population,showPopulation]);
   const themeCounts=coverage?.counts || Object.fromEntries(THEME_AREA_ORDER.map(theme=>[
     theme,areas.filter(area=>area.project_count>0&&(area.theme_category||'not-recorded')===theme).length,
   ]));
@@ -168,8 +155,10 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
           stateRef.current.onAreaSelect({province:found.province,area_council:found.area_council});return;
         }
         const n=found?.project_count||0,names=found?.project_names||[];
+        const pop=popRef.current?.byKey.get(p.areaKey),fmt=v=>new Intl.NumberFormat(c.people==='personnes'?'fr-FR':'en-US').format(v);
+        const popHtml=pop?`<p class="pub-map-pop"><b>${fmt(pop.pop2026)}</b> ${c.people} · <b>${fmt(pop.hh2026)}</b> ${c.households} <small>(2026)</small></p>`:'';
         popupRef.current=new engine.Popup({maxWidth:'300px'}).setLngLat(event.lngLat).setHTML(
-          `<strong>${esc(p.ADM2_EN)}</strong><br><span>${esc(p.ADM1_EN)}</span>`+
+          `<strong>${esc(p.ADM2_EN)}</strong><br><span>${esc(p.ADM1_EN)}</span>`+popHtml+
           (n?`<p><b>${n}</b> ${n===1?c.one:c.many}</p><ul>${names.map(name=>`<li>${esc(name)}</li>`).join('')}</ul>`:`<p>${esc(c.noneDetail)}</p>`)
         ).addTo(map);
       });
@@ -240,7 +229,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
   const legendRows=themes=>themes.map(theme=><div key={theme}><i style={{backgroundColor:THEME_AREA_COLOURS[theme]}} aria-hidden="true"/><span>{copy.themes[theme]}</span><b>{themeCounts[theme]||0} {(themeCounts[theme]||0)===1?copy.areaOne:copy.areaMany}</b></div>);
   return <div ref={wrapRef} className={`pub-leaflet-wrap pub-coverage-map${expanded?' pub-map-expanded':''}`} role={expanded?'dialog':undefined} aria-modal={expanded?true:undefined} aria-label={copy.aria}>
     <div className="pub-map-toolbar"><button type="button" onClick={showAll} disabled={!ready&&!fallback}>{copy.reset}</button><button type="button" onClick={showLocations} disabled={(!ready&&!fallback)||!recordedAreas.length}>{copy.locations}</button><button ref={expandRef} type="button" aria-pressed={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?copy.collapse:copy.expand}</button></div>
-    <div className="pub-map-options"><fieldset className="pub-basemap-picker" disabled={fallback}><legend>{fr?'Fond de carte':'Basemap'}</legend><div className="pub-basemap-choices">{BASEMAP_IDS.map(id=><button key={id} type="button" aria-pressed={basemap===id} onClick={()=>setBasemap(id)}>{id==='light'?(fr?'Clair':'Light'):id==='street'?copy.street:id==='terrain'?(fr?'Relief':'Terrain'):id==='ocean'?(fr?'Océan':'Ocean'):copy.satellite}</button>)}</div></fieldset><label><input type="checkbox" checked={showBorders} onChange={e=>setShowBorders(e.target.checked)}/>{copy.boundaries}</label><label className="pub-map-layer-picker"><span>{fr?'Couche':'Map layer'}</span><select value={activityLayer} onChange={e=>{onLayerChange?.(e.target.value);onAreaSelect?.(null);setLocationsOnly(false);}}><option value="">{fr?'Lieux des projets':'Project locations'}</option>{Object.entries(categoryLabels).map(([k,v])=><option key={k} value={k} disabled={!layerCounts[k]&&activityLayer!==k}>{v} ({layerCounts[k]||0})</option>)}</select></label></div>
+    <div className="pub-map-options"><fieldset className="pub-basemap-picker" disabled={fallback}><legend>{fr?'Fond de carte':'Basemap'}</legend><div className="pub-basemap-choices">{BASEMAP_IDS.map(id=><button key={id} type="button" aria-pressed={basemap===id} onClick={()=>setBasemap(id)}>{id==='light'?(fr?'Clair':'Light'):id==='street'?copy.street:id==='terrain'?(fr?'Relief':'Terrain'):id==='ocean'?(fr?'Océan':'Ocean'):copy.satellite}</button>)}</div></fieldset><label><input type="checkbox" checked={showBorders} onChange={e=>setShowBorders(e.target.checked)}/>{copy.boundaries}</label><label title={copy.popSource}><input type="checkbox" checked={showPopulation} disabled={!population} onChange={e=>setShowPopulation(e.target.checked)}/>{copy.popLayer}</label><label className="pub-map-layer-picker"><span>{fr?'Couche':'Map layer'}</span><select value={activityLayer} onChange={e=>{onLayerChange?.(e.target.value);onAreaSelect?.(null);setLocationsOnly(false);}}><option value="">{fr?'Lieux des projets':'Project locations'}</option>{Object.entries(categoryLabels).map(([k,v])=><option key={k} value={k} disabled={!layerCounts[k]&&activityLayer!==k}>{v} ({layerCounts[k]||0})</option>)}</select></label></div>
     <div className="pub-map-canvas"><div ref={ref} hidden={fallback} className="pub-leaflet pub-maplibre" aria-label={copy.aria}/>{fallback&&<PublicBoundaryFallback data={boundaryData} collection={coverage.collection} locationsOnly={locationsOnly} showBorders={showBorders} onSelect={onAreaSelect?chooseFallbackArea:undefined} label={copy.aria}/>}
       {(fallback||(!err&&(detailZoom||basemapState==='loading'||basemapState==='failed')))&&<div className="pub-map-context-note" role="status">{fallback?copy.basemapFailed:detailZoom?copy.zoomNote:basemapState==='failed'?copy.basemapFailed:copy.basemapLoading}</div>}{err&&!fallback&&<div className="pub-map-error" role="status">{err}<button type="button" onClick={()=>setRetry(n=>n+1)}>{fr?'Réessayer':'Try again'}</button></div>}</div>
     <div className="pub-map-key"><strong>{activityLayer?categoryLabels[activityLayer]:copy.keyTitle}</strong>
@@ -249,6 +238,7 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
 
       {recordedAreas.length>1&&onAreaSelect&&<label className="pub-map-choose"><span>{copy.choose}</span><select value={chosen?key(chosen.province,chosen.area_council):''} onChange={e=>{const a=recordedAreas.find(a=>key(a.province,a.area_council)===e.target.value);onAreaSelect?.(a?{province:a.province,area_council:a.area_council}:null);}}><option value="">—</option>{recordedAreas.map(a=><option key={key(a.province,a.area_council)} value={key(a.province,a.area_council)}>{a.area_council}, {a.province}</option>)}</select></label>}
       {chosen&&<div className="pub-map-selection" aria-live="polite"><strong>{chosen.area_council}</strong><span>{chosen.province} · {activityLayer?categoryLabels[activityLayer]:copy.themes[chosen.theme_category]||copy.themes['not-recorded']}</span>
+        {(()=>{const pop=population?.byKey.get(key(chosen.province,chosen.area_council));const f=v=>new Intl.NumberFormat(fr?'fr-FR':'en-US').format(v);return pop?<p className="pub-map-pop"><b>{f(pop.pop2026)}</b> {copy.people} · <b>{f(pop.hh2026)}</b> {copy.households} <small>({fr?'est. 2026':'2026 est.'})</small></p>:null;})()}
         <p className="pub-map-result-note">{fr?'Seules les activités et les résultats explicitement rattachés à ce conseil de zone sont affichés ici.':'Only activities and results explicitly linked to this Area Council are shown here.'}</p>
         <ul>{(chosen.project_ids||[]).map((id,i)=>{
           const project=projects.find(p=>String(p.id)===String(id));
@@ -263,6 +253,8 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
           </li>;
         })}</ul></div>}
 
+      {showPopulation&&population&&<div className="pub-map-pop-legend" aria-label={copy.popTitle}><strong>{copy.popTitle}</strong><ol>{POPULATION_COLOURS.map((colour,i)=>{const lo=i?POPULATION_BREAKS[i-1]:0,hi=POPULATION_BREAKS[i];const f=v=>new Intl.NumberFormat(fr?'fr-FR':'en-US').format(v);return <li key={colour}><i style={{backgroundColor:colour}} aria-hidden="true"/><span>{hi?`${f(lo)}–${f(hi-1)}`:`${f(lo)}+`}</span></li>;})}</ol><small>{copy.popKey}</small><small className="pub-map-source">{copy.popSource}</small></div>}
+      {popError&&<small role="status">{copy.popUnavailable}</small>}
       <details className="pub-map-all-themes"><summary>{copy.legend}</summary>{coverage&&<small className="pub-map-neutral">{themeCounts.none||0} {copy.areaMany} · {copy.neutral}</small>}
       {projectCount!=null&&<small className="pub-map-data-note">{fr?`${locatedProjects} sur ${projectCount} projets ont un lieu enregistré par conseil de zone.`:`${locatedProjects} of ${projectCount} projects have an Area Council location recorded.`}</small>}<div className="pub-map-legend">{!activityLayer&&legendRows(THEME_AREA_ORDER.filter(t=>!activeThemes.includes(t)))}</div><small>{copy.coverage} {copy.countNote}</small><small className="pub-map-source">{copy.source}</small></details>
     </div>
