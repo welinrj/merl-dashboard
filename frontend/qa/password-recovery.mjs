@@ -42,10 +42,8 @@ try {
   if(await page.getByRole('button',{name:'Change password',exact:true}).count()) throw new Error('Expired link permits a password update');
   await page.getByRole('button',{name:'Return to sign in'}).click();
   await page.getByRole('button',{name:'Sign in',exact:true}).first().click();
-  await page.getByRole('button',{name:'Forgot?',exact:true}).click();
-  await page.getByLabel('Email',{exact:true}).fill('test@example.com');
-  await page.getByRole('button',{name:'Send recovery link',exact:true}).click();
-  await page.getByRole('alert').filter({hasText:'Too many recovery requests'}).waitFor();
-  if(await page.locator('.pbd-header-login-success').count()) throw new Error('Failed email request reported success');
-  console.log('PASS Expired links and failed email delivery display actionable errors');
+  await page.getByLabel('Email',{exact:true}).waitFor();
+  if(await page.getByRole('button',{name:'Forgot?',exact:true}).count()) throw new Error('Forgot link is still visible');
+  if(await page.getByRole('button',{name:'Send recovery link',exact:true}).count()) throw new Error('Self-service recovery form is still exposed');
+  console.log('PASS Expired links show actionable errors; sign-in has no Forgot link');
 } finally { await browser.close(); }

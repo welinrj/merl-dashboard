@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import { loadCurrentProfile } from '../lib/authProfile';
-import { recoveryDeliveryError } from '../lib/passwordRecovery';
 import { loginErrorKey } from '../lib/loginError';
 import './public-header-login.css';
 
@@ -17,8 +16,6 @@ export default function PublicHeaderLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [recovery, setRecovery] = useState(false);
-  const [recoverySent, setRecoverySent] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const fr = i18n.resolvedLanguage?.startsWith('fr');
   useEffect(() => {
@@ -33,33 +30,7 @@ export default function PublicHeaderLogin() {
       {fr ? 'Connexion' : 'Sign in'}
     </button>
   </>;
-  const mobileClose = <div className="pbd-mobile-login-heading"><strong>{recovery ? (fr ? 'Récupérer le compte' : 'Recover account') : (fr ? 'Connexion MERL' : 'MERL sign in')}</strong><button type="button" onClick={() => setMobileOpen(false)} aria-label={fr ? 'Fermer' : 'Close'}>×</button></div>;
-
-  const requestRecovery = async event => {
-    event.preventDefault();
-    if (loading) return;
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail) {
-      setError(fr ? 'Entrez votre adresse e-mail.' : 'Enter your email address.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    setRecoverySent(false);
-    try {
-      const redirectTo = 'https://welinrj.github.io/merl-dashboard/';
-      const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
-      if (recoveryError) {
-        setError(recoveryDeliveryError(recoveryError, fr));
-        return;
-      }
-      setRecoverySent(true);
-    } catch (sendError) {
-      setError(recoveryDeliveryError(sendError, fr));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const mobileClose = <div className="pbd-mobile-login-heading"><strong>{fr ? 'Connexion MERL' : 'MERL sign in'}</strong><button type="button" onClick={() => setMobileOpen(false)} aria-label={fr ? 'Fermer' : 'Close'}>×</button></div>;
 
   const submit = async event => {
     event.preventDefault();
@@ -95,34 +66,7 @@ export default function PublicHeaderLogin() {
     }
   };
 
-  const loginForm = recovery ? (
-    <form id="pbd-mobile-login" className={`pbd-header-login pbd-header-recovery${mobileOpen ? ' pbd-login-open' : ''}`} onSubmit={requestRecovery}
-      aria-label={fr ? 'Récupération du compte MERL' : 'MERL account recovery'}>
-      {mobileClose}
-      <div className="pbd-header-recovery-row">
-        <label htmlFor={emailId}>
-          <span>{t('login.email')}</span>
-          <input id={emailId} type="email" autoComplete="username" inputMode="email" required
-            value={email} onChange={e => { setEmail(e.target.value); setError(''); setRecoverySent(false); }}
-            placeholder={t('login.email')} disabled={loading}/>
-        </label>
-        <button type="submit" disabled={loading}>
-          {loading ? (fr ? 'Envoi…' : 'Sending…') : (fr ? 'Envoyer le lien' : 'Send recovery link')}
-        </button>
-        <button type="button" className="pbd-header-login-secondary" onClick={() => {
-          setRecovery(false); setRecoverySent(false); setError('');
-        }} disabled={loading}>
-          {fr ? 'Retour' : 'Back'}
-        </button>
-      </div>
-      {recoverySent && <div className="pbd-header-login-success" role="status">
-        {fr
-          ? 'Si cette adresse possède un compte MERL, un lien de récupération a été envoyé.'
-          : 'If this email has a MERL account, a recovery link has been sent.'}
-      </div>}
-      {error && <div className="pbd-header-login-error" role="alert">{error}</div>}
-    </form>
-  ) : (
+  const loginForm = (
     <form id="pbd-mobile-login" className={`pbd-header-login${mobileOpen ? ' pbd-login-open' : ''}`} onSubmit={submit} aria-label={fr ? 'Connexion MERL' : 'MERL sign in'}>
     {mobileClose}
     <div className="pbd-header-login-fields">
@@ -139,11 +83,6 @@ export default function PublicHeaderLogin() {
           <span className="pbd-password-actions">
             <button type="button" className="pbd-header-login-link" onClick={() => setShowPassword(value => !value)}>
               {showPassword ? (fr ? 'Masquer' : 'Hide') : (fr ? 'Afficher' : 'Show')}
-            </button>
-            <button type="button" className="pbd-header-login-link" onClick={() => {
-              setRecovery(true); setRecoverySent(false); setError(''); setPassword('');
-            }}>
-              {fr ? 'Oublié ?' : 'Forgot?'}
             </button>
           </span>
         </span>
