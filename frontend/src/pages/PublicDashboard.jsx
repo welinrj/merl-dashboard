@@ -24,8 +24,6 @@ import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
 import PublicReachAnalysis from '../components/PublicReachAnalysis';
-import ReportNotes from '../components/ReportNotes';
-import './public-report-style.css';
 import MetricInformation from '../components/MetricInformation';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { publicTargetProgress } from '../lib/publicTargetProgress';
@@ -50,42 +48,42 @@ const INDICATOR_CATEGORY_ICONS = Object.freeze({
 });
 const COPY = {
   en: {
-    title: 'Climate Change Project Portfolio', subtitle: 'Department of Climate Change, Government of the Republic of Vanuatu', overview: 'Public Overview',
+    title: 'Public Overview', subtitle: 'Department of Climate Change project portfolio', overview: 'Public Overview',
     search: 'Search projects…', status: 'Status', theme: 'Theme', province: 'Province', all: 'All', reset: 'Reset', filters: 'Filters',
-    refresh: 'Refresh', refreshing: 'Checking for updates…', projects: 'Current projects', singleProject: 'Current project', projectCount: 'Projects coordinated by the Department of Climate Change', filteredProjectCount: 'Projects matching the selected filters',
-    funding: 'Recorded project funding', fundingSub: 'All recorded project budgets converted to VUV using Reserve Bank of Vanuatu rates dated 25 Sep 2026', utilised: 'Expenditure to date', utilisedSub: 'Latest approved cumulative expenditure',
-    beneficiaries: 'Direct beneficiaries', beneficiariesSub: 'Direct beneficiaries from approved reports', utilisation: 'Share of budget spent',
+    refresh: 'Refresh', refreshing: 'Checking for updates…', projects: 'DoCC Projects', singleProject: 'DoCC Project', projectCount: 'Projects under the Department of Climate Change', filteredProjectCount: 'Projects matching the selected filters',
+    funding: 'Recorded Project Funding', fundingSub: 'All recorded project budgets converted to VUV using Reserve Bank of Vanuatu rates dated 25 Sep 2026', utilised: 'Funds Utilised', utilisedSub: 'Latest approved cumulative expenditure',
+    beneficiaries: 'Total Beneficiaries', beneficiariesSub: 'Direct beneficiaries from approved reports', utilisation: 'Financial Utilisation',
     utilisationSub: 'Approved expenditure as a share of recorded budgets', portfolio: 'Project portfolio', portfolioIntro: 'Projects coordinated by the Department of Climate Change and the information currently recorded for public view.',
-    locations: 'Project locations by Area Council', locationsIntro: 'Area Councils where the selected projects have a recorded implementation location.',
-    activityAreas: 'Indicators by category', activityAreasIntro: 'Select a category to list its indicators, targets and projects.',
+    locations: 'Where projects are implementing activities', locationsIntro: 'Recorded provinces and Area Councils for projects in the selected view.',
+    activityAreas: 'What project indicators cover', activityAreasIntro: 'Select a category to see its recorded activities, targets and implementing projects.',
     indicator: 'indicator', indicators: 'indicators', inProject: 'in 1 project', inProjects: 'across {count} projects', noIndicators: 'No indicators are recorded for this selection.',
-    activity: 'Activity / indicator', target: 'Target', implementingProject: 'Implementing project', noTarget: 'Not recorded', expandCategory: 'List indicators', collapseCategory: 'Hide list',
+    activity: 'Activity / indicator', target: 'Target', implementingProject: 'Implementing project', noTarget: 'Not recorded', expandCategory: 'View activities and targets', collapseCategory: 'Hide activities and targets',
     activityCategoryLabels: {ecosystems:'Ecosystems & nature-based solutions',livelihoods:'Livelihoods, food & agriculture','climate-risk':'Climate information & disaster risk',infrastructure:'Infrastructure & technology',governance:'Governance, policy & planning',capacity:'Capacity, awareness & inclusion',finance:'Climate finance & fund systems','learning-delivery':'Learning, monitoring & project delivery',beneficiaries:'Beneficiaries & resilience outcomes',other:'Other recorded outcomes'},
     manager: 'Project Manager', implementation: 'All recorded implementation locations', budget: 'Project funding', spent: 'Utilised',
     reached: 'Beneficiaries', outcome: 'Expected outcome', noDescription: 'Project information has not yet been recorded.', unknown: 'Not recorded',
     noFinance: 'Not yet reported', noProjects: 'No projects match these filters.', noLocations: 'No Area Council assignments are recorded for this selection. Province coverage may still be recorded.',
-    areaCouncils: 'Area Councils', clearArea: 'Clear selection', selectedArea: 'Projects recorded in', pauseAreaScroll: 'Pause', resumeAreaScroll: 'Resume',
+    areaCouncils: 'Area Councils', clearArea: 'Clear area selection', selectedArea: 'Showing projects recorded in', pauseAreaScroll: 'Pause', resumeAreaScroll: 'Resume',
     publicOnly: 'Public overview', source: 'Project profiles and implementation locations come from the DoCC MERL project register. Beneficiary and expenditure figures are shown only from approved reporting periods.',
     updated: 'Data refreshed', ongoing: 'Ongoing', completed: 'Completed', upcoming: 'Upcoming', other: 'Other',
     language: 'Language', menu: 'Open menu', close: 'Close menu', error: 'Public project information is temporarily unavailable.',
     stale: 'Could not check for updates. The last successfully loaded information remains displayed.', retry: 'Retry', loading: 'Loading public overview…',
   },
   fr: {
-    title: 'Portefeuille des projets sur le changement climatique', subtitle: 'Département du changement climatique, Gouvernement de la République de Vanuatu', overview: 'Vue publique',
+    title: 'Vue publique', subtitle: 'Portefeuille de projets du Département du changement climatique', overview: 'Vue publique',
     search: 'Rechercher des projets…', status: 'État', theme: 'Thème', province: 'Province', all: 'Tous', reset: 'Réinitialiser', filters: 'Filtres',
-    refresh: 'Actualiser', refreshing: 'Recherche de mises à jour…', projects: 'Projets en cours', singleProject: 'Projet en cours', projectCount: 'Projets relevant du Département du changement climatique', filteredProjectCount: 'Projets correspondant aux filtres sélectionnés',
-    funding: 'Financement enregistré des projets', fundingSub: 'Tous les budgets enregistrés sont convertis en VUV selon les taux de la Banque de Réserve du Vanuatu du 25 sept. 2026', utilised: 'Dépenses à ce jour', utilisedSub: 'Dernières dépenses cumulées approuvées',
-    beneficiaries: 'Bénéficiaires directs', beneficiariesSub: 'Bénéficiaires directs issus des rapports approuvés', utilisation: 'Part du budget dépensée',
+    refresh: 'Actualiser', refreshing: 'Recherche de mises à jour…', projects: 'Projets du DoCC', singleProject: 'Projet du DoCC', projectCount: 'Projets relevant du Département du changement climatique', filteredProjectCount: 'Projets correspondant aux filtres sélectionnés',
+    funding: 'Financement enregistré des projets', fundingSub: 'Tous les budgets enregistrés sont convertis en VUV selon les taux de la Banque de Réserve du Vanuatu du 25 sept. 2026', utilised: 'Fonds utilisés', utilisedSub: 'Dernières dépenses cumulées approuvées',
+    beneficiaries: 'Total des bénéficiaires', beneficiariesSub: 'Bénéficiaires directs issus des rapports approuvés', utilisation: 'Utilisation financière',
     utilisationSub: 'Dépenses approuvées en proportion des budgets enregistrés', portfolio: 'Portefeuille de projets', portfolioIntro: 'Projets coordonnés par le Département du changement climatique et informations actuellement enregistrées pour le public.',
-    locations: 'Lieux des projets par conseil de zone', locationsIntro: 'Conseils de zone où les projets sélectionnés ont un lieu de mise en œuvre enregistré.',
-    activityAreas: 'Indicateurs par catégorie', activityAreasIntro: 'Sélectionnez une catégorie pour lister ses indicateurs, cibles et projets.',
+    locations: 'Où les projets mettent en œuvre des activités', locationsIntro: 'Provinces et conseils de zone enregistrés pour les projets sélectionnés.',
+    activityAreas: 'Domaines couverts par les indicateurs', activityAreasIntro: 'Sélectionnez une catégorie pour voir les activités, les cibles et les projets de mise en œuvre.',
     indicator: 'indicateur', indicators: 'indicateurs', inProject: 'dans 1 projet', inProjects: 'dans {count} projets', noIndicators: 'Aucun indicateur n’est enregistré pour cette sélection.',
-    activity: 'Activité / indicateur', target: 'Cible', implementingProject: 'Projet de mise en œuvre', noTarget: 'Non renseignée', expandCategory: 'Lister les indicateurs', collapseCategory: 'Masquer la liste',
+    activity: 'Activité / indicateur', target: 'Cible', implementingProject: 'Projet de mise en œuvre', noTarget: 'Non renseignée', expandCategory: 'Voir les activités et les cibles', collapseCategory: 'Masquer les activités et les cibles',
     activityCategoryLabels: {ecosystems:'Écosystèmes et solutions fondées sur la nature',livelihoods:'Moyens de subsistance, alimentation et agriculture','climate-risk':'Information climatique et risques de catastrophe',infrastructure:'Infrastructures et technologie',governance:'Gouvernance, politiques et planification',capacity:'Capacités, sensibilisation et inclusion',finance:'Finance climatique et systèmes de fonds','learning-delivery':'Apprentissage, suivi et mise en œuvre',beneficiaries:'Bénéficiaires et résultats de résilience',other:'Autres résultats enregistrés'},
     manager: 'Chef de projet', implementation: 'Tous les lieux de mise en œuvre enregistrés', budget: 'Financement du projet', spent: 'Utilisé',
     reached: 'Bénéficiaires', outcome: 'Résultat attendu', noDescription: 'Les informations du projet ne sont pas encore enregistrées.', unknown: 'Non renseigné',
     noFinance: 'Pas encore déclaré', noProjects: 'Aucun projet ne correspond à ces filtres.', noLocations: 'Aucune affectation à un conseil de zone n’est enregistrée pour cette sélection. Des provinces peuvent être renseignées.',
-    areaCouncils: 'Conseils de zone', clearArea: 'Effacer la sélection', selectedArea: 'Projets enregistrés à', pauseAreaScroll: 'Suspendre', resumeAreaScroll: 'Reprendre',
+    areaCouncils: 'Conseils de zone', clearArea: 'Effacer la sélection de zone', selectedArea: 'Projets enregistrés à', pauseAreaScroll: 'Suspendre', resumeAreaScroll: 'Reprendre',
     publicOnly: 'Vue publique', source: 'Les profils des projets et les lieux de mise en œuvre proviennent du registre MERL du DoCC. Les bénéficiaires et les dépenses proviennent uniquement des périodes de rapportage approuvées.',
     updated: 'Données actualisées', ongoing: 'En cours', completed: 'Achevé', upcoming: 'À venir', other: 'Autre',
     language: 'Langue', menu: 'Ouvrir le menu', close: 'Fermer le menu', error: 'Les informations publiques sur les projets sont temporairement indisponibles.',
@@ -311,7 +309,7 @@ export default function PublicDashboard() {
     if (province && selectedArea?.province !== province) setSelectedArea(null);
   };
 
-  return <div className="dsh pbd-root pbd-report">
+  return <div className="dsh pbd-root">
 
     {menuOpen && <button type="button" className="pbd-overlay" aria-label={c.close} onClick={() => setMenuOpen(false)} />}
     <aside className={`dsh-side${menuOpen ? ' open' : ''}`}>
@@ -322,7 +320,8 @@ export default function PublicDashboard() {
     <div className="dsh-main">
       <header className="dsh-head"><button type="button" className="dsh-hamburger" aria-label={c.menu} onClick={() => setMenuOpen(value => !value)}><Menu size={18} /></button><HeaderPartnerLogos/><div className="dsh-head-actions"><div className="dsh-lang" role="group" aria-label={c.language}><button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void i18n.changeLanguage('en')}>EN</button><button type="button" lang="fr" aria-pressed={lang === 'fr'} onClick={() => void i18n.changeLanguage('fr')}>FR</button></div><PublicHeaderLogin/></div></header>
       <main className="dsh-scroll scrollbar-thin"><div className="pbd-view">
-        <div className="pbd-title-row"><div><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div></div>
+        <div className="pbd-title-row"><div><span className="pbd-eyebrow">{lang === 'fr' ? 'VANUATU · ACTION CLIMATIQUE' : 'VANUATU · CLIMATE ACTION'}</span><h1>{c.title}</h1><p>{c.subtitle}{summary?.updated_at && <> · {c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</>}</p></div></div>
+        <p className="pbd-scope-note">{data && (lang === 'fr' ? `${projects.length} projets actuels du DoCC. Les filtres portent sur ce portefeuille.` : `${projects.length} current DoCC projects. Filters apply to this portfolio.`)}</p>
         <div className={`pbd-filters${filtersOpen ? ' pbd-filters-open' : ''}`}>
           <label className="pbd-search"><span className="sr-only">{c.search}</span><input type="search" value={filters.search} onChange={event => setFilters(value => ({ ...value, search: event.target.value }))} placeholder={c.search} /></label>
           <button type="button" className="pbd-filter-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}>{c.filters}{!allScope && <span aria-label="active"> •</span>}</button>
@@ -335,32 +334,20 @@ export default function PublicDashboard() {
         {isError && data && <div className="pbd-refresh-status pbd-refresh-error" role="alert">{c.stale}<button type="button" onClick={refresh}>{c.retry}</button></div>}
         {!data ? (isLoading ? <div className="pbd-state" role="status"><IslandLoading />{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
           {lang === 'fr' && <p className="pbd-refresh-status">Les intitulés et descriptions des projets et indicateurs sont affichés dans leur langue source lorsqu’une traduction validée n’est pas disponible.</p>}
-          <section className="pbd-section pbd-report-section pbd-summary-section" aria-labelledby="pbd-s1">
-          <div className="pbd-section-head"><div><h2 id="pbd-s1" className="pbd-progress-summary-title">{lang === 'fr' ? '1. Synthèse du portefeuille' : '1. Portfolio summary'}</h2><p>{lang === 'fr' ? 'Chiffres clés des projets sélectionnés, issus des périodes de rapportage approuvées.' : 'Key figures for the selected projects, taken from approved reporting periods.'}</p></div></div>
-          <div className="pbd-metrics" role="group" aria-label={c.title}>
+          <section className="pbd-metrics" aria-label={c.title}>
             {metricRows.map(row=><Metric key={row.tone} {...row} stamp={row.stamp||stamp} french={lang==='fr'}/>)}
-          </div>
-          <PublicTargetAchievement projects={filtered} french={lang === 'fr'} hideNotes />
-          <ReportNotes french={lang === 'fr'} items={lang === 'fr' ? [
-            `${c.fundingSub}.`, `Dépenses à ce jour : ${c.utilisedSub.toLowerCase()}. Bénéficiaires directs : ${c.beneficiariesSub.toLowerCase()}.`,
-            'Atteinte des cibles = cibles atteintes ÷ toutes les cibles enregistrées des projets sélectionnés. Les cibles sans résultat restent dans le total ; un résultat absent n’est pas présenté comme une réalisation de 0 %.',
-            'Part = cibles atteintes du projet ÷ total des cibles atteintes. Contribution globale = cibles atteintes du projet ÷ toutes les cibles du portefeuille.',
-            `${projects.length} projets en cours ; les projets achevés sont exclus. Les filtres s’appliquent à toutes les sections.`,
-          ] : [
-            `${c.fundingSub}.`, `Expenditure to date: ${c.utilisedSub.toLowerCase()}. Direct beneficiaries: ${c.beneficiariesSub.toLowerCase()}.`,
-            'Target achievement = achieved targets ÷ all registered targets for the selected projects. Targets without results remain in the total; a missing result is not shown as 0 % achievement.',
-            'Share = a project’s achieved targets ÷ all achieved targets. Overall contribution = a project’s achieved targets ÷ all portfolio targets.',
-            `${projects.length} current projects; completed projects are excluded. Filters apply to every section.`,
-          ]} />
           </section>
+          <details className="pbd-method-note"><summary>{lang === 'fr' ? 'À propos des chiffres' : 'About these figures'}</summary><p>{c.fundingSub}. {c.utilisedSub}. {c.beneficiariesSub}.</p></details>
+
+          <PublicTargetAchievement projects={filtered} french={lang === 'fr'} />
 
           <section className="pbd-section pbd-portfolio">
-            <div className="pbd-section-head"><div><h2 className="pbd-progress-summary-title">{lang === 'fr' ? '2. Progrès par projet' : '2. Progress by project'}</h2><p>{lang === 'fr' ? 'Résultats approuvés et publiés pour chaque projet.' : 'Approved and published results for each project.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
+            <div className="pbd-section-head"><div><h2 className="pbd-progress-summary-title"><ProjectsIcon size={20} aria-hidden="true" />{lang === 'fr' ? 'Progrès par projet' : 'Progress by project'}</h2><p>{lang === 'fr' ? 'Résumés des résultats approuvés et publiés.' : 'Approved, published result summaries.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
             <PublicProgressChart projects={filtered} details={visibleIndicatorDetails} areas={sourceAreas} lang={lang} copy={c} onProject={viewProject} />
             {!filtered.length&&<div className="pbd-empty">{c.noProjects}</div>}
           </section>
           <section className="pbd-section pbd-location-section">
-            <div className="pbd-section-head"><div><span role="heading" aria-level={2}>3. {c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
+            <div className="pbd-section-head"><div><span><MapPin size={16} aria-hidden="true" />{c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
             {selectedArea && <div className="pbd-area-selection">{c.selectedArea} <strong>{selectedArea.area_council}, {selectedArea.province}</strong></div>}
             <div className="pbd-location-grid">
               {mapView()}
@@ -370,25 +357,12 @@ export default function PublicDashboard() {
                 {directoryAreas.length?<div className="pbd-area-list">{directoryAreas.map(area=><button type="button" key={`${area.province}-${area.area_council}`} className={selectedArea?.province===area.province&&selectedArea?.area_council===area.area_council?'active':''} data-theme-category={area.theme_category||'not-recorded'} onClick={()=>setSelectedArea({province:area.province,area_council:area.area_council})}><span className="pbd-area-copy"><strong className="pbd-area-flap-face">{area.area_council}</strong><small>{area.province}</small></span><b>{area.project_count}</b></button>)}</div>:<p>{thematicDirectory.length?(lang==='fr'?'Aucun conseil correspondant.':'No matching councils.'):activityLayer?(lang==='fr'?'Aucun lieu publié pour cette catégorie.':'No published locations for this category.'):c.noLocations}</p>}
               </div>
             </div>
-            <ReportNotes french={lang === 'fr'} items={lang === 'fr' ? [
-              'La couleur indique un conseil de zone avec au moins un lieu de projet enregistré. Une activité peut ne couvrir qu’une partie du conseil ; les chiffres comptent des conseils, pas des projets.',
-              'Un conseil non coloré n’a pas de lieu de mise en œuvre enregistré, ce qui ne signifie pas nécessairement qu’aucune activité n’y a lieu.',
-              'Seuls les activités et indicateurs explicitement rattachés à un conseil de zone sont listés. Un lieu associé n’est pas un résultat mesuré.',
-              'Couche de population : estimations 2026 issues du recensement VNSO 2020 et des taux de croissance 2009–2020 (voir section 4). Il ne s’agit pas de chiffres officiels.',
-              'Limites des conseils de zone : couche publique « AC Boundaries 2025 », simplifiée à 100 m pour l’affichage. Fonds de carte : OpenFreeMap / OpenStreetMap, Esri.',
-            ] : [
-              'Colour marks an Area Council with at least one recorded project location. An activity may cover only part of a council; counts are councils, not projects.',
-              'An uncoloured council has no recorded implementation location. This does not necessarily mean there is no activity there.',
-              'Only activities and indicators explicitly linked to an Area Council are listed. A location assignment is not a measured result.',
-              'Population layer: 2026 estimates from the VNSO 2020 census and 2009–2020 growth rates (see section 4). Not official figures.',
-              'Area Council boundaries: public “AC Boundaries 2025” layer, simplified to 100 m for display. Basemaps: OpenFreeMap / OpenStreetMap, Esri.',
-            ]} />
           </section>
 
-          <PublicReachAnalysis number="4."  areas={visibleAreas} projects={filtered} categoryLabels={c.activityCategoryLabels} activityLayer={activityLayer} lang={lang} onAreaSelect={area=>{setSelectedArea(area);if(area)requestAnimationFrame(()=>document.querySelector('.pbd-location-section')?.scrollIntoView({block:'start',behavior:'auto'}));}}/>
+          <PublicReachAnalysis areas={visibleAreas} projects={filtered} categoryLabels={c.activityCategoryLabels} activityLayer={activityLayer} lang={lang} onAreaSelect={area=>{setSelectedArea(area);if(area)requestAnimationFrame(()=>document.querySelector('.pbd-location-section')?.scrollIntoView({block:'start',behavior:'auto'}));}}/>
 
           <section className="pbd-section pbd-activity-section">
-            <div className="pbd-section-head"><div><span role="heading" aria-level={2}>5. {c.activityAreas}</span><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>
+            <div className="pbd-section-head"><div><span><Activity size={16} aria-hidden="true" />{c.activityAreas}</span><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>
             {indicatorCategories.length ? <><div className="pbd-activity-grid">{indicatorCategories.map(category => {
               const categoryIcon = INDICATOR_CATEGORY_ICONS[category.key] || faShapes;
               const CategoryIcon = { ecosystems: ForestsIcon, finance: FundingIcon, beneficiaries: BeneficiariesIcon, capacity: BeneficiariesIcon, 'learning-delivery': UpdateProgressIcon }[category.key];
@@ -410,7 +384,7 @@ export default function PublicDashboard() {
           </section>
 
 
-          <footer className="pbd-footer"><span><strong>{lang === 'fr' ? 'Source : ' : 'Source: '}</strong>{c.source}</span>{summary?.updated_at && <span>{c.updated}: {new Date(summary.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</span>}</footer>
+          <footer className="pbd-footer"><span>{c.source}</span></footer>
         </>}
       </div></main>
     </div>
