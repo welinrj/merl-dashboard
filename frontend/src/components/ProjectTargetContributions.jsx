@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import ProjectLogo from './ProjectLogo';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { targetContributions } from '../lib/targetContributions';
 import './project-target-contributions.css';
@@ -19,7 +20,7 @@ export default function ProjectTargetContributions({summary,french=false,period=
         </PieChart></ResponsiveContainer>
       </div>
       <ul className="target-contributions-legend">{model.rows.map(r=><li key={r.project.id} data-project-code={r.project.code}>
-        <i aria-hidden="true" style={{background:r.colour}}/><div><strong title={r.project.name}>{label(r.project)}</strong><small>{number(r.achieved)} / {number(r.total)} {french?'cibles du projet atteintes':'project targets achieved'}</small><small>{number(r.projectPercentage)}% {french?'du projet':'project achievement'}</small></div>
+        <i aria-hidden="true" style={{background:r.colour}}/><div><div className="contribution-project-name"><ProjectLogo project={r.project}/><strong title={r.project.name}>{label(r.project)}</strong></div><small>{number(r.achieved)} / {number(r.total)} {french?'cibles du projet atteintes':'project targets achieved'}</small><small>{number(r.projectPercentage)}% {french?'du projet':'project achievement'}</small></div>
         <span><b>{number(r.share)}% {french?'de part':'share'}</b><small>{french?`des ${number(model.totalAchieved)} cibles atteintes`:`of ${number(model.totalAchieved)} achieved targets`}</small><small>{number(r.points)}% {french?'des cibles du portefeuille':'of total portfolio targets'}</small></span>
       </li>)}</ul>
     </div>:model.valid?<p className="target-contributions-empty">{french?'Aucune cible atteinte enregistrée dans cette sélection.':'No achieved targets recorded in this selection.'}</p>:null}
