@@ -100,13 +100,13 @@ export default function PublicCoverageMap({areas=[],selectedArea=null,onAreaSele
     const candidates=indicatorDetails.filter(d=>String(d.project_id)===String(entry.project_id)&&(entry.indicator_id?String(d.indicator_id)===String(entry.indicator_id):String(d.indicator_name||'').trim()===String(entry.label||'').trim()));
     return candidates.length===1?candidates[0].category_key:null;
   };
-  const layerAreas=activityLayer?areas.map(area=>{
+  const layerAreas=useMemo(()=>activityLayer?areas.map(area=>{
     const local=(Array.isArray(area.local_details)?area.local_details:[]).filter(entry=>localCategory(entry)===activityLayer&&area.project_ids?.some(id=>String(id)===String(entry.project_id)));
     const ids=[...new Set(local.map(entry=>String(entry.project_id)))];
     return {...area,local_details:local,project_ids:ids,project_names:ids.map(id=>projects.find(p=>String(p.id)===id)?.name||id),project_count:ids.length};
-  }).filter(a=>a.project_count>0):areas;
+  }).filter(a=>a.project_count>0):areas,[activityLayer,areas,indicatorDetails,projects]);
   stateRef.current={areas:layerAreas,selectedArea,onAreaSelect};
-  const selectedKey=selectedArea?key(selectedArea.province,selectedArea.area_council):'';
+  const selectedKey=selectedArea&&layerAreas.some(a=>key(a.province,a.area_council)===key(selectedArea.province,selectedArea.area_council))?key(selectedArea.province,selectedArea.area_council):'';
   useEffect(()=>setLocationsOnly(null),[selectedKey]);
   const coverage=useMemo(()=>{
     if(!boundaryData)return null;

@@ -37,3 +37,5 @@ test('thematic layers sit below geographic labels and national bounds include al
 });
 
 test('ocean and terrain remain below coverage and recorded boundaries are emphasized',()=>{const style=mapStyle(null,data);assert.ok(style.layers.some(l=>l.id==='recorded-council-edge'));assert.ok(style.layers.find(l=>l.id==='council-fill').paint['fill-opacity'].includes(0.72));});
+
+test('a selected council without matching published coverage is not highlighted',()=>{const f=data.features[0];const result=coverageFeatures(data,[],key(f.properties.ADM1_EN,f.properties.ADM2_EN),key);assert.equal(result.collection.features.some(f=>f.properties.selected),false);});

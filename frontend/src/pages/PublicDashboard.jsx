@@ -1,7 +1,7 @@
 import { isCompletedProject } from '../lib/docc/projectScope';
 import { IslandLoading, IslandLogo } from '../components/IslandBrand';
 import { OverviewIcon, ProjectsIcon, FundingIcon, FundsUsedIcon, BeneficiariesIcon, BudgetUsageIcon, ForestsIcon, UpdateProgressIcon, AdaptationIcon, LossDamageIcon } from '../components/ui/MerlIcons';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -16,7 +16,7 @@ import {
   faUsers,
   faUsersRays,
 } from '@fortawesome/free-solid-svg-icons';
-import { Activity, LayoutDashboard, MapPin, Menu, Pause, Play, Wallet } from '../components/ui/icons';
+import { Activity, LayoutDashboard, MapPin, Menu, Wallet } from '../components/ui/icons';
 import { IndicatorProgressCard } from '../components/ui/indicator-progress-card';
 import ProjectLogo from '../components/ProjectLogo';
 import PublicTargetAchievement from '../components/PublicTargetAchievement';

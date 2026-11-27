@@ -45,3 +45,5 @@ test('province filters keep map and directory assignments within the selected pr
   assert.equal(scopePublicAreas(areas, projects).length, 2);
   assert.deepEqual(scopePublicAreas(areas, projects, 'Torba'), []);
 });
+
+test('loss and damage has its own map theme, and mixed themes are not misclassified',()=>{assert.equal(thematicAreaCategory([{docc_themes:['Loss and Damage']}]),'loss-damage');assert.equal(thematicAreaCategory([{docc_themes:['Adaptation','Loss and Damage']}]),'both');});

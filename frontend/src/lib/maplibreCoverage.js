@@ -52,7 +52,7 @@ export function coverageFeatures(data, areas, selectedKey, key) {
     const theme = projectCount > 0 ? category : 'none';
     counts[theme] = (counts[theme] || 0) + 1;
     return { ...feature, id, properties: { ...feature.properties, areaKey, projectCount, theme,
-      colour: THEME_AREA_COLOURS[category], selected: areaKey === selectedKey } };
+      colour: THEME_AREA_COLOURS[category], selected: projectCount > 0 && areaKey === selectedKey } };
   });
   return { collection: { type: 'FeatureCollection', features }, counts };
 }
