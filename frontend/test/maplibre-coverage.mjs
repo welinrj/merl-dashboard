@@ -35,3 +35,5 @@ test('thematic layers sit below geographic labels and national bounds include al
  assert.ok(bounds[0][0]<167&&bounds[1][0]>170);
  assert.ok(bounds[0][1]<-20&&bounds[1][1]>-14);
 });
+
+test('ocean and terrain remain below coverage and recorded boundaries are emphasized',()=>{const style=mapStyle(null,data);assert.ok(style.layers.some(l=>l.id==='recorded-council-edge'));assert.ok(style.layers.find(l=>l.id==='council-fill').paint['fill-opacity'].includes(0.72));});

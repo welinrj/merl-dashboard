@@ -147,7 +147,7 @@ try{
  await page.setViewportSize({width:320,height:844});
  const picker=page.locator('.pub-basemap-picker');
  await picker.scrollIntoViewIfNeeded();
- assert.equal(await picker.getByRole('button').count(),4);
+ assert.equal(await picker.getByRole('button').count(),5);
  assert.ok(await picker.getByRole('button').evaluateAll(buttons=>buttons.every(b=>b.getBoundingClientRect().height>=44&&b.getBoundingClientRect().right<=innerWidth)));
  const camera=await mapEval(map=>({center:map.getCenter().toArray(),zoom:map.getZoom()}));
  await picker.getByRole('button',{name:'Terrain',exact:true}).click();

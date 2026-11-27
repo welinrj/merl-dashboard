@@ -5,10 +5,15 @@ export const BASEMAP_URLS = {
   street: 'https://tiles.openfreemap.org/styles/liberty',
 };
 
-export const BASEMAP_IDS = ['light', 'street', 'terrain', 'satellite'];
+export const BASEMAP_IDS = ['light', 'street', 'terrain', 'satellite', 'ocean'];
 
 // Only bounded network reads: the local council map remains available offline.
 export async function loadBasemap(name, signal) {
+  if (name === 'ocean') return {
+    version:8,
+    sources:{ocean:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:10,attribution:'Tiles © Esri, Garmin, GEBCO, NOAA NGDC, and other contributors'}},
+    layers:[{id:'ocean-basemap',type:'raster',source:'ocean'}],
+  };
   if (name === 'satellite' || name === 'terrain') {
     const imagery = name === 'satellite';
     const source = imagery ? 'imagery' : 'terrain';
@@ -62,12 +67,12 @@ export function mapStyle(base, data) {
     'council-labels': { type: 'geojson', data: empty },
   };
   const layers = (base?.layers?.map(layer => {
-    if (layer.id === 'water' && layer.type === 'fill') return { ...layer, paint: { ...layer.paint, 'fill-color': '#dcecf2' } };
-    if (layer.type === 'background') return { ...layer, paint: { ...layer.paint, 'background-color': '#f3f5ed' } };
+    if (layer.id === 'water' && layer.type === 'fill') return { ...layer, paint: { ...layer.paint, 'fill-color': '#d6e8f0' } };
+    if (layer.type === 'background') return { ...layer, paint: { ...layer.paint, 'background-color': '#e5e8da' } };
     return layer;
   }) || [
-    { id: 'ocean', type: 'background', paint: { 'background-color': '#e5eff3' } },
-    { id: 'fallback-land', type: 'fill', source: 'council-land', paint: { 'fill-color': '#f2f3ed' } },
+    { id: 'ocean', type: 'background', paint: { 'background-color': '#d6e8f0' } },
+    { id: 'fallback-land', type: 'fill', source: 'council-land', paint: { 'fill-color': '#e5e8da' } },
   ]);
   // Put thematic fills under geographic labels, without polygon outlines that
   // double up on shared edges. Detailed coastline comes from the basemap.
@@ -75,16 +80,17 @@ export function mapStyle(base, data) {
   const overlays = [
     { id: 'council-fill', type: 'fill', source: 'councils', maxzoom: 11.01, paint: {
       'fill-color': ['coalesce', ['get', 'colour'], '#94a3b8'],
-      'fill-opacity': ['case', ['boolean', ['get', 'selected'], false], 0.38, ['>', ['coalesce', ['get', 'projectCount'], 0], 0], 0.24, 0],
-      'fill-antialias': false,
+      'fill-opacity': ['case', ['boolean', ['get', 'selected'], false], 0.72, ['>', ['coalesce', ['get', 'projectCount'], 0], 0], base?.sources?.imagery ? 0.48 : 0.55, 0],
+      'fill-antialias': true,
     } },
-    { id: 'council-borders', type: 'line', source: 'shared-borders', maxzoom: 11.01, layout: { visibility: 'none', 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': base?.sources?.imagery ? '#edf7fa' : '#466478', 'line-width': 0.8, 'line-opacity': 0.55 } },
-    { id: 'selected-council', type: 'line', source: 'councils', maxzoom: 11.01, filter: ['==', ['get', 'selected'], true], paint: { 'line-color': base?.sources?.imagery ? '#7bd5cd' : '#163d57', 'line-width': 2 } },
+    { id: 'council-borders', type: 'line', source: 'shared-borders', maxzoom: 11.01, layout: { visibility: 'none', 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': base?.sources?.imagery ? '#edf7fa' : '#466478', 'line-width': ['interpolate',['linear'],['zoom'],5,0.55,10,1.2], 'line-opacity': 0.65 } },
+    { id:'recorded-council-edge',type:'line',source:'councils',maxzoom:11.01,filter:['>', ['coalesce',['get','projectCount'],0],0],layout:{'line-join':'round'},paint:{'line-color':['get','colour'],'line-opacity':0.75,'line-width':['interpolate',['linear'],['zoom'],5,0.7,10,1.5]} },
+    { id: 'selected-council', type: 'line', source: 'councils', maxzoom: 11.01, filter: ['==', ['get', 'selected'], true], paint: { 'line-color': base?.sources?.imagery ? '#7bd5cd' : '#163d57', 'line-width': 3 } },
   ];
   layers.splice(firstLabel < 0 ? layers.length : firstLabel, 0, ...overlays);
   if (base?.glyphs) layers.push({ id: 'council-names', type: 'symbol', source: 'council-labels', minzoom: 8, maxzoom: 11.01,
-    layout: { 'text-field': ['get', 'ADM2_EN'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-max-width': 10, 'text-padding': 8 },
-    paint: { 'text-color': '#24465b', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
+    layout: { 'text-field': ['get', 'ADM2_EN'], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate',['linear'],['zoom'],8,11,11,14], 'text-max-width': 10, 'text-padding': 9, 'symbol-sort-key':['case',['boolean',['get','selected'],false],0,['>', ['coalesce',['get','projectCount'],0],0],1,2] },
+    paint: { 'text-color': '#24465b', 'text-halo-color': '#fff', 'text-halo-width': 1.7 },
   });
   return { ...(base || {}), version: 8, sources, layers };
 }

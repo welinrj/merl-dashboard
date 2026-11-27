@@ -1,8 +1,9 @@
-export const THEME_AREA_ORDER = ['adaptation', 'mitigation', 'both', 'not-recorded'];
+export const THEME_AREA_ORDER = ['adaptation', 'mitigation', 'loss-damage', 'both', 'not-recorded'];
 
 export const THEME_AREA_COLOURS = {
-  adaptation: '#2463c7',
-  mitigation: '#17845f',
+  adaptation: '#19805d',
+  mitigation: '#2463c7',
+  'loss-damage': '#c47d32',
   both: '#7651b5',
   'not-recorded': '#9b6a22',
   none: '#e6ebf1',
@@ -35,7 +36,9 @@ export function thematicAreaCategory(projects = []) {
   const themes = projects.flatMap(projectThemes).map((theme) => theme.toLowerCase());
   const adaptation = themes.some((theme) => theme.includes('adaptation'));
   const mitigation = themes.some((theme) => theme.includes('mitigation'));
-  if (adaptation && mitigation) return 'both';
+  const lossDamage = themes.some(theme => /loss\s*(?:and|&|\/)\s*damage/.test(theme));
+  if ([adaptation,mitigation,lossDamage].filter(Boolean).length>1) return 'both';
+  if (lossDamage) return 'loss-damage';
   if (adaptation) return 'adaptation';
   if (mitigation) return 'mitigation';
   return projects.length ? 'not-recorded' : 'none';

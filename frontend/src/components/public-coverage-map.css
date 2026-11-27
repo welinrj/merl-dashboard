@@ -111,3 +111,22 @@
 .pub-coverage-map .pub-map-project-result{display:grid;gap:6px;padding:14px!important;background:#fff;border:1px solid #cbdde5;border-radius:8px}
 .pub-coverage-map .pub-map-project-result h4{font:700 16px/1.4 Arial,sans-serif;margin:0;color:#173b54}.pub-coverage-map .pub-map-project-result p{font:13px/1.5 Arial,sans-serif;margin:0;color:#526d7d}
 .pub-coverage-map .pub-map-project-result>strong{font-size:24px;color:#173b54}.pub-coverage-map .pub-map-project-result>span,.pub-coverage-map .pub-map-project-result>small{font-size:13px;line-height:1.5}
+
+/* Public map: restrained atlas-style controls, high contrast and responsive layout. */
+.pub-coverage-map .pub-map-canvas{height:clamp(480px,58vh,690px);background:#d6e8f0}
+.pub-coverage-map .pub-map-toolbar{background:#f6fafb;gap:6px;padding:8px 12px}
+.pub-coverage-map .pub-map-toolbar button,.pub-coverage-map .pub-basemap-choices button{font-family:Arial,sans-serif;font-weight:600;border-radius:7px}
+.pub-coverage-map .pub-map-options{font-family:Arial,sans-serif;gap:6px 14px;padding:8px 12px}
+.pub-coverage-map .pub-basemap-choices{grid-template-columns:repeat(5,minmax(0,1fr))}
+.pub-coverage-map .pub-basemap-choices button{padding:6px 10px;font-size:13px}
+.pub-coverage-map .pub-map-layer-picker{flex:1 1 220px;min-width:0;flex-wrap:wrap}
+.pub-coverage-map .pub-map-layer-picker select{flex:1;min-width:0;max-width:100%}
+.pub-coverage-map .pub-map-boundary-fallback{background:#d6e8f0}
+.pub-coverage-map .pub-map-selection{border-radius:8px;background:#f5f9fa;border-left-color:#19805d}
+.pub-coverage-map .pub-map-project-identity{display:flex;align-items:center;gap:10px;min-width:0}
+.pub-coverage-map .pub-map-project-identity .pd-project-logo{display:flex;align-items:center;justify-content:center;flex:0 0 48px;width:48px;height:40px;padding:3px;border:1px solid #dce5eb;border-radius:6px;background:#fff;box-sizing:border-box;overflow:hidden}
+.pub-coverage-map .pub-map-project-identity .pd-project-logo img{width:100%;height:100%;object-fit:contain}
+.pub-coverage-map .pub-map-project-identity .pd-project-initials{font:700 9px Arial,sans-serif;text-align:center;overflow-wrap:anywhere;max-width:100%}
+.pub-coverage-map .maplibregl-ctrl-scale{font:11px Arial,sans-serif;color:#183e54;background:#ffffffe0}
+@media(max-width:760px){.pub-coverage-map .pub-map-canvas{height:clamp(340px,53svh,490px)}.pub-coverage-map .pub-map-options{gap:5px 10px}.pub-coverage-map .pub-map-layer-picker{width:100%}.pub-coverage-map .pub-basemap-choices{grid-template-columns:repeat(3,minmax(0,1fr))}.pub-coverage-map .pub-basemap-choices button{font-size:12px;padding:5px 6px}}
+.pub-coverage-map.pub-map-expanded .pub-map-canvas{height:100%;min-height:0}

@@ -22,7 +22,7 @@ export default function PublicBoundaryFallback({ data, collection, locationsOnly
   const viewBox = [west - padding, -north - padding, east - west + padding * 2, north - south + padding * 2].join(' ');
 
   return <svg className="pub-map-boundary-fallback" viewBox={viewBox} aria-label={label}>
-    <path d={land} fill="#f2f3ed" stroke="#66808a" strokeWidth="0.7" vectorEffect="non-scaling-stroke" fillRule="evenodd" />
+    <path d={land} fill="#e5e8da" stroke="#66808a" strokeWidth="0.7" vectorEffect="non-scaling-stroke" fillRule="evenodd" />
     {showBorders && <path d={borders} fill="none" stroke="#66808a" strokeWidth="0.7" vectorEffect="non-scaling-stroke" />}
     {recorded.map(({ id, properties }) => {
       const select = () => onSelect?.(properties.areaKey);

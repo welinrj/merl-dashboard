@@ -256,11 +256,7 @@ export default function PublicDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openCategory, setOpenCategory] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [autoAreaIndex, setAutoAreaIndex] = useState(0);
-  const [areaScrollPaused, setAreaScrollPaused] = useState(false);
-  const [areaScrollHover, setAreaScrollHover] = useState(false);
-  const [reduceAreaMotion, setReduceAreaMotion] = useState(false);
-  const areaListRef = useRef(null);
+  const [areaSearch,setAreaSearch]=useState('');
   const allProjects = data?.projects || [];
   const projects = allProjects.filter(project => !isCompletedProject(project));
   const summary = data?.summary;
@@ -286,8 +282,7 @@ export default function PublicDashboard() {
   const comparableUtilisation = comparableFinancialUtilisation(filtered);
   const selectedIds = new Set(filtered.map(project => String(project.id)));
   const visibleAreas = scopePublicAreas(sourceAreas, filtered, filters.province);
-  const visibleAreaKey = visibleAreas.map(area => `${area.province}:${area.area_council}`).join('|');
-  const areaScrollStopped = areaScrollPaused || areaScrollHover || reduceAreaMotion;
+  const directoryAreas=visibleAreas.filter(area=>`${area.area_council} ${area.province}`.toLowerCase().includes(areaSearch.trim().toLowerCase())).sort((a,b)=>a.province.localeCompare(b.province)||a.area_council.localeCompare(b.area_council));
   const indicatorCategories = aggregateIndicatorCategories(sourceIndicatorCategories, selectedIds);
   const indicatorTotal = indicatorCategories.reduce((sum, category) => sum + category.indicatorCount, 0);
   const visibleIndicatorDetails = sourceIndicatorDetails.filter(row => selectedIds.has(String(row.project_id)));
@@ -303,47 +298,13 @@ export default function PublicDashboard() {
     {tone:'rate',label:c.utilisation,value:pct(comparableUtilisation),detail:c.utilisationSub},
   ];
   const viewProject=id=>{requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);const info=card?.querySelector('[data-project-information]');if(info)info.open=true;card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
-  const mapView=()=><PublicCoverageMap projectCount={filtered.length} projects={filtered} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={viewProject}/>;
+  const mapView=()=><PublicCoverageMap projectCount={filtered.length} projects={filtered} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={viewProject} indicatorDetails={visibleIndicatorDetails} categoryLabels={c.activityCategoryLabels}/>;
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
   const refresh = () => { void refetch(); };
   const chooseProvince = province => {
     setFilters(value => ({ ...value, province }));
     if (province && selectedArea?.province !== province) setSelectedArea(null);
   };
-
-  useEffect(() => {
-    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const syncMotionPreference = () => setReduceAreaMotion(query.matches);
-    syncMotionPreference();
-    query.addEventListener?.('change', syncMotionPreference);
-    return () => query.removeEventListener?.('change', syncMotionPreference);
-  }, []);
-
-  useEffect(() => {
-    setAutoAreaIndex(0);
-    areaListRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-  }, [visibleAreaKey]);
-
-  useEffect(() => {
-    if (areaScrollStopped || visibleAreas.length < 2) return undefined;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        setAutoAreaIndex(index => (index + 1) % visibleAreas.length);
-      }
-    }, 3200);
-    return () => window.clearInterval(timer);
-  }, [areaScrollStopped, visibleAreas.length, visibleAreaKey]);
-
-  useEffect(() => {
-    const directory = areaListRef.current;
-    if (!directory || areaScrollStopped || visibleAreas.length < 2) return;
-    const activeRow = directory.querySelector(`[data-area-index="${autoAreaIndex}"]`);
-    if (!activeRow || directory.scrollHeight <= directory.clientHeight + 1) return;
-    const maxScroll = directory.scrollHeight - directory.clientHeight;
-    const rowTop = activeRow.getBoundingClientRect().top - directory.getBoundingClientRect().top + directory.scrollTop;
-    const top = Math.max(0, Math.min(rowTop - (directory.clientHeight - activeRow.offsetHeight) / 2, maxScroll));
-    directory.scrollTo({ top, behavior: 'smooth' });
-  }, [autoAreaIndex, areaScrollStopped, visibleAreas.length]);
 
   return <div className="dsh pbd-root">
 
@@ -388,29 +349,9 @@ export default function PublicDashboard() {
             <div className="pbd-location-grid">
               {mapView()}
               <div className="pbd-area-directory">
-                <div className="pbd-area-directory-head">
-                  <h3>{c.areaCouncils}</h3>
-                  {visibleAreas.length > 1 && <button type="button" className="pbd-area-scroll-toggle" aria-pressed={areaScrollPaused} onClick={() => setAreaScrollPaused(value => !value)}>{areaScrollPaused ? <Play size={13} aria-hidden="true" /> : <Pause size={13} aria-hidden="true" />}{areaScrollPaused ? c.resumeAreaScroll : c.pauseAreaScroll}</button>}
-                </div>
-                {visibleAreas.length ? <div
-                  ref={areaListRef}
-                  className="pbd-area-list"
-                  onMouseEnter={() => setAreaScrollHover(true)}
-                  onMouseLeave={() => setAreaScrollHover(false)}
-                  onFocus={() => setAreaScrollHover(true)}
-                  onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setAreaScrollHover(false); }}
-                  onTouchStart={() => setAreaScrollPaused(true)}
-                >{visibleAreas.map((area, index) => <button
-                  type="button"
-                  key={`${area.province}-${area.area_council}`}
-                  data-area-index={index}
-                  className={[
-                    selectedArea?.province === area.province && selectedArea?.area_council === area.area_council ? 'active' : '',
-                    autoAreaIndex === index ? 'is-auto-current' : '',
-                  ].filter(Boolean).join(' ')}
-                  data-theme-category={area.project_count > 0 ? (area.theme_category || 'not-recorded') : undefined}
-                  onClick={() => { setAreaScrollPaused(true); setSelectedArea({ province: area.province, area_council: area.area_council }); }}
-                ><span className="pbd-area-copy"><strong className="pbd-area-flap" style={{ '--pbd-flap-delay': `${Math.min(index, 6) * 40}ms` }}><span className="pbd-area-flap-face">{area.area_council}</span></strong><small>{area.province}</small></span><b>{area.project_count}</b></button>)}</div> : <p>{c.noLocations}</p>}
+                <div className="pbd-area-directory-head"><h3>{c.areaCouncils}</h3><strong>{visibleAreas.length}</strong></div>
+                <label className="pbd-area-search"><span className="sr-only">{lang==='fr'?'Rechercher un conseil':'Search Area Councils'}</span><input type="search" value={areaSearch} onChange={e=>setAreaSearch(e.target.value)} placeholder={lang==='fr'?'Rechercher…':'Search councils…'}/></label>
+                {directoryAreas.length?<div className="pbd-area-list">{directoryAreas.map(area=><button type="button" key={`${area.province}-${area.area_council}`} className={selectedArea?.province===area.province&&selectedArea?.area_council===area.area_council?'active':''} data-theme-category={area.theme_category||'not-recorded'} onClick={()=>setSelectedArea({province:area.province,area_council:area.area_council})}><span className="pbd-area-copy"><strong className="pbd-area-flap-face">{area.area_council}</strong><small>{area.province}</small></span><b>{area.project_count}</b></button>)}</div>:<p>{visibleAreas.length?(lang==='fr'?'Aucun conseil correspondant.':'No matching councils.'):c.noLocations}</p>}
               </div>
             </div>
           </section>
