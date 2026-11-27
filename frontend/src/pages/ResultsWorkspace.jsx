@@ -190,7 +190,7 @@ export default function ResultsWorkspace({ user }) {
 
   useEffect(() => {
     let alive = true;
-    const background = isLiveRefresh();
+    const background = isLiveRefresh() && !loading && !error;
     if (!background) {
       setLoading(true);
       setError('');

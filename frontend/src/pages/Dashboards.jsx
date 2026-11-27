@@ -86,7 +86,7 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
   }, [requestedProject, d]);
 
   useEffect(() => {
-    const background = isLiveRefresh();
+    const background = isLiveRefresh() && !!d && !loadError && !loading;
     (async () => {
       if (!background) setLoading(true);
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
