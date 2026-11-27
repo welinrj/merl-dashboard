@@ -10,7 +10,7 @@ import * as OPT from '../constants/formOptions';
 const display = value => value === '' || value == null ? '—' : String(value);
 const percent = value => value == null || !Number.isFinite(Number(value)) ? '—' : `${fmtNum(Number(value))}%`;
 
-export default function FrameworkMobileResults({ rows, canEdit, editRow, editNode, attachIndicator, status, nodeTypeLabel, onEvidence, workingState, activities = [], activityError, onRetry }) {
+export default function FrameworkMobileResults({ rows, canEdit, editRow, editNode, attachIndicator, status, nodeTypeLabel, onEvidence, workingState, activities = [], activityError, onRetry, projectColours }) {
   const { t } = useTranslation();
   const groups = useMemo(() => frameworkGroups(rows), [rows]);
   const [expanded, setExpanded] = useState(null);
@@ -31,7 +31,7 @@ export default function FrameworkMobileResults({ rows, canEdit, editRow, editNod
   </li>)}</ul>;
   return <div className="rf2-result-groups">
     <p className="rf2-reading-help">{t('rf.readingHelp')}</p>
-    {groups.map((group, index) => <details className="rf2-result-group" key={group.key}
+    {groups.map((group, index) => <details className="rf2-result-group rf2-project-group" key={group.key} style={projectColours?.get(group.project.id)}
       open={expanded === group.key || (expanded === null && index === 0)}
       onToggle={event => {
         const isOpen = event.currentTarget.open;

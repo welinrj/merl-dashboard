@@ -92,3 +92,21 @@
 .dsh .rf2-page .rf2-table-activities td { border-top:2px solid #c5d8e0; }
 .dsh .rf2-page .rf2-activity-cell section { max-width:680px; white-space:normal; overflow-wrap:anywhere; }
 .dsh .rf2-page .rf2-activity-cell h2 { margin:0 0 12px; font-size:16px; color:#153b58; }
+
+/* Project colour bands. Each project's rows share a tint and a coloured edge
+   (colour = project order, see projectColorAt), structure rows a little deeper
+   than indicator rows, with a rule where the next project starts. Identity
+   only: the colours do not signal performance. */
+.dsh .rf2-page .rf2-table tr.rf2-project-row { --rf2-row:var(--project-bg,#fff); }
+.dsh .rf2-page .rf2-table tr.rf2-project-row.rf2-row-node { --rf2-row:color-mix(in srgb, var(--project-ink,#64748b) 13%, #fff); }
+.dsh .rf2-page .rf2-table tr.rf2-project-row td.rf2-project { box-shadow:inset 5px 0 0 var(--project-ink,#94a3b8); padding-left:17px; }
+.dsh .rf2-page .rf2-table tr.rf2-project-row.rf2-project-start:not(:first-child) td { border-top:2px solid var(--project-ink,#94a3b8); }
+.dsh .rf2-page .rf2-table tr.rf2-project-row .rf2-project-mark :is(small,b) { color:var(--project-ink); }
+.dsh .rf2-page .rf2-table tr.rf2-project-row:hover td,
+.dsh .rf2-page .rf2-table tr.rf2-project-row:focus-within td { background:color-mix(in srgb, var(--project-ink,#64748b) 18%, #fff); }
+.dsh .rf2-page .rf2-result-groups .rf2-result-group.rf2-project-group { border-left:5px solid var(--project-ink,#94a3b8); }
+.dsh .rf2-page .rf2-result-groups .rf2-result-group.rf2-project-group>summary { background:var(--project-bg,#edf5f7); }
+.dsh .rf2-page .rf2-result-groups .rf2-result-group.rf2-project-group>summary small:first-child { color:var(--project-ink); font-weight:700; }
+@media print {
+  .dsh .rf2-page .rf2-table tr.rf2-project-row td { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
