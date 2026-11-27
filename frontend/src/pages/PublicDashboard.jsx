@@ -336,7 +336,7 @@ export default function PublicDashboard() {
         {!data ? (isLoading ? <div className="pbd-state" role="status"><IslandLoading />{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
           {lang === 'fr' && <p className="pbd-refresh-status">Les intitulés et descriptions des projets et indicateurs sont affichés dans leur langue source lorsqu’une traduction validée n’est pas disponible.</p>}
           <section className="pbd-section pbd-report-section pbd-summary-section" aria-labelledby="pbd-s1">
-          <div className="pbd-section-head"><div><h2 id="pbd-s1" className="pbd-report-h2">{lang === 'fr' ? '1. Synthèse du portefeuille' : '1. Portfolio summary'}</h2><p>{lang === 'fr' ? 'Chiffres clés des projets sélectionnés, issus des périodes de rapportage approuvées.' : 'Key figures for the selected projects, taken from approved reporting periods.'}</p></div></div>
+          <div className="pbd-section-head"><div><h2 id="pbd-s1" className="pbd-progress-summary-title">{lang === 'fr' ? '1. Synthèse du portefeuille' : '1. Portfolio summary'}</h2><p>{lang === 'fr' ? 'Chiffres clés des projets sélectionnés, issus des périodes de rapportage approuvées.' : 'Key figures for the selected projects, taken from approved reporting periods.'}</p></div></div>
           <div className="pbd-metrics" role="group" aria-label={c.title}>
             {metricRows.map(row=><Metric key={row.tone} {...row} stamp={row.stamp||stamp} french={lang==='fr'}/>)}
           </div>
@@ -355,12 +355,12 @@ export default function PublicDashboard() {
           </section>
 
           <section className="pbd-section pbd-portfolio">
-            <div className="pbd-section-head"><div><h2 className="pbd-report-h2">{lang === 'fr' ? '2. Progrès par projet' : '2. Progress by project'}</h2><p>{lang === 'fr' ? 'Résultats approuvés et publiés pour chaque projet.' : 'Approved and published results for each project.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
+            <div className="pbd-section-head"><div><h2 className="pbd-progress-summary-title">{lang === 'fr' ? '2. Progrès par projet' : '2. Progress by project'}</h2><p>{lang === 'fr' ? 'Résultats approuvés et publiés pour chaque projet.' : 'Approved and published results for each project.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
             <PublicProgressChart projects={filtered} details={visibleIndicatorDetails} areas={sourceAreas} lang={lang} copy={c} onProject={viewProject} />
             {!filtered.length&&<div className="pbd-empty">{c.noProjects}</div>}
           </section>
           <section className="pbd-section pbd-location-section">
-            <div className="pbd-section-head"><div><h2 className="pbd-report-h2">3. {c.locations}</h2><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
+            <div className="pbd-section-head"><div><span role="heading" aria-level={2}>3. {c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
             {selectedArea && <div className="pbd-area-selection">{c.selectedArea} <strong>{selectedArea.area_council}, {selectedArea.province}</strong></div>}
             <div className="pbd-location-grid">
               {mapView()}
@@ -388,7 +388,7 @@ export default function PublicDashboard() {
           <PublicReachAnalysis number="4."  areas={visibleAreas} projects={filtered} categoryLabels={c.activityCategoryLabels} activityLayer={activityLayer} lang={lang} onAreaSelect={area=>{setSelectedArea(area);if(area)requestAnimationFrame(()=>document.querySelector('.pbd-location-section')?.scrollIntoView({block:'start',behavior:'auto'}));}}/>
 
           <section className="pbd-section pbd-activity-section">
-            <div className="pbd-section-head"><div><h2 className="pbd-report-h2">5. {c.activityAreas}</h2><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>
+            <div className="pbd-section-head"><div><span role="heading" aria-level={2}>5. {c.activityAreas}</span><p>{c.activityAreasIntro}</p></div><strong>{num(indicatorTotal, lang)} {indicatorTotal === 1 ? c.indicator : c.indicators}</strong></div>
             {indicatorCategories.length ? <><div className="pbd-activity-grid">{indicatorCategories.map(category => {
               const categoryIcon = INDICATOR_CATEGORY_ICONS[category.key] || faShapes;
               const CategoryIcon = { ecosystems: ForestsIcon, finance: FundingIcon, beneficiaries: BeneficiariesIcon, capacity: BeneficiariesIcon, 'learning-delivery': UpdateProgressIcon }[category.key];

@@ -19,7 +19,7 @@
 /* Title block: plain, with a double rule beneath */
 .dsh.pbd-root.pbd-report .pbd-title-row{background:none!important;border:0!important;border-bottom:3px double var(--report-head)!important;border-radius:0!important;box-shadow:none!important;padding:0 0 14px!important;margin:0 0 18px!important;overflow:visible}
 .dsh.pbd-root.pbd-report .pbd-title-row::before,.dsh.pbd-root.pbd-report .pbd-title-row::after{display:none!important}
-.dsh.pbd-root.pbd-report .pbd-title-row h1{color:var(--report-head)!important;font-size:clamp(24px,3vw,34px)!important;font-weight:700!important;line-height:1.2!important;margin:0 0 6px!important}
+.dsh.pbd-root.pbd-report .pbd-title-row h1{color:var(--report-head)!important;margin:0 0 6px!important}
 .dsh.pbd-root.pbd-report .pbd-title-row p{color:var(--report-muted)!important;font-size:14px!important;line-height:1.5!important}
 
 /* Filters: a plain bordered panel */
@@ -29,10 +29,8 @@
 .dsh.pbd-root.pbd-report .pbd-section{background:transparent!important;border:0!important;border-top:1px solid var(--report-rule)!important;border-radius:0!important;box-shadow:none!important;padding:22px 0 10px!important;margin:0 0 8px!important}
 .dsh.pbd-root.pbd-report .pbd-section .pbd-section{border-top:0!important;padding:0!important;margin:0!important}
 .dsh.pbd-root.pbd-report .pbd-section-head{margin-bottom:14px!important}
-.dsh.pbd-root.pbd-report .pbd-report-h2{display:block;margin:0!important;color:var(--report-head)!important;font-size:clamp(19px,2.2vw,23px)!important;font-weight:700!important;line-height:1.3!important}
 .dsh.pbd-root.pbd-report .pbd-section-head p{max-width:860px;margin:5px 0 0!important;color:var(--report-muted)!important;font-size:14px!important;line-height:1.55!important}
 .dsh.pbd-root.pbd-report .pbd-section-head>strong{font-size:13px!important;font-weight:600!important;color:var(--report-muted)!important}
-.dsh.pbd-root.pbd-report .pbd-view :is(h3){color:var(--report-head)!important;font-weight:700!important}
 
 /* Containers inside sections: square, flat, ruled */
 .dsh.pbd-root.pbd-report .pbd-view :is(.pbd-metric,.executive-targets,.target-contributions,.pbd-area-directory,.pub-leaflet-wrap,.pbd-activity-details,.pbd-activity-item,.pbd-reach-kpis>div,.pbd-reach-row,.pbd-area-selection,.pub-map-pop-legend,.pbd-progress,.pbd-progress-card,.pbd-theme-progress-chart,.pbd-activity-grid>*,article,details){border-radius:2px!important;box-shadow:none!important}
@@ -50,8 +48,8 @@
 
 /* Target achievement: light panel with a rule instead of a dark slab */
 .dsh.pbd-root.pbd-report .executive-targets{background:#f7f9fa!important;color:var(--report-ink)!important;border:1px solid #dde3e7!important;border-left:4px solid var(--report-head)!important}
-.dsh.pbd-root.pbd-report .executive-targets :is(h2,p,strong,span){color:var(--report-ink)!important}
-.dsh.pbd-root.pbd-report .executive-targets h2{font-size:18px!important}
+.dsh.pbd-root.pbd-report .executive-targets :is(p,strong,span){color:var(--report-ink)!important}
+.dsh.pbd-root.pbd-report .executive-targets h2{color:rgb(23,62,89)!important}
 .dsh.pbd-root.pbd-report .executive-target-value{color:var(--report-head)!important;letter-spacing:0!important}
 .dsh.pbd-root.pbd-report .executive-target-track{background:#dfe6ea!important}
 .dsh.pbd-root.pbd-report .executive-target-track span{background:var(--report-head)!important}
