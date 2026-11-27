@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { latestReportedBy, withReportingDates } from '../lib/docc/progressSelection';
 import { frameworkTargetValue } from '../lib/docc/frameworkTarget';
-import { useLiveDashboard } from '../lib/useLiveDashboard';
+import { useLiveDashboard, useLiveRefreshFlag } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import { localised, localiseRows, sourceRow, i18nCols } from '../lib/contentLocale';
 import { dbErrorMessage } from '../lib/dbError';
@@ -71,6 +71,7 @@ function latestBy(rows, key, ranker = (r) => r.created_at || r.updated_at || '')
 
 export default function ResultsWorkspace({ user }) {
   const liveRevision = useLiveDashboard();
+  const isLiveRefresh = useLiveRefreshFlag(liveRevision);
   const { period } = useWorkspaceContext();
   const [routeParams, setRouteParams] = useSearchParams();
   const { t, i18n } = useTranslation();
@@ -189,8 +190,11 @@ export default function ResultsWorkspace({ user }) {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    setError('');
+    const background = isLiveRefresh();
+    if (!background) {
+      setLoading(true);
+      setError('');
+    }
     Promise.all([
       localised(() => supabase.from('v_projects').select(i18nCols('id,has_results_framework, excluded_from_current_portfolio, code, acronym, name, status')).order('code')),
       localised(() => supabase.from('v_framework_nodes').select('*').order('sort_order').order('node_code')),
@@ -220,7 +224,8 @@ export default function ResultsWorkspace({ user }) {
         : '');
       setLoading(false);
     }).catch((err) => {
-      if (alive) {
+      // A failed live recheck keeps the framework already shown.
+      if (alive && !background) {
         setError(dbErrorMessage(err));
         setLoading(false);
       }

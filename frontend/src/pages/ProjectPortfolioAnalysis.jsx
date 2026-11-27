@@ -37,7 +37,7 @@ import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts';
-import { useLiveDashboard } from '../lib/useLiveDashboard';
+import { useLiveDashboard, useLiveRefreshFlag } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import { localised, i18nCols } from '../lib/contentLocale';
 import { dbErrorMessage } from '../lib/dbError';
@@ -538,6 +538,8 @@ const EMPTY = {
 
 export default function ProjectPortfolioAnalysis() {
   const liveRevision = useLiveDashboard();
+  const isLiveRefresh = useLiveRefreshFlag(liveRevision);
+  const loadedProject = useRef('');
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage;
   const navigate = useNavigate();
@@ -602,14 +604,17 @@ export default function ProjectPortfolioAnalysis() {
   }, [projectId, period]);
 
   // ── The selected project's records ─────────────────────────────────────────
-  const load = useCallback(async (id) => {
+  const load = useCallback(async (id, { background = false } = {}) => {
     if (!id) { setD(EMPTY); setErrors({}); return; }
-    setLoading(true);
-    // Clear first: a figure from the previous project must never be on screen
-    // while the new one loads, even for a moment.
-    setD(EMPTY);
-    setErrors({});
-    setIndicator(null);
+    if (!background) {
+      setLoading(true);
+      // Clear first: a figure from the previous project must never be on screen
+      // while the new one loads, even for a moment. A live recheck of the same
+      // project keeps the page and any open indicator as they are.
+      setD(EMPTY);
+      setErrors({});
+      setIndicator(null);
+    }
 
     const scoped = (view, cols, translatable = true) => () =>
       supabase.from(view).select(translatable ? i18nCols(cols) : cols).eq('project_id', id);
@@ -661,12 +666,22 @@ export default function ProjectPortfolioAnalysis() {
       if (res?.error) { errs[key] = dbErrorMessage(res.error, t('ppa.sectionFailed')); continue; }
       next[key] = key === 'project' ? (res.data ?? null) : (res.data ?? []);
     }
+    loadedProject.current = id;
+    if (background) {
+      // Keep the previous figures for any section whose recheck failed.
+      setD(prev => Object.fromEntries(Object.keys(next).map(key => [key, errs[key] ? prev[key] : next[key]])));
+      return;
+    }
     setD(next);
     setErrors(errs);
     setLoading(false);
   }, [t]);
 
-  useEffect(() => { load(projectId); }, [projectId, lang, liveRevision]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const live = isLiveRefresh();
+    // Quiet only when re-checking the project already on screen.
+    load(projectId, { background: live && loadedProject.current === projectId });
+  }, [projectId, lang, liveRevision]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── The analysis ───────────────────────────────────────────────────────────
   const a = useMemo(() => analyseProject(d, period), [d, period]);

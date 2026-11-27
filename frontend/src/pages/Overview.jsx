@@ -44,7 +44,7 @@ import { useTranslation } from 'react-i18next';
 import { fmtDate, fmtNum } from '../lib/locale';
 import { localised, i18nCols } from '../lib/contentLocale';
 import { latestReportedBy, withReportingDates, portfolioProgress } from '../lib/docc/progressSelection';
-import { useLiveDashboard } from '../lib/useLiveDashboard';
+import { useLiveDashboard, useLiveRefreshFlag } from '../lib/useLiveDashboard';
 import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
 
 const C = {
@@ -105,6 +105,7 @@ export default function Overview({ user }) {
   const { filters, setFilter, reset } = useDashboardFilters();
 
   const liveRevision = useLiveDashboard();
+  const isLiveRefresh = useLiveRefreshFlag(liveRevision);
   const [sourceData, setData] = useState(null);
   const { period, periodInfo, selectPeriod } = useWorkspaceContext();
   const data = scopeWorkspacePeriod(sourceData, period);
@@ -138,8 +139,11 @@ export default function Overview({ user }) {
 
   useEffect(() => {
     let mounted = true;
-    setData(null);
-    setLoadError(null);
+    const background = isLiveRefresh();
+    if (!background) {
+      setData(null);
+      setLoadError(null);
+    }
 
     (async () => {
       try {
@@ -182,7 +186,8 @@ export default function Overview({ user }) {
           periodProgress: pp.data ?? [],
         });
       } catch (err) {
-        if (mounted) setLoadError(err);
+        // A failed live recheck keeps the figures already shown.
+        if (mounted && !background) setLoadError(err);
       }
     })();
 

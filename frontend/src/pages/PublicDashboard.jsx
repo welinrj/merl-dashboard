@@ -1,7 +1,7 @@
 import { isCompletedProject } from '../lib/docc/projectScope';
 import { IslandLoading, IslandLogo } from '../components/IslandBrand';
 import { OverviewIcon, ProjectsIcon, FundingIcon, FundsUsedIcon, BeneficiariesIcon, BudgetUsageIcon, ForestsIcon, UpdateProgressIcon, AdaptationIcon, LossDamageIcon } from '../components/ui/MerlIcons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -252,6 +252,10 @@ export default function PublicDashboard() {
   const lang = i18n.resolvedLanguage?.startsWith('fr') ? 'fr' : 'en';
   const c = COPY[lang];
   const { data, isLoading, isFetching, isError, refetch } = usePublicSnapshot();
+  // The snapshot re-checks itself every minute; only announce a check the
+  // reader asked for, so the page doesn't jump on every background poll.
+  const [manualRefresh, setManualRefresh] = useState(false);
+  useEffect(() => { if (!isFetching) setManualRefresh(false); }, [isFetching]);
   const [filters, setFilters] = useState(initialFilters);
   const [selectedArea, setSelectedArea] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -303,7 +307,7 @@ export default function PublicDashboard() {
   const viewProject=id=>{requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);const info=card?.querySelector('[data-project-information]');if(info)info.open=true;card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
   const mapView=()=><PublicCoverageMap projectCount={filtered.length} projects={filtered} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={viewProject} indicatorDetails={visibleIndicatorDetails} categoryLabels={c.activityCategoryLabels} activityLayer={activityLayer} onLayerChange={layer=>{setActivityLayer(layer);setAreaSearch('');}}/>;
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
-  const refresh = () => { void refetch(); };
+  const refresh = () => { setManualRefresh(true); void refetch(); };
   const chooseProvince = province => {
     setFilters(value => ({ ...value, province }));
     if (province && selectedArea?.province !== province) setSelectedArea(null);
@@ -330,7 +334,7 @@ export default function PublicDashboard() {
           <label><span>{c.province}</span><select value={filters.province} onChange={event => chooseProvince(event.target.value)}><option value="">{c.all}</option>{PROVINCES.map(province => <option key={province}>{province}</option>)}</select></label>
           <button type="button" className="pbd-reset" disabled={allScope} onClick={reset}>{c.reset}</button><button type="button" className="pbd-refresh" disabled={isFetching} onClick={refresh}>{c.refresh}</button>
         </div>
-        {isFetching && data && <div className="pbd-refresh-status" role="status">{c.refreshing}</div>}
+        {manualRefresh && isFetching && data && <div className="pbd-refresh-status" role="status">{c.refreshing}</div>}
         {isError && data && <div className="pbd-refresh-status pbd-refresh-error" role="alert">{c.stale}<button type="button" onClick={refresh}>{c.retry}</button></div>}
         {!data ? (isLoading ? <div className="pbd-state" role="status"><IslandLoading />{c.loading}</div> : <div className="pbd-state" role="alert">{c.error}<button type="button" onClick={refresh}>{c.retry}</button></div>) : <>
           {lang === 'fr' && <p className="pbd-refresh-status">Les intitulés et descriptions des projets et indicateurs sont affichés dans leur langue source lorsqu’une traduction validée n’est pas disponible.</p>}

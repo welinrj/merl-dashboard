@@ -16,7 +16,7 @@ import { useSearchParams } from 'react-router-dom';
 // Every other metric, tab and heading is carried by its label and its number.
 import { AlertTriangle } from '../components/ui/icons';
 import { latestReportedBy, withReportingDates, portfolioProgress } from '../lib/docc/progressSelection';
-import { useLiveDashboard } from '../lib/useLiveDashboard';
+import { useLiveDashboard, useLiveRefreshFlag } from '../lib/useLiveDashboard';
 import { supabase } from '../supabaseClient';
 import StatTile from '../components/ui/StatTile';
 import MetricStrip from '../components/ui/MetricStrip';
@@ -67,6 +67,7 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
   const lang = i18n.resolvedLanguage;
   const [tab, setTab] = useState(initialTab || 'portfolio');
   const liveRevision = useLiveDashboard();
+  const isLiveRefresh = useLiveRefreshFlag(liveRevision);
   const [loadError, setLoadError] = useState(null);
   const [sourceD, setD] = useState(null); // loaded datasets
   const { period } = useWorkspaceContext();
@@ -85,8 +86,9 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
   }, [requestedProject, d]);
 
   useEffect(() => {
+    const background = isLiveRefresh();
     (async () => {
-      setLoading(true);
+      if (!background) setLoading(true);
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
       const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs] = await Promise.all([
@@ -103,7 +105,7 @@ export default function Dashboards({ initialTab, allowedTabs = TABS.map((item) =
         supabase.from('v_project_organizations').select('project_id, role, name'),
       ]);
       const failure = [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs].find(response => response.error);
-      if (failure) { setLoadError(failure.error); setLoading(false); return; }
+      if (failure) { if (!background) setLoadError(failure.error); setLoading(false); return; }
       setLoadError(null);
       setD(officialPortfolioData({
         projects: proj.data ?? [], financial: withReportingDates(fin.data ?? [], rep.data ?? []), risks: risk.data ?? [],

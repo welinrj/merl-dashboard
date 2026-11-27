@@ -35,7 +35,8 @@ export default function WorkspaceContextProvider({ user, children }) {
   }, [period, user.id]);
   useEffect(() => {
     let alive = true;
-    setAccess({ loading: true, error: false, projects: [], periods: [] });
+    // Keep the current access list on screen during a live recheck.
+    setAccess(prev => (prev.loading || prev.error ? { loading: true, error: false, projects: [], periods: [] } : prev));
     Promise.all([
       supabase.from('v_projects').select('id, code, status, has_results_framework, excluded_from_current_portfolio'),
       supabase.from('v_reporting_periods').select('project_id, period_label, period_type, period_end'),
@@ -44,7 +45,7 @@ export default function WorkspaceContextProvider({ user, children }) {
       if (projectsResponse.error || periodsResponse.error) throw new Error('access');
       const projects = currentProjects(projectsResponse.data || []);
       setAccess({ loading: false, error: false, projects, periods: visiblePeriodOptions(projects, periodsResponse.data || []) });
-    }).catch(() => { if (alive) setAccess({ loading: false, error: true, projects: [], periods: [] }); });
+    }).catch(() => { if (alive) setAccess(prev => (prev.loading || prev.error ? { loading: false, error: true, projects: [], periods: [] } : prev)); });
     return () => { alive = false; };
   }, [user.id, revision, i18n.resolvedLanguage]);
   const selectPeriod = useCallback(value => {
