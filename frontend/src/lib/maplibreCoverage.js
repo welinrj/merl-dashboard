@@ -84,7 +84,7 @@ export function mapStyle(base, data) {
       'fill-antialias': true,
     } },
     { id: 'council-borders', type: 'line', source: 'shared-borders', maxzoom: 11.01, layout: { visibility: 'none', 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': base?.sources?.imagery ? '#edf7fa' : '#466478', 'line-width': ['interpolate',['linear'],['zoom'],5,0.55,10,1.2], 'line-opacity': 0.65 } },
-    { id:'recorded-council-edge',type:'line',source:'councils',maxzoom:11.01,filter:['>', ['coalesce',['get','projectCount'],0],0],layout:{'line-join':'round'},paint:{'line-color':['coalesce',['get','edgeColour'],['get','colour']],'line-opacity':['case',['has','edgeColour'],0.95,0.75],'line-width':['case',['has','edgeColour'],['interpolate',['linear'],['zoom'],5,1.4,10,2.4],['interpolate',['linear'],['zoom'],5,0.7,10,1.5]]} },
+    { id:'recorded-council-edge',type:'line',source:'councils',maxzoom:11.01,filter:['>', ['coalesce',['get','projectCount'],0],0],layout:{'line-join':'round'},paint:{'line-color':['coalesce',['get','edgeColour'],['get','colour']],'line-opacity':['case',['has','edgeColour'],0.95,0.75],'line-width':['interpolate',['linear'],['zoom'],5,['case',['has','edgeColour'],1.4,0.7],10,['case',['has','edgeColour'],2.4,1.5]]} },
     { id: 'selected-council', type: 'line', source: 'councils', maxzoom: 11.01, filter: ['==', ['get', 'selected'], true], paint: { 'line-color': base?.sources?.imagery ? '#7bd5cd' : '#163d57', 'line-width': 3 } },
   ];
   layers.splice(firstLabel < 0 ? layers.length : firstLabel, 0, ...overlays);
