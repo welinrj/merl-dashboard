@@ -1,0 +1,80 @@
+/* Public overview — government report presentation.
+   Typography: Cambria for titles and headings, Arial for everything else.
+   Structure: numbered sections divided by rules on a single page, not a grid
+   of floating cards. Caveats live in each section's "Notes and sources".
+   Specificity (.dsh.pbd-root.pbd-report …) plus !important is needed because
+   visual-polish.css / typography-system.css style these with !important. */
+
+.dsh.pbd-root.pbd-report{
+  --font-display:Arial,Helvetica,sans-serif;
+  --report-rule:#b9c7cf;
+  --report-ink:#1d2f3a;
+  --report-muted:#4f6270;
+  --report-head:#123b2b;
+  font-family:Arial,Helvetica,sans-serif!important;
+  color:var(--report-ink);
+}
+.dsh.pbd-root.pbd-report .pbd-view :is(p,span,small,li,label,select,input,button,summary,td,th,b,strong,dt,dd){font-family:Arial,Helvetica,sans-serif}
+.dsh.pbd-root.pbd-report .pbd-view :is(h1,h2,h3,.pbd-report-h2){font-family:Cambria,'Times New Roman',Georgia,serif!important;letter-spacing:0!important;text-transform:none!important}
+
+/* Page: one white sheet on a light ground */
+.dsh.pbd-root.pbd-report .dsh-scroll{background:#eef1f3!important}
+.dsh.pbd-root.pbd-report .pbd-view{max-width:1180px;margin:0 auto;background:#fff;border-left:1px solid #dde3e7;border-right:1px solid #dde3e7;padding:28px 36px 32px!important}
+
+/* Title block: plain, with a double rule beneath */
+.dsh.pbd-root.pbd-report .pbd-title-row{background:none!important;border:0!important;border-bottom:3px double var(--report-head)!important;border-radius:0!important;box-shadow:none!important;padding:0 0 14px!important;margin:0 0 18px!important;overflow:visible}
+.dsh.pbd-root.pbd-report .pbd-title-row::before,.dsh.pbd-root.pbd-report .pbd-title-row::after{display:none!important}
+.dsh.pbd-root.pbd-report .pbd-title-row h1{color:var(--report-head)!important;font-size:clamp(24px,3vw,34px)!important;font-weight:700!important;line-height:1.2!important;margin:0 0 6px!important}
+.dsh.pbd-root.pbd-report .pbd-title-row p{color:var(--report-muted)!important;font-size:14px!important;line-height:1.5!important}
+
+/* Filters: a plain bordered panel */
+.dsh.pbd-root.pbd-report .pbd-filters{border-radius:2px!important;box-shadow:none!important;background:#f7f9fa!important;border:1px solid #dde3e7!important}
+
+/* Sections: separated by rules, numbered Cambria headings */
+.dsh.pbd-root.pbd-report .pbd-section{background:transparent!important;border:0!important;border-top:1px solid var(--report-rule)!important;border-radius:0!important;box-shadow:none!important;padding:22px 0 10px!important;margin:0 0 8px!important}
+.dsh.pbd-root.pbd-report .pbd-section .pbd-section{border-top:0!important;padding:0!important;margin:0!important}
+.dsh.pbd-root.pbd-report .pbd-section-head{margin-bottom:14px!important}
+.dsh.pbd-root.pbd-report .pbd-report-h2{display:block;margin:0!important;color:var(--report-head)!important;font-size:clamp(19px,2.2vw,23px)!important;font-weight:700!important;line-height:1.3!important}
+.dsh.pbd-root.pbd-report .pbd-section-head p{max-width:860px;margin:5px 0 0!important;color:var(--report-muted)!important;font-size:14px!important;line-height:1.55!important}
+.dsh.pbd-root.pbd-report .pbd-section-head>strong{font-size:13px!important;font-weight:600!important;color:var(--report-muted)!important}
+.dsh.pbd-root.pbd-report .pbd-view :is(h3){color:var(--report-head)!important;font-weight:700!important}
+
+/* Containers inside sections: square, flat, ruled */
+.dsh.pbd-root.pbd-report .pbd-view :is(.pbd-metric,.executive-targets,.target-contributions,.pbd-area-directory,.pub-leaflet-wrap,.pbd-activity-details,.pbd-activity-item,.pbd-reach-kpis>div,.pbd-reach-row,.pbd-area-selection,.pub-map-pop-legend,.pbd-progress,.pbd-progress-card,.pbd-theme-progress-chart,.pbd-activity-grid>*,article,details){border-radius:2px!important;box-shadow:none!important}
+
+/* Key figures: a ruled row of cells rather than floating tiles */
+.dsh.pbd-root.pbd-report .pbd-metrics{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))!important;gap:0!important;padding:1px 0 0 1px;margin-bottom:14px!important}
+.dsh.pbd-root.pbd-report .pbd-metric{background:#fff!important;border:1px solid var(--report-rule)!important;margin:-1px 0 0 -1px!important;min-height:0!important;padding:14px 16px!important}
+.dsh.pbd-root.pbd-report .pbd-activity-grid>*{box-shadow:none!important}
+.dsh.pbd-root.pbd-report .pbd-metric::before{display:none!important}
+.dsh.pbd-root.pbd-report .pbd-metric .merl-card-icon{display:none!important}
+.dsh.pbd-root.pbd-report .pbd-metric .merl-metric-head{min-height:0!important;padding-right:30px}
+.dsh.pbd-root.pbd-report .pbd-metric .merl-metric-head>span{font-size:13px!important;font-weight:700!important;color:var(--report-muted)!important}
+.dsh.pbd-root.pbd-report .pbd-metric>strong{margin:10px 0 6px!important;color:var(--report-head)!important;font-family:Arial,Helvetica,sans-serif!important;font-size:clamp(19px,1.8vw,23px)!important;font-weight:700!important;letter-spacing:0!important}
+.dsh.pbd-root.pbd-report .pbd-metric>small{font-size:12px!important;color:var(--report-muted)!important}
+
+/* Target achievement: light panel with a rule instead of a dark slab */
+.dsh.pbd-root.pbd-report .executive-targets{background:#f7f9fa!important;color:var(--report-ink)!important;border:1px solid #dde3e7!important;border-left:4px solid var(--report-head)!important}
+.dsh.pbd-root.pbd-report .executive-targets :is(h2,p,strong,span){color:var(--report-ink)!important}
+.dsh.pbd-root.pbd-report .executive-targets h2{font-size:18px!important}
+.dsh.pbd-root.pbd-report .executive-target-value{color:var(--report-head)!important;font-family:Arial,Helvetica,sans-serif!important;letter-spacing:0!important}
+.dsh.pbd-root.pbd-report .executive-target-track{background:#dfe6ea!important}
+.dsh.pbd-root.pbd-report .executive-target-track span{background:var(--report-head)!important}
+
+/* Notes and sources: footnote block at the foot of each section */
+.pbd-notes{margin:18px 0 4px;padding-top:10px;border-top:1px solid #dde3e7}
+.dsh.pbd-root.pbd-report .pbd-notes h3{margin:0 0 6px!important;font-size:14px!important;color:var(--report-head)!important}
+.pbd-notes ol{margin:0;padding-left:22px;display:grid;gap:4px;list-style:decimal outside!important}
+.pbd-notes li{display:list-item!important;list-style:inherit!important}
+.pbd-notes li{font-size:12.5px;line-height:1.55;color:#4f6270;max-width:980px}
+
+/* Footer */
+.dsh.pbd-root.pbd-report .pbd-footer{border-top:3px double var(--report-head);padding-top:12px;margin-top:20px!important;font-size:12.5px!important;color:var(--report-muted)!important}
+
+@media(max-width:760px){
+  .dsh.pbd-root.pbd-report .pbd-view{padding:18px 16px 24px!important;border:0}
+}
+@media(max-width:480px){
+  .dsh.pbd-root.pbd-report .pbd-view{padding:14px 12px 22px!important}
+  .pbd-notes li{font-size:12px}
+}
