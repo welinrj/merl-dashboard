@@ -29,7 +29,7 @@ import { publicTargetProgress } from '../lib/publicTargetProgress';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
 import { toVuv } from '../lib/docc/currency';
 import { PROVINCES } from '../lib/publicProvinces';
-import { aggregateIndicatorCategories, projectThemes, scopePublicAreas } from '../lib/publicPortfolioCategories';
+import { aggregateIndicatorCategories, projectThemes, scopePublicAreas, scopeThematicAreas } from '../lib/publicPortfolioCategories';
 import './public-dashboard.css';
 
 const CREST = `${import.meta.env.BASE_URL}vanuatu-coat-of-arms.svg`;
@@ -257,6 +257,7 @@ export default function PublicDashboard() {
   const [openCategory, setOpenCategory] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [areaSearch,setAreaSearch]=useState('');
+  const [activityLayer,setActivityLayer]=useState('');
   const allProjects = data?.projects || [];
   const projects = allProjects.filter(project => !isCompletedProject(project));
   const summary = data?.summary;
@@ -282,10 +283,11 @@ export default function PublicDashboard() {
   const comparableUtilisation = comparableFinancialUtilisation(filtered);
   const selectedIds = new Set(filtered.map(project => String(project.id)));
   const visibleAreas = scopePublicAreas(sourceAreas, filtered, filters.province);
-  const directoryAreas=visibleAreas.filter(area=>`${area.area_council} ${area.province}`.toLowerCase().includes(areaSearch.trim().toLowerCase())).sort((a,b)=>a.province.localeCompare(b.province)||a.area_council.localeCompare(b.area_council));
   const indicatorCategories = aggregateIndicatorCategories(sourceIndicatorCategories, selectedIds);
   const indicatorTotal = indicatorCategories.reduce((sum, category) => sum + category.indicatorCount, 0);
   const visibleIndicatorDetails = sourceIndicatorDetails.filter(row => selectedIds.has(String(row.project_id)));
+  const thematicDirectory=scopeThematicAreas(visibleAreas,activityLayer,visibleIndicatorDetails,filtered);
+  const directoryAreas=thematicDirectory.filter(area=>`${area.area_council} ${area.province}`.toLowerCase().includes(areaSearch.trim().toLowerCase())).sort((a,b)=>a.province.localeCompare(b.province)||a.area_council.localeCompare(b.area_council));
   const activeCategory = indicatorCategories.find(category => category.key === openCategory);
   const activeDetails = activeCategory ? visibleIndicatorDetails.filter(row => row.category_key === activeCategory.key) : [];
   const stamp = summary?.updated_at ? `${c.updated}: ${new Date(summary.updated_at).toLocaleDateString(lang==='fr'?'fr-FR':'en-GB')}` : (lang==='fr'?'Date de mise à jour non renseignée':'Refresh date not recorded');
@@ -298,7 +300,7 @@ export default function PublicDashboard() {
     {tone:'rate',label:c.utilisation,value:pct(comparableUtilisation),detail:c.utilisationSub},
   ];
   const viewProject=id=>{requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);const info=card?.querySelector('[data-project-information]');if(info)info.open=true;card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
-  const mapView=()=><PublicCoverageMap projectCount={filtered.length} projects={filtered} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={viewProject} indicatorDetails={visibleIndicatorDetails} categoryLabels={c.activityCategoryLabels}/>;
+  const mapView=()=><PublicCoverageMap projectCount={filtered.length} projects={filtered} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={viewProject} indicatorDetails={visibleIndicatorDetails} categoryLabels={c.activityCategoryLabels} activityLayer={activityLayer} onLayerChange={layer=>{setActivityLayer(layer);setAreaSearch('');}}/>;
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
   const refresh = () => { void refetch(); };
   const chooseProvince = province => {
@@ -349,9 +351,9 @@ export default function PublicDashboard() {
             <div className="pbd-location-grid">
               {mapView()}
               <div className="pbd-area-directory">
-                <div className="pbd-area-directory-head"><h3>{c.areaCouncils}</h3><strong>{visibleAreas.length}</strong></div>
+                <div className="pbd-area-directory-head"><h3>{c.areaCouncils}</h3><strong>{thematicDirectory.length}</strong></div>
                 <label className="pbd-area-search"><span className="sr-only">{lang==='fr'?'Rechercher un conseil':'Search Area Councils'}</span><input type="search" value={areaSearch} onChange={e=>setAreaSearch(e.target.value)} placeholder={lang==='fr'?'Rechercher…':'Search councils…'}/></label>
-                {directoryAreas.length?<div className="pbd-area-list">{directoryAreas.map(area=><button type="button" key={`${area.province}-${area.area_council}`} className={selectedArea?.province===area.province&&selectedArea?.area_council===area.area_council?'active':''} data-theme-category={area.theme_category||'not-recorded'} onClick={()=>setSelectedArea({province:area.province,area_council:area.area_council})}><span className="pbd-area-copy"><strong className="pbd-area-flap-face">{area.area_council}</strong><small>{area.province}</small></span><b>{area.project_count}</b></button>)}</div>:<p>{visibleAreas.length?(lang==='fr'?'Aucun conseil correspondant.':'No matching councils.'):c.noLocations}</p>}
+                {directoryAreas.length?<div className="pbd-area-list">{directoryAreas.map(area=><button type="button" key={`${area.province}-${area.area_council}`} className={selectedArea?.province===area.province&&selectedArea?.area_council===area.area_council?'active':''} data-theme-category={area.theme_category||'not-recorded'} onClick={()=>setSelectedArea({province:area.province,area_council:area.area_council})}><span className="pbd-area-copy"><strong className="pbd-area-flap-face">{area.area_council}</strong><small>{area.province}</small></span><b>{area.project_count}</b></button>)}</div>:<p>{thematicDirectory.length?(lang==='fr'?'Aucun conseil correspondant.':'No matching councils.'):activityLayer?(lang==='fr'?'Aucun lieu publié pour cette catégorie.':'No published locations for this category.'):c.noLocations}</p>}
               </div>
             </div>
           </section>

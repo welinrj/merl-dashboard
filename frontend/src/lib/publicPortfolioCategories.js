@@ -84,3 +84,21 @@ export function scopePublicAreas(areas, projects, province = '') {
     };
   }).filter(area => area.project_count > 0);
 }
+
+/** Only explicitly published local assignments/results may determine thematic coverage. */
+export function scopeThematicAreas(areas=[], category='', indicatorDetails=[], projects=[]) {
+  if (!category) return areas;
+  const projectNames=new Map(projects.map(p=>[String(p.id),p.name]));
+  const localCategory=entry=>{
+    if(entry.kind!=='indicator')return null;
+    const candidates=indicatorDetails.filter(d=>String(d.project_id)===String(entry.project_id)&&(entry.indicator_id?String(d.indicator_id)===String(entry.indicator_id):String(d.indicator_name||'').trim()===String(entry.label||'').trim()));
+    return candidates.length===1?candidates[0].category_key:null;
+  };
+  return areas.map(area=>{
+    const scoped=entry=>list(area.project_ids).some(id=>String(id)===String(entry.project_id));
+    const local=list(area.local_details).filter(entry=>scoped(entry)&&localCategory(entry)===category);
+    const assignments=list(area.implementation_details).filter(entry=>scoped(entry)&&entry.category_key===category);
+    const ids=[...new Set([...local,...assignments].map(entry=>String(entry.project_id)))];
+    return {...area,local_details:local,implementation_details:assignments,project_ids:ids,project_names:ids.map(id=>projectNames.get(id)||id),project_count:ids.length};
+  }).filter(a=>a.project_count>0);
+}

@@ -4,6 +4,7 @@ import {
   aggregateIndicatorCategories,
   thematicAreaCategory,
   scopePublicAreas,
+  scopeThematicAreas,
 } from '../src/lib/publicPortfolioCategories.js';
 
 test('Area Councils use official project themes, including a combined category', () => {
@@ -47,3 +48,13 @@ test('province filters keep map and directory assignments within the selected pr
 });
 
 test('loss and damage has its own map theme, and mixed themes are not misclassified',()=>{assert.equal(thematicAreaCategory([{docc_themes:['Loss and Damage']}]),'loss-damage');assert.equal(thematicAreaCategory([{docc_themes:['Adaptation','Loss and Damage']}]),'both');});
+
+test('thematic map and directory use published location assignments without duplicating projects or inferring coverage',()=>{
+ const projects=[{id:'p',name:'Test'}];
+ const areas=[{area_council:'West Santo',project_ids:['p'],implementation_details:[{project_id:'p',category_key:'ecosystems'},{project_id:'p',category_key:'ecosystems'},{project_id:'excluded',category_key:'capacity'}]},{area_council:'South Tanna',project_ids:['p'],implementation_details:[{project_id:'p',category_key:'infrastructure'}]}];
+ assert.equal(scopeThematicAreas(areas,'ecosystems',[],projects).length,1);
+ assert.equal(scopeThematicAreas(areas,'ecosystems',[],projects)[0].project_count,1);
+ assert.equal(scopeThematicAreas(areas,'capacity',[],projects).length,0);
+ assert.equal(scopeThematicAreas(areas,'infrastructure',[],projects)[0].area_council,'South Tanna');
+ assert.equal(scopeThematicAreas(areas,'',[],projects).length,2);
+});
