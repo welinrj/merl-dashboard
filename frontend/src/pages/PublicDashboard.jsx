@@ -1,4 +1,3 @@
-import StatusBadge from '../components/ui/StatusBadge';
 import { isCompletedProject } from '../lib/docc/projectScope';
 import { IslandLoading, IslandLogo } from '../components/IslandBrand';
 import { OverviewIcon, ProjectsIcon, FundingIcon, FundsUsedIcon, BeneficiariesIcon, BudgetUsageIcon, ForestsIcon, UpdateProgressIcon, AdaptationIcon, LossDamageIcon } from '../components/ui/MerlIcons';
@@ -18,7 +17,6 @@ import {
   faUsersRays,
 } from '@fortawesome/free-solid-svg-icons';
 import { Activity, LayoutDashboard, MapPin, Menu, Pause, Play, Wallet } from '../components/ui/icons';
-import { FeatureCardGradient } from '../components/ui/feature-section-with-card-gradient';
 import { IndicatorProgressCard } from '../components/ui/indicator-progress-card';
 import ProjectLogo from '../components/ProjectLogo';
 import PublicTargetAchievement from '../components/PublicTargetAchievement';
@@ -26,7 +24,6 @@ import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
 import PublicCoverageMap from '../components/PublicCoverageMap';
 import MetricInformation from '../components/MetricInformation';
-import { PublishedProjectProgress } from '../components/ProjectProgressOverview';
 import { fundingCoverage, comparableFinancialUtilisation } from '../lib/dataCoverage';
 import { publicTargetProgress } from '../lib/publicTargetProgress';
 import { usePublicSnapshot, publicTotals } from '../lib/publicSnapshot';
@@ -174,7 +171,7 @@ function ThematicIndicatorNames({ records, lang, copy, showProject = true, achie
   </ul>;
 }
 
-function PublicProgressChart({ projects, details, lang, copy, onProject }) {
+function PublicProgressChart({ projects, details, areas, lang, copy, onProject }) {
   const fr = lang === 'fr';
   const n = value => new Intl.NumberFormat(fr ? 'fr-FR' : 'en-GB', {maximumFractionDigits:1}).format(value);
   const labels = {...copy.activityCategoryLabels, undisclosed:fr?'Catégorie non publiée':'Category not published'};
@@ -208,7 +205,7 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
   if(!rows.length)return null;
   return <div className="pbd-theme-progress-chart" style={{margin:'0 0 1rem',border:'1px solid #d4dfe6',borderRadius:12,padding:'clamp(.75rem,2vw,1.25rem)',background:'#fff',fontFamily:'Arial, sans-serif',minWidth:0}}>
     <h3 style={{margin:'0 0 .5rem',fontSize:'1rem',color:'#173e59'}}>{fr?'Contribution thématique par projet':'Thematic achievement by project'}</h3>
-    {rows.map(row=><div key={row.project.id} style={{padding:'.8rem 0',borderTop:'1px solid #e2e8f0'}}>
+    {rows.map(row=><div key={row.project.id} id={`public-project-${row.project.id}`} tabIndex={-1} style={{padding:'.8rem 0',borderTop:'1px solid #e2e8f0',scrollMarginTop:'1rem'}}>
       <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:'.4rem',alignItems:'baseline'}}>
         <button type="button" onClick={()=>onProject(row.project.id)} style={{textAlign:'left',font:'inherit',fontWeight:700,color:'#173e59',border:0,background:'transparent',padding:0,cursor:'pointer',overflowWrap:'anywhere',flex:'1 1 220px'}}><span style={{display:'flex',alignItems:'center',gap:'.65rem',minWidth:0}}><span className="pbd-name-logo"><ProjectLogo project={row.project}/></span><span style={{minWidth:0}}>{row.project.acronym||row.project.code||row.project.name}<small style={{display:'block',fontWeight:400,color:'#526476',fontSize:'.8rem'}}>{row.project.name}</small></span></span></button>
         <strong>{row.pct==null?'—':n(row.pct)+'%'}</strong>
@@ -223,18 +220,16 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
           </section>)}
         </details>
       </>:<p style={{fontSize:'.85rem',color:'#526476'}}>{row.total===0?(fr?'Cadre de résultats non disponible':'Results framework unavailable'):(fr?'Ventilation thématique indisponible':'Thematic breakdown unavailable')}</p>}
+      <ProjectInformation project={row.project} areas={areas} copy={copy} lang={lang}/>
     </div>)}
   </div>;
 }
 
-function ProjectCard({ project, areas, copy, lang }) {
+function ProjectInformation({ project, areas, copy, lang }) {
   const projectAreas = areas.filter(area => list(area.project_ids).some(id => String(id) === String(project.id)));
   const ThemeIcon = /loss.*damage/i.test(themeOf(project)) ? LossDamageIcon : /adaptation/i.test(themeOf(project)) ? AdaptationIcon : null;
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
-  return <FeatureCardGradient id={`public-project-${project.id}`} tabIndex={-1} className="pbd-project-card">
-    <header><div className="pbd-project-identity"><span className="pbd-name-logo"><ProjectLogo project={project}/></span><div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><StatusBadge className={`pbd-status pbd-status-${statusOf(project)}`} label={copy[statusOf(project)]} tone={statusOf(project) === 'upcoming' ? 'warning' : statusOf(project) === 'other' ? 'neutral' : 'success'} /></header>
-    <PublishedProjectProgress project={project} lang={lang}/>
-    <details className="pbd-project-information">
+  return <details className="pbd-project-information" data-project-information style={{marginTop:'.6rem'}}>
       <summary>{lang === 'fr' ? 'Informations sur le projet' : 'Project information'}</summary>
     {project.description && project.description !== project.expected_primary_outcome
       ? <p className="pbd-project-description">{project.description}</p>
@@ -248,8 +243,7 @@ function ProjectCard({ project, areas, copy, lang }) {
       <div><dt>{copy.theme}</dt><dd>{ThemeIcon && <ThemeIcon size={16} style={{ marginRight: 4 }} />}{themesOf(project).map(theme => lang === 'fr' ? ({'Loss and Damage':'Pertes et préjudices',Mitigation:'Atténuation'}[theme] || theme) : theme).join(', ') || copy.unknown}</dd></div>
     </dl>
     {project.expected_primary_outcome && <div className="pbd-project-outcome"><strong>{copy.outcome}</strong><p>{project.expected_primary_outcome}</p></div>}
-    </details>
-  </FeatureCardGradient>;
+    </details>;
 }
 
 export default function PublicDashboard() {
@@ -308,7 +302,7 @@ export default function PublicDashboard() {
     {tone:'beneficiaries',label:c.beneficiaries,stamp:coveredStamp(filtered.filter(p=>finite(p.published_beneficiaries)).length),value:totals.beneficiaries==null?c.noFinance:num(totals.beneficiaries,lang),detail:c.beneficiariesSub},
     {tone:'rate',label:c.utilisation,value:pct(comparableUtilisation),detail:c.utilisationSub},
   ];
-  const viewProject=id=>{requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
+  const viewProject=id=>{requestAnimationFrame(()=>{const card=document.getElementById(`public-project-${id}`);const info=card?.querySelector('[data-project-information]');if(info)info.open=true;card?.scrollIntoView({block:'start',behavior:'auto'});card?.focus({preventScroll:true});});};
   const mapView=()=><PublicCoverageMap projectCount={filtered.length} projects={filtered} areas={visibleAreas} selectedArea={selectedArea} onAreaSelect={setSelectedArea} onViewProject={viewProject}/>;
   const reset = () => { setFilters(initialFilters); setSelectedArea(null); };
   const refresh = () => { void refetch(); };
@@ -385,8 +379,8 @@ export default function PublicDashboard() {
 
           <section className="pbd-section pbd-portfolio">
             <div className="pbd-section-head"><div><h2 className="pbd-progress-summary-title"><ProjectsIcon size={20} aria-hidden="true" />{lang === 'fr' ? 'Progrès par projet' : 'Progress by project'}</h2><p>{lang === 'fr' ? 'Résumés des résultats approuvés et publiés.' : 'Approved, published result summaries.'}</p></div><strong>{num(filtered.length, lang)} {filtered.length === 1 ? c.singleProject : c.projects}</strong></div>
-            <PublicProgressChart projects={filtered} details={visibleIndicatorDetails} lang={lang} copy={c} onProject={viewProject} />
-            <div className="pbd-project-grid">{filtered.length ? filtered.map(project => <ProjectCard key={project.id} project={project} areas={sourceAreas} copy={c} lang={lang} />) : <div className="pbd-empty">{c.noProjects}</div>}</div>
+            <PublicProgressChart projects={filtered} details={visibleIndicatorDetails} areas={sourceAreas} lang={lang} copy={c} onProject={viewProject} />
+            {!filtered.length&&<div className="pbd-empty">{c.noProjects}</div>}
           </section>
           <section className="pbd-section pbd-location-section">
             <div className="pbd-section-head"><div><span><MapPin size={16} aria-hidden="true" />{c.locations}</span><p>{c.locationsIntro}</p></div>{selectedArea && <button type="button" onClick={() => setSelectedArea(null)}>{c.clearArea}</button>}</div>
