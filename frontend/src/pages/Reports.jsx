@@ -26,7 +26,7 @@ import * as OPT from '../constants/formOptions';
 import PageHeader from '../components/ui/PageHeader';
 import { fmtAmount, fmtPct, utilisationPct } from '../lib/docc/reporting';
 import { compareReportedRows, latestReportedBy, withReportingDates } from '../lib/docc/progressSelection';
-import { useLiveDashboard } from '../lib/useLiveDashboard';
+import { useLiveDashboard, useLiveRefreshFlag } from '../lib/useLiveDashboard';
 import { portfolioBeneficiaries } from '../lib/docc/projectAnalysis';
 import { useTranslation } from 'react-i18next';
 import { fmtDateTime, fmtNum } from '../lib/locale';
@@ -133,6 +133,7 @@ export default function Reports({ user }) {
   const fr = i18n.resolvedLanguage?.startsWith('fr');
   const lang = i18n.resolvedLanguage;
   const liveRevision = useLiveDashboard();
+  const isLiveRefresh = useLiveRefreshFlag(liveRevision);
   const requested = new URLSearchParams(window.location.hash.split('?')[1] || '');
   const [sourceD, setD] = useState(null);
   const [scopeId, setScopeId] = useState(() => requested.get('project') || '');
@@ -163,8 +164,9 @@ export default function Reports({ user }) {
   useEffect(() => { void loadRuns(); }, [loadRuns]);
 
   useEffect(() => {
+    const background = isLiveRefresh();
     (async () => {
-      setDataError('');
+      if (!background) setDataError('');
       // Rows arrive already in the reader's language; see lib/contentLocale.js.
       const q = (v, cols) => localised(() => supabase.from(v).select(i18nCols(cols)));
       const [proj, fin, risk, ben, act, ind, prog, rep, nodes, areas, orgs, narr, status, learn, evidence, targets, analyses] = await Promise.all([
@@ -190,6 +192,8 @@ export default function Reports({ user }) {
       const names = ['projects', 'financial progress', 'risks and issues', 'beneficiaries', 'activities', 'indicators', 'indicator progress', 'reporting periods', 'framework nodes', 'Area Council coverage', 'organizations', 'result narratives', 'portfolio status', 'learning updates', 'evidence', 'indicator targets', 'evidence source references'];
       const failures = results.map((result, index) => result.error ? names[index] : null).filter(Boolean);
       if (failures.length) {
+        // A failed live recheck keeps the report data already loaded.
+        if (background) return;
         setD(null);
         setDataError(`The report could not load live data for: ${failures.join(', ')}. No report has been generated. Please retry after the data service is available.`);
         return;
