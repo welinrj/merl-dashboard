@@ -69,7 +69,7 @@ export default function PublicReachAnalysis({ number = '', areas = [], projects 
   const unmatched = analysis ? analysis.total.unmatched : 0;
 
   return <section className="pbd-section pbd-reach" aria-labelledby="pbd-reach-title">
-    <div className="pbd-section-head"><div><h2 id="pbd-reach-title" className="pbd-reach-title pbd-report-h2">{number ? `${number} ` : ''}{c.title}</h2><p>{c.intro}</p></div></div>
+    <div className="pbd-section-head"><div><h2 id="pbd-reach-title" className="pbd-progress-summary-title">{number ? `${number} ` : ''}{c.title}</h2><p>{c.intro}</p></div></div>
     {!population ? <p className="pbd-reach-state" role="status">{failed ? c.unavailable : c.loading}</p> : <>
       <div className="pbd-reach-kpis">
         <div><span>{c.people}</span><strong>{num(analysis.total.pop2026)}</strong><small>{c.ofNational.replace('{total}', num(analysis.nationalPop))}</small></div>
