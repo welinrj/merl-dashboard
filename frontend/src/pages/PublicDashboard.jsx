@@ -20,6 +20,7 @@ import {
 import { Activity, LayoutDashboard, MapPin, Menu, Pause, Play, Wallet } from '../components/ui/icons';
 import { FeatureCardGradient } from '../components/ui/feature-section-with-card-gradient';
 import { IndicatorProgressCard } from '../components/ui/indicator-progress-card';
+import ProjectLogo from '../components/ProjectLogo';
 import PublicTargetAchievement from '../components/PublicTargetAchievement';
 import PublicHeaderLogin from '../components/PublicHeaderLogin';
 import HeaderPartnerLogos from '../components/HeaderPartnerLogos';
@@ -219,7 +220,7 @@ function PublicProgressChart({ projects, details, lang, copy, onProject }) {
     <div style={{display:'flex',flexWrap:'wrap',gap:'.5rem 1rem',fontSize:'.8rem',marginBottom:'1rem'}}>{activeKeys.map(k=><span key={k} style={{display:'inline-flex',alignItems:'center',gap:'.35rem'}}><i aria-hidden="true" style={{width:12,height:12,borderRadius:2,background:TARGET_CATEGORY_COLORS[k]}}/>{labels[k]}</span>)}</div>
     {rows.map(row=><div key={row.project.id} style={{padding:'.8rem 0',borderTop:'1px solid #e2e8f0'}}>
       <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:'.4rem',alignItems:'baseline'}}>
-        <button type="button" onClick={()=>onProject(row.project.id)} style={{textAlign:'left',font:'inherit',fontWeight:700,color:'#173e59',border:0,background:'transparent',padding:0,cursor:'pointer',overflowWrap:'anywhere',flex:'1 1 220px'}}>{row.project.acronym||row.project.code||row.project.name}<small style={{display:'block',fontWeight:400,color:'#526476',fontSize:'.8rem'}}>{row.project.name}</small></button>
+        <button type="button" onClick={()=>onProject(row.project.id)} style={{textAlign:'left',font:'inherit',fontWeight:700,color:'#173e59',border:0,background:'transparent',padding:0,cursor:'pointer',overflowWrap:'anywhere',flex:'1 1 220px'}}><span style={{display:'flex',alignItems:'center',gap:'.65rem',minWidth:0}}><span className="pbd-name-logo"><ProjectLogo project={row.project}/></span><span style={{minWidth:0}}>{row.project.acronym||row.project.code||row.project.name}<small style={{display:'block',fontWeight:400,color:'#526476',fontSize:'.8rem'}}>{row.project.name}</small></span></span></button>
         <strong>{row.pct==null?'—':n(row.pct)+'%'}</strong>
       </div>
       {row.valid&&row.total>0?<><div style={{margin:'.45rem 0'}}>{bar(keys.map(k=>[k,row.categories[k]?.achieved||0]),row.total,`${row.project.name}: ${countLabel(row)}`)}</div>
@@ -242,7 +243,7 @@ function ProjectCard({ project, areas, copy, lang }) {
   const ThemeIcon = /loss.*damage/i.test(themeOf(project)) ? LossDamageIcon : /adaptation/i.test(themeOf(project)) ? AdaptationIcon : null;
   const places = [...new Set([...list(project.provinces), ...projectAreas.map(area => area.area_council).filter(Boolean)])];
   return <FeatureCardGradient id={`public-project-${project.id}`} tabIndex={-1} className="pbd-project-card">
-    <header><div className="pbd-project-identity">{project.docc_image_url && <img className="pbd-project-image" src={project.docc_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}<div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><StatusBadge className={`pbd-status pbd-status-${statusOf(project)}`} label={copy[statusOf(project)]} tone={statusOf(project) === 'upcoming' ? 'warning' : statusOf(project) === 'other' ? 'neutral' : 'success'} /></header>
+    <header><div className="pbd-project-identity"><span className="pbd-name-logo"><ProjectLogo project={project}/></span><div><span className="pbd-project-code">{project.code || project.acronym || copy.projects}</span><h3>{project.name}</h3></div></div><StatusBadge className={`pbd-status pbd-status-${statusOf(project)}`} label={copy[statusOf(project)]} tone={statusOf(project) === 'upcoming' ? 'warning' : statusOf(project) === 'other' ? 'neutral' : 'success'} /></header>
     <PublishedProjectProgress project={project} lang={lang}/>
     <details className="pbd-project-information">
       <summary>{lang === 'fr' ? 'Informations sur le projet' : 'Project information'}</summary>
