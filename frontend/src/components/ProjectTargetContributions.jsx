@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { targetContributions } from '../lib/targetContributions';
 import './project-target-contributions.css';
 
-export default function ProjectTargetContributions({summary,french=false,period='', hideNote = false }) {
+export default function ProjectTargetContributions({summary,french=false,period=''}) {
   const model=targetContributions(summary),id=useId();
   const number=n=>new Intl.NumberFormat(french?'fr-FR':'en-GB',{maximumFractionDigits:2}).format(n);
   const label=p=>p.acronym||p.code||p.name;
@@ -25,6 +25,6 @@ export default function ProjectTargetContributions({summary,french=false,period=
       </li>)}</ul>
     </div>:model.valid?<p className="target-contributions-empty">{french?'Aucune cible atteinte enregistrée dans cette sélection.':'No achieved targets recorded in this selection.'}</p>:null}
     {model.others.length>0&&<details className="target-contributions-others"><summary>{french?'Autres projets':'Other projects'} ({model.others.length})</summary><ul>{model.others.map(r=><li key={r.project.id}><strong>{label(r.project)}</strong><span>{r.reported===0?(french?'Résultats non enregistrés':'Results not recorded'):(french?'Aucune cible atteinte enregistrée':'No achieved targets recorded')}</span></li>)}</ul></details>}
-    {!hideNote&&model.rows.length>0&&<p className="target-contributions-note">{french?'Part = cibles atteintes du projet ÷ total des cibles atteintes. Contribution globale = cibles atteintes du projet ÷ toutes les cibles du portefeuille.':'Share = project’s achieved targets ÷ all achieved targets. Overall contribution = project’s achieved targets ÷ all portfolio targets.'}</p>}
+    {model.rows.length>0&&<p className="target-contributions-note">{french?'Part = cibles atteintes du projet ÷ total des cibles atteintes. Contribution globale = cibles atteintes du projet ÷ toutes les cibles du portefeuille.':'Share = project’s achieved targets ÷ all achieved targets. Overall contribution = project’s achieved targets ÷ all portfolio targets.'}</p>}
   </section>;
 }
